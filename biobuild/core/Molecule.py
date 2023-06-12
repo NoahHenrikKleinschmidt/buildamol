@@ -762,7 +762,7 @@ class Molecule(entity.BaseEntity):
     def attach(
         self,
         other: "Molecule",
-        link: Union[str, "Linkage"] = None,
+        link: Union[str, "Linkage.Linkage"] = None,
         at_residue: Union[int, bio.Residue.Residue] = None,
         other_residue: Union[int, bio.Residue.Residue] = None,
         inplace: bool = True,
@@ -825,7 +825,7 @@ class Molecule(entity.BaseEntity):
     def patch_attach(
         self,
         other: "Molecule",
-        patch: Union["Linkage", str] = None,
+        patch: Union["Linkage.Linkage", str] = None,
         at_residue: Union[int, bio.Residue.Residue] = None,
         other_residue: Union[int, bio.Residue.Residue] = None,
         _topology=None,
