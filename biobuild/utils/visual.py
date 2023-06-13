@@ -7,32 +7,32 @@ import plotly.express as px
 import numpy as np
 from copy import deepcopy
 
-# import nglview
+import nglview
 
 
-# class NglViewer:
-#     """
-#     View a molecule or graph object in 3D using
-#     the NGLView library.
+class NglViewer:
+    """
+    View a molecule or graph object in 3D using
+    the NGLView library.
 
-#     Parameters
-#     ----------
-#     molecule
-#         The molecule to view. This may be any object that holds
-#         a biopython structure e.g. a Molecule, AtomGraph, or ResidueGraph.
-#     """
+    Parameters
+    ----------
+    molecule
+        The molecule to view. This may be any object that holds
+        a biopython structure e.g. a Molecule, AtomGraph, or ResidueGraph.
+    """
 
-#     def __init__(self, molecule):
-#         if molecule.__class__.__name__ in ("Molecule", "AtomGraph", "ResidueGraph"):
-#             self.mol = molecule.structure
-#         else:
-#             self.mol = molecule
+    def __init__(self, molecule):
+        if molecule.__class__.__name__ in ("Molecule", "AtomGraph", "ResidueGraph"):
+            self.structure = molecule.structure
+        else:
+            self.structure = molecule
 
-#     def show(self):
-#         """
-#         Show the molecule in a Jupyter notebook
-#         """
-#         return nglview.show_biopython(self.mol.structure)
+    def show(self):
+        """
+        Show the molecule in a Jupyter notebook
+        """
+        return nglview.show_biopython(self.structure)
 
 
 class MoleculeViewer3D:

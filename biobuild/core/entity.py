@@ -418,7 +418,7 @@ class BaseEntity:
 
     def show(self, residue_graph: bool = False):
         """
-        Open a browser window to view the molecule/scaffold in 3D
+        Open a browser window to view the molecule in 3D
 
         Parameters
         ----------
@@ -428,9 +428,15 @@ class BaseEntity:
         v = self.draw(residue_graph)
         v.show()
 
+    def nglview(self):
+        """
+        View the molecule in 3D through nglview
+        """
+        utils.visual.NglViewer(self).show()
+
     def draw(self, residue_graph: bool = False):
         """
-        Prepare a view of the molecule/scaffold in 3D
+        Prepare a view of the molecule in 3D
         but do not open a browser window.
 
         Parameters
