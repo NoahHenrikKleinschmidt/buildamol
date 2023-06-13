@@ -28,7 +28,7 @@ def read_pdb(filename: str, id: str = None) -> "Molecule.Molecule":
     molecule : Molecule
         The molecule
     """
-    return Molecule.Molecule.from_pdb(filename, id=id)
+    return Molecule.from_pdb(filename, id=id)
 
 
 def read_cif(filename: str, id: str = None) -> "Molecule.Molecule":
@@ -47,7 +47,7 @@ def read_cif(filename: str, id: str = None) -> "Molecule.Molecule":
     molecule : Molecule
         The molecule
     """
-    return Molecule.Molecule.from_cif(filename, id=id)
+    return Molecule.from_cif(filename, id=id)
 
 
 def read_smiles(smiles: str, id: str = None) -> "Molecule.Molecule":
@@ -64,7 +64,7 @@ def read_smiles(smiles: str, id: str = None) -> "Molecule.Molecule":
     molecule : Molecule
         The molecule
     """
-    return Molecule.Molecule.from_smiles(smiles, id=id)
+    return Molecule.from_smiles(smiles, id=id)
 
 
 def molecule(mol: str) -> "Molecule":
@@ -84,7 +84,7 @@ def molecule(mol: str) -> "Molecule":
         The generated molecule
     """
     if isinstance(mol, bio.Structure.Structure):
-        return Molecule.Molecule(mol)
+        return Molecule(mol)
 
     if not isinstance(mol, str):
         raise ValueError("input must be a string")
@@ -97,19 +97,19 @@ def molecule(mol: str) -> "Molecule":
 
     if os.path.isfile(mol):
         if mol.endswith(".pdb"):
-            return Molecule.Molecule.from_pdb(mol)
+            return Molecule.from_pdb(mol)
         elif mol.endswith(".cif"):
-            return Molecule.Molecule.from_cif(mol)
+            return Molecule.from_cif(mol)
         elif mol.endswith(".pkl"):
-            return Molecule.Molecule.load(mol)
+            return Molecule.load(mol)
 
     try:
-        return Molecule.Molecule.from_pubchem(mol)
+        return Molecule.from_pubchem(mol)
     except:
         pass
 
     try:
-        return Molecule.Molecule.from_smiles(mol)
+        return Molecule.from_smiles(mol)
     except:
         pass
 
@@ -230,7 +230,7 @@ if __name__ == "__main__":
 
     all_carb_file = "/Users/noahhk/Downloads/charmm.carbs.36.all.txt"
     alltop = resources.CHARMMTopology.from_file(all_carb_file)
-    utils.defaults.set_default_topology(alltop)
+    resources.set_default_topology(alltop)
 
     iupac = "Man(b1-6)[Man(b1-3)]b-Man(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
     mol = glycan("test", iupac)
