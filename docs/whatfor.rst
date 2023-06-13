@@ -16,11 +16,11 @@ In order to facilitate the building of larger structures, `biobuild` provides a 
 and quickly connect smaller molecules to larger structures, but also integrates a vast database of available molecules
 that can be loaded without the need to download external data sources, or read files from disk. 
 
-Why "bio"-build and not "molecule"-build, or something?
--------------------------------------------------------
+Why "bio"-build?
+----------------
 
 `biobuild` is designed on top of `biopython <https://biopython.org/>`_ and was originally designed to build larger
-biomolecules such as glycans. However, the underlying algorithms and implementations are not limited to these fields
+biomolecules, specifically glycans. However, the underlying algorithms and implementations are not limited to these glycobiology
 and hence, `biobuild` was created as a stand-along framework for molecule building. `biopython` was chosen as backend
 due to its great flexibility when it comes to adding and removing atoms to and from structures. However, `biobuild`
 is not limited to `biopython` but exports import and export of structures to and from `rdkit <https://www.rdkit.org/>`_,

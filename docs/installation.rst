@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Installing `biobuild`
----------------------
+Installation
+------------
 
 `biobuild` can be directly installed via `pip` from the python package index:
 
@@ -26,4 +26,5 @@ Updating `biobuild`
 
 .. warning:: 
 
-   When updating `biobuild` to a newer version, make sure to export any 
+   When updating `biobuild` to a newer version, make sure to export any custom default `PDBECompounds` or `CHARMMTopology` settings
+   before updating, as the update will overwrite the default settings file. You can re-set the custom settings after the update.
