@@ -516,6 +516,18 @@ class PDBECompounds:
         else:
             raise ValueError(f"Invalid return_type '{return_type}'.")
 
+    def remove(self, id: str) -> None:
+        """
+        Remove a compound from the dictionary.
+
+        Parameters
+        ----------
+        id : str
+            The id of the compound to remove.
+        """
+        self._compounds.pop(id, None)
+        self._pdb.pop(id, None)
+
     def has_residue(self, query: str, by: str = "id") -> bool:
         """
         Check if a compound has a residue definition.
