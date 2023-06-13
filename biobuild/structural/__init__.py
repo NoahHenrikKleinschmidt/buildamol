@@ -31,7 +31,3 @@ from biobuild.structural.neighbors import (
     compute_triplets,
     generate_triplets,
 )
-
-from biobuild.structural.iupac import (
-    IUPACParser,
-)
