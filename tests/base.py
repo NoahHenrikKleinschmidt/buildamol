@@ -29,11 +29,6 @@ GALACTOSE = os.path.join(HOME, "support/examples/GAL.pdb")
 The PDB file for the Galactose sugar (only a single Galactose)
 """
 
-PROTEIN = os.path.join(HOME, "support/examples/4tvp.prot.pdb")
-"""
-THe PDB file of the protein 4TVP (no glycans)
-"""
-
 CHARMM_TOPOLOGY_FILE = os.path.join(HOME, "support/toppar_charmm/carbohydrates.rtf")
 """
 The path to the CHARMM topology file
