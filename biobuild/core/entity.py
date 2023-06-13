@@ -1,5 +1,5 @@
 """
-The base class for classes storing biopython structures
+The base class for classes storing and manipulating biopython structures
 """
 
 from copy import deepcopy

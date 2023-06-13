@@ -1,5 +1,5 @@
 """
-Some basic functions to interact with the core of biobuild.
+Toplevel API functions
 """
 import os
 from typing import Union
@@ -11,6 +11,60 @@ import biobuild.core.Molecule as Molecule
 import biobuild.core.Linkage as _linkage
 import biobuild.resources as resources
 
+
+def read_pdb(filename: str, id: str = None) -> "Molecule.Molecule":
+    """
+    Read a PDB file and return a molecule.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the PDB file
+    id : str
+        The id of the molecule
+
+    Returns
+    -------
+    molecule : Molecule
+        The molecule
+    """
+    return Molecule.Molecule.from_pdb(filename, id=id)
+
+
+def read_cif(filename: str, id: str = None) -> "Molecule.Molecule":
+    """
+    Read a CIF file and return a molecule.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the CIF file
+    id : str
+        The id of the molecule
+
+    Returns
+    -------
+    molecule : Molecule
+        The molecule
+    """
+    return Molecule.Molecule.from_cif(filename, id=id)
+
+
+def read_smiles(smiles: str, id: str = None) -> "Molecule.Molecule":
+    """
+    Read a SMILES string and return a molecule.
+
+    Parameters
+    ----------
+    smiles : str
+        The SMILES string
+
+    Returns
+    -------
+    molecule : Molecule
+        The molecule
+    """
+    return Molecule.Molecule.from_smiles(smiles, id=id)
 
 
 def molecule(mol: str) -> "Molecule":
@@ -30,7 +84,7 @@ def molecule(mol: str) -> "Molecule":
         The generated molecule
     """
     if isinstance(mol, bio.Structure.Structure):
-        return Molecule(mol)
+        return Molecule.Molecule(mol)
 
     if not isinstance(mol, str):
         raise ValueError("input must be a string")
@@ -43,19 +97,19 @@ def molecule(mol: str) -> "Molecule":
 
     if os.path.isfile(mol):
         if mol.endswith(".pdb"):
-            return Molecule.from_pdb(mol)
+            return Molecule.Molecule.from_pdb(mol)
         elif mol.endswith(".cif"):
-            return Molecule.from_cif(mol)
+            return Molecule.Molecule.from_cif(mol)
         elif mol.endswith(".pkl"):
-            return Molecule.load(mol)
+            return Molecule.Molecule.load(mol)
 
     try:
-        return Molecule.from_pubchem(mol)
+        return Molecule.Molecule.from_pubchem(mol)
     except:
         pass
 
     try:
-        return Molecule.from_smiles(mol)
+        return Molecule.Molecule.from_smiles(mol)
     except:
         pass
 
@@ -63,14 +117,14 @@ def molecule(mol: str) -> "Molecule":
 
 
 def polymerize(
-    molecule: Molecule, n: int, link=None, inplace: bool = False
-) -> Molecule:
+    mol: "Molecule.Molecule", n: int, link=None, inplace: bool = False
+) -> "Molecule.Molecule":
     """
     Polymerize a molecule
 
     Parameters
     ----------
-    molecule : Molecule
+    mol : Molecule
         The molecule to polymerize
     n : int
         The number of monomers to add
@@ -84,17 +138,74 @@ def polymerize(
     Molecule
         The polymerized molecule
     """
-    if link is None and molecule._linkage is None:
+    if link is None and mol._linkage is None:
         raise ValueError(
             "No patch or recipe provided and no default is set on the molecule"
         )
-    return molecule.repeat(n, link, inplace=inplace)
+    return mol.repeat(n, link, inplace=inplace)
+
+
+def connect(
+    mol_a: "Molecule.Molecule",
+    mol_b: "Molecule.Molecule",
+    link: "_linkage.Linkage",
+    at_residue_a,
+    at_residue_b,
+    copy_a: bool = True,
+    copy_b: bool = True,
+    _topology=None,
+) -> "Molecule.Molecule":
+    """
+    Connect two molecules together
+
+    Parameters
+    ----------
+    mol_a : Molecule
+        The first molecule
+    mol_b : Molecule
+        The second molecule
+    link : Linkage or str
+        The linkage to use for connection. This can be either an instance of the Linkage class or a string identifier
+        of a pre-defined patch in the (currently loaded default or specified) CHARMMTopology.
+    at_residue_a : int or bio.PDB.Residue
+        The residue of the first molecule to connect to. If an integer is provided, the seqid must be used, starting at 1.
+    at_residue_b : int or bio.PDB.Residue
+        The residue of the second molecule to connect to. If an integer is provided, the seqid must be used, starting at 1.
+    copy_a : bool
+        Whether to copy the first molecule before connecting
+    copy_b : bool
+        Whether to copy the second molecule before connecting.
+        If False, all atoms of the second molecule will be added to the first molecule.
+    _topology : CHARMMTopology
+        A specific topology to use in case a pre-existing patch is used as link and only the string identifier
+        is supplied.
+
+    Returns
+    -------
+    Molecule
+        The connected molecule
+    """
+    if copy_b:
+        mol_b = mol_b.copy()
+    new = mol_a.attach(
+        mol_b,
+        link,
+        at_residue=at_residue_a,
+        other_residue=at_residue_b,
+        inplace=not copy_a,
+        _topology=_topology,
+    )
+    return new
 
 
 __all__ = [
+    "read_pdb",
+    "read_cif",
+    "read_smiles",
     "molecule",
     "polymerize",
-   ]
+    "connect",
+]
 
 if __name__ == "__main__":
     # glycans = [
