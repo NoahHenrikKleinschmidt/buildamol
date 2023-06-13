@@ -31,6 +31,20 @@ def read_pdb(filename: str, id: str = None) -> "Molecule.Molecule":
     return Molecule.from_pdb(filename, id=id)
 
 
+def write_pdb(mol: "Molecule.Molecule", filename: str) -> None:
+    """
+    Write a molecule to a PDB file.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to write
+    filename : str
+        The path to the PDB file
+    """
+    mol.to_pdb(filename)
+
+
 def read_cif(filename: str, id: str = None) -> "Molecule.Molecule":
     """
     Read a CIF file and return a molecule.
@@ -48,6 +62,20 @@ def read_cif(filename: str, id: str = None) -> "Molecule.Molecule":
         The molecule
     """
     return Molecule.from_cif(filename, id=id)
+
+
+def write_cif(mol: "Molecule.Molecule", filename: str) -> None:
+    """
+    Write a molecule to a CIF file.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to write
+    filename : str
+        The path to the CIF file
+    """
+    mol.to_cif(filename)
 
 
 def read_smiles(smiles: str, id: str = None) -> "Molecule.Molecule":
@@ -203,7 +231,9 @@ def connect(
 
 __all__ = [
     "read_pdb",
+    "write_pdb",
     "read_cif",
+    "write_cif",
     "read_smiles",
     "molecule",
     "polymerize",
