@@ -1,5 +1,6 @@
 """
 Utility and auxiliary functions and constants used by biobuild.
+Most of these functions are not relevant to the user, but are used internally.
 """
 import biobuild.utils.abstract as abstract
 import biobuild.utils.constants as constants

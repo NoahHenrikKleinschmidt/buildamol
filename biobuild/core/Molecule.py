@@ -7,10 +7,51 @@ and their properties, such as atoms, bonds, residues, chains, etc.
 Making Molecules
 ================
 
-To make a new molecule, the easiest way is to use the `Molecule.from_compound` classmethod.
-This method is linked to the PDBECompounds database, which contains a large number of reference
-compounds (currently restricted to sugars and amino acids due to the nature of "biobuild"). The database
-is queried using the `by` parameter, which can be one of the following:
+The easiest way to make a new molecule is to use the toplevel `molecule` function, which will automatically
+try to detect the type of user provided input and generate a molecule from it. Currently supported inputs are:
+- A biopython structure
+- A PDB id
+- A PDB file
+- A CIF file
+- A SMILES string
+- An InChI string
+- An IUPAC name or abbreviation, or any name that matches a known compound synonym that is associated with the PubChem database
+
+.. code-block:: python
+
+    from biobuild import molecule
+
+    my_glucose = molecule("GLC") # use the PDB id
+
+    # or
+    my_glucose = molecule("GLC.pdb") # use the PDB file
+
+    # or
+    my_glucose = molecule("alpha-d-glucose") # use the name
+
+    # ...
+
+Since the `molecule` function is a try-and-error function it is convenient but not the most efficient. Hence, the `Molecule` class
+offers already a number of convenient methods to easily generate molecules directly from specified data sources. Available methods are:
+
+- `Molecule.from_pdb` to generate a molecule from a PDB file
+- `Molecule.from_cif` to generate a molecule from a CIF file
+- `Molecule.from_smiles` to generate a molecule from a SMILES string
+- `Molecule.from_pubchem` to generate a molecule from a PubChem entry
+- `Molecule.from_compound` to generate a molecule from a PDBECompounds entry
+- `Molecule.from_rdkit` to generate a molecule from an RDKit molecule object
+
+Hence, if we know that "glucose" is already available in our local PDBECompounds database, we can generate the molecule also as follows:
+
+.. code-block:: python
+
+    from biobuild import Molecule
+
+    my_glucose = Molecule.from_compound("GLC") # use the PDB id
+
+
+The quickest way to query the local PDBECompounds database is to use the `PDB Id` of the desired compounds.
+However, the `from_compound` accepts other inputs as well. The database is queried using the `by` parameter, which can be one of the following:
 - "id" for the PDB id (default)
 - "name" for the name of the compound (must match any known synonym of the iupac name)
 - "formula" for the chemical formula (usually ambiguous and will therefore often raise an error)
@@ -18,40 +59,12 @@ is queried using the `by` parameter, which can be one of the following:
 
 .. code-block:: python
 
-    from biobuild import Molecule
-
-    # create a new galactose molecule
-    gal = Molecule.from_compound("GAL") # use the PDB id
-
     # create a new glucose molecule
     glc = Molecule.from_compound("alpha-d-glucose", by="name") # use the name
 
-Alternatively, an existing structure can be loaded to a molecule from a PDB file using the `Molecule.from_pdb` classmethod. 
-In this case the molecule may be as large as the PDB format supports (currently 99999 atoms).
 
-.. code-block:: python
-
-    my_glycan = Molecule.from_pdb("my_glycan.pdb")
-
-Unless loaded from a PDB file, each `Molecule` starts with a single chain and residue,
-specifying a single compound, such as Galactose or Glucose. Starting from there, multiple molecules
-can be assembled together to form complex structures. 
-
-Of course, an existing `biopython.Structure` object can also be used to create a `Molecule`:
-
-.. code-block:: python
-
-    from Bio.PDB import PDBParser
-
-    parser = PDBParser()
-    structure = parser.get_structure("my_structure", "my_structure.pdb")
-
-    # do any modifications to the structure here
-    # ...
-    
-    my_molecule = Molecule(structure)
-
-    
+Saving Molecules
+----------------
 If a molecule is created from a large PDB file and has undergone a lot of preprocessing, it may be useful to `save` the molecule to a pickle file
 which can be loaded again later to avoid repeated preprocessing. This can be done using the `save` and `load` methods.
 
@@ -91,11 +104,11 @@ The atoms can be specified by their `full_id` tuple, their `id` string, their `s
     glc.add_bond("O1", "HO1")
 
 
-Already for small molecules such as bbucose with only 24 atoms, it would be very tedious to add all bonds manually. Good thing that the molecules
-created using `from_compound` already contain all the default bonds!
+Already for small molecules such as glucose with only 24 atoms, it would be very tedious to add all bonds manually. Good thing that the molecules
+created using `from_compound` or `from_pdb` already contain all the default bonds!
 
-However, for molecules that were loaded from a PDB file , the `Molecule` class offers two methods: `apply_standard_bonds` and `infer_bonds`. 
-The former uses reference connectivity information from the PDBECompounds database to add all bonds that are known for the compound (if it exists in the database).
+However, in case the bonds are missing, or the PDB file did not specify any to begin with, the `Molecule` class offers two methods: `apply_standard_bonds` and `infer_bonds`. 
+The former uses reference connectivity information from the PDBECompounds database or CHARMMTopology to add all bonds that are known for the compound (if it exists in the database).
 The latter will use a simple distance-based approach to infer bonds between atoms that are closer than a specified threshold (default: 1.6 Å), which can be restricted
 further to a min-max window.
 
@@ -122,32 +135,35 @@ further to a min-max window.
         # add all bonds that are closer than 1.6 Å, even if they belong to different residues
         glc.infer_bonds(bond_length=1.6, restrict_residues=False)
 
-
-    Alternatively, instead of `infer_bonds` one may use `infer_residue_connections` to get bonds that connect different residues.
-    This method will infer all bonds between atoms from different residues based on the distance between them. The inferred bonds are
-    saved in the `Molecule` and also returned in a `list`. If the optional argument `triplet` is set to `True`, the methodd will also
-    return the bonds immediately adjacent to the inferred bonds.
-
-    Take the following example of a molecule with two residues `A` and `B` that are connected by a bond between `OA` and `(1)CB`:
-    ```     
-             connection -->  OA     OB --- H
-                            /  \\   /
-              (1)CA --- (2)CA   (1)CB 
-               /         \\        \\
-           (6)CA         (3)CA    (2)CB --- (3)CB
-               \\         /
-             (5)CA --- (4)CA
-    ``` 
-    
-    If `triplet=False` the method will only return the bond between `OA` and `(1)CB`. However, if `triplet=True` it will also return the bond
-    between `(2)CA` and `OA` - thus forming a triplet of atoms `(2)CA`, `OA` and `(1)CB` that connect the two residues A and B.
-
-
-    .. code-block:: python
-
-        # infer all bonds between atoms from different residues
-        inferred_bonds = glc.infer_residue_connections()
         
+Residue Connections
+-------------------
+
+Alternatively, instead of `infer_bonds` one may use `infer_residue_connections` to get bonds that connect different residues.
+This method will infer all bonds between atoms from different residues based on the distance between them. The inferred bonds are
+saved in the `Molecule` and also returned in a `list`. If the optional argument `triplet` is set to `True`, the methodd will also
+return the bonds immediately adjacent to the inferred bonds.
+
+Take the following example of a molecule with two residues `A` and `B` that are connected by a bond between `OA` and `(1)CB`:
+```     
+            connection -->  OA     OB --- H
+                        /  \\   /
+            (1)CA --- (2)CA   (1)CB 
+            /         \\        \\
+        (6)CA         (3)CA    (2)CB --- (3)CB
+            \\         /
+            (5)CA --- (4)CA
+``` 
+
+If `triplet=False` the method will only return the bond between `OA` and `(1)CB`. However, if `triplet=True` it will also return the bond
+between `(2)CA` and `OA` - thus forming a triplet of atoms `(2)CA`, `OA` and `(1)CB` that connect the two residues A and B.
+
+
+.. code-block:: python
+
+    # infer all bonds between atoms from different residues
+    inferred_bonds = glc.infer_residue_connections()
+    
 
 
 Adding residues and atoms
@@ -216,9 +232,11 @@ Adjusting labelling
 -------------------
 
 Single-residue molecules that were loaded from a PDB file may not use the same atom labelling as the `PDBE` and `CHARMM` databases.
-In order to quickly adjust the labelling, a method `autolabel` exists. However, it is restricted to default-conformation residues at the moment
-as it uses a structure overlay to determine the correct labelling. If your molecules follow another labelling scheme it may be more efficient to simply
-define your own linkage recipies or patches (see the documentation of `linkages`).
+In order to quickly adjust the labelling, a method `autolabel` exists. `autolabel` uses the atom connectivity and a rule-based algorithm to infer 
+the most likely atom labels. However, since this method is not perfect, it is recommended to check the labelling afterwards and adjust it manually if necessary.
+
+If working with large molecules that follow another labelling scheme it may be more efficient to simply
+define your own linkage recipies or patches (see the documentation of `linkages`) that use the the appropriate labelling scheme.
 
 .. code-block:: python
 
@@ -232,10 +250,10 @@ define your own linkage recipies or patches (see the documentation of `linkages`
     glc.to_pdb("glucose_autolabelled.pdb")
 
 
-A more common operation is the adjustment of chain names and residue seqids. This can be done using the `reindex` method.
+Another common operation is the adjustment of chain names and residue seqids. This can be done using the `reindex` method.
 This method accepts three starting values for the chain name, residue seqid and atom serial number and will then reindex all chains, residues and atoms
 to ensure they are continuously numbered and labelled. Some internal methods used when connecting different molecules are reliant on a continuous
-numbering scheme, so this method should be called before connecting molecules.
+numbering scheme, so this method should be called before connecting molecules that were loaded from PDB files.
 
 .. code-block:: python
 
@@ -281,6 +299,7 @@ to form a homo-polymer.
 
     # create cellulose from glucose
     # using a 1-4 beta-beta glycosidic linkage
+    # which is pre-defined in the default CHARMMTopology
     glc.repeat(10, "14bb")
 
     # Now we have a cellulose of 10 glucoses
@@ -292,7 +311,7 @@ the linkage type beforehand. We do this by setting the `patch` attribute before 
 
     # specify the "default" linkage type for connecting 
     # other molecules to this glucose
-    glc.patch = "14bb"
+    glc.linkage = "14bb"
 
     # now make a cellulose by multiplying glucoses
     glc *= 20
@@ -339,7 +358,7 @@ among us who prefer a more shorty syntax, the `+` operator will do the same thin
 
     # specify that incoming molecules shall be
     # attached using a 1-4 beta linkage
-    glc.patch = "14bb"
+    glc.linkage = "14bb"
 
     # now attach the galactose to the glucose
     lac = glc + gal
@@ -349,7 +368,7 @@ Of course, if there is a `+` operator there should also be a `+=` operator, whic
 
 .. code-block:: python
 
-    glc.patch = "14bb"
+    glc.linkage = "14bb"
     glc += gal
 
 
@@ -361,7 +380,7 @@ Setting default Modifiers
 
 So far, we have always worked with a 1-4 beta-beta glycosidic linkage, which we apparently could select using the string `"14bb"`. 
 But what if we want to use a different linkage type? For example, a 1-4 alpha-beta glycosidic linkage?  You of course noticed, 
-that `attach` and `repeat` accept an argument `recipe_or_patch` which allows you to specify the linkage type, and that if you leave it blank
+that `attach` and `repeat` accept an argument `link` which allows you to specify the linkage type, and that if you leave it blank
 the default linkage type is used. But how do we set the default linkage type?
 
 Let's first check what linkage types are available by default anyway. Have you noticed an argument named `_topology`
@@ -380,21 +399,19 @@ By default a topology is already loaded in _biobuild_'s framework so it is not n
 
 Any of these linkages can be referenced by their name, e.g. `"14bb"` or `"14ab"`. 
 
-Wait a second, my desired linkage is not in the list! What now?! Well, you can always define your own linkage type by creating either a new `Patch` or a new `Recipe`.
-Check out the documentation on :ref:`linkages` for more information on how to do this. If you have your desired patch or recipe
-ready to go, set it as the default patch or recipe by:
+Wait a second, my desired linkage is not in the list! What now?! Well, you can always define a new `Linkage` to suit your needs.
+Check out the documentation on :ref:`linkages` for more information on how to do this. If you have your desired linkage 
+ready to go, set it as the default by:
 
 .. code-block:: python
 
-    my_molecule.patch = my_patch
-    # or
-    my_molecule.recipe = my_recipe
-
+    my_molecule.linkage = my_linkage
+    
     # or if you feel "super correct"
-    my_molecule.set_ linkage(my_ linkage)
+    my_molecule.set_linkage(my_linkage)
 
     # or if you feel "extra cocky"
-    my_molecule % my_ linkage # <- the modulo operator assignes the "modifier" to the molecule
+    my_molecule % my_linkage # <- the modulo operator assignes the "modifier" to the molecule
 
 
 Now any call to `attach`, `repeat`, or any of its operator proxies will use your defined linkage by default.
@@ -402,7 +419,7 @@ Now any call to `attach`, `repeat`, or any of its operator proxies will use your
 Setting the default Residue for attachment
 ------------------------------------------
 
-When specifying a `Patch` or `Recipe` we specify which atoms are supposed to be connected and removed, but we do not specify which residues
+When defining a `Linkage` we specify which atoms are supposed to be connected and removed, but we do not specify which residues
 these atoms belong to. We specify this as arguments inside the `attach` method for instance, but we can also leave this blank, in which case the
 last residue in the molecule is used by default. This is obviously not always what we want, however! Hence, if we do not want to specify the residue for attachment
 at every `attach` call or if we want to use the `+` operator, we can set the default residue for attachment by setting the `attach_residue` attribute:
@@ -421,33 +438,7 @@ at every `attach` call or if we want to use the `+` operator, we can set the def
 
     # serial number indexing also works in reverse
     # (set the second last residue as the default attachment residue)
-    my_molecule.attach_residue = -2
-
-Attaching Molecules to a Scaffold
-=================================
-
-Ultimately, the fate of a `Molecule` is to be attached to a `Scaffold`.
-The `Scaffold` class is very similar to the `Molecule` class but instead of representing modifying molecules such as bbycans, it 
-represents the structures which are getting modified, such as proteins or membranes. A `Molecule` is always attached to a `Scaffold` 
-at its (the molecule's) `root_atom`. This can be set using the `root_atom` argument when creating a `Molecule` or by setting the `root_atom` attribute later on.
-
-.. code-block:: python
-
-    # set the root atom to the atom with serial number 1
-    my_molecule.root_atom = 1
-
-    # or
-    my_molecule.set_root(1)
-
-    # or (if you fell "extra cocky")
-    my_molecule ^ 1 # <- the caret operator sets the root atom 
-
-    # now we can attach the molecule to a scaffold
-    # ... some scaffold creation code ...
-
-    my_scaffold.attach(my_molecule)
-    
-Now, we can use the `Molecule` to attach it to a `Scaffold` (described in the :ref:`Scaffold` documentation).
+    my_molecule.attach_residue = -2  
 """
 
 from copy import deepcopy

@@ -4,7 +4,7 @@ This module defines File parsers and data classes to work with the CHARMM force 
 Reading CHARMM files
 ====================
 
-CHARMM files can be read using the `CHARMMTopology` and `CHARMMParameters` classes, depending on the file type.
+CHARMM files can be read using the `CHARMMTopology` class.
 
 .. code-block:: python
 
@@ -17,7 +17,7 @@ CHARMM files can be read using the `CHARMMTopology` and `CHARMMParameters` class
 
 
 Because parsing can be a time intensive task, it is recommended to `save` the parsed objects to a pickle file for later use.
-In this case a pre-parsed topology or parameters object can be loaded using the `load` method.
+In this case a pre-parsed topology object can be loaded using the `load` method.
 
 .. code-block:: python
 
@@ -39,22 +39,36 @@ Setting default CHARMM objects
 ==============================
 
 The `biobuild.utils.defaults` module pre-loads default CHARMM topology and parameters objects for convenience. Many methods that make use of 
-these objects such as the `attach` methods of the `Scaffold` and `Molecule` classes also accept arguments for custom topology and parameters objects.
-For convenience, a custom object can be set as the default, however, using the `set_default_topology` and `set_default_parameters` functions.
+these objects such as the `attach` method of `Molecule` instances also accept arguments for custom topology objects.
+For convenience, a custom object can be set as the default, however, using the `set_default_topology` functions.
 
 .. code-block:: python
 
-    from biobuild.utils import defaults
+    from biobuild.resources import set_default_topology
     
     # set a custom topology object as the default
-    defaults.set_default_topology(top)
+    set_default_topology(top)
 
 
 .. warning::
 
     The `set_default_{...}` functions include an argument `overwrite` that is set to `False` by default. If set to `True` the default object is permanently overwritten
-    and will be used for all future sessions. This is not recommended as it may lead to unexpected behavior.
+    and will be used for all future sessions. If set to `False` (default), the default object is only set for the current session and any future sessions will use the
+    original defaults. In case the defaults were overwritten, they can be reset to the original using the `restore_default_{...}` functions.
 
+    .. code-block:: python
+
+        # set a custom topology object as the default
+        # for the current session only
+        set_default_topology(top)
+
+        # set a custom topology object as the default
+        # for all future sessions
+        set_default_topology(top, overwrite=True)
+
+        # restore the original default topology object
+        # for all future sessions
+        restore_default_topology()
 """
 
 import os
@@ -132,7 +146,6 @@ def save_topology(filename: str, topology: "CHARMMTopology" = None):
     topology.save(filename)
 
 
-
 def set_default_topology(obj, overwrite: bool = False):
     """
     Set a CHARMMTopology object as the new default.
@@ -149,11 +162,12 @@ def set_default_topology(obj, overwrite: bool = False):
     if obj.__class__.__name__ != "CHARMMTopology":
         raise TypeError("The object must be a CHARMMTopology instance.")
     if overwrite:
-        _defaults.__default_instances__["Topology"].save(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
+        current = _defaults.__default_instances__.get("Topology", None)
+        if current:
+            current.save(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
     _defaults.__default_instances__["Topology"] = obj
     if overwrite:
         obj.save(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE)
-
 
 
 def get_default_topology() -> "CHARMMTopology":
@@ -165,8 +179,7 @@ def get_default_topology() -> "CHARMMTopology":
     CHARMMTopology
         The default CHARMMTopology object
     """
-    return _defaults.__default_instances__["Topology"]
-
+    return _defaults.__default_instances__.get("Topology", None)
 
 
 def has_patch(name: str) -> bool:
@@ -185,7 +198,42 @@ def has_patch(name: str) -> bool:
     """
     return name in get_default_topology().patches
 
+
 has_linkage = has_patch
+
+
+def available_patches():
+    """
+    Get a list of available patches.
+
+    Returns
+    -------
+    list
+        A list of available patches
+    """
+    return get_default_topology().patches
+
+
+available_linkages = available_patches
+
+
+def add_patch(patch, overwrite: bool = False):
+    """
+    Add a patch to the CHARMM topology.
+
+    Parameters
+    ----------
+    patch: Patch
+        The patch object
+    overwrite: bool
+        If `True`, the topology with the added patch is saved as the new default topology
+    """
+    get_default_topology().add_patch(patch)
+    if overwrite:
+        set_default_topology(get_default_topology(), overwrite=True)
+
+
+add_linkage = add_patch
 
 
 def restore_default_topology():
@@ -214,6 +262,7 @@ def get_patch(name: str):
     """
     return get_default_topology().get_patch(name)
 
+
 get_linkage = get_patch
 
 
@@ -232,7 +281,9 @@ def add_patch(patch, overwrite: bool = False):
     top.add_patch(patch)
     set_default_topology(top, overwrite)
 
+
 add_linkage = add_patch
+
 
 class CHARMMParser:
     """
@@ -799,7 +850,9 @@ class CHARMMTopology(CHARMMParser):
         obj : Linkage
             The object to which the atom belongs
         """
-        atom = utils.abstract.AbstractAtom(id=line[1], type=line[2], charge=float(line[3]))
+        atom = utils.abstract.AbstractAtom(
+            id=line[1], type=line[2], charge=float(line[3])
+        )
         obj.add_atom(atom)
 
     @staticmethod
@@ -852,9 +905,7 @@ class CHARMMTopology(CHARMMParser):
 
 
 # Set the default topology to the CHARMM topology
-set_default_topology(
-    CHARMMTopology.load(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE)
-)
+set_default_topology(CHARMMTopology.load(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE))
 
 
 __all__ = [
@@ -862,9 +913,17 @@ __all__ = [
     "get_default_topology",
     "set_default_topology",
     "restore_default_topology",
-    "has_patch", "has_linkage", 
-    "get_patch", "get_linkage",
-    "read_topology", "load_topology", "save_topology"
+    "has_patch",
+    "available_patches",
+    "available_linkages",
+    "add_patch",
+    "add_linkage",
+    "has_linkage",
+    "get_patch",
+    "get_linkage",
+    "read_topology",
+    "load_topology",
+    "save_topology",
 ]
 
 if __name__ == "__main__":
@@ -872,10 +931,7 @@ if __name__ == "__main__":
     _top = CHARMMTopology.from_file(_carbs)
     print(_top)
 
-
-    from biobuild.utils.defaults import (
-        DEFAULT_CHARMM_TOPOLOGY_FILE
-    )
+    from biobuild.utils.defaults import DEFAULT_CHARMM_TOPOLOGY_FILE
 
     _save_to = "/Users/noahhk/GIT/biobuild/biobuild/resources/"
     _top.save(_save_to + os.path.basename(DEFAULT_CHARMM_TOPOLOGY_FILE))

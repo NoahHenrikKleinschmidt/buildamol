@@ -1,6 +1,14 @@
 """
 This module defines a Parser to extract information from the PDBE compound library.
 
+Toplevel functions
+==================
+
+For convenience, the module provides a number of toplevel functions to parse the PDBE compound library.
+
+.. autofunction:: read_pdbe_compounds
+
+
 Reading the PDBE Compound Library
 =================================
 
@@ -184,7 +192,7 @@ def read_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
     """
     compounds = PDBECompounds.from_file(filename)
     if set_default:
-        defaults.set_default_compounds(compounds)
+        set_default_compounds(compounds)
     return compounds
 
 
@@ -207,7 +215,7 @@ def load_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
     """
     compounds = PDBECompounds.load(filename)
     if set_default:
-        defaults.set_default_compounds(compounds)
+        set_default_compounds(compounds)
     return compounds
 
 
@@ -321,9 +329,9 @@ def set_default_compounds(obj, overwrite: bool = False):
     if not obj.__class__.__name__ == "PDBECompounds":
         raise TypeError("The object must be a PDBECompounds instance.")
     if overwrite:
-        defaults.__default_instances__["PDBECompounds"].save(
-            defaults.DEFAULT_PDBE_COMPOUNDS_FILE + ".bak"
-        )
+        current = defaults.__default_instances__.get("PDBECompounds", None)
+        if current:
+            current.save(defaults.DEFAULT_PDBE_COMPOUNDS_FILE + ".bak")
     defaults.__default_instances__["PDBECompounds"] = obj
     if overwrite:
         obj.save(defaults.DEFAULT_PDBE_COMPOUNDS_FILE)
