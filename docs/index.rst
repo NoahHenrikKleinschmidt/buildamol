@@ -24,4 +24,4 @@ offering a simple API to generate, manipulate, visualize, and export 3D structur
    whatfor
    installation
    usage
-
+   documentation
