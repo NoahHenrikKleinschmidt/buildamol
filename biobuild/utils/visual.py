@@ -7,7 +7,10 @@ import plotly.express as px
 import numpy as np
 from copy import deepcopy
 
-import nglview
+try:
+    import nglview
+except:
+    nglview = None
 
 
 class NglViewer:
@@ -23,6 +26,10 @@ class NglViewer:
     """
 
     def __init__(self, molecule):
+        if nglview is None:
+            raise ImportError(
+                "NGLView is not available. Please install it with `pip install nglview` and be sure to use a compatible environment."
+            )
         if molecule.__class__.__name__ in ("Molecule", "AtomGraph", "ResidueGraph"):
             self.structure = molecule.structure
         else:
