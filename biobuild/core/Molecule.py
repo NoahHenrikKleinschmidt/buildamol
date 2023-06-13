@@ -757,6 +757,7 @@ class Molecule(entity.BaseEntity):
         at_residue: Union[int, bio.Residue.Residue] = None,
         other_residue: Union[int, bio.Residue.Residue] = None,
         inplace: bool = True,
+        other_inplace: bool = False,
         _topology=None,
     ):
         """
@@ -775,21 +776,29 @@ class Molecule(entity.BaseEntity):
             The residue in the other molecule to attach this molecule to. If None, the defined `attach_residue` of the other molecule is used.
         inplace : bool
             If True the molecule is directly modified, otherwise a copy of the molecule is returned.
+        other_inplace : bool
+            All atoms from the other molecule are integrated into this one. Hence, the other molecule is left empty. If False, a copy of the other molecule is used.
+            Thus leaving the original molecule intact.
         _topology : Topology
             The topology to use when attaching. If None, the topology of the molecule is used. Only used if the patch is a string.
         """
         if not isinstance(other, Molecule):
             raise TypeError("Can only attach a Molecule to another Molecule")
 
+        if not link:
+            link = obj._linkage
+            if not link:
+                raise ValueError("Cannot attach a molecule without a patch defined")
+
         if not inplace:
             obj = deepcopy(self)
         else:
             obj = self
 
-        if not link:
-            link = obj._linkage
-            if not link:
-                raise ValueError("Cannot attach a molecule without a patch defined")
+        if not other_inplace:
+            _other = deepcopy(other)
+        else:
+            _other = other
 
         if isinstance(link, str):
             if not _topology:
@@ -798,7 +807,7 @@ class Molecule(entity.BaseEntity):
 
         if link.has_IC:
             obj.patch_attach(
-                other,
+                _other,
                 link,
                 at_residue=at_residue,
                 other_residue=other_residue,
@@ -806,7 +815,7 @@ class Molecule(entity.BaseEntity):
             )
         else:
             obj.stitch_attach(
-                other,
+                _other,
                 link,
                 at_residue=at_residue,
                 other_residue=other_residue,
