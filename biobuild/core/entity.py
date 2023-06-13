@@ -132,7 +132,7 @@ class BaseEntity:
 
         conv = utils.convert.RDKITBiopythonConverter()
         conv.rdkit_to_pdbio(mol)
-        new = cls.from_pdb(conv.__fileio__, id)
+        new = cls.from_pdb(conv.__fileio__, id=id)
         return new
 
     @classmethod
@@ -1766,7 +1766,7 @@ class BaseEntity:
         conv.biopython_to_pdbio(self._base_struct)
         utils.pdb.write_connect_lines(self, conv.__fileio__)
         mol = conv.pdbio_to_rdkit()
-        mol.SetProp("_Name", self.name)
+        mol.SetProp("_Name", self.id)
         return mol
 
     def infer_missing_atoms(self, _topology=None, _compounds=None):

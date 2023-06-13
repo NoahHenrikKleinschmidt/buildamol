@@ -1170,3 +1170,27 @@ def test_rotate_descendants_2():
 
     v.draw_edges(glc.get_bonds(glc.residues[0]), color="teal", linewidth=5, opacity=1)
     v.show()
+
+
+def test_from_rdkit():
+    from rdkit import Chem
+
+    rdkit_mol = Chem.MolFromPDBFile(base.GLUCOSE, removeHs=False)
+    assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
+
+    mol = bb.Molecule.from_rdkit(rdkit_mol, "myman")
+    assert len(mol.atoms) == 24
+    assert len(mol.bonds) == 24
+    assert len(mol.residues) == 1
+    assert len(mol.chains) == 1
+    assert mol.atoms[0].coord.sum() != 0  # check if coords are set
+    assert mol.atoms[0].id == "C1"
+    assert mol.atoms[5].coord.sum() != 0
+    assert mol.id == "myman"
+
+
+def test_to_rdkit():
+    glc = bb.Molecule.from_compound("GLC")
+    rdkit_mol = glc.to_rdkit()
+    assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
+    assert sum(1 for i in rdkit_mol.GetBonds()) == 24

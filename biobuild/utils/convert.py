@@ -274,7 +274,7 @@ class RDKITBiopythonConverter:
         Mol
             The converted object
         """
-        mol = Chem.MolFromPDBFile(self.__fileio__)
+        mol = Chem.MolFromPDBFile(self.__fileio__, removeHs=False)
         return mol
 
     def biopython_to_pdbio(self, obj):
