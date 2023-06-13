@@ -223,6 +223,7 @@ class RDKITBiopythonConverter:
             raise ValueError(f"Cannot convert object of type {type(obj)}")
         mol = self.rdkit_to_pdbio(obj)
         new = self.pdbio_to_biopython(mol)
+        os.remove(self.__fileio__)
         return new
 
     def biopython_to_rdkit(self, obj):
@@ -243,6 +244,7 @@ class RDKITBiopythonConverter:
             raise ValueError(f"Cannot convert object of type {type(obj)}")
         self.biopython_to_pdbio(obj)
         new = self.pdbio_to_rdkit()
+        os.remove(self.__fileio__)
         return new
 
     def rdkit_to_pdbio(self, obj):

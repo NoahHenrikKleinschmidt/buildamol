@@ -18,7 +18,7 @@ import biobuild.resources as resources
 
 class BaseEntity:
     """
-    THe Base class for all classes that store and handle biopython structures, namely the Molecule and Scaffold classes.
+    THe Base class for all classes that store and handle biopython structures, namely the Molecule class.
 
     Parameters
     ----------
@@ -111,6 +111,29 @@ class BaseEntity:
                 return c.get(c.ids[0])
             except Exception as e:
                 raise e
+
+    @classmethod
+    def from_rdkit(cls, mol, id: str = None):
+        """
+        Load a Molecule from an RDKit molecule
+
+        Parameters
+        ----------
+        mol : rdkit.Chem.rdchem.Mol
+            The RDKit molecule
+        id : str
+            The id of the Molecule. By default an id is inferred from the "_Name" property of the mol object (if present).
+        """
+        if id is None:
+            if not mol.HasProp("_Name"):
+                id = "unnamed"
+            else:
+                id = mol.GetProp("_Name")
+
+        conv = utils.convert.RDKITBiopythonConverter()
+        conv.rdkit_to_pdbio(mol)
+        new = cls.from_pdb(conv.__fileio__, id)
+        return new
 
     @classmethod
     def load(cls, filename: str):
@@ -330,7 +353,8 @@ class BaseEntity:
 
     def get_root(self) -> bio.Atom.Atom:
         """
-        Get the root atom of the molecule
+        Get the root atom of the molecule. The root atom is the atom
+        at which it is attached to another molecule.
         """
         return self.root_atom
 
@@ -729,7 +753,7 @@ class BaseEntity:
         # update the atom graph
         self.update_atom_graph()
 
-    def adjust_indexing(self, mol: "Molecule"):
+    def adjust_indexing(self, mol):
         """
         Adjust the indexing of a molecule to match the scaffold index
 
@@ -1728,6 +1752,22 @@ class BaseEntity:
         io.set_structure(self._base_struct)
         io.save(filename)
         utils.cif.write_bond_table(self, filename)
+
+    def to_rdkit(self):
+        """
+        Convert the molecule to an RDKit molecule
+
+        Returns
+        -------
+        rdkit.Chem.rdchem.Mol
+            The RDKit molecule
+        """
+        conv = utils.convert.RDKITBiopythonConverter()
+        conv.biopython_to_pdbio(self._base_struct)
+        utils.pdb.write_connect_lines(self, conv.__fileio__)
+        mol = conv.pdbio_to_rdkit()
+        mol.SetProp("_Name", self.name)
+        return mol
 
     def infer_missing_atoms(self, _topology=None, _compounds=None):
         """
