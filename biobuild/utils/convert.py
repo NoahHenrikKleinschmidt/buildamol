@@ -4,6 +4,7 @@ Functions to convert different data formats
 
 # raise DeprecationWarning("This module is currently dropped...")
 
+import tempfile
 import os
 import numpy as np
 
@@ -11,8 +12,10 @@ from periodictable import elements
 
 import Bio.PDB as bio
 from openbabel import pybel
+from rdkit import Chem
 
 import biobuild.utils.auxiliary as aux
+import biobuild.utils.defaults as defaults
 
 
 class PybelBioPythonConverter:
@@ -193,6 +196,122 @@ class PybelBioPythonConverter:
         return new
 
 
+class RDKITBiopythonConverter:
+    """
+    A class to convert between RDKit and biopython objects
+    This is done simply by using a temporary PDB pseudo-file
+    """
+
+    def __init__(self):
+        self.__fileio__ = tempfile.mktemp(suffix=".pdb")
+
+    def rdkit_to_biopython(self, obj):
+        """
+        Convert an RDKit object to a biopython object
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if not is_rdkit(obj):
+            raise ValueError(f"Cannot convert object of type {type(obj)}")
+        mol = self.rdkit_to_pdbio(obj)
+        new = self.pdbio_to_biopython(mol)
+        return new
+
+    def biopython_to_rdkit(self, obj):
+        """
+        Convert a biopython object to an RDKit object
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if not is_biopython(obj):
+            raise ValueError(f"Cannot convert object of type {type(obj)}")
+        self.biopython_to_pdbio(obj)
+        new = self.pdbio_to_rdkit()
+        return new
+
+    def rdkit_to_pdbio(self, obj):
+        """
+        Convert an RDKit object to a PDB file
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        str
+            The PDB file
+        """
+        if not is_rdkit(obj):
+            raise ValueError(f"Cannot convert object of type {type(obj)}")
+        Chem.MolToPDBFile(obj, self.__fileio__)
+
+    def pdbio_to_rdkit(self) -> "Chem.rdchem.Mol":
+        """
+        Convert the internal FileIO to an RDKit Mol object
+
+        Returns
+        -------
+        Mol
+            The converted object
+        """
+        mol = Chem.MolFromPDBFile(self.__fileio__)
+        return mol
+
+    def biopython_to_pdbio(self, obj):
+        """
+        Convert a biopython object to a PDB file
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        str
+            The PDB file
+        """
+        if not is_biopython(obj):
+            raise ValueError(f"Cannot convert object of type {type(obj)}")
+        io = bio.PDBIO()
+        io.set_structure(obj)
+        io.save(self.__fileio__)
+
+    def pdbio_to_biopython(self, id: str = "temp") -> "bio.Structure.Structure":
+        """
+        Convert the internal FileIO to a biopython structure object
+
+        Parameters
+        ----------
+        id : str, optional
+            The ID of the biopython object, by default "temp"
+
+        Returns
+        -------
+        Structure
+            The converted object
+        """
+        return defaults.__bioPDBParser__.get_structure(id, self.__fileio__)
+
+
 def is_biopython(obj):
     """
     Check if an object is a biopython object
@@ -239,8 +358,28 @@ def is_pybel(obj):
     return any([isinstance(obj, _valid) for _valid in _valids])
 
 
-if __name__ == "__main__":
+def is_rdkit(obj):
+    """
+    Check if an object is an rdkit object
 
+    Parameters
+    ----------
+    obj : object
+        The object to check
+
+    Returns
+    -------
+    bool
+        `True` if the object is an rdkit object, `False` otherwise
+    """
+    _valids = {
+        Chem.rdchem.Mol,
+        Chem.rdchem.Atom,
+    }
+    return any([isinstance(obj, _valid) for _valid in _valids])
+
+
+if __name__ == "__main__":
     # MANNOSE = "support/examples/MAN.pdb"
     # _pybel = pybel.readfile("pdb", MANNOSE)
     # _pybel = next(_pybel)
@@ -250,10 +389,17 @@ if __name__ == "__main__":
     # _biopython = converter.pybel_molecule_to_biopython(_pybel)
     # print(_biopython)
 
-    mol = pybel.readstring("smi", "OCC1OC(O)C(C(C1O)O)O")
-    mol.addh()
-    mol.make3D()
+    # mol = pybel.readstring("smi", "OCC1OC(O)C(C(C1O)O)O")
+    # mol.addh()
+    # mol.make3D()
 
-    converter = PybelBioPythonConverter()
-    _biopython = converter.pybel_molecule_to_biopython(mol)
-    print(_biopython)
+    # converter = PybelBioPythonConverter()
+    # _biopython = converter.pybel_molecule_to_biopython(mol)
+    # print(_biopython)
+
+    rdkitconv = RDKITBiopythonConverter()
+    mol = Chem.MolFromPDBFile("/Users/noahhk/GIT/biobuild/support/examples/GAL.pdb")
+    bp = rdkitconv.rdkit_to_biopython(mol)
+    mo2 = rdkitconv.biopython_to_rdkit(bp)
+
+    pass
