@@ -13,7 +13,7 @@ of geometric operations in combination with machine learning algorithms
 to facilitate the building of complex molecular structures where direct imputation from SMILES may not be feasible.
 
 In order to facilitate the building of larger structures, `biobuild` provides a set of tools to not only easily
-and quickly connect smaller molecules to larger structures, but also integrates a vast database of available molecules
+and quickly connect smaller molecules to larger structures, but also integrates a extensible database of available molecules
 that can be loaded without the need to download external data sources, or read files from disk. 
 
 Why "bio"-build?
@@ -34,6 +34,15 @@ compounds database, it can also be used to quickly obtain molecular structures f
 to convert to and from `rdkit` also makes it a great tool to edit `rdkit` structures in a more intuitive way. Lastly, `biobuild`
 offers a suite of conformational optimization algorithms to improve the geometry of structures. Hence, `biobuild` can be used
 to sample conformers for molecular docking or the generation of a deep learning dataset. 
+
+What can `biobuild` not do?
+---------------------------
+
+`biobuild` is not a quantum chemistry package. It does not offer any quantum chemical calculations, nor does it offer any tools
+to analyze the electronic structure of molecules (aside from whatever is available from `biopython`, of course). 
+It is also not a molecular dynamics package. 
+Furthermore, `biobuild` does not generate molecules `for` you! It is **not** a `de novo` molecule generator that tries to find molecules with certain properties - e.g. molecules that bind a certain protein pocket. 
+The user needs to know what they want to build - `biobuild` will help them build it, that's the deal.
 
 Who is `biobuild` for?
 ----------------------

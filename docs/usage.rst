@@ -193,6 +193,7 @@ how we can create a larger structure from single monosaccharides using `biobuild
 
 
 .. image:: _resources/glycan_example.gif
+   :width: 80%
    :align: center
    :alt: Example glycan structure.
 
