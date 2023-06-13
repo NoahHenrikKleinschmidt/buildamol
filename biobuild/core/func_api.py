@@ -117,7 +117,10 @@ def molecule(mol: str) -> "Molecule":
 
 
 def polymerize(
-    mol: "Molecule.Molecule", n: int, link=None, inplace: bool = False
+    mol: "Molecule.Molecule",
+    n: int,
+    link: Union[str, "_linkage.Linkage"] = None,
+    inplace: bool = False,
 ) -> "Molecule.Molecule":
     """
     Polymerize a molecule
@@ -148,9 +151,9 @@ def polymerize(
 def connect(
     mol_a: "Molecule.Molecule",
     mol_b: "Molecule.Molecule",
-    link: "_linkage.Linkage",
-    at_residue_a,
-    at_residue_b,
+    link: Union[str, "_linkage.Linkage"],
+    at_residue_a: Union[int, "bio.Residue.Residue"] = None,
+    at_residue_b: Union[int, "bio.Residue.Residue"] = None,
     copy_a: bool = True,
     copy_b: bool = True,
     _topology=None,
@@ -206,44 +209,3 @@ __all__ = [
     "polymerize",
     "connect",
 ]
-
-if __name__ == "__main__":
-    # glycans = [
-    #     ("NAG@1", "NAG@2", "14bb"),
-    #     ("NAG@2", "BMA@1", "14bb"),
-    #     ("BMA@1", "MAN@1", "13ab"),
-    #     ("BMA@1", "MAN@2", "16ab"),
-    # ]
-
-    # mol = _parse_iupac_graph("test", glycans)
-    # mol.show()
-
-    # glycans = [
-    #     ("NAG@1", "NAG@2", "14bb"),
-    #     ("NAG@2", "BMA@3", "14bb"),
-    #     ("BMA@3", "MAN@4", "13ab"),
-    #     ("BMA@3", "MAN@5", "16ab"),
-    # ]
-
-    # mol = _parse_iupac_graph("test", glycans)
-    # mol.show()
-
-    all_carb_file = "/Users/noahhk/Downloads/charmm.carbs.36.all.txt"
-    alltop = resources.CHARMMTopology.from_file(all_carb_file)
-    resources.set_default_topology(alltop)
-
-    iupac = "Man(b1-6)[Man(b1-3)]b-Man(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
-    mol = glycan("test", iupac)
-    mol.show()
-
-    # glycans = [
-    #     ("NAG@A", "NAG@B", "14bb"),
-    #     ("NAG@B", "BMA@C", "14bb"),
-    #     ("BMA@C", "MAN@D", "13ab"),
-    #     ("BMA@C", "MAN@E", "16ab"),
-    # ]
-
-    # mol = _parse_iupac_graph("test", glycans)
-    # mol.show()
-
-    pass
