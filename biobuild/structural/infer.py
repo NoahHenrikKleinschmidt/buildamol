@@ -242,7 +242,11 @@ def autolabel(molecule):
     for idx in range(len(df)):
         atom = df.atom.iloc[idx]
         label = df.label.iloc[idx]
+        p = atom.get_parent()
+        p.child_dict.pop(atom.id)
         atom.id = label
+        p.child_dict[label] = atom
+        atom.full_id = (*atom.get_parent().full_id, (label, 0))
 
     return molecule
 
