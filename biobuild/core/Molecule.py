@@ -453,6 +453,7 @@ import biobuild.core.Linkage as Linkage
 import biobuild.utils as utils
 import biobuild.structural as structural
 import biobuild.resources as resources
+import biobuild.optimizers as optimizers
 
 
 class Molecule(entity.BaseEntity):
@@ -785,15 +786,15 @@ class Molecule(entity.BaseEntity):
         if not isinstance(other, Molecule):
             raise TypeError("Can only attach a Molecule to another Molecule")
 
-        if not link:
-            link = obj._linkage
-            if not link:
-                raise ValueError("Cannot attach a molecule without a patch defined")
-
         if not inplace:
             obj = deepcopy(self)
         else:
             obj = self
+
+        if not link:
+            link = obj._linkage
+            if not link:
+                raise ValueError("Cannot attach a molecule without a patch defined")
 
         if not other_inplace:
             _other = deepcopy(other)
@@ -820,6 +821,28 @@ class Molecule(entity.BaseEntity):
                 at_residue=at_residue,
                 other_residue=other_residue,
             )
+        return obj
+
+    def optimize(self, inplace: bool = True):
+        """
+        Optimize the molecule by removing all atoms that are not part of any bond.
+
+        Parameters
+        ----------
+        inplace : bool
+            If True the molecule is directly modified, otherwise a copy of the molecule is returned.
+
+        Returns
+        -------
+        molecule
+            The modified molecule (either the original object or a copy)
+        """
+        if not inplace:
+            obj = deepcopy(self)
+        else:
+            obj = self
+
+        obj._optimize()
         return obj
 
     def patch_attach(
@@ -944,6 +967,17 @@ class Molecule(entity.BaseEntity):
         self = p.merge()
         return self
 
+    def _optimize(self):
+        """
+        Optimize the molecule.
+        """
+        g = self.make_residue_graph(detailed=True)
+        edges = self.get_residue_connections()
+        env = optimizers.MultiBondRotatron(g, edges)
+        sol, _ = optimizers.scipy_optimize(env)
+        out = optimizers.apply_solution(sol, env, self)
+        return out
+
     def __add__(self, other) -> "Molecule":
         """
         Add two molecules together. This will return a new molecule.
@@ -1049,25 +1083,29 @@ def _molecule_from_pubchem(id, comp):
     structure.add(model)
     chain = bio.Chain.Chain("A")
     model.add(chain)
-    residue = bio.Residue.Residue((" ", 1, " "), "UNL", 1)
+    residue = bio.Residue.Residue((" ", 1, " "), "UNK", 1)
     chain.add(residue)
 
     element_counts = {}
+    adx = 1
     for atom in comp.atoms:
         element = atom.element
         element_counts[element] = element_counts.get(element, 0) + 1
 
+        id = f"{element}{element_counts[element]}"
         _atom = bio.Atom.Atom(
-            f"{element}{element_counts[element]}",
-            np.array((atom.x, atom.y, atom.z)),
-            1.0,
-            1.0,
-            0,
-            element,
-            atom.aid,
+            id,
+            coord=np.array((atom.x, atom.y, atom.z)),
+            serial_number=adx,
+            bfactor=0.0,
+            occupancy=0.0,
             element=element,
+            fullname=id,
+            altloc=" ",
+            pqr_charge=0.0,
         )
         residue.add(_atom)
+        adx += 1
 
     mol = Molecule(structure)
     for bond in bonds:
@@ -1077,6 +1115,9 @@ def _molecule_from_pubchem(id, comp):
 
 
 if __name__ == "__main__":
+    ser = Molecule.from_pubchem("SER")
+    ser.to_cif("ser.cif")
+    ser.to_pdb("ser.pdb")
     recipe = Linkage()
     recipe.add_delete("O1", "target")
     recipe.add_delete("HO1", "target")
