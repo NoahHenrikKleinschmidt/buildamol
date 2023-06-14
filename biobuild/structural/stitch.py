@@ -90,12 +90,10 @@ class Stitcher(base.Connector):
 
         if self.copy_target:
             target = deepcopy(target)
-            if target_atom in target.atoms:
-                target_atom = target.get_atom(target_atom.serial_number)
+            target_atom = target.get_atom(target_atom, residue=target_residue)
         if self.copy_source:
             source = deepcopy(source)
-            if source_atom in source.atoms:
-                source_atom = source.get_atom(source_atom.serial_number)
+            source_atom = source.get_atom(source_atom, residue=source_residue)
 
         self.target = target
         self.source = source
@@ -211,8 +209,10 @@ class Stitcher(base.Connector):
                 for bond in bonds:
                     obj._bonds.remove(bond)
                 p = atom.get_parent()
-                p.detach_child(atom.id)
-                atom.set_parent(p)
+                if p:
+                    p.child_list.remove(atom)
+                    p.child_dict.pop(atom.id)
+                    atom.set_parent(p)
 
             adx = 1
             for atom in obj._model.get_atoms():

@@ -239,14 +239,14 @@ def autolabel(molecule):
     """
     labeler = AutoLabel(molecule._AtomGraph)
     df = labeler.relabel()
+    df["residue"] = df.atom.apply(lambda x: x.get_parent())
+    df.residue.apply(lambda x: x.child_dict.clear())
     for idx in range(len(df)):
         atom = df.atom.iloc[idx]
         label = df.label.iloc[idx]
-        p = atom.get_parent()
-        p.child_dict.pop(atom.id)
-        atom.id = label
+        p = df.residue.iloc[idx]
         p.child_dict[label] = atom
-        atom.full_id = (*atom.get_parent().full_id, (label, 0))
+        atom.id = label
 
     return molecule
 

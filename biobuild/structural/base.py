@@ -6,6 +6,58 @@ import numpy as np
 import Bio.PDB as bio
 
 
+def atom_make_full_id(self):
+    """
+    A self-adjusting full_id for an Biopython Atom
+    """
+    p = self.get_parent()
+    if p:
+        return (*p.full_id, self.id)
+    else:
+        return (self.id, self.altloc)
+
+
+def residue_make_full_id(self):
+    """
+    A self-adjusting full_id for an Biopython Residue
+    """
+    p = self.get_parent()
+    if p:
+        return (*p.full_id, self._id)
+    else:
+        return self._id
+
+
+def chain_make_full_id(self):
+    """
+    A self-adjusting full_id for an Biopython Chain
+    """
+    p = self.get_parent()
+    if p:
+        return (*p.full_id, self.id)
+    return (self.id,)
+
+
+def model_make_full_id(self):
+    """
+    A self-adjusting full_id for an Biopython Model
+    """
+    p = self.get_parent()
+    if p:
+        return (p.id, self.id)
+    return (self.id,)
+
+
+def set_full_id(self, value):
+    pass
+
+
+bio.Atom.Atom.full_id = property(atom_make_full_id, set_full_id)
+bio.Residue.Residue.full_id = property(residue_make_full_id, set_full_id)
+bio.Chain.Chain.full_id = property(chain_make_full_id, set_full_id)
+bio.Model.Model.full_id = property(model_make_full_id, set_full_id)
+
+
 def make_empty_structure(id: str = "empty"):
     """
     Make an empty PDB structure with a single model and chain.
