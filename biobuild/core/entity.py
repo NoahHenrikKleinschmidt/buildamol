@@ -1290,7 +1290,9 @@ class BaseEntity:
         if not self._AtomGraph.has_edge(atom1, atom2):
             self._AtomGraph.add_edge(atom1, atom2, bond_order=1)
         else:
-            self._AtomGraph.edges[atom1, atom2]["bond_order"] += 1
+            self._AtomGraph.edges[atom1, atom2]["bond_order"] = (
+                self._AtomGraph.edges[atom1, atom2].get("bond_order", 0) + 1
+            )
 
     def add_bonds(self, *bonds):
         """
