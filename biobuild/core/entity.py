@@ -378,7 +378,7 @@ class BaseEntity:
 
     def set_linkage(
         self,
-        link: Union[str, Linkage.Linkage] = None,
+        link: Union[str, "Linkage.Linkage"] = None,
         _topology=None,
     ):
         """
@@ -732,32 +732,24 @@ class BaseEntity:
 
         chains = list(self.chains)
         for chain in chains:
-            self._model.detach_child(chain.id)
-
-        for chain in chains:
+            self._model.child_dict.pop(chain.id)
             chain._id = utils.auxiliary.chain_id_maker(cdx)
+            self._model.child_dict[chain._id] = chain
             cdx += 1
-            self._model.add(chain)
 
-            residues = list(chain.child_list)
-            for residue in residues:
-                chain.detach_child(residue.id)
-
-            for residue in residues:
+            for residue in chain.child_list:
+                chain.child_dict.pop(residue.id)
                 residue._id = (residue.id[0], rdx, *residue.id[2:])
                 rdx += 1
+                chain.child_dict[residue._id] = residue
 
-                chain.add(residue)
-
-                atoms = list(residue.child_list)
-                for atom in atoms:
-                    _atom = atom.copy()
+                for atom in residue.child_list:
                     atom.serial_number = adx
                     adx += 1
-                    atom.set_parent(residue)
 
         # update the atom graph
-        self.update_atom_graph()
+        # let's see iff all breaks if we don't do this
+        # self.update_atom_graph()
 
     def adjust_indexing(self, mol):
         """
@@ -1154,13 +1146,11 @@ class BaseEntity:
                 residue.id = (residue.id[0], rdx, *residue.id[2:])
 
             self._chain.add(residue)
-            residue._generate_full_id()
 
             for atom in residue.child_list:
                 if adjust_seqid:
                     adx += 1
                     atom.set_serial_number(adx)
-                atom.set_parent(residue)
                 self._AtomGraph.add_node(atom)
 
     def remove_residues(self, *residues: Union[int, bio.Residue.Residue]) -> list:
@@ -1193,6 +1183,21 @@ class BaseEntity:
 
             _residues.append(residue)
         return _residues
+
+    def rename_residue(self, residue: Union[int, bio.Residue.Residue], name: str):
+        """
+        Rename a residue
+
+        Parameters
+        ----------
+        residue : int or bio.Residue.Residue
+            The residue to rename, either the object itself or its seqid
+        name : str
+            The new name
+        """
+        if isinstance(residue, int):
+            residue = self._chain.child_list[residue - 1]
+        residue.resname = name
 
     def add_atoms(self, *atoms: bio.Atom.Atom, residue=None, _copy: bool = False):
         """
@@ -1619,7 +1624,7 @@ class BaseEntity:
         The labels are infererred and therefore may occasionally not be "correct".
         It is advisable to check the labels after using this method.
         """
-        structural.autolabel(self)
+        self = structural.autolabel(self)
 
     def relabel_hydrogens(self):
         """
@@ -1733,7 +1738,7 @@ class BaseEntity:
         graph = graphs.ResidueGraph.from_molecule(self, detailed, locked)
         return graph
 
-    def to_pdb(self, filename: str):
+    def to_pdb(self, filename: str, symmetric: bool = True):
         """
         Write the molecule to a PDB file
 
@@ -1741,11 +1746,22 @@ class BaseEntity:
         ----------
         filename : str
             Path to the PDB file
+        symmetric : bool
+            If True, bonds are written symmetrically - i.e. if atom A is bonded to atom B, then atom B is also bonded to atom A,
+            and both atoms will get an entry in the "CONECT" section. If False, only one of the atoms will get an entry in the
+            "CONECT" section.
         """
-        io = bio.PDBIO()
-        io.set_structure(self._base_struct)
-        io.save(filename)
-        utils.pdb.write_connect_lines(self, filename)
+        utils.pdb.write_pdb(self, filename, symmetric=symmetric)
+
+        # io = bio.PDBIO()
+        # io.set_structure(self._base_struct)
+        # io.save(filename)
+        # utils.pdb.write_connect_lines(self, filename)
+        # with open(filename, "r") as f:
+        #     content = f.read()
+        # content = utils.remove_nonprintable(content)
+        # with open(filename, "w") as f:
+        #     f.write(content)
 
     def to_cif(self, filename: str):
         """
@@ -1760,6 +1776,11 @@ class BaseEntity:
         io.set_structure(self._base_struct)
         io.save(filename)
         utils.cif.write_bond_table(self, filename)
+        with open(filename, "r") as f:
+            content = f.read()
+        content = utils.remove_nonprintable(content)
+        with open(filename, "w") as f:
+            f.write(content)
 
     def to_rdkit(self):
         """
@@ -1771,8 +1792,7 @@ class BaseEntity:
             The RDKit molecule
         """
         conv = utils.convert.RDKITBiopythonConverter()
-        conv.biopython_to_pdbio(self._base_struct)
-        utils.pdb.write_connect_lines(self, conv.__fileio__)
+        conv.molecule_to_pdbio(self)
         mol = conv.pdbio_to_rdkit()
         mol.SetProp("_Name", self.id)
         return mol
@@ -1854,10 +1874,12 @@ class BaseEntity:
         if b in self._bonds:
             self._bonds.remove(b)
         if self._AtomGraph.has_edge(atom1, atom2):
-            if self._AtomGraph[atom1][atom2]["bond_order"] == 1:
+            if self._AtomGraph[atom1][atom2].get("bond_order", 1) == 1:
                 self._AtomGraph.remove_edge(atom1, atom2)
             else:
-                self._AtomGraph[atom1][atom2]["bond_order"] -= 1
+                self._AtomGraph[atom1][atom2]["bond_order"] = (
+                    self._AtomGraph[atom1][atom2].get("bond_order", 1) - 1
+                )
         if b in self.locked_bonds:
             self.locked_bonds.remove(b)
 
@@ -1993,30 +2015,28 @@ def should_invert(bond, direct_connecting_atoms):
     return False
 
 
-"""
-A helper function to sort bonds and determine whether they should be reversed
-"""
-
 if __name__ == "__main__":
     # f = "/Users/noahhk/GIT/biobuild/support/examples/4tvp.prot.pdb"
     # e = BaseEntity.from_pdb(f)
     # e.infer_bonds(restrict_residues=False)
     # e.get_residue_connections()
-    pass
+    # pass
 
-    import biobuild as bb
+    BaseEntity.from_pdb("/Users/noahhk/GIT/biobuild/docs/_tutorials/testmol22.pdb")
 
-    man = bb.Molecule.from_compound("MAN")
-    man.repeat(3, "14bb")
-    cs = man.get_residue_connections()
+    # import biobuild as bb
 
-    v = utils.visual.MoleculeViewer3D(man)
-    for c in cs:
-        v.draw_vector(
-            None,
-            c[0].coord,
-            1.1 * (c[1].coord - c[0].coord),
-            color="limegreen",
-        )
-    v.show()
-    pass
+    # man = bb.Molecule.from_compound("MAN")
+    # man.repeat(3, "14bb")
+    # cs = man.get_residue_connections()
+
+    # v = utils.visual.MoleculeViewer3D(man)
+    # for c in cs:
+    #     v.draw_vector(
+    #         None,
+    #         c[0].coord,
+    #         1.1 * (c[1].coord - c[0].coord),
+    #         color="limegreen",
+    #     )
+    # v.show()
+    # pass
