@@ -5,6 +5,7 @@ Utility and auxiliary functions
 import math
 import os
 import re
+import string
 
 import pickle
 import numpy as np
@@ -85,6 +86,23 @@ def chain_id_maker(cdx: int):
     else:
         # recursive call
         return chain_id_maker(cdx // 26 - 1) + chain_id_maker(cdx % 26)
+
+
+def remove_nonprintable(text):
+    """
+    Remove non-printable characters from a string
+
+    Parameters
+    ----------
+    text : str
+        The string
+
+    Returns
+    -------
+    str
+        The string without non-printable characters
+    """
+    return "".join(filter(lambda x: x in string.printable, text))
 
 
 class DummyStructure:

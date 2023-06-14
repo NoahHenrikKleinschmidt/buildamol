@@ -274,7 +274,9 @@ class RDKITBiopythonConverter:
         Mol
             The converted object
         """
-        mol = Chem.MolFromPDBFile(self.__fileio__, removeHs=False)
+        mol = Chem.MolFromPDBFile(self.__fileio__)
+        if mol is None:
+            raise ValueError("Could not convert PDB file to RDKit Mol")
         return mol
 
     def biopython_to_pdbio(self, obj):
@@ -312,6 +314,22 @@ class RDKITBiopythonConverter:
             The converted object
         """
         return defaults.__bioPDBParser__.get_structure(id, self.__fileio__)
+
+    def molecule_to_pdbio(self, mol):
+        """
+        Convert an biobuild molecule to a PDB file
+
+        Parameters
+        ----------
+        mol : object
+            The molecule to convert
+
+        Returns
+        -------
+        str
+            The PDB file
+        """
+        mol.to_pdb(self.__fileio__, symmetric=False)
 
 
 def is_biopython(obj):
