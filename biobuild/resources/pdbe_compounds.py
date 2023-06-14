@@ -306,10 +306,6 @@ def get_default_compounds() -> "PDBECompounds":
     PDBECompounds
         The currently loaded default PDBECompounds instance.
     """
-    if "PDBECompounds" not in defaults.__default_instances__:
-        defaults.__default_instances__["PDBECompounds"] = PDBECompounds.load(
-            defaults.DEFAULT_PDBE_COMPOUNDS_FILE
-        )
     return defaults.__default_instances__["PDBECompounds"]
 
 
@@ -912,6 +908,11 @@ class PDBECompounds:
         for key in self._compounds:
             yield key, self._compounds[key], self._pdb[key]
 
+
+defaults.set_default_instance(
+    "PDBECompounds",
+    PDBECompounds.load(defaults.DEFAULT_PDBE_COMPOUNDS_FILE),
+)
 
 __all__ = [
     "PDBECompounds",
