@@ -87,9 +87,9 @@ import biobuild.utils as utils
 def patch(
     atom1,
     atom2,
+    delete_in_target,
+    delete_in_source,
     internal_coordinates: dict,
-    delete_in_target: list = None,
-    delete_in_source: list = None,
     id: str = None,
 ) -> "Linkage":
     """
@@ -103,6 +103,10 @@ def patch(
         The atom in the first (target) molecule to connect.
     atom2 : str or tuple of str
         The atom in the second (source) molecule to connect.
+    delete_in_target : str or tuple of str
+        The atom(s) in the first molecule to delete.
+    delete_in_source : str or tuple of str
+        The atom(s) in the second molecule to delete.
     internal_coordinates : dict
         The internal coordinates of the atoms in the immediate vicinity of the newly formed bond.
         This must be a dictionary where keys are tuples of four atoms ids and values tuples containing (in order):
@@ -111,10 +115,6 @@ def patch(
             - the bond angle between the first, second and third atom
             - the bond angle between the second, third and fourth atom
             - the dihedral angle between the first, second, third and fourth atom
-    delete_in_target : str or tuple of str, optional
-        The atom(s) in the first molecule to delete.
-    delete_in_source : str or tuple of str, optional
-        The atom(s) in the second molecule to delete.
     id : str, optional
         The id of the linkage.
 
@@ -136,8 +136,8 @@ def patch(
 def recipe(
     atom1,
     atom2,
-    delete_in_target: list = None,
-    delete_in_source: list = None,
+    delete_in_target,
+    delete_in_source,
     id: str = None,
 ) -> "Linkage":
     """
@@ -151,9 +151,9 @@ def recipe(
         The atom in the first (target) molecule to connect.
     atom2 : str or tuple of str
         The atom in the second (source) molecule to connect.
-    delete_in_target : str or tuple of str, optional
+    delete_in_target : str or tuple of str
         The atom(s) in the first molecule to delete.
-    delete_in_source : str or tuple of str, optional
+    delete_in_source : str or tuple of str
         The atom(s) in the second molecule to delete.
     id : str, optional
         The id of the linkage.
@@ -175,8 +175,8 @@ def recipe(
 def linkage(
     atom1,
     atom2,
-    delete_in_target: list = None,
-    delete_in_source: list = None,
+    delete_in_target,
+    delete_in_source,
     internal_coordinates: dict = None,
     id: str = None,
 ) -> "Linkage":
@@ -218,9 +218,11 @@ def linkage(
 
     # add the atoms to delete
     if delete_in_target is not None:
-        new_linkage.add_delete(delete_in_target, "target")
+        for i in delete_in_target:
+            new_linkage.add_delete(i, "target")
     if delete_in_source is not None:
-        new_linkage.add_delete(delete_in_source, "source")
+        for i in delete_in_source:
+            new_linkage.add_delete(i, "source")
 
     # add the internal coordinates
     if internal_coordinates is not None:
@@ -299,9 +301,15 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 )
         else:
             if _from == "source":
-                id = "2" + id
+                if isinstance(id, str):
+                    id = "2" + id
+                else:
+                    id = ("2", *id)
             elif _from == "target":
-                id = "1" + id
+                if isinstance(id, str):
+                    id = "1" + id
+                else:
+                    id = ("1", *id)
             else:
                 raise ValueError(
                     "The _from argument must be either 'source' or 'target'."

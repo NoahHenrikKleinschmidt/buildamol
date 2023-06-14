@@ -229,6 +229,48 @@ def connect(
     return new
 
 
+def phosphorylate(
+    mol: "Molecule.Molecule",
+    at_atom: Union[int, str, bio.Atom.Atom],
+    delete: Union[int, str, bio.Atom.Atom],
+    inplace: bool = True,
+) -> "Molecule.Molecule":
+    """
+    Phosphorylate a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to phosphorylate
+    at_atom : int or str or Atom
+        The atom to phosphorylate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+    inplace : bool
+        Whether to phosphorylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The phosphorylated molecule
+    """
+    phos = Molecule.from_compound("PO4")
+    at_atom = mol.get_atom(at_atom)
+    delete = mol.get_atom(delete)
+    at_residue = at_atom.get_parent()
+
+    l = _linkage.Linkage("phosphorylation")
+    l.add_bond(at_atom.id, "P")
+    l.add_delete(delete.id, "target")
+    l.add_delete("O2", "source")
+
+    if not inplace:
+        mol = mol.copy()
+
+    mol.attach(phos, l, at_residue=at_residue)
+    return mol
+
+
 __all__ = [
     "read_pdb",
     "write_pdb",
@@ -238,4 +280,5 @@ __all__ = [
     "molecule",
     "polymerize",
     "connect",
+    "phosphorylate",
 ]
