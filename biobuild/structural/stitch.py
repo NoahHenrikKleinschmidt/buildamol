@@ -229,7 +229,7 @@ class Stitcher(base.Connector):
             The number of optimization steps to perform
         """
 
-        tmp = Molecule.Molecule.empty(self.target.id)
+        tmp = Molecule.empty(self.target.id)
         self.target.adjust_indexing(self.source)
 
         tmp.add_residues(
@@ -381,16 +381,20 @@ def stitch(
     if recipe is not None:
         if target_residue is None:
             if target.attach_residue is None:
-                raise ValueError(
-                    "A residue in the target molecule must be provided or the target molecule must define an attachment residue"
-                )
-            target_residue = target.attach_residue
+                target_residue = target.residues[-1]
+                # raise ValueError(
+                #     "A residue in the target molecule must be provided or the target molecule must define an attachment residue"
+                # )
+            else:
+                target_residue = target.attach_residue
         if source_residue is None:
             if source.attach_residue is None:
-                raise ValueError(
-                    "A residue in the source molecule must be provided or the source molecule must define an attachment residue"
-                )
-            source_residue = source.attach_residue
+                source_residue = source.residues[-1]
+                # raise ValueError(
+                #     "A residue in the source molecule must be provided or the source molecule must define an attachment residue"
+                # )
+            else:
+                source_residue = source.attach_residue
 
         return stitch(
             target=target,
@@ -398,7 +402,7 @@ def stitch(
             target_removals=recipe.deletes[0],
             source_removals=recipe.deletes[1],
             target_atom=recipe.bonds[0][0],
-            source_atom=recipe.bonds[1][0],
+            source_atom=recipe.bonds[0][1],
             target_residue=target_residue,
             source_residue=source_residue,
             optimization_steps=optimization_steps,
@@ -429,33 +433,17 @@ def stitch(
 if __name__ == "__main__":
     import biobuild as bb
 
-    # f1 = "/Users/noahhk/GIT/biobuild/support/examples/4tvp.prot.pdb"
-    # s = bb.Scaffold.from_pdb(f1)
-    # s.reindex()
-    # s.infer_bonds(restrict_residues=True)
-    f = "/Users/noahhk/GIT/biobuild/test.prot"
-    # s.save(f)
-    s = bb.core.Scaffold.load(f)
+    ser = bb.Molecule.from_pubchem("SER")
+    ser.autolabel()
 
-    asn = s.find()["A"][0]
+    mol3 = bb.Molecule.from_pubchem("tert-butyl acetate")
+    # mol3.autolabel()
 
-    s.set_root(asn.child_dict.get("ND2"))
+    # attach the red bit to the serine
+    l1 = bb.linkage("C6", "O3", ["H12"], ["HO3"])
 
-    mol = bb.Molecule.from_pdb("/Users/noahhk/GIT/biobuild/support/examples/man9.pdb")
-    mol.infer_bonds(restrict_residues=False)
-    mol.reindex()
-
-    mol.root_atom = 1
-
-    S = __default_keep_copy_stitcher__
-    S.apply(
-        s,
-        mol,
-        ("HD22",),
-        ("HO1", "O1"),
-    )
-
-    # import alive_progress
+    out = stitch(mol3, ser, l1)
+    out.show()
     # import biobuild as bb
 
     # glc = bb.Molecule.from_compound("GLC")
