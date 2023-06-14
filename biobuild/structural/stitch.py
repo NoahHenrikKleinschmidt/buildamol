@@ -229,7 +229,7 @@ class Stitcher(base.Connector):
             The number of optimization steps to perform
         """
 
-        tmp = Molecule.empty(self.target.id)
+        tmp = Molecule.Molecule.empty(self.target.id)
         self.target.adjust_indexing(self.source)
 
         tmp.add_residues(
