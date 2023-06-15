@@ -1199,6 +1199,33 @@ class BaseEntity:
             residue = self._chain.child_list[residue - 1]
         residue.resname = name
 
+    def rename_atom(
+        self,
+        atom: Union[int, bio.Atom.Atom],
+        name: str,
+        residue: Union[int, bio.Residue.Residue] = None,
+    ):
+        """
+        Rename an atom
+
+        Parameters
+        ----------
+        atom : int or bio.Atom.Atom
+            The atom to rename, either the object itself or its serial number
+        name : str
+            The new name (id)
+        residue : int or bio.Residue.Residue
+            The residue to which the atom belongs, either the object itself or its seqid.
+            Useful when giving a possibly redundant id as identifier in multi-residue molecules.
+        """
+        atom = self.get_atom(atom, residue=residue)
+        p = atom.get_parent()
+        _old = atom.id
+        atom.id = name
+        if p:
+            p.child_dict.pop(_old)
+            p.child_dict[name] = atom
+
     def add_atoms(self, *atoms: bio.Atom.Atom, residue=None, _copy: bool = False):
         """
         Add atoms to the structure. This will automatically adjust the atom's serial number to
