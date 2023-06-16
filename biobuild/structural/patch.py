@@ -93,9 +93,9 @@ class Patcher(base.Connector):
             self.source = source
 
         if self.copy_target:
-            self.target = deepcopy(self.target)
+            self.target = self.target.copy()
         if self.copy_source:
-            self.source = deepcopy(self.source)
+            self.source = self.source.copy()
 
         # a dictionary to store the anchor atoms in the source
         # molecule and their original coordinates
@@ -499,9 +499,9 @@ def patch(
         The patched molecule
     """
     if copy_target:
-        target = deepcopy(target)
+        target = target.copy()
     if copy_source:
-        source = deepcopy(source)
+        source = source.copy()
     __default_keep_keep_patcher__.apply(
         patch=patch,
         target=target,
@@ -519,7 +519,7 @@ if __name__ == "__main__":
     man1 = bb.Molecule.from_pdb(man)
     man1.infer_bonds()
 
-    man2 = deepcopy(man1)
+    man2 = man1.copy()
 
     # now make sure that man2 has some different coordinates
     man2.rotate_around_bond(1, 2, 35)

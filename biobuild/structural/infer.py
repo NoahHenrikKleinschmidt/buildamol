@@ -91,7 +91,7 @@ class AutoLabel:
             edx = 0
             for neighbor in self.graph.neighbors(atom):
                 ndx += 1
-                n_num = pt.elements.symbol(neighbor.element).number
+                n_num = pt.elements.symbol(neighbor.element.title()).number
                 n_num *= self._bond_orders.get((atom, neighbor), 1)
                 edx += n_num
             neighbors.append(ndx)
@@ -107,7 +107,7 @@ class AutoLabel:
         self._df = pd.DataFrame(
             {
                 "atom": list(self.graph.nodes),
-                "element": [a.element for a in self.graph.nodes],
+                "element": [a.element.title() for a in self.graph.nodes],
                 "neighbors": neighbors,
                 "neighbor_element_sum": neighbor_element_sum,
             }
@@ -239,14 +239,15 @@ def autolabel(molecule):
     """
     labeler = AutoLabel(molecule._AtomGraph)
     df = labeler.relabel()
-    df["residue"] = df.atom.apply(lambda x: x.get_parent())
-    df.residue.apply(lambda x: x.child_dict.clear())
+    # df.loc[:, "residue"] = df.atom.apply(lambda x: x.get_parent())
+    # _ = df.residue.apply(lambda x: x.child_dict.clear())
     for idx in range(len(df)):
         atom = df.atom.iloc[idx]
         label = df.label.iloc[idx]
-        p = df.residue.iloc[idx]
-        p.child_dict[label] = atom
+        # p = df.residue.iloc[idx]
+        # p.child_dict[label] = atom
         atom.id = label
+        atom.name = label
 
     return molecule
 

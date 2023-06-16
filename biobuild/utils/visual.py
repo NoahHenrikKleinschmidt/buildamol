@@ -67,7 +67,9 @@ class MoleculeViewer3D:
         "P": "purple",
         "F": "green",
         "Cl": "green",
+        "CL": "green",
         "Br": "green",
+        "BR": "green",
         "I": "green",
     }
 

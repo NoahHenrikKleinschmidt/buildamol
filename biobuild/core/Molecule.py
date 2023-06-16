@@ -733,9 +733,9 @@ class Molecule(entity.BaseEntity):
         if not link and not self._linkage:
             raise RuntimeError("Cannot multiply a molecule without a patch defined")
 
-        _other = deepcopy(self)
+        _other = self.copy()
         if not inplace:
-            obj = deepcopy(self)
+            obj = self.copy()
         else:
             obj = self
 
@@ -787,7 +787,7 @@ class Molecule(entity.BaseEntity):
             raise TypeError("Can only attach a Molecule to another Molecule")
 
         if not inplace:
-            obj = deepcopy(self)
+            obj = self.copy()
         else:
             obj = self
 
@@ -797,7 +797,7 @@ class Molecule(entity.BaseEntity):
                 raise ValueError("Cannot attach a molecule without a patch defined")
 
         if not other_inplace:
-            _other = deepcopy(other)
+            _other = other.copy()
         else:
             _other = other
 
@@ -823,7 +823,7 @@ class Molecule(entity.BaseEntity):
             )
         return obj
 
-    def optimize(self, inplace: bool = True):
+    def optimize(self, only_if_clashes: bool = False, inplace: bool = True):
         """
         Optimize the molecule by removing all atoms that are not part of any bond.
 
@@ -831,17 +831,21 @@ class Molecule(entity.BaseEntity):
         ----------
         inplace : bool
             If True the molecule is directly modified, otherwise a copy of the molecule is returned.
-
+        only_if_clashes : bool
+            If True, the structure first checks for clashes and only optimizes if there are any.
         Returns
         -------
         molecule
             The modified molecule (either the original object or a copy)
         """
         if not inplace:
-            obj = deepcopy(self)
+            obj = self.copy()
         else:
             obj = self
 
+        if only_if_clashes:
+            if not optimizers.has_clashes(obj):
+                return obj
         obj._optimize()
         return obj
 
@@ -959,11 +963,24 @@ class Molecule(entity.BaseEntity):
                     "No atom to attach to was provided and no root atom was defined in the other molecule"
                 )
 
-        # at_atom = self.get_atom(at_atom, residue=at_residue)
-        # other_at_atom = other.get_atom(other_at_atom, residue=other_residue)
+        if not at_residue:
+            at_residue = self.attach_residue
 
+        if not other_residue:
+            other_residue = other.attach_residue
+
+        # since we are already copying before we can use the keep-keep stitcher, actually...
         p = structural.__default_keep_copy_stitcher__
-        p.apply(self, other, remove_atoms, other_remove_atoms, at_atom, other_at_atom)
+        p.apply(
+            self,
+            other,
+            remove_atoms,
+            other_remove_atoms,
+            at_atom,
+            other_at_atom,
+            at_residue,
+            other_residue,
+        )
         self = p.merge()
         return self
 
@@ -1099,7 +1116,7 @@ def _molecule_from_pubchem(id, comp):
             serial_number=adx,
             bfactor=0.0,
             occupancy=0.0,
-            element=element,
+            element=element.upper(),
             fullname=id,
             altloc=" ",
             pqr_charge=0.0,
@@ -1127,7 +1144,7 @@ if __name__ == "__main__":
     glc = Molecule.from_compound("GLC")
     glc.set_linkage(recipe)
 
-    glc2 = deepcopy(glc)
+    glc2 = glc.copy()
 
     _current_residues = len(glc.residues)
     glc3 = glc + glc2
