@@ -284,7 +284,9 @@ class MultiBondRotatron(Rotatron):
     rotatable_edges
         A list of rotatable edges. If None, all non-locked edges from the graph are used.
     mask_same_residues: bool
-        Whether to mask the coordinates of the same residue as the effector
+        Whether to mask the coordinates of the same residue (ignore the distances between atoms of the same residues, since they never change).
+    mask_max_distance: float
+        Ignore the distances between atoms if they are greater than this value.
     """
 
     def __init__(
@@ -292,6 +294,7 @@ class MultiBondRotatron(Rotatron):
         graph,
         rotatable_edges=None,
         mask_same_residues: bool = True,
+        mask_max_distance: float = 10.0,
     ):
         super().__init__(graph, rotatable_edges)
         self.action_space = gym.spaces.Box(
@@ -300,6 +303,8 @@ class MultiBondRotatron(Rotatron):
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(len(self._nodes), 3)
         )
+        self.mask_same_residues = mask_same_residues
+        self.mask_max_distance = mask_max_distance
 
         # Mask the effector coordinates
         if mask_same_residues:
@@ -325,6 +330,18 @@ class MultiBondRotatron(Rotatron):
 
         return self.state, reward, False, {}
 
+    def _regional_mask(self, dists):
+        """
+        Compute a mask for the distances that are greater than the max distance
+        """
+        return dists > self.mask_max_distance
+
+    def _reduce_func(self, dists):
+        """
+        Compute the mean of the distances that are not masked
+        """
+        return dists[dists > 0].mean()
+
     def compute_reward(self):
         """
         Compute the reward of the given or current coordinate array
@@ -339,8 +356,12 @@ class MultiBondRotatron(Rotatron):
         np.fill_diagonal(dists, -1)
         dists[self._residue_masks] = -1
 
-        dist_func = lambda x: x[x > 0].mean()
-        dists = np.apply_along_axis(dist_func, 1, dists)
+        # Ignore distances greater than 10 angstroms
+        regional_mask = np.apply_along_axis(self._regional_mask, 1, dists)
+        dists[regional_mask] = -1
+
+        # Reduce the distances to a single value per node
+        dists = np.apply_along_axis(self._reduce_func, 1, dists)
 
         # energy = (1 / dists) ** 12 - (1 / dists) ** 6
         reward = -4 * np.sum((1 / dists) ** 4)
