@@ -1,7 +1,17 @@
 """
 The `Molecule` class is a wrapper around a biopython structure and a core part 
 of biobuild functionality. It provides a convenient interface to molecular structures
-and their properties, such as atoms, bonds, residues, chains, etc.
+and their properties, such as atoms, bonds, residues, chains, etc. 
+
+.. note:: 
+
+    To help with identifying individual atoms, residues, etc. biobuild uses a different identification scheme than biopython does.
+    Therefore biobuild comes with its own child classes of the biopython classes
+    that are used to represent the structure. These classes are called `Atom`, `Residue`, `Chain`, etc.
+    and can be used as drop-in replacements for the biopython classes and should not break any existing code.
+    However, in case any incompatibility is observed anyway, the classes are equipped with a `to_biopython` method
+    that will remove the biobuild overhead and return pure biopython objects (this is not an in-place operation, however,
+    and will return a new object). 
 
 
 Making Molecules
@@ -169,16 +179,16 @@ between `(2)CA` and `OA` - thus forming a triplet of atoms `(2)CA`, `OA` and `(1
 Adding residues and atoms
 -------------------------
 
-To add one or more new residue(s), we use the `add_residues` method, which expects a number `biopython.Residue` objects as unnamed arguments.
-Similarly, to add one or more new atom(s), we use the `add_atoms` method, which expects a number of `biopython.Atom` objects as unnamed arguments.
+To add one or more new residue(s), we use the `add_residues` method, which expects a number `biobuild.Residue` objects as unnamed arguments.
+Similarly, to add one or more new atom(s), we use the `add_atoms` method, which expects a number of `biobuild.Atom` objects as unnamed arguments.
 Both methods allow to specify the parent object (`chain` or `residue`) via an optional argument and will automatically choose the last
 chain or residue if none is specified.
 
 .. code-block:: python
 
-    from Bio.PDB import Residue, Atom
+    from biobuild import Residue, Atom
 
-    new_residue = Residue("XYZ", " ", 1, " ")
+    new_residue = Residue("XYZ", 1, " ")
     
     # do things with the residue here
     # ...
@@ -187,7 +197,7 @@ chain or residue if none is specified.
     # (add it to the last chain, whichever that may be)
     glc.add_residues(new_residue)
 
-    new_atom = Atom("X", [0, 0, 0], 0, 0, "X", "X", 0, "X")
+    new_atom = Atom("X", [0, 0, 0])
 
     # add the atom to the first residue in the `glc` molecule
     glc.add_atoms(new_atom, residue=1)
@@ -195,7 +205,7 @@ chain or residue if none is specified.
 Removing residues and atoms
 ---------------------------
 
-In order to remove residues or atoms or bonds, we can use the `remove_residues`, `remove_atoms` and `remove_bond`(yes, singluar!) mathods.
+In order to remove residues or atoms or bonds, we can use the `remove_residues`, `remove_atoms` and `remove_bond`(yes, singluar!) methods.
 They work exactly like their `add_` counterparts, but instead of adding, they remove the specified objects.
 
 .. code-block:: python

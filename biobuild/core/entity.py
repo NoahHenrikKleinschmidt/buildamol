@@ -775,7 +775,7 @@ class BaseEntity:
 
             for residue in chain.child_list:
                 # chain.child_dict.pop(residue.id)
-                residue.icode = rdx
+                residue.serial_number = rdx
                 # residue.id = (residue.id[0], rdx, *residue.id[2:])
                 rdx += 1
                 # chain.child_dict[residue._id] = residue
@@ -1180,8 +1180,8 @@ class BaseEntity:
 
             rdx += 1
             if adjust_seqid and residue.id[1] != rdx:
-                residue.icode = rdx
-                # the above line with icode works for the
+                residue.serial_number = rdx
+                # the above line with serial_number works for the
                 # biobuild class derivatives, the below line
                 # is for the original biopython classes
                 # residue.id = (residue.id[0], rdx, *residue.id[2:])
@@ -1842,7 +1842,7 @@ class BaseEntity:
             Path to the CIF file
         """
         io = bio.MMCIFIO()
-        io.set_structure(self._base_struct)
+        io.set_structure(self._base_struct.to_biopython())
         io.save(filename)
         utils.cif.write_bond_table(self, filename)
         with open(filename, "r") as f:
