@@ -4,9 +4,7 @@ Functions to stitch molecules together even in the absence of a patch
 
 from typing import Union
 
-import networkx as nx
 import numpy as np
-from copy import deepcopy
 
 import Bio.PDB as bio
 
@@ -14,7 +12,6 @@ import biobuild.core.Molecule as Molecule
 import biobuild.core.Linkage as Linkage
 import biobuild.structural.connector as base
 import biobuild.optimizers as optimizers
-import biobuild.utils.abstract as abstract
 
 
 class Stitcher(base.Connector):

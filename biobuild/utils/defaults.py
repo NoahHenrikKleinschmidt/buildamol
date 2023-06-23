@@ -1,5 +1,4 @@
 import os
-import pickle
 import Bio.PDB as bio
 
 import biobuild.utils.constants as constants
@@ -91,7 +90,6 @@ def set_default_instance(key, obj):
         The new default instance
     """
     __default_instances__[key] = obj
-
 
 
 # =================================================================

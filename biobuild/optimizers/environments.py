@@ -1,3 +1,4 @@
+from typing import Union
 import numpy as np
 from copy import deepcopy
 
@@ -364,7 +365,7 @@ class MultiBondRotatron(Rotatron):
         dists = np.apply_along_axis(self._reduce_func, 1, dists)
 
         # energy = (1 / dists) ** 12 - (1 / dists) ** 6
-        reward = -4 * np.sum((1 / dists) ** 4)
+        reward = -6 * np.sum((1 / dists) ** 6)
 
         return reward
 
@@ -404,10 +405,17 @@ class SphereRotatron(MultiBondRotatron):
         A detailed ResidueGraph object
     rotatable_edges
         A list of rotatable edges. If None, all non-locked edges from the graph are used.
+    mask_max_distance: float
+        Ignore the distances between atoms if they are greater than this value.
     """
 
-    def __init__(self, graph, rotatable_edges=None):
-        super().__init__(graph, rotatable_edges)
+    def __init__(self, graph, rotatable_edges=None, mask_max_distance=10.0):
+        super().__init__(
+            graph,
+            rotatable_edges,
+            mask_same_residues=False,
+            mask_max_distance=mask_max_distance,
+        )
         self._effector_mask = np.array(
             [node in self.graph.residues for node in self._nodes]
         )
@@ -431,7 +439,9 @@ class SphereRotatron(MultiBondRotatron):
 
         # Compute the inter-residue distances
         dists = cdist(coords, coords) - self._residue_radii_sums
-        reward = -np.sum((1 / dists) ** 4)
+        dists = np.apply_along_axis(self._regional_mask, 1, dists)
+
+        reward = 6 * -np.sum((1 / dists) ** 6)
         return reward
 
 
@@ -448,6 +458,8 @@ class DiscreteRotatron(MultiBondRotatron):
         A list of rotatable edges. If None, all non-locked edges from the graph are used.
     mask_same_residues: bool
         Whether to mask the nodes of the same residue from the reward computation.
+    mask_max_distance: float
+        The maximum distance between two nodes for which the distance is masked from the reward computation.
     d: int
         The angle discretization to use, given in degrees.
         1 degree by default, meaning 360 possible actions between -180 and +180 degrees.
@@ -458,9 +470,10 @@ class DiscreteRotatron(MultiBondRotatron):
         graph,
         rotatable_edges=None,
         mask_same_residues: bool = True,
+        mask_max_distance: float = 10.0,
         d: int = 1,
     ) -> None:
-        super().__init__(graph, rotatable_edges, mask_same_residues)
+        super().__init__(graph, rotatable_edges, mask_same_residues, mask_max_distance)
 
         d = np.radians(d)
         self._angles = np.arange(-np.pi, np.pi, d)
@@ -473,7 +486,101 @@ class DiscreteRotatron(MultiBondRotatron):
         return super().step(angles)
 
 
-# if __name__ == "__main__":
+class DecayRotatron(MultiBondRotatron):
+    """
+    This environment is similar to the MultiBondRotatron but instead of
+    using a sharp mask to ignore distances between atoms above a certain threshold,
+    an exponential distribution is used to give a smooth decay of importance to further
+    away atoms.
+
+    Parameters
+    ----------
+    graph
+        A detailed ResidueGraph object
+    rotatable_edges
+        A list of rotatable edges. If None, all non-locked edges from the graph are used.
+    mask_same_residues: bool
+        Whether to mask the nodes of the same residue from the reward computation.
+    mask_max_distance: float
+        The maximum distance between two nodes for which the distance is masked from the reward computation.
+    decay: str or callable
+        The decay function to use. If a string, it must be one of 'exp' (exponential decreasing) or 'lin' (linear decreasing), 'sqrt' (square-root), or 'pow{n}' where n is an integer (inverse to the power of). If a callable, it must
+        take a distance array as input and return a decay array of the same shape. Distances are applied to the
+        distance array row-wise.
+    """
+
+    def __init__(
+        self,
+        graph,
+        rotatable_edges=None,
+        mask_same_residues: bool = True,
+        mask_max_distance: float = 10.0,
+        decay: Union[str, callable] = "pow3",
+    ) -> None:
+        super().__init__(graph, rotatable_edges, mask_same_residues, mask_max_distance)
+
+        n = self.effector_coords.shape[0]
+        xs = np.linspace(0, 1, n)
+        if decay == "exp":
+            self._decay = np.exp(xs)
+        elif decay == "lin":
+            self._decay = xs
+        elif decay == "sqrt":
+            self._decay = np.sqrt(xs)
+        elif decay.startswith("pow"):
+            m = int(decay[3:])
+            self._decay = xs**m
+        elif callable(decay):
+            self._decay = decay(xs)
+        else:
+            raise ValueError(f"Unknown decay function or input: {decay}")
+
+    def _decay_mask(self, dists):
+        dists = self.mask_max_distance - dists
+        # dists.sort()
+        # dists *= self._decay
+        return dists
+
+    def compute_reward(self):
+        """
+        Compute the reward of the given or current coordinate array
+        """
+        coords = self.effector_coords
+
+        # Compute the inter-residue distances
+        dists = np.linalg.norm(coords[:, None, :] - coords[None, :, :], axis=-1)
+
+        # Mask the residue distances
+        np.fill_diagonal(dists, -1)
+        dists[self._residue_masks] = -1
+
+        # now the decay masks
+        dists = np.apply_along_axis(self._decay_mask, 1, dists)
+
+        # concentrate row-wise
+        dists = np.apply_along_axis(self._reduce_func, 1, dists)
+
+        reward = 6 * np.sum((1 / dists) ** 6)
+        return reward
+
+
+if __name__ == "__main__":
+    import biobuild as bb
+
+    mol = bb.Molecule.load("/Users/noahhk/GIT/biobuild/docs/_tutorials/large.pkl")
+
+    graph = mol.make_residue_graph()
+    graph.make_detailed(True, True, f=0.5)
+    v = graph.draw()
+    edges = mol.get_residue_connections()
+
+    env = DecayRotatron(graph, edges, mask_max_distance=15)
+    best, _ = bb.optimizers.swarm_optimize(env)
+
+    out = bb.optimizers.apply_solution(best, env, mol)
+    v.draw_edges(out.make_residue_graph().edges, color="red", linewidth=2)
+    v.show()
+    mol.show()
 #     import biobuild as bb
 #     import jax.numpy as np
 #     import jax

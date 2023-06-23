@@ -1,4 +1,3 @@
-from typing import Union
 import networkx as nx
 import Bio.PDB as bio
 

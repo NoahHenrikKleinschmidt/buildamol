@@ -3,7 +3,6 @@ Functions to patch molecules together
 """
 
 import numpy as np
-from copy import deepcopy
 
 import biobuild.utils.abstract as abstract
 import biobuild.structural.connector as base

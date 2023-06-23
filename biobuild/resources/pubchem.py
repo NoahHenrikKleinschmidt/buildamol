@@ -1,5 +1,33 @@
 """
 This module contains functions for interacting with PubChem.
+
+Remotely accessing PubChem
+--------------------------
+
+The `query` function can be used to query PubChem for a compound. It returns the 2D and 3D
+representations of the compound as `pubchempy.Compound` objects. The `pubchempy` package is
+used to perform the query. The `query` function takes a query string and a query type as
+input. The query type can be one of "name", "cid", "smiles", "inchi", "inchikey".
+The returned outputs can be used to create ``Molecule`` objects using a function ``biobuild.Molecule._molecule_from_pubchem`` which is by default integrated
+into the ``biobuild.Molecule.Molecule.from_pubchem`` class method.
+
+Converting PubChem data to CIF
+------------------------------
+PubChem allows data downloads in the form of JSON and SDF files. The JSON file contains the descriptive data of a chemical compound while the SDF contains
+the 3D conformer of the compound. The `pubchem_to_cif` function can be used to convert these files into a CIF file which can be used to load the compound
+into biobuild using the ``PDBECompounds`` class. The function takes the paths to the JSON and SDF files as input and optionally an ID for the compound
+and a path to the CIF file to write. If no ID is specified, the function will try to infer an ID from the JSON file.
+
+.. code-block:: python
+
+    from biobuild.resources import pubchem
+
+    # ... download JSON and SDF files from PubChem for some compound
+    json_file = "some_compound.json"
+    sdf_file = "some_compound.sdf"
+
+    # convert to CIF
+    pubchem.pubchem_to_cif(json_file, sdf_file, id="SOMECOMPOUND", cif_file="some_compound.cif")
 """
 
 import json

@@ -1,11 +1,10 @@
 """
-Functions to infer structural data such as missing atom coordinates or bond connectivity
+Functions to infer structural data such as missing atom coordinates, bond connectivity, or atom labels.
 """
 
 import pandas as pd
 import networkx as nx
 from collections import defaultdict
-from copy import deepcopy
 import warnings
 import numpy as np
 
@@ -14,7 +13,6 @@ from Bio import SVDSuperimposer
 import periodictable as pt
 
 import biobuild.utils.ic as _ic
-import biobuild.utils.abstract as _abstract
 import biobuild.utils.defaults as defaults
 import biobuild.resources as resources
 import biobuild.structural.base as base

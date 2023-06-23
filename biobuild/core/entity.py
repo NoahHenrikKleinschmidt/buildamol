@@ -1,5 +1,7 @@
 """
 The base class for classes storing and manipulating biopython structures
+This houses most of the essential functionality of the library for most users. 
+The ``Molecule`` class adds additional features on top. 
 """
 
 from copy import deepcopy
