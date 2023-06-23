@@ -156,6 +156,9 @@ using functions such as ``set_default_topology`` or ``add_linkage``.
 Example
 =======
 
+Building a glycan
+-----------------
+
 `biobuild` was originally conceptualized with the aim of creating glycan structures - so, please, forgive if the example below produces a glycan. The following example demonstrates
 how we can create a larger structure from single monosaccharides using `biobuild` (using all three syntaxes intermixed):
 
@@ -190,8 +193,6 @@ how we can create a larger structure from single monosaccharides using `biobuild
 
    # now visualise the structure
    glycan.show()
-
-
 .. image:: _resources/glycan_example.gif
    :width: 80%
    :align: center
@@ -201,3 +202,4 @@ In the above visualization, `NAG` residues are colored in pink, `BMA` in orange,
 
 The above example demonstrates how we can use `biobuild` to create a glycan structure from scratch. The example also demonstrates how we can use the three different syntaxes
 to achieve this. Using the toplevel function `connect`, using the method `attach`, or by simple "molecular arithmetics" through the `+` operator.
+

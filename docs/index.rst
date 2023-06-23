@@ -3,8 +3,14 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to `biobuild`'s documentation!
-======================================
+
+.. image:: _resources/logo_large.png
+   :width: 80%
+   :align: center
+   :alt: biobuild logo
+
+
+
 
 `biobuild` is a molecular designing tool for medium to large biological molecules such as glycans.
 It is designed to help researchers working on structrual biology generate realistic structures of molecules

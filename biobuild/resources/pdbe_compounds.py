@@ -4,9 +4,17 @@ This module defines a Parser to extract information from the PDBE compound libra
 Toplevel functions
 ==================
 
-For convenience, the module provides a number of toplevel functions to parse the PDBE compound library.
+For convenience, the module provides a number of toplevel functions to parse the PDBE compound library such as:
 
-.. autofunction:: read_pdbe_compounds
+.. code-block:: python
+
+    from biobuild.resources import pdbe_compounds as pdbe
+
+    # check if a compound is in the default loaded library
+    pdbe.has_compound("GLC")
+
+    # get a compound Molecule by its PDB ID
+    glc = pdbe.get_compound("GLC")
 
 
 Reading the PDBE Compound Library

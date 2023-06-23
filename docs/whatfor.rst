@@ -40,9 +40,12 @@ What can `biobuild` not do?
 
 `biobuild` is not a quantum chemistry package. It does not offer any quantum chemical calculations, nor does it offer any tools
 to analyze the electronic structure of molecules (aside from whatever is available from `biopython`, of course). 
-It is also not a molecular dynamics package. 
-Furthermore, `biobuild` does not generate molecules `for` you! It is **not** a `de novo` molecule generator that tries to find molecules with certain properties - e.g. molecules that bind a certain protein pocket. 
-The user needs to know what they want to build - `biobuild` will help them build it, that's the deal.
+It is also not a molecular dynamics package. Also, currently `biobuild` is limited to creating single bond-connections between
+molecules. Hence, `biobuild` cannot create (small) ring structures. However, using fragments with the desired ring structures already present (e.g. from pubchem)
+large circular molecules can be built regardless. However, `biobuild` is currently not optimized for circular molecules of any kind, hence, users wishing to 
+create circular molecules will likely want to use molecular dynamics to optimize the geometry of any structure they create.
+Finally, `biobuild` does not generate molecules `for` you! It is **not** a `de novo` molecule generator that tries to find molecules with certain properties - e.g. molecules that bind a certain protein pocket. 
+The user needs to know what they want to build and have some idea of the steps involved - `biobuild` will help them build it, that's the deal.
 
 Who is `biobuild` for?
 ----------------------
