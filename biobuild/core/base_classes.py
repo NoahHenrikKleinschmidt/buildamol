@@ -522,7 +522,9 @@ class Structure(ID, bio.Structure.Structure):
                 c = bio.Chain.Chain(chain.id)
                 for residue in chain.get_residues():
                     r = bio.Residue.Residue(
-                        residue.resname, residue.segid, residue.serial_number
+                        (residue.resname, residue.serial_number, residue.segid),
+                        residue.resname,
+                        residue.segid,
                     )
                     for atom in residue.get_atoms():
                         a = bio.Atom.Atom(
