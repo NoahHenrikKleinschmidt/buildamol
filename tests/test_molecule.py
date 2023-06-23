@@ -75,6 +75,23 @@ def test_can_write_pdb():
     os.remove("test.pdb")
 
 
+def test_can_write_cif():
+    import os
+
+    glc = bb.Molecule.from_compound("GLC")
+    assert glc is not None
+
+    try:
+        glc.to_cif("test.cif")
+        with open("test.cif", "r") as f:
+            lines = f.readlines()
+        assert len(lines) != 0
+    except Exception as e:
+        raise e
+
+    os.remove("test.cif")
+
+
 def test_molecule_from_compound():
     glc = bb.Molecule.from_compound("GLC")
     assert glc is not None
@@ -998,7 +1015,10 @@ def test_make_mannose8_with_recipe():
     nag.repeat(2)
     man8 = nag + bma
 
-    # now we make the mannose branch
+    man8 % "13ab"
+    man8 += man
+
+    # now we start adding the mannoses
     # MAN --- MAN
     #  \
     #  MAN --- MAN
@@ -1194,3 +1214,104 @@ def test_to_rdkit():
     rdkit_mol = glc.to_rdkit()
     assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
     assert sum(1 for i in rdkit_mol.GetBonds()) == 24
+
+
+def test_make_large_other():
+    """
+    Making this large structure:
+    ![](https://www.eurekaselect.com/images/graphical-abstract/coc/26/1/big-004.jpg)
+    """
+
+    # first get appropriate components that have parts of the structure we need
+    prp = bb.Molecule.from_pubchem("2-[4-(2-methylpropyl)phenyl]propanal")
+    prp.autolabel()
+    prp.residues[0].resname = "PRP"
+
+    ser = bb.Molecule.from_compound("SER")
+    ser.autolabel()
+
+    trz = bb.Molecule.from_pubchem("1-ethyl-4-methyltriazole")
+    trz.autolabel()
+    trz.residues[0].resname = "TRZ"
+
+    tba = bb.Molecule.from_pubchem("tert-butyl 2-hydroxyacetate")
+    tba.autolabel()
+    tba.residues[0].resname = "TBA"
+
+    hac = bb.Molecule.from_pubchem("2-hydroxyacetamide")
+    hac.autolabel()
+    hac.residues[0].resname = "HAC"
+    # fix some atom ids that autolabel got wrong
+    hac.rename_atom("O21", "O2")
+    hac.rename_atom("N22", "N2")
+    hac.rename_atom("HN221", "HN21")
+    hac.rename_atom("HN222", "HN22")
+
+    benz = bb.Molecule.from_pubchem("1,2,4-trichloro-5-methylbenzene")
+    benz.autolabel()
+    benz.residues[0].resname = "CBZ"
+
+    # ======================================================================
+    # now start making the
+    # ======================================================================
+
+    # go from outside to inside
+    # first make the outermost ring
+
+    # prp -- ser
+    link1 = bb.linkage("C8", "N2", ["H8"], ["HN21"])
+    ext = bb.connect(prp, ser, link1)
+
+    # tba -- ext
+    link2 = bb.linkage("O3", "C4", ["HO3"], ["O4", "HO4"])
+    ext = bb.connect(ext, tba, link2)
+
+    # trz -- ext
+    link3 = bb.linkage("O12", "C5", ["HO12"], ["H51"])
+    ext = bb.connect(ext, trz, link3)
+
+    # hac -- ext
+    link4 = bb.linkage("C2", "N2", ["H22"], ["HN22"])
+    ext @ "TRZ"
+    ext_larger = bb.connect(ext, hac, link4)
+
+    # ext -- ext_larger
+    link5 = bb.linkage("N2", "C2", ["HN21"], ["H22"])
+    ext_larger @ "HAC"
+    ext @ "TRZ"
+    ext_larger = bb.connect(ext_larger, ext, link5)
+
+    link6 = bb.linkage("O1", "C5", ["HO1"], ["Cl5"])
+    ext_larger @ "HAC"
+    ext = bb.connect(ext_larger, benz, link6)
+
+    link7 = bb.linkage("C1", "O1", ["Cl1"], ["HO1"])
+    ext @ -1
+    ext_larger @ "HAC"
+    ext = bb.connect(ext, ext_larger, link7)
+    ext.show()
+
+    raise NotImplementedError("TODO: finish this test")
+
+
+def test_work_with_pubchem():
+    phprop = bb.Molecule.from_pubchem("2-[4-(2-methylpropyl)phenyl]propanal")
+    phprop.autolabel()
+    phprop.residues[0].resname = "PRO"
+
+    l = bb.linkage(
+        "C8",
+        "C8",
+        ["H8"],
+        ["H8"],
+    )
+    phprop % l
+    phprop = phprop + phprop
+    phprop.show()
+
+
+def test_chlorine():
+    benz = bb.Molecule.from_pubchem("1,2,4-trichloro-5-methylbenzene")
+    benz.autolabel()
+    benz.residues[0].resname = "CBZ"
+    benz.show()
