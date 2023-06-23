@@ -56,7 +56,8 @@ class AutoLabel:
     def __init__(self, atom_graph):
         self.graph = atom_graph
         self._bond_orders = nx.get_edge_attributes(self.graph, "bond_order")
-        self._df = self._make_df()
+        self._df_all = self._make_df()
+        self._df = None
 
     @property
     def carbons(self):
@@ -65,20 +66,25 @@ class AutoLabel:
         """
         return [n for n in self.graph.nodes if n.element == "C"]
 
-    def relabel(self):
+    def autolabel(self):
         """
-        Relabel the atoms in the molecule
+        Generate labels for the atoms in the molecule
 
         Returns
         -------
         pd.DataFrame
             A dataframe with the atom objects and their new labels.
         """
-        self._parse_carbon_labels()
-        self._parse_hetero_labels()
-        self._parse_hydrogen_labels()
-        self._df["label"] = self._df["element"] + self._df["label"]
-        return self._df[["atom", "label"]]
+        for res_df in self._df_all.groupby("residue"):
+            self._df = res_df[1]
+            self._parse_carbon_labels()
+            self._parse_hetero_labels()
+            self._parse_hydrogen_labels()
+            self._df["label"] = self._df["element"] + self._df["label"]
+            self._final_vet()
+            self._df_all.loc[self._df.index, "label"] = self._df["label"]
+
+        return self._df_all[["atom", "label"]]
 
     def _neighbors(self, atoms):
         """
@@ -110,6 +116,7 @@ class AutoLabel:
                 "element": [a.element.title() for a in self.graph.nodes],
                 "neighbors": neighbors,
                 "neighbor_element_sum": neighbor_element_sum,
+                "residue": [a.get_parent().id[1] for a in self.graph.nodes],
             }
         )
         self._df["total"] = self._df.neighbors * self._df.neighbor_element_sum
@@ -188,6 +195,7 @@ class AutoLabel:
             heteros = self._df[(self._df.element != "C") * (self._df.element != "H")]
         for _heteros in _neighbor_connect_dict.values():
             idx = 1
+
             if len(_heteros) > 1:
                 for h in _heteros:
                     self._df.loc[self._df.atom == h, "label"] += str(idx)
@@ -224,6 +232,23 @@ class AutoLabel:
                     self._df.loc[self._df.atom == h, "label"] += str(idx)
                     idx += 1
 
+    def _final_vet(self):
+        _label_counts = self._df.label.value_counts()
+        _label_counts = _label_counts[_label_counts > 1]
+        _label_counts = _label_counts.sort_index()
+        _label_counts = _label_counts.reset_index()
+        _label_counts.columns = ["label", "count"]
+        _label_counts = _label_counts.sort_values("count", ascending=False)
+        _label_counts = _label_counts.reset_index(drop=True)
+        for idx in range(len(_label_counts)):
+            label = _label_counts.label.iloc[idx]
+            count = _label_counts["count"].iloc[idx]
+            if count == 1:
+                continue
+            atoms = self._df[self._df.label == label].atom
+            for atom in atoms:
+                self._df.loc[self._df.atom == atom, "label"] += str(idx)
+
 
 def autolabel(molecule):
     """
@@ -238,7 +263,7 @@ def autolabel(molecule):
         This molecule needs to have bonds assigned or computed.
     """
     labeler = AutoLabel(molecule._AtomGraph)
-    df = labeler.relabel()
+    df = labeler.autolabel()
     # df.loc[:, "residue"] = df.atom.apply(lambda x: x.get_parent())
     # _ = df.residue.apply(lambda x: x.child_dict.clear())
     for idx in range(len(df)):
@@ -1037,8 +1062,15 @@ def _prune_H_triplets(bonds):
 
 if __name__ == "__main__":
     import biobuild as bb
-    from scipy.spatial import distance
-    import time
+
+    mol = bb.molecule("/Users/noahhk/GIT/biobuild/support/examples/man9.pdb")
+    mol.infer_bonds()
+    autolabel(mol)
+    mol.show()
+    pass
+
+    # from scipy.spatial import distance
+    # import time
 
     # def infer_bonds2(structure, bond_length):
     #     min_length, max_length = bond_length

@@ -116,7 +116,7 @@ def make_connect_table(mol, symmetric=True):
     for atom in connectivity:
         lines.append(("CONECT", atom, *connectivity[atom]))
     table = tabulate(lines, tablefmt="plain")
-    table = table.replace("  ", "   ")
+    # table = table.replace("  ", "   ")
     return table
 
 
@@ -143,6 +143,10 @@ def make_atoms_table(mol):
             neg_adj = ""
         else:
             neg_adj = " "
+        if atom.pqr_charge is None:
+            charge = ""
+        else:
+            charge = str(int(atom.pqr_charge)) + ("-" if atom.pqr_charge < 0 else "+")
         lines.append(
             atom_line.format(
                 serial=left_adjust(str(atom.serial_number), 5),
@@ -166,9 +170,7 @@ def make_atoms_table(mol):
                 temp=left_adjust(f"{atom.bfactor:.2f}", 6),
                 seg=right_adjust("", 3),
                 element=left_adjust(atom.element.upper(), 2),
-                charge=left_adjust(
-                    str(int(atom.pqr_charge)) + ("-" if atom.pqr_charge < 0 else "+"), 2
-                ),
+                charge=left_adjust(charge, 2),
             )
         )
     return "\n".join(lines)
