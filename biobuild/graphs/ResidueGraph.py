@@ -1,6 +1,4 @@
-from typing import Union
 import networkx as nx
-import numpy as np
 import Bio.PDB as bio
 
 import biobuild.structural as struct

@@ -5,8 +5,6 @@ import os
 from typing import Union
 import Bio.PDB as bio
 
-import biobuild.structural as structural
-import biobuild.utils as utils
 import biobuild.core.Molecule as Molecule
 import biobuild.core.Linkage as _linkage
 import biobuild.resources as resources

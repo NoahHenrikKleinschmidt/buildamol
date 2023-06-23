@@ -12,7 +12,7 @@ def atom_make_full_id(self):
     """
     p = self.get_parent()
     if p:
-        return (*p.full_id, self.id)
+        return (*p.full_id, (self.id, self.altloc))
     else:
         return (self.id, self.altloc)
 

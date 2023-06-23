@@ -44,3 +44,33 @@ def apply_solution(sol: np.ndarray, env: "environments.Rotatron", obj):
         obj.rotate_around_bond(*bond, angle, descendants_only=True)
 
     return obj
+
+
+def has_clashes(mol: "Molecule", min_distance: float = 0.95):
+    """
+    Check if there are any atoms in the molecule that are too close to each other.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to check for clashes
+    min_distance : float, optional
+        The minimum distance between atoms to be considered a clash, if None is given,
+        the default of 0.95 Angstroms is used.
+
+    Returns
+    -------
+    bool
+        Whether there are any clashes (True) or not (False)
+    """
+    if min_distance is None:
+        min_distance = 0.95
+
+    for atom_a in mol.get_atoms():
+        for atom_b in mol.get_atoms():
+            if atom_a is atom_b:
+                continue
+            distance = atom_a - atom_b
+            if distance < min_distance:
+                return True
+    return False

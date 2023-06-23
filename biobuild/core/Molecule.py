@@ -1,7 +1,17 @@
 """
 The `Molecule` class is a wrapper around a biopython structure and a core part 
 of biobuild functionality. It provides a convenient interface to molecular structures
-and their properties, such as atoms, bonds, residues, chains, etc.
+and their properties, such as atoms, bonds, residues, chains, etc. 
+
+.. note:: 
+
+    To help with identifying individual atoms, residues, etc. biobuild uses a different identification scheme than biopython does.
+    Therefore biobuild comes with its own child classes of the biopython classes
+    that are used to represent the structure. These classes are called `Atom`, `Residue`, `Chain`, etc.
+    and can be used as drop-in replacements for the biopython classes and should not break any existing code.
+    However, in case any incompatibility is observed anyway, the classes are equipped with a `to_biopython` method
+    that will remove the biobuild overhead and return pure biopython objects (this is not an in-place operation, however,
+    and will return a new object). 
 
 
 Making Molecules
@@ -169,16 +179,16 @@ between `(2)CA` and `OA` - thus forming a triplet of atoms `(2)CA`, `OA` and `(1
 Adding residues and atoms
 -------------------------
 
-To add one or more new residue(s), we use the `add_residues` method, which expects a number `biopython.Residue` objects as unnamed arguments.
-Similarly, to add one or more new atom(s), we use the `add_atoms` method, which expects a number of `biopython.Atom` objects as unnamed arguments.
+To add one or more new residue(s), we use the `add_residues` method, which expects a number `biobuild.Residue` objects as unnamed arguments.
+Similarly, to add one or more new atom(s), we use the `add_atoms` method, which expects a number of `biobuild.Atom` objects as unnamed arguments.
 Both methods allow to specify the parent object (`chain` or `residue`) via an optional argument and will automatically choose the last
 chain or residue if none is specified.
 
 .. code-block:: python
 
-    from Bio.PDB import Residue, Atom
+    from biobuild import Residue, Atom
 
-    new_residue = Residue("XYZ", " ", 1, " ")
+    new_residue = Residue("XYZ", 1, " ")
     
     # do things with the residue here
     # ...
@@ -187,7 +197,7 @@ chain or residue if none is specified.
     # (add it to the last chain, whichever that may be)
     glc.add_residues(new_residue)
 
-    new_atom = Atom("X", [0, 0, 0], 0, 0, "X", "X", 0, "X")
+    new_atom = Atom("X", [0, 0, 0])
 
     # add the atom to the first residue in the `glc` molecule
     glc.add_atoms(new_atom, residue=1)
@@ -195,7 +205,7 @@ chain or residue if none is specified.
 Removing residues and atoms
 ---------------------------
 
-In order to remove residues or atoms or bonds, we can use the `remove_residues`, `remove_atoms` and `remove_bond`(yes, singluar!) mathods.
+In order to remove residues or atoms or bonds, we can use the `remove_residues`, `remove_atoms` and `remove_bond`(yes, singluar!) methods.
 They work exactly like their `add_` counterparts, but instead of adding, they remove the specified objects.
 
 .. code-block:: python
@@ -733,9 +743,9 @@ class Molecule(entity.BaseEntity):
         if not link and not self._linkage:
             raise RuntimeError("Cannot multiply a molecule without a patch defined")
 
-        _other = deepcopy(self)
+        _other = self.copy()
         if not inplace:
-            obj = deepcopy(self)
+            obj = self.copy()
         else:
             obj = self
 
@@ -787,7 +797,7 @@ class Molecule(entity.BaseEntity):
             raise TypeError("Can only attach a Molecule to another Molecule")
 
         if not inplace:
-            obj = deepcopy(self)
+            obj = self.copy()
         else:
             obj = self
 
@@ -797,7 +807,7 @@ class Molecule(entity.BaseEntity):
                 raise ValueError("Cannot attach a molecule without a patch defined")
 
         if not other_inplace:
-            _other = deepcopy(other)
+            _other = other.copy()
         else:
             _other = other
 
@@ -823,7 +833,7 @@ class Molecule(entity.BaseEntity):
             )
         return obj
 
-    def optimize(self, inplace: bool = True):
+    def optimize(self, only_if_clashes: bool = False, inplace: bool = True):
         """
         Optimize the molecule by removing all atoms that are not part of any bond.
 
@@ -831,17 +841,21 @@ class Molecule(entity.BaseEntity):
         ----------
         inplace : bool
             If True the molecule is directly modified, otherwise a copy of the molecule is returned.
-
+        only_if_clashes : bool
+            If True, the structure first checks for clashes and only optimizes if there are any.
         Returns
         -------
         molecule
             The modified molecule (either the original object or a copy)
         """
         if not inplace:
-            obj = deepcopy(self)
+            obj = self.copy()
         else:
             obj = self
 
+        if only_if_clashes:
+            if not optimizers.has_clashes(obj):
+                return obj
         obj._optimize()
         return obj
 
@@ -959,11 +973,24 @@ class Molecule(entity.BaseEntity):
                     "No atom to attach to was provided and no root atom was defined in the other molecule"
                 )
 
-        # at_atom = self.get_atom(at_atom, residue=at_residue)
-        # other_at_atom = other.get_atom(other_at_atom, residue=other_residue)
+        if not at_residue:
+            at_residue = self.attach_residue
 
+        if not other_residue:
+            other_residue = other.attach_residue
+
+        # since we are already copying before we can use the keep-keep stitcher, actually...
         p = structural.__default_keep_copy_stitcher__
-        p.apply(self, other, remove_atoms, other_remove_atoms, at_atom, other_at_atom)
+        p.apply(
+            self,
+            other,
+            remove_atoms,
+            other_remove_atoms,
+            at_atom,
+            other_at_atom,
+            at_residue,
+            other_residue,
+        )
         self = p.merge()
         return self
 
@@ -1099,7 +1126,7 @@ def _molecule_from_pubchem(id, comp):
             serial_number=adx,
             bfactor=0.0,
             occupancy=0.0,
-            element=element,
+            element=element.upper(),
             fullname=id,
             altloc=" ",
             pqr_charge=0.0,
@@ -1127,7 +1154,7 @@ if __name__ == "__main__":
     glc = Molecule.from_compound("GLC")
     glc.set_linkage(recipe)
 
-    glc2 = deepcopy(glc)
+    glc2 = glc.copy()
 
     _current_residues = len(glc.residues)
     glc3 = glc + glc2

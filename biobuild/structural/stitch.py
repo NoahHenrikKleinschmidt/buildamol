@@ -4,9 +4,7 @@ Functions to stitch molecules together even in the absence of a patch
 
 from typing import Union
 
-import networkx as nx
 import numpy as np
-from copy import deepcopy
 
 import Bio.PDB as bio
 
@@ -14,7 +12,6 @@ import biobuild.core.Molecule as Molecule
 import biobuild.core.Linkage as Linkage
 import biobuild.structural.connector as base
 import biobuild.optimizers as optimizers
-import biobuild.utils.abstract as abstract
 
 
 class Stitcher(base.Connector):
@@ -89,10 +86,18 @@ class Stitcher(base.Connector):
         """
 
         if self.copy_target:
-            target = deepcopy(target)
+            target = target.copy()
+            if target_residue:
+                if not isinstance(target_residue, int):
+                    target_residue = target_residue.id[1]
+                target_residue = target.get_residue(target_residue, by="seqid")
             target_atom = target.get_atom(target_atom, residue=target_residue)
         if self.copy_source:
-            source = deepcopy(source)
+            source = source.copy()
+            if source_residue:
+                if not isinstance(source_residue, int):
+                    source_residue = source_residue.id[1]
+                source_residue = source.get_residue(source_residue, by="seqid")
             source_atom = source.get_atom(source_atom, residue=source_residue)
 
         self.target = target
@@ -174,14 +179,12 @@ class Stitcher(base.Connector):
         while stitching them together
         """
         _target_removals = [
-            self._target_residue.child_dict[atom]
+            self.target.get_atom(atom, residue=self._target_residue)
             for atom in target_removals
-            if atom in self._target_residue.child_dict
         ]
         _source_removals = [
-            self._source_residue.child_dict[atom]
+            self.source.get_atom(atom, residue=self._source_residue)
             for atom in source_removals
-            if atom in self._source_residue.child_dict
         ]
         return (set(_target_removals), set(_source_removals))
 
@@ -207,11 +210,13 @@ class Stitcher(base.Connector):
                     if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
                 )
                 for bond in bonds:
-                    obj._bonds.remove(bond)
+                    # obj._bonds.remove(bond)
+                    obj._remove_bond(*bond)
                 p = atom.get_parent()
                 if p:
-                    p.child_list.remove(atom)
-                    p.child_dict.pop(atom.id)
+                    p.detach_child(atom.get_id())
+                    # p.remove(atom)
+                    # p.child_dict.pop(atom.id)
                     atom.set_parent(p)
 
             adx = 1
@@ -229,6 +234,9 @@ class Stitcher(base.Connector):
             The number of optimization steps to perform
         """
 
+        bonds = self.target.get_bonds(self._target_residue)
+        bonds.extend(self.source.get_bonds(self._source_residue))
+
         tmp = Molecule.Molecule.empty(self.target.id)
         self.target.adjust_indexing(self.source)
 
@@ -239,8 +247,20 @@ class Stitcher(base.Connector):
             _copy=True,
         )
 
-        bonds = self.target.get_bonds(self._target_residue)
-        bonds.extend(self.source.get_bonds(self._source_residue))
+        # we could also add all neighbors of the anchor atom
+        # ...
+        neighs = (
+            n.copy()
+            for n in self.target.get_neighbors(self._anchors[0], n=3)
+            if not any(i is n for i in tmp.get_atoms())
+        )
+        idx = 0
+        for n in neighs:
+            n.id = "neigh{}".format(idx)
+            idx += 1
+            tmp.add_atoms(n, residue=tmp.residues[0])
+            tmp.add_bond(self._anchors[0].serial_number, n.serial_number)
+
         for b in bonds:
             b = (b[0].serial_number, b[1].serial_number)
             tmp.add_bond(*b)
@@ -412,9 +432,9 @@ def stitch(
     # =====================
 
     if copy_source:
-        source = deepcopy(source)
+        source = source.copy()
     if copy_target:
-        target = deepcopy(target)
+        target = target.copy()
     __default_keep_keep_stitcher__.apply(
         target=target,
         source=source,

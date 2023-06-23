@@ -15,9 +15,9 @@ PubChem maintains an extensive database of small molecules. _biobuild_ integrate
 Since this database is queried online and not integrated directly in biobuild it requires an internet connection.
 PubChem follows a different atom labelling convention than the CHARMM force field. Hence, many compounds may not be compatible
 with the pre-set patches in _biobuild_ and may thus not work at all or produce erroneous results. To assist in importing 
-PubChem compounds anyway, _biobuild_ provides a function `pubchem_to_cif` that can be used to convert PubChem compound
+PubChem compounds anyway, _biobuild_ provides a function ``pubchem_to_cif`` that can be used to convert PubChem compound
 data into a CIF file which can be more easily edited and subsequently loaded into _biobuild_ using the `PDBECompounds` class
-or using `Molecule.from_cif()`. Also methods such as `Molecule.autolabel()` are designed to assist in the conversion of PubChem
+or using ``Molecule.from_cif()``. Also methods such as ``Molecule.autolabel()`` are designed to assist in the conversion of PubChem
 compounds into CHARMM-compatible molecules.
 
 CHARMM

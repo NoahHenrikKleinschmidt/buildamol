@@ -3,11 +3,7 @@ Classes to handle the atom and residue neighborhoods of a structure
 """
 
 import numpy as np
-from collections import defaultdict
-from typing import Union
-import warnings
 
-import Bio.PDB as bio
 import biobuild.structural.base as base
 
 

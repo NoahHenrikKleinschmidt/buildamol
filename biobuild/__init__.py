@@ -6,3 +6,6 @@ import biobuild.structural as structural
 
 from biobuild.core import *
 from biobuild.resources import *
+
+__version__ = "3.0.1"
+__author__ = "Noah Kleinschmidt"

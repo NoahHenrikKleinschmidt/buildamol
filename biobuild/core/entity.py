@@ -1,5 +1,7 @@
 """
 The base class for classes storing and manipulating biopython structures
+This houses most of the essential functionality of the library for most users. 
+The ``Molecule`` class adds additional features on top. 
 """
 
 from copy import deepcopy
@@ -14,6 +16,7 @@ import biobuild.structural as structural
 import biobuild.utils as utils
 import biobuild.graphs as graphs
 import biobuild.resources as resources
+import biobuild.core.base_classes as base_classes
 
 
 class BaseEntity:
@@ -29,10 +32,10 @@ class BaseEntity:
     """
 
     def __init__(self, structure, model: int = 0):
-        self._base_struct = structure
+        self._base_struct = base_classes.Structure.from_biopython(structure)
         self._id = structure.id
 
-        self._model = self._base_struct.child_dict[model]
+        self._model = self._base_struct.child_list[model]
         if len(self._model.child_list) == 0:
             raise ValueError("The model is empty")
 
@@ -176,6 +179,13 @@ class BaseEntity:
         return self._model
 
     @property
+    def linkage(self):
+        """
+        The patch or recipe to use for attaching other molecules to this one
+        """
+        return self._linkage
+
+    @property
     def patch(self):
         """
         The patch to use for attaching other molecules to this one (synonym for recipe)
@@ -196,6 +206,11 @@ class BaseEntity:
 
     @patch.setter
     def patch(self, value):
+        # self._patch = value
+        self.set_linkage(value)
+
+    @linkage.setter
+    def linkage(self, value):
         # self._patch = value
         self.set_linkage(value)
 
@@ -456,9 +471,34 @@ class BaseEntity:
 
     def copy(self):
         """
-        Create a deepcopy of the molecule/scaffold
+        Create a deepcopy of the molecule
         """
-        return deepcopy(self)
+        new = deepcopy(self)
+        new._base_struct._new_id()
+        new._AtomGraph.clear()
+        for model in new._base_struct.child_list:
+            new._base_struct.child_dict.pop(model.get_id())
+            model._new_id()
+            new._base_struct.child_dict[model.get_id()] = model
+            for chain in model.child_list:
+                model.child_dict.pop(chain.get_id())
+                chain._new_id()
+                model.child_dict[chain.get_id()] = chain
+                for residue in chain.child_list:
+                    chain.child_dict.pop(residue.get_id())
+                    residue._new_id()
+                    chain.child_dict[residue.get_id()] = residue
+                    for atom in residue.child_list:
+                        residue.child_dict.pop(atom.get_id())
+                        atom._new_id()
+                        residue.child_dict[atom.get_id()] = atom
+        new._AtomGraph.add_nodes_from(new.get_atoms())
+        new._AtomGraph.add_edges_from(new.get_bonds())
+        for b in new.get_bonds():
+            new._AtomGraph.edges[b]["bond_order"] = (
+                new._AtomGraph.edges[b].get("bond_order", 0) + 1
+            )
+        return new
 
     def get_attach_residue(self):
         """
@@ -732,16 +772,15 @@ class BaseEntity:
 
         chains = list(self.chains)
         for chain in chains:
-            self._model.child_dict.pop(chain.id)
             chain._id = utils.auxiliary.chain_id_maker(cdx)
-            self._model.child_dict[chain._id] = chain
             cdx += 1
 
             for residue in chain.child_list:
-                chain.child_dict.pop(residue.id)
-                residue._id = (residue.id[0], rdx, *residue.id[2:])
+                # chain.child_dict.pop(residue.id)
+                residue.serial_number = rdx
+                # residue.id = (residue.id[0], rdx, *residue.id[2:])
                 rdx += 1
-                chain.child_dict[residue._id] = residue
+                # chain.child_dict[residue._id] = residue
 
                 for atom in residue.child_list:
                     atom.serial_number = adx
@@ -1137,13 +1176,17 @@ class BaseEntity:
             if p:
                 residue.detach_parent()
             if _copy and p is not None:
-                r = deepcopy(residue)
+                r = residue.copy()
                 residue.set_parent(p)
                 residue = r
 
             rdx += 1
             if adjust_seqid and residue.id[1] != rdx:
-                residue.id = (residue.id[0], rdx, *residue.id[2:])
+                residue.serial_number = rdx
+                # the above line with serial_number works for the
+                # biobuild class derivatives, the below line
+                # is for the original biopython classes
+                # residue.id = (residue.id[0], rdx, *residue.id[2:])
 
             self._chain.add(residue)
 
@@ -1178,7 +1221,7 @@ class BaseEntity:
 
             # keep the memory of the parent in the residue that is removed...
             chain = residue.get_parent()
-            chain.detach_child(residue.id)
+            chain.detach_child(residue.get_id())
             residue.set_parent(chain)
 
             _residues.append(residue)
@@ -1219,12 +1262,13 @@ class BaseEntity:
             Useful when giving a possibly redundant id as identifier in multi-residue molecules.
         """
         atom = self.get_atom(atom, residue=residue)
-        p = atom.get_parent()
-        _old = atom.id
+        # p = atom.get_parent()
+        # _old = atom.id
         atom.id = name
-        if p:
-            p.child_dict.pop(_old)
-            p.child_dict[name] = atom
+        atom.name = name
+        # if p:
+        #     p.child_dict.pop(_old)
+        #     p.child_dict[name] = atom
 
     def add_atoms(self, *atoms: bio.Atom.Atom, residue=None, _copy: bool = False):
         """
@@ -1286,7 +1330,7 @@ class BaseEntity:
             self._purge_bonds(atom)
             p = atom.get_parent()
             if p:
-                p.detach_child(atom.id)
+                p.detach_child(atom.get_id())
                 atom.set_parent(
                     p
                 )  # this is necessary to avoid a bug where atoms remain longer in the memory atoms list than they should
@@ -1800,7 +1844,7 @@ class BaseEntity:
             Path to the CIF file
         """
         io = bio.MMCIFIO()
-        io.set_structure(self._base_struct)
+        io.set_structure(self._base_struct.to_biopython())
         io.save(filename)
         utils.cif.write_bond_table(self, filename)
         with open(filename, "r") as f:
@@ -1926,7 +1970,7 @@ class BaseEntity:
             self._AtomGraph.remove_node(atom)
             self._purge_bonds(atom)
             p = atom.get_parent()
-            p.detach_child(atom.id)
+            p.detach_child(atom.get_id())
             atom.set_parent(p)
 
         # reindex the atoms

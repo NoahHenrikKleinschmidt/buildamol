@@ -2,22 +2,22 @@
 Linkage definitions
 ===================
 
-A linkage is a connection between two molecules. At its core each linkage simply defines two atoms that should be connected,
-and what atoms to remove in the process - if any. It is a "pseudo" chemical reaction, so to speak. 
+A linkage is a connection between two _molecules_. At its core each linkage simply defines two atoms that should be connected,
+and what atoms to remove in the process. It is a "pseudo" chemical reaction, so to speak. 
 
 Building on the CHARMM force field, biobuild distinguishes two kinds of linkages: patches and recipies.
 
 A **patch** is a linkage that can be applied purely geometrically and does not require numeric optimization. This is because a 
 patch includes geometric data in form of _internal coordinates_ of the atoms in the immediate vicinity of the newly formed bond.
-Using this data, biobuild is able to attach molecule to one another through simple matrix transformations.
+Using this data, biobuild is able to attach molecule to one another through simple matrix transformations. Conesquently, patches
+are the most efficient way to connect molecules and are preferable to **recipes** - the other type of linkage.
 
 A **recipe** on the other hand is a linkage that requires numeric optimization. This is because a recipe does not include any
-geometric data, but only the atoms that should be connected. The numeric optimization is then used to find the optimal conformation.
-This is useful for most users who wish to define their own linkage types, but who will likely not wish to define the detailed geometry -
-if it is even known beforehand.
+geometric data, but only the atoms that should be connected. The numeric optimization is then used to find the optimal (or at least suitable) conformation.
+This is useful for most users who wish to define their own linkage types, but who will likely not wish to painstakingly define the detailed geometry of angles and dihedrals of the atom neighborhood.
 
-The distinction between patches and recipies is formal, as both are represented by the `Linkage` class. However, there are functional
-wrappers available to create either a patch or recipe, respectively, which require different arguments.
+The distinction between patches and recipies is purely nominal, as both are represented by the `Linkage` class. However, there are functional
+wrappers available to create either a patch or recipe, respectively, which require different arguments (to make sure they are not forgotten and to make the code more readable).
 
 .. code-block:: python
 
@@ -27,8 +27,8 @@ wrappers available to create either a patch or recipe, respectively, which requi
     my_link = recipe(
         atom1 = "C1",
         atom2 = "O4",
-        delete_in_target = ("O1", "HO1"),
-        delete_in_source = ("HO4",),
+        delete_in_target = ["O1", "HO1"],
+        delete_in_source = ["HO4"],
         id = "my_link"
     )
 
@@ -45,10 +45,10 @@ biobuild comes with a number of pre-defined patches from the CHARMM force field.
     patches = resources.available_patches()
 
     # Check for a specific patch
-    resources.has_patch("my_patch")
+    resources.has_patch("some_patch")
 
     # Get a specific patch
-    my_patch = resources.get_patch("my_patch")
+    my_patch = resources.get_patch("some_patch")
 
 A custom linkage can be added to the list of pre-defined patches by using the `add_patch` function:
 
@@ -60,7 +60,7 @@ A custom linkage can be added to the list of pre-defined patches by using the `a
 .. note::
 
     Despite the use of "patch" in the function nomenclature, there is no difference between a patch and a recipe in terms of
-    how they are used. The distinction is purely formal. Patches and Recipies are represented by the same data class and thus behave identically.
+    how they are used. Patches and Recipies are represented by the same data class and thus behave identically.
     Hence, there are also functional wrappers with the "linkage" available
     that can be used instead (if a user feels more comfortable with this) - they perform the same function.
 
@@ -78,6 +78,23 @@ A custom linkage can be added to the list of pre-defined patches by using the `a
         # etc.
 
 
+Pre-defined patches can be accessed directly by their `id` and need not be obtained first through the `resources` module. They can be directly passed
+to the ``Molecule``'s ``attach`` method or any other function that requires a linkage:
+
+.. code-block:: python
+
+    import biobuild as bb 
+
+    mol1 = bb.read_pdb("my_molecule.pdb")
+    mol2 = bb.read_pdb("my_other_molecule.pdb")
+
+    # Attach mol2 to mol1 using the pre-defined patch "some_patch"
+    mol1.attach(mol2, "some_patch")
+
+    # works the same as doing
+    some_patch = bb.get_patch("some_patch")
+    mol1.attach(mol2, some_patch)
+    
 
 """
 
