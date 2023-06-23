@@ -108,6 +108,13 @@ def molecule(mol: str) -> "Molecule":
     -------
     molecule : Molecule
         The generated molecule
+
+    Examples
+    --------
+    >>> from biobuild import molecule
+    >>> mol = molecule("GLC")
+    >>> mol = molecule("GLC.pdb")
+    >>> mol = molecule("alpha-d-glucose")
     """
     if isinstance(mol, bio.Structure.Structure):
         return Molecule(mol)

@@ -1,5 +1,45 @@
 """
-Wrapper classes for the Biopython classes to make them more convenient to use.
+The base_classes are deriviatives of the original Biopython classes, but with
+the change that they use a UUID4 as their identifier (full_id) instead of a hierarchical
+tuple. This makes each object unique and allows for easy comparison where `a == b` is akin to `a is b`.
+Consequently, the `__hash__` method is overwritten to use the UUID4 as the hash.
+
+.. warning::
+    
+    Each class has its own `copy` method that returns a deep copy of the object with a new UUID4. So `a.copy() == a` is `False`, while a standard `deepcopy(a) == a` is `True` since the UUID4 will not have been updated automatically.
+
+Converting to and from `biopython`
+----------------------------------
+
+Each biobuild class can be generated from a biopython class using the `from_biopython` class method. And each biobuild class has a `to_biopython` method that returns the pure-biopython equivalent.
+It is important to note, that for most purposes, however, the biobuild classes should work fine as trop-in replacements for the original biopython classes. 
+
+.. code-block:: python
+
+    import Bio.PDB as bio
+    from biobuild.core.base_classes import Atom
+
+    bio_atom = bio.Atom("CA", (0, 0, 0))
+    atom = Atom.from_biopython(bio_atom)
+
+    assert atom == bio_atom # False since atom uses a UUID4 as its identifier
+    assert atom.to_biopython() == bio_atom # True 
+
+The conversion from and to biopython works hierarchically, so if an entire biopython structure is converted to biobuild
+then all atoms, residues, chains and models will be converted to their biobuild equivalents.
+
+.. code-block:: python
+
+    import Bio.PDB as bio
+    from biobuild.core.base_classes import Structure
+
+    bio_structure = bio.PDBParser().get_structure("test", "test.pdb")
+    structure = Structure.from_biopython(bio_structure)
+
+    atoms = list(structure.get_atoms())
+    bio_atoms = list(bio_structure.get_atoms())
+    assert len(atoms) == len(bio_atoms) # True
+    
 """
 from copy import deepcopy
 from uuid import uuid4
