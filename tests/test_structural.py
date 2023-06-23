@@ -1181,3 +1181,6 @@ def test_autolabel():
     refs = set((i.id) for i in ref.get_atoms())
     mols = set((i.id) for i in mol.get_atoms())
     assert refs == mols
+
+    for atom in mol.get_atoms():
+        assert atom.id == atom.full_id[-1][0]
