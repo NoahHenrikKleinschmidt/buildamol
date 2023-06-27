@@ -659,6 +659,10 @@ def fill_missing_atoms(structure, _topology=None, _compounds=None):
         - `Bio.PDB.Model`
         - `Bio.PDB.Chain`
         - `Bio.PDB.Residue`
+        - `biobuild.Structure`
+        - `biobuild.Model`
+        - `biobuild.Chain`
+        - `biobuild.Residue`
 
     _topology
         A specific topology to use for references.
@@ -754,6 +758,7 @@ def impute_atom_from_IC(atom, residue, abstract):
     # create the new atom
     _new_atom = atom.to_biopython()
     _new_atom.set_coord(_coord)
+    _new_atom.serial_number = len(residue) + 1
 
     # add the new atom to the residue
     residue.add(_new_atom)
