@@ -6,6 +6,63 @@ from typing import Union, NamedTuple
 import attr
 import Bio.PDB as bio
 import numpy as np
+import biobuild.utils.ic as ic
+
+
+def make_abstract_residues(mol: "Molecule") -> list:
+    """
+    Make AbstractResidues that can be used for IC-guided atom imputation from a Molecule.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to make abstract residues for.
+
+    Returns
+    -------
+    list
+        A list of AbstractResidues.
+    """
+    already_seen = set()
+    abstract_residues = []
+    for residue in mol.residues:
+        if residue.resname in already_seen:
+            continue
+        already_seen.add(residue.resname)
+        abstract = AbstractResidue(residue.resname)
+
+        for atom in residue.child_list:
+            a = AbstractAtom(atom.id, element=atom.element)
+            abstract.add_atom(a)
+
+        for a, b in mol.get_bonds(residue):
+            a = abstract.get_atom(a.id)
+            b = abstract.get_atom(b.id)
+            abstract.add_bond(AbstractBond(a, b))
+
+        for quartet in mol.atom_quartets:
+            if all(i in residue.child_list for i in quartet.atoms):
+                atom1 = abstract.get_atom(quartet.atom1.id)
+                atom2 = abstract.get_atom(quartet.atom2.id)
+                atom3 = abstract.get_atom(quartet.atom3.id)
+                atom4 = abstract.get_atom(quartet.atom4.id)
+                abstract.add_internal_coordinates(
+                    ic.InternalCoordinates(
+                        atom1,
+                        atom2,
+                        atom3,
+                        atom4,
+                        quartet.bond_length_12,
+                        quartet.bond_length_34,
+                        quartet.bond_angle_123,
+                        quartet.bond_angle_234,
+                        quartet.dihedral,
+                        None,
+                        quartet.improper,
+                    )
+                )
+        abstract_residues.append(abstract)
+    return abstract_residues
 
 
 class AbstractEntity:
@@ -150,11 +207,11 @@ class AbstractEntity_with_IC(AbstractEntity):
                 continue
             ids.update(ic.ids)
         return ids
-    
+
     @property
     def has_IC(self):
         return len(self.internal_coordinates) > 0
-    
+
     def add_internal_coordinates(self, ic):
         """
         Add an internal coordinate to the residue
@@ -410,7 +467,7 @@ class AbstractBond:
 
     def __repr__(self):
         return f"AbstractBond({self.atom1.id}, {self.atom2.id})"
-   
+
 
 @attr.s
 class AbstractAngle:
