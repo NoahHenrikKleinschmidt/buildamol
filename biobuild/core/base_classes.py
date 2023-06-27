@@ -292,6 +292,11 @@ class Residue(ID, bio.Residue.Residue):
             new.add(atom.to_biopython())
         return new
 
+    def add(self, atom):
+        if not isinstance(atom, Atom):
+            atom = Atom.from_biopython(atom)
+        bio.Residue.Residue.add(self, atom)
+
     def __repr__(self):
         return f"Residue({self.resname}, {self.serial_number}, chain={self.parent.id if self.parent else None})"
 
@@ -339,6 +344,11 @@ class Chain(ID, bio.Chain.Chain):
     @full_id.setter
     def full_id(self, value):
         pass
+
+    def add(self, residue):
+        if not isinstance(residue, Residue):
+            residue = Residue.from_biopython(residue)
+        bio.Chain.Chain.add(self, residue)
 
     @classmethod
     def from_biopython(cls, chain) -> "Chain":
@@ -437,6 +447,11 @@ class Model(bio.Model.Model, ID):
     @full_id.setter
     def full_id(self, value):
         pass
+
+    def add(self, chain):
+        if not isinstance(chain, Chain):
+            chain = Chain.from_biopython(chain)
+        bio.Model.Model.add(self, chain)
 
     @classmethod
     def from_biopython(cls, model):
