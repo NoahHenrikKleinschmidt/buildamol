@@ -196,7 +196,7 @@ def has_patch(name: str) -> bool:
     bool
         `True` if the patch is defined, `False` otherwise
     """
-    return name in get_default_topology().patches
+    return get_default_topology().has_patch(name)
 
 
 has_linkage = has_patch
@@ -234,6 +234,54 @@ def add_patch(patch, overwrite: bool = False):
 
 
 add_linkage = add_patch
+
+
+def has_residue(name: str) -> bool:
+    """
+    Check if a residue is defined in the CHARMM topology file.
+
+    Parameters
+    ----------
+    name: str
+        The name of the residue
+
+    Returns
+    -------
+    bool
+        `True` if the residue is defined, `False` otherwise
+    """
+    return get_default_topology().has_residue(name)
+
+
+def in_charmm_topology(name: str) -> bool:
+    """
+    Check if a residue or patch is defined in the CHARMM topology file.
+
+    Parameters
+    ----------
+    name: str
+        The name of the residue or patch
+
+    Returns
+    -------
+    bool
+        `True` if the residue or patch is defined, `False` otherwise
+    """
+    has_patch = get_default_topology().has_patch(name)
+    has_residue = get_default_topology().has_residue(name)
+    return has_patch or has_residue
+
+
+def available_residues():
+    """
+    Get a list of available residues.
+
+    Returns
+    -------
+    list
+        A list of available residues
+    """
+    return get_default_topology().residues
 
 
 def restore_default_topology():
@@ -914,8 +962,10 @@ __all__ = [
     "set_default_topology",
     "restore_default_topology",
     "has_patch",
+    "has_residue",
     "available_patches",
     "available_linkages",
+    "available_residues",
     "add_patch",
     "add_linkage",
     "has_linkage",
