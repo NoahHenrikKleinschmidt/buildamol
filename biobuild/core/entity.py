@@ -1005,7 +1005,7 @@ class BaseEntity:
                 "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
             )
 
-        return next(_atom)
+        return next(_atom, None)
 
     def get_bonds(
         self,
@@ -1123,7 +1123,7 @@ class BaseEntity:
         if chain is not None:
             chain = self.get_chain(chain)
             _residue = (i for i in _residue if i.get_parent() == chain)
-        return next(_residue)
+        return next(_residue, None)
 
     def get_chain(self, chain: str):
         """
@@ -1144,7 +1144,7 @@ class BaseEntity:
                 return chain
             else:
                 return self.get_chain(chain.id)
-        return next(i for i in self.chains if i.id == chain)
+        return next((i for i in self.chains if i.id == chain), None)
 
     def add_residues(
         self,
@@ -1326,6 +1326,8 @@ class BaseEntity:
         _atoms = []
         for atom in atoms:
             atom = self.get_atom(atom)
+            if not atom:
+                continue
             self._AtomGraph.remove_node(atom)
             self._purge_bonds(atom)
             p = atom.get_parent()
@@ -1360,6 +1362,11 @@ class BaseEntity:
         """
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
+
+        if not atom1:
+            raise ValueError("Atom1 not found!")
+        if not atom2:
+            raise ValueError("Atom2 not found!")
 
         # if (atom1, atom2) not in self._bonds:
         self._bonds.append((atom1, atom2))
@@ -1883,6 +1890,10 @@ class BaseEntity:
             If None, the default compounds object is used.
         """
         structural.fill_missing_atoms(self._base_struct, _topology, _compounds)
+        for atom in self._base_struct.get_atoms():
+            if atom not in self._AtomGraph:
+                self._AtomGraph.add_node(atom)
+        self.infer_bonds()
 
     def _get_bonds(
         self,
