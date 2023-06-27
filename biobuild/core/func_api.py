@@ -93,7 +93,7 @@ def read_smiles(smiles: str, id: str = None) -> "Molecule.Molecule":
     return Molecule.from_smiles(smiles, id=id)
 
 
-def molecule(mol: str) -> "Molecule":
+def molecule(mol: str) -> "Molecule.Molecule":
     """
     Generate a molecule from an input string. This string can be a PDB id, filename, SMILES or InChI string, IUPAC name or abbreviation.
     This function will try its best to automatically generate the molecule with minimal user effort. However, using a dedicated class method is
