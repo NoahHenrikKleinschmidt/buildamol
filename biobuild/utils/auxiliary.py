@@ -88,6 +88,30 @@ def chain_id_maker(cdx: int):
         return chain_id_maker(cdx // 26 - 1) + chain_id_maker(cdx % 26)
 
 
+def make_formula(atoms):
+    """
+    Make a chemical formula from a list of atoms
+
+    Parameters
+    ----------
+    atoms : list of Atoms
+        The atoms. Each atom must have an element attribute (str).
+
+    Returns
+    -------
+    str
+        The chemical formula
+    """
+    formula = {}
+    for atom in atoms:
+        e = atom.element.title()
+        if e in formula:
+            formula[e] += 1
+        else:
+            formula[e] = 1
+    return "".join([f"{atom}{formula[atom]}" for atom in sorted(formula.keys())])
+
+
 def remove_nonprintable(text):
     """
     Remove non-printable characters from a string

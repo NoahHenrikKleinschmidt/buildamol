@@ -116,6 +116,58 @@ class BaseEntity:
                 raise e
 
     @classmethod
+    def from_json(cls, filename: str):
+        """
+        Load a Molecule from a JSON file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the JSON file
+        """
+        _dict = utils.json.read(filename)
+        _struct = base_classes.Structure(_dict["id"])
+        structure_dict = _dict["structure"]
+
+        model = base_classes.Model(structure_dict["model"]["id"])
+        _struct.add(model)
+
+        chain_dict = {}
+        for chain in structure_dict["chains"]["id"]:
+            chain = base_classes.Chain(chain)
+            model.add(chain)
+            chain_dict[chain.id] = chain
+
+        residue_dict = {}
+        for i in range(len(structure_dict["residues"]["serial"])):
+            residue = base_classes.Residue(
+                structure_dict["residues"]["name"][i],
+                " ",
+                structure_dict["residues"]["serial"][i],
+            )
+            parent = chain_dict[structure_dict["residues"]["parent"][i]]
+            parent.add(residue)
+            residue_dict[residue.serial_number] = residue
+
+        for i in range(len(structure_dict["atoms"]["serial"])):
+            atom = base_classes.Atom(
+                id=structure_dict["atoms"]["id"][i],
+                coord=np.array(structure_dict["atoms"]["coords_3d"][i]),
+                serial_number=structure_dict["atoms"]["serial"][i],
+                element=structure_dict["atoms"]["element"][i],
+            )
+            parent = residue_dict[structure_dict["atoms"]["parent"][i]]
+            parent.add(atom)
+
+        new = cls(_struct)
+        for bond, order in zip(
+            structure_dict["bonds"]["serial"], structure_dict["bonds"]["order"]
+        ):
+            for i in range(order):
+                new.add_bond(bond[0], bond[1])
+        return new
+
+    @classmethod
     def from_rdkit(cls, mol, id: str = None):
         """
         Load a Molecule from an RDKit molecule
@@ -807,6 +859,9 @@ class BaseEntity:
     def get_chains(self):
         return self._model.get_chains()
 
+    def get_models(self):
+        return self._base_struct.get_models()
+
     def get_residues(
         self,
         *residues: Union[int, str, tuple, bio.Residue.Residue],
@@ -1325,18 +1380,19 @@ class BaseEntity:
         """
         _atoms = []
         for atom in atoms:
-            atom = self.get_atom(atom)
-            if not atom:
+            _atom = self.get_atoms(atom)
+            if len(_atom) == 0:
                 continue
-            self._AtomGraph.remove_node(atom)
-            self._purge_bonds(atom)
-            p = atom.get_parent()
-            if p:
-                p.detach_child(atom.get_id())
-                atom.set_parent(
-                    p
-                )  # this is necessary to avoid a bug where atoms remain longer in the memory atoms list than they should
-            _atoms.append(atom)
+            for atom in _atom:
+                self._AtomGraph.remove_node(atom)
+                self._purge_bonds(atom)
+                p = atom.get_parent()
+                if p:
+                    p.detach_child(atom.get_id())
+                    atom.set_parent(
+                        p
+                    )  # this is necessary to avoid a bug where atoms remain longer in the memory atoms list than they should
+                _atoms.append(atom)
 
         # reindex the atoms
         adx = 0
@@ -1685,7 +1741,7 @@ class BaseEntity:
         list
             A list of tuples of atom pairs that are bonded
         """
-        bonds = structural.apply_standard_bonds(self._base_struct, _topology)
+        bonds = structural.apply_reference_bonds(self._base_struct, _topology)
         to_add = [b for b in bonds if b not in self.bonds]
         self._bonds.extend(to_add)
         self._AtomGraph.add_edges_from(to_add)
@@ -1859,6 +1915,21 @@ class BaseEntity:
         content = utils.remove_nonprintable(content)
         with open(filename, "w") as f:
             f.write(content)
+
+    def to_json(self, filename: str, names: list = None, identifiers: list = None):
+        """
+        Write the molecule to a JSON file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the JSON file
+        names : list
+            A list of names of the molecules to be written to the JSON file.
+        identifiers : list
+            A list of identifiers of the molecules to be written to the JSON file (e.g. SMILES, InChI, etc.).
+        """
+        utils.json.write(self, filename, names, identifiers)
 
     def to_rdkit(self):
         """
@@ -2104,7 +2175,7 @@ if __name__ == "__main__":
     # e.get_residue_connections()
     # pass
 
-    BaseEntity.from_pdb("/Users/noahhk/GIT/biobuild/docs/_tutorials/testmol22.pdb")
+    BaseEntity.from_json("man.json").show()
 
     # import biobuild as bb
 

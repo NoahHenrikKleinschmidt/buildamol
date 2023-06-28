@@ -135,6 +135,8 @@ def molecule(mol: str) -> "Molecule.Molecule":
             return Molecule.from_cif(mol)
         elif mol.endswith(".pkl"):
             return Molecule.load(mol)
+        elif mol.endswith(".json"):
+            return Molecule.from_json(mol)
 
     try:
         return Molecule.from_pubchem(mol)
