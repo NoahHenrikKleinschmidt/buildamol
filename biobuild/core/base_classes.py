@@ -273,7 +273,7 @@ class Residue(ID, bio.Residue.Residue):
         Residue
             The converted residue
         """
-        new = cls(residue.id, residue.segid, residue.icode)
+        new = cls(residue.id[0], residue.id[1], residue.id[-1])
         for atom in residue.get_atoms():
             new.add(Atom.from_biopython(atom))
         return new
