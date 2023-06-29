@@ -498,11 +498,12 @@ class PDBECompounds:
         Returns
         -------
         object
-            The object that matches the given criteria.
+            The object that matches the given criteria, or None if no match was found.
+            If multiple matches are found, a list of objects is returned.
         """
         _dict = self._get(query, by)
         if len(_dict.keys()) == 0:
-            raise ValueError(f"No compound found for query '{query}'.")
+            return None
         elif len(_dict.keys()) > 1:
             return [self.get(i, "id", return_type) for i in _dict.keys()]
 
@@ -519,6 +520,50 @@ class PDBECompounds:
             return res
         else:
             raise ValueError(f"Invalid return_type '{return_type}'.")
+
+    def add(
+        self,
+        mol: Molecule,
+        names: list = None,
+        identifiers: list = None,
+        formula: str = None,
+        one_letter_code: str = None,
+        three_letter_code: str = None,
+    ):
+        """
+        Add a compound to the dictionary.
+
+        Parameters
+        ----------
+        mol : Molecule
+            The compound to add.
+        names : list, optional
+            A list of names for the compound.
+        identifiers : list, optional
+            A list of identifiers such as SMILES or InChI for the compound.
+        formula : str, optional
+            The formula of the compound. If not given, it will be calculated from the molecule.
+        """
+        if names is None:
+            names = []
+        if identifiers is None:
+            identifiers = []
+        if formula is None:
+            formula = aux.make_formula(mol.get_atoms())
+
+        # get the residue
+        comp = {
+            "names": set(i.lower() for i in names),
+            "formula": formula,
+            "descriptors": identifiers,
+        }
+        comp["names"].add(mol.id.lower())
+        comp["one_letter_code"] = one_letter_code
+        comp["three_letter_code"] = three_letter_code
+        self._compounds[mol.id] = comp
+
+        pdb = {"mol": mol.copy()}
+        self._pdb[mol.id] = pdb
 
     def remove(self, id: str) -> None:
         """
@@ -574,7 +619,7 @@ class PDBECompounds:
         new = []
         for i in ids:
             i = self.get(i, "id", "dict")
-            i = i.get("one_letter_code")
+            i = i.get("one_letter_code", None)
             if i is None:
                 i = "X"
             new.append(i)
@@ -598,7 +643,7 @@ class PDBECompounds:
         new = []
         for i in ids:
             i = self.get(i, "id", "dict")
-            i = i.get("three_letter_code")
+            i = i.get("three_letter_code", None)
             if i is None:
                 i = "XXX"
             new.append(i)
@@ -760,6 +805,7 @@ class PDBECompounds:
                     ],
                     "orders": np.array(bonds["value_order"]),
                 },
+                "mol": None,
             }
             self._pdb[key] = pdb
 
@@ -777,9 +823,14 @@ class PDBECompounds:
         Molecule
             A biobuild Molecule.
         """
+        pdb = self._pdb[compound["id"]]
+
+        # if we already have a molecule, just return it
+        if pdb.get("mol", None) is not None:
+            return pdb["mol"].copy()
+
         struct = self._make_structure(compound)
         mol = Molecule(struct)
-        pdb = self._pdb[compound["id"]]
         for bdx in range(len(pdb["bonds"]["bonds"])):
             bond = pdb["bonds"]["bonds"][bdx]
             for _ in range(_bond_order_rev_map.get(pdb["bonds"]["orders"][bdx])):
@@ -798,11 +849,15 @@ class PDBECompounds:
 
         Returns
         -------
-        bio.PDB.Structure
+        biobuild.Structure
             A structure.
         """
         if len(compound) == 0:
             return None
+
+        pdb = self._pdb[compound["id"]]
+        if pdb.get("mol", None) is not None:
+            return pdb["mol"].copy().structure
 
         struct = bio.Structure.Structure(compound["id"])
         model = bio.Model.Model(0)
@@ -829,6 +884,15 @@ class PDBECompounds:
         pdb = self._pdb.get(compound["id"], None)
         if pdb is None:
             raise ValueError("No pdb data for compound.")
+
+        if pdb.get("mol", None) is not None:
+            if len(pdb["mol"].residues) > 1:
+                raise ValueError(
+                    "Cannot fill residue with atoms from a compound with multiple residues."
+                )
+            for atom in pdb["mol"].get_atoms():
+                residue.add(atom.copy())
+            return
 
         atoms = pdb["atoms"]
         for i in range(len(atoms["ids"])):
