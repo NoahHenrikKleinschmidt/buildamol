@@ -1929,7 +1929,7 @@ class BaseEntity:
         identifiers : list
             A list of identifiers of the molecules to be written to the JSON file (e.g. SMILES, InChI, etc.).
         """
-        utils.json.write(self, filename, names, identifiers)
+        utils.json.write_molecule(self, filename, names, identifiers)
 
     def to_rdkit(self):
         """
