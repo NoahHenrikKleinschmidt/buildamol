@@ -4,6 +4,7 @@ Abstract classes for storing force field data from CHARMM topology and parameter
 
 import attr
 
+
 @attr.s
 class InternalCoordinates:
     """
@@ -51,6 +52,23 @@ class InternalCoordinates:
     dihedral = attr.ib(type=float, repr=False)
     bond_length_13 = attr.ib(default=None, type=float, repr=False)
     improper = attr.ib(default=False, type=bool, repr=False)
+
+    @classmethod
+    def _from_dict(cls, _dict):
+        """
+        Make an InternalCoordinate from a JSON dictionary
+        """
+        new = cls(
+            *_dict["atoms"],
+            bond_length_12=_dict["bond_length_12"],
+            bond_length_34=_dict["bond_length_34"],
+            bond_angle_123=_dict["bond_angle_123"],
+            bond_angle_234=_dict["bond_angle_234"],
+            dihedral=_dict["dihedral"],
+            bond_length_13=_dict["bond_length_13"],
+            improper=_dict["improper"],
+        )
+        return new
 
     @property
     def angles(self):

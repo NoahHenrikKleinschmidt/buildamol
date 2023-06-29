@@ -284,6 +284,43 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         super().__init__(id)
         self._delete_ids = []
 
+    @classmethod
+    def from_json(cls, filename: str):
+        """
+        Make a new `Linkage` instance from a JSON file.
+
+        Parameters
+        ----------
+        filename : str
+            The JSON filename.
+        """
+        _dict = utils.json.read(filename)
+        return cls._from_dict(_dict)
+
+    @classmethod
+    def _from_dict(cls, _dict):
+        """
+        Make a new `Linkage` instance from a JSON dictionary.
+
+        Parameters
+        ----------
+        _dict : dict
+            The JSON dictionary.
+        """
+        new = cls(id=_dict["id"])
+        new.add_bond(
+            (_dict["bond"]["target"], _dict["bond"]["source"]),
+        )
+        for i in _dict["to_delete"]["target"]:
+            new.add_delete(i, "target")
+        for i in _dict["to_delete"]["source"]:
+            new.add_delete(i, "source")
+        for i in _dict["ics"]:
+            new.add_internal_coordinates(
+                utils.ic.InternalCoordinates._from_dict(i),
+            )
+        return new
+
     @property
     def deletes(self):
         """
@@ -335,6 +372,17 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
 
     add_id_to_delete = add_delete
 
+    def to_json(self, filename: str):
+        """
+        Write the `Linkage` instance to a JSON file.
+
+        Parameters
+        ----------
+        filename : str
+            The JSON filename.
+        """
+        utils.json.write_linkage(self, filename)
+
 
 def _dict_to_ics(_dict):
     """
@@ -353,3 +401,12 @@ def _dict_to_ics(_dict):
                 "The internal coordinate must be provided as a tuple of five values."
             )
         ics.append(ic)
+
+    return ics
+
+
+if __name__ == "__main__":
+    link = linkage("C1", "O4", ["H1"], ["HO4"])
+    link.to_json("link.json")
+    link2 = Linkage.from_json("link.json")
+    pass

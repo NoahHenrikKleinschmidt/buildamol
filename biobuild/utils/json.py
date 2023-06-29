@@ -6,12 +6,8 @@ import json
 import numpy as np
 import biobuild.utils.auxiliary as aux
 
-
-def base_dict() -> dict:
-    """
-    The basic dictionary structure
-    """
-    _dict = {
+DICTS = {
+    "molecule": {
         "id": None,
         "names": [],
         "identifiers": [],
@@ -41,8 +37,37 @@ def base_dict() -> dict:
                 "id": None,
             },
         },
-    }
-    return _dict
+    },
+    "linkage": {
+        "id": None,
+        "bond": {
+            "target": None,
+            "source": None,
+        },
+        "to_delete": {
+            "target": [],
+            "source": [],
+        },
+        "ics": [],
+    },
+    "ic": {
+        "atoms": [],
+        "improper": False,
+        "bond_angle_123": None,
+        "bond_angle_234": None,
+        "dihedral": None,
+        "bond_length_12": None,
+        "bond_length_34": None,
+        "bond_length_13": None,
+    },
+}
+
+
+def get_dict(key: str) -> dict:
+    """
+    Get the basic dictionary structure for a given key
+    """
+    return dict(DICTS[key])
 
 
 class NpEncoder(json.JSONEncoder):
@@ -62,7 +87,51 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 
-def encode(
+def encode_linkage(link: "Linkage"):
+    """
+    Encode a Linkage into a dictionary
+    """
+    _dict = get_dict("linkage")
+    _dict["id"] = link.id
+    a, b = link.bonds[0]
+    a = getattr(a, "id", a)
+    b = getattr(b, "id", b)
+    if a.startswith("2") and b.startswith("1"):
+        a, b = b, a
+    _dict["bond"]["target"] = a
+    _dict["bond"]["source"] = b
+
+    for i in link.deletes[0]:
+        i = getattr(i, "id", i)
+        _dict["to_delete"]["target"].append(i)
+    for i in link.deletes[1]:
+        i = getattr(i, "id", i)
+        _dict["to_delete"]["source"].append(i)
+
+    if link.has_IC:
+        for ic in link.internal_coordinates:
+            _dict["ics"].append(encode_ic(ic))
+
+    return _dict
+
+
+def encode_ic(ic: "InternalCoordinates"):
+    """
+    Encode an InternalCoordinates object into a dictionary
+    """
+    _dict = get_dict("ic")
+    _dict["atoms"] = [getattr(i, "id", i) for i in ic.atoms]
+    _dict["improper"] = ic.improper
+    _dict["bond_angle_123"] = ic.bond_angle_123
+    _dict["bond_angle_234"] = ic.bond_angle_234
+    _dict["dihedral"] = ic.dihedral
+    _dict["bond_length_12"] = ic.bond_length_12
+    _dict["bond_length_34"] = ic.bond_length_34
+    _dict["bond_length_13"] = ic.bond_length_13
+    return _dict
+
+
+def encode_molecule(
     mol: "Molecule", names: list = None, identifiers: list = None, formula: str = None
 ) -> dict:
     """
@@ -84,7 +153,7 @@ def encode(
     dict
         The encoded molecule
     """
-    _dict = base_dict()
+    _dict = get_dict("molecule")
     _dict["id"] = mol.id
     _dict["names"] = names or []
     _dict["identifiers"] = identifiers or []
@@ -141,6 +210,32 @@ def encode(
     return _dict
 
 
+def encode(obj, **kwargs):
+    """
+    Encode an object into a dictionary
+
+    Parameters
+    ----------
+    obj : object
+        The object to encode
+    kwargs : dict
+        Additional keyword arguments to pass to the encoder
+
+    Returns
+    -------
+    dict
+        The encoded object
+    """
+    if type(obj).__name__ == "Molecule":
+        return encode_molecule(obj, **kwargs)
+    elif type(obj).__name__ == "Linkage":
+        return encode_linkage(obj)
+    elif type(obj).__name__ == "InternalCoordinates":
+        return encode_ic(obj)
+    else:
+        raise TypeError(f"Cannot encode object of type {type(obj)} into a dictionary")
+
+
 def read(filename: str) -> dict:
     """
     Read a molecule from a JSON file
@@ -159,6 +254,31 @@ def read(filename: str) -> dict:
 
 
 def write(
+    obj,
+    filename: str,
+    **kwargs,
+):
+    """
+    Write a molecule to a JSON file
+
+    Parameters
+    ----------
+    obj : object
+        The object to encode
+    filename : str
+        The name of the file to write
+    kwargs : dict
+        Additional keyword arguments to pass to the encoder
+    """
+    json.dump(
+        encode(obj, **kwargs),
+        open(filename, "w"),
+        indent=4,
+        cls=NpEncoder,
+    )
+
+
+def write_molecule(
     mol: "Molecule",
     filename: str,
     names: list = None,
@@ -171,14 +291,48 @@ def write(
     Parameters
     ----------
     mol : Molecule
-        The molecule to write
+        The molecule to encode
     filename : str
-        The name of the file to write to
+        The name of the file to write
     names : list, optional
         A list of additional names of the molecules.
     identifiers : list, optional
         A list of additional identifiers of the molecules (e.g. InChI).
+    formula : str, optional
+        The molecular formula of the molecule. By default this is inferred from the molecule's atoms.
     """
     json.dump(
-        encode(mol, names, identifiers), open(filename, "w"), indent=4, cls=NpEncoder
+        encode_molecule(mol, names, identifiers, formula),
+        open(filename, "w"),
+        indent=4,
+        cls=NpEncoder,
     )
+
+
+def write_linkage(link: "Linkage", filename: str):
+    """
+    Write a linkage to a JSON file
+
+    Parameters
+    ----------
+    link : Linkage
+        The linkage to encode
+    filename : str
+        The name of the file to write
+    """
+    json.dump(
+        encode_linkage(link),
+        open(filename, "w"),
+        indent=4,
+        cls=NpEncoder,
+    )
+
+
+if __name__ == "__main__":
+    import biobuild as bb
+
+    man = bb.molecule("MAN")
+    man.to_json("man.json")
+
+    link = bb.get_linkage("14bb")
+    write_linkage(link, "link.json")
