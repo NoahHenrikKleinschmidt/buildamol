@@ -2,67 +2,10 @@
 Abstract classes for storing force field data from CHARMM topology and parameter files
 """
 
-from typing import Union, NamedTuple
+from typing import Union
 import attr
 import Bio.PDB as bio
 import numpy as np
-import biobuild.utils.ic as ic
-
-
-def make_abstract_residues(mol: "Molecule") -> list:
-    """
-    Make AbstractResidues that can be used for IC-guided atom imputation from a Molecule.
-
-    Parameters
-    ----------
-    mol : Molecule
-        The molecule to make abstract residues for.
-
-    Returns
-    -------
-    list
-        A list of AbstractResidues.
-    """
-    already_seen = set()
-    abstract_residues = []
-    for residue in mol.residues:
-        if residue.resname in already_seen:
-            continue
-        already_seen.add(residue.resname)
-        abstract = AbstractResidue(residue.resname)
-
-        for atom in residue.child_list:
-            a = AbstractAtom(atom.id, element=atom.element)
-            abstract.add_atom(a)
-
-        for a, b in mol.get_bonds(residue):
-            a = abstract.get_atom(a.id)
-            b = abstract.get_atom(b.id)
-            abstract.add_bond(AbstractBond(a, b))
-
-        for quartet in mol.atom_quartets:
-            if all(i in residue.child_list for i in quartet.atoms):
-                atom1 = abstract.get_atom(quartet.atom1.id)
-                atom2 = abstract.get_atom(quartet.atom2.id)
-                atom3 = abstract.get_atom(quartet.atom3.id)
-                atom4 = abstract.get_atom(quartet.atom4.id)
-                abstract.add_internal_coordinates(
-                    ic.InternalCoordinates(
-                        atom1,
-                        atom2,
-                        atom3,
-                        atom4,
-                        quartet.bond_length_12,
-                        quartet.bond_length_34,
-                        quartet.bond_angle_123,
-                        quartet.bond_angle_234,
-                        quartet.dihedral,
-                        None,
-                        quartet.improper,
-                    )
-                )
-        abstract_residues.append(abstract)
-    return abstract_residues
 
 
 class AbstractEntity:
@@ -133,25 +76,6 @@ class AbstractEntity:
         if isinstance(_atom, AbstractAtom):
             _atom = _atom.id
         return _atom in self._atoms
-
-    def get_missing_atoms(self, obj):
-        """
-        Get a list of atoms that are missing from the entity
-
-        Parameters
-        ----------
-        obj
-            The object to compare to which hosts atoms and has a `get_atoms()` method.
-            E.g. a `bio.PDB.Residue`.
-
-        Returns
-        -------
-        missing_atoms: list
-            A list of atoms that are missing from the entity
-        """
-        _atoms = set(i.id for i in obj.get_atoms())
-        missing_atoms = [atom for atom in self.atoms if atom.id not in _atoms]
-        return missing_atoms
 
     def get_bond(self, id1, id2) -> "AbstractBond":
         """
@@ -313,38 +237,6 @@ class AbstractEntity_with_IC(AbstractEntity):
             raise ValueError(f"Unknown mode {mode}")
 
 
-class AbstractResidue(AbstractEntity_with_IC):
-    """
-    A representation of a single Residue (compound)
-    """
-
-    def __init__(self, id=None):
-        super().__init__(id)
-        self.PDB_id = None
-        self.CHARMM_id = None
-
-    def to_biopython(self, seqid: int = 1):
-        """
-        Convert to a biopython residue.
-
-        Parameters
-        ----------
-        seqid: int
-            The sequence ID of the residue
-
-        Returns
-        -------
-        residue: bio.PDB.Residue
-            The biopython residue
-        """
-        residue = bio.PDB.Residue.Residue((" ", seqid, self.id), self.id, " ")
-
-        for atom in self.atoms:
-            residue.add(atom.to_biopython())
-
-        return residue
-
-
 @attr.s(hash=True)
 class AbstractAtom:
     """
@@ -465,74 +357,11 @@ class AbstractBond:
     def __get_item__(self, key):
         return self.atoms[key]
 
+    def __iter__(self):
+        return iter(self.atoms)
+
+    def __contains__(self, item):
+        return item in self.atoms
+
     def __repr__(self):
         return f"AbstractBond({self.atom1.id}, {self.atom2.id})"
-
-
-@attr.s
-class AbstractAngle:
-    atom1 = attr.ib(type=str)
-    atom2 = attr.ib(type=str)
-    atom3 = attr.ib(type=str)
-    angle = attr.ib(type=float, repr=False)
-    K = attr.ib(type=float, default=None, repr=False)
-    urey_bradley_k = attr.ib(type=float, default=None, repr=False)
-    urey_bradley_length = attr.ib(type=float, default=None, repr=False)
-
-    @property
-    def atoms(self):
-        return self.atom1, self.atom2, self.atom3
-
-    @property
-    def Kub(self):
-        """A synonym of 'urey_bradley_k'"""
-        return self.urey_bradley_k
-
-
-@attr.s
-class AbstractDihedral:
-    atom1 = attr.ib(type=str)
-    atom2 = attr.ib(type=str)
-    atom3 = attr.ib(type=str)
-    atom4 = attr.ib(type=str)
-    angle = attr.ib(type=float)
-    K = attr.ib(type=float, default=None, repr=False)
-    multiplicity = attr.ib(type=int, default=1, repr=False)
-
-    @property
-    def atoms(self):
-        return self.atom1, self.atom2, self.atom3, self.atom4
-
-    @property
-    def n(self):
-        """A synonym of 'multiplicity'"""
-        return self.multiplicity
-
-
-@attr.s
-class AbstractImproper:
-    atom1 = attr.ib(type=str)
-    atom2 = attr.ib(type=str)
-    atom3 = attr.ib(type=str)
-    atom4 = attr.ib(type=str)
-    angle = attr.ib(type=float, repr=False)
-    K = attr.ib(type=float, default=None, repr=False)
-
-    @property
-    def atoms(self):
-        return self.atom1, self.atom2, self.atom3, self.atom4
-
-
-class AbstractNonBonded(NamedTuple):
-    atom: str
-    epsilon: float
-    min_radius: float
-    epsilon_14: float = None
-    min_radius_14: float = None
-
-    @property
-    def sigma(self):
-        """
-        Estimate the atom size.
-        """
-        return self.min_radius * 2 ** (1 / 6)

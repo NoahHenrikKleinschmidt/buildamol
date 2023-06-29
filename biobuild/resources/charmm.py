@@ -236,54 +236,6 @@ def add_patch(patch, overwrite: bool = False):
 add_linkage = add_patch
 
 
-def has_residue(name: str) -> bool:
-    """
-    Check if a residue is defined in the CHARMM topology file.
-
-    Parameters
-    ----------
-    name: str
-        The name of the residue
-
-    Returns
-    -------
-    bool
-        `True` if the residue is defined, `False` otherwise
-    """
-    return get_default_topology().has_residue(name)
-
-
-def in_charmm_topology(name: str) -> bool:
-    """
-    Check if a residue or patch is defined in the CHARMM topology file.
-
-    Parameters
-    ----------
-    name: str
-        The name of the residue or patch
-
-    Returns
-    -------
-    bool
-        `True` if the residue or patch is defined, `False` otherwise
-    """
-    has_patch = get_default_topology().has_patch(name)
-    has_residue = get_default_topology().has_residue(name)
-    return has_patch or has_residue
-
-
-def available_residues():
-    """
-    Get a list of available residues.
-
-    Returns
-    -------
-    list
-        A list of available residues
-    """
-    return get_default_topology().residues
-
-
 def restore_default_topology():
     """
     Restore the default CHARMMTopology object from the backup file
@@ -392,7 +344,9 @@ class CHARMMParser:
         Parameters
         ----------
         filename: str
-            The path to the pickle file to save in. By default, this will be the same filename as the one from which the data was loaded or parsed (adding the file-suffix `.pkl`)
+            The path to the pickle file to save in. By default, this will be
+            the same filename as the one from which the data was loaded or
+            parsed (adding the file-suffix `.pkl`)
         """
         if not filename:
             if not self._file:
@@ -492,12 +446,8 @@ class CHARMMTopology(CHARMMParser):
     ----------
     id : str
         The ID of the topology file
-    residues : list of AbstractResidue
-        The residues in the topology file
     patches : list of Linkage
         The Linkages (patches, in the CHARMM nomenclature, prefixed with 'PRES') in the topology file
-    masses : list of floats
-        The masses in the topology file
     """
 
     __tags__ = (
@@ -517,90 +467,12 @@ class CHARMMTopology(CHARMMParser):
 
     def __init__(self, id=None):
         super().__init__()
-        self._dict["residues"] = {}
         self._dict["patches"] = {}
         self.id = id
 
     @property
-    def residues(self):
-        return list(self._dict["residues"].values())
-
-    @property
     def patches(self):
         return list(self._dict["patches"].values())
-
-    def has_residue(self, id):
-        """
-        Check if a residue is in the topology
-
-        Parameters
-        ----------
-        id : str
-            The ID of the residue
-
-        Returns
-        -------
-        bool
-            True if the residue is in the topology
-        """
-        if isinstance(id, (list, tuple)):
-            return all(self.has_residue(i) for i in id)
-        return id in self._dict["residues"]
-
-    def get_residue(self, id):
-        """
-        Get a residue by its ID
-
-        Parameters
-        ----------
-        id : str
-            The ID of the residue
-
-        Returns
-        -------
-        AbstractResidue
-            The residue
-        """
-        if isinstance(id, (list, tuple)):
-            return [self.get_residue(i) for i in id]
-        return self._dict["residues"].get(id)
-
-    def find_residue(self, *atoms):
-        """
-        Find a residue by its atoms. This will require the
-        residue to have all atoms in the list.
-
-        Parameters
-        ----------
-        atoms : tuple of AbstractAtom
-            The atoms to search for
-
-        Returns
-        -------
-        AbstractResidue
-            The residue
-        """
-        for residue in self.residues:
-            if all(residue.has_atom(atom) for atom in atoms):
-                return residue
-        return None
-
-    def add_residue(self, residue):
-        """
-        Add a residue to the topology
-
-        Parameters
-        ----------
-        residue : AbstractResidue
-            The residue to add
-        """
-        if isinstance(residue, (list, tuple)):
-            for r in residue:
-                self.add_residue(r)
-            return
-        elif not isinstance(residue, utils.abstract.AbstractResidue):
-            raise TypeError("The residue must be an instance of AbstractResidue")
-        self._dict["residues"][residue.id] = residue
 
     def get_patch(self, id):
         """
@@ -676,72 +548,11 @@ class CHARMMTopology(CHARMMParser):
         idx = 0
         while idx < len(lines):
             line = lines[idx]
-            if line.startswith("MASS"):
-                self._parse_mass(line)
-            elif line.startswith("RESI"):
-                idx = self._parse_residue(lines, idx)
-            elif line.startswith("PRES"):
+            if line.startswith("PRES"):
                 idx = self._parse_patch(lines, idx)
             idx += 1
 
-        self._adopt_atom_masses()
-        self._make_ICs_improper()
         self._file = filename
-
-    def _parse_mass(self, line: str):
-        """
-        Parses the mass information from a line of the topology file
-
-        Parameters
-        ----------
-        line : str
-            The line of the topology file
-        """
-        line = self._read_line(line)
-        id = line[2]
-        mass = float(line[3])
-        self._dict["masses"][id] = mass
-
-    def _parse_residue(self, lines: list, idx: int):
-        """
-        Parses the residue information from a line of the topology file
-
-        Parameters
-        ----------
-        lines: list
-            The list of lines of the topology file
-        idx: int
-            The index of the current line
-        """
-        line = self._read_line(lines[idx])
-
-        residue = utils.abstract.AbstractResidue(id=line[1])
-
-        idx += 1
-        while idx < len(lines):
-            line = self._read_line(lines[idx])
-            start = line[0]
-
-            if start == "" or re.match("GROU(P| )", start):
-                idx += 1
-                continue
-
-            if start == "ATOM":
-                self._parse_atom(line, residue)
-
-            elif start == "BOND":
-                self._parse_bond(line, residue)
-
-            elif start == "IC":
-                self._parse_ic(line, residue)
-
-            elif start in self.__tags__:
-                idx -= 1
-                break
-            idx += 1
-
-        self._dict["residues"][residue.id] = residue
-        return idx
 
     def _parse_patch(self, lines: list, idx: int):
         """
@@ -787,44 +598,16 @@ class CHARMMTopology(CHARMMParser):
         self._dict["patches"][patch.id] = patch
         return idx
 
-    def _adopt_atom_masses(self):
-        """
-        Adopt the atom masses from the topology file
-        """
-        for residue in self.residues:
-            for atom in residue.atoms:
-                if atom.mass is None:
-                    atom.mass = self._dict["masses"][atom.type]
-
-    def _make_ICs_improper(self):
-        """
-        Ensure that improper internal coordinates are also labelled as such
-        based on whether their third atom is connected to the first atom
-        """
-        for residue in self.residues:
-            for ic in residue.internal_coordinates:
-                if not ic.improper and residue.get_bond(ic.atom1, ic.atom3):
-                    ic.improper = True
-                    # Actually a bad idea to do this,
-                    # because the file still stores 1-2 lengths instead of 1-3 lengths!
-                    # if not ic.bond_length_13:
-                    #     ic.bond_length_13 = ic.bond_length_12
-                    #     ic.bond_length_12 = None
-
     def _vet_load(self, _data):
         """
         Checks that the data loaded from a file is valid
         """
         if not isinstance(_data, dict):
             raise TypeError("The file must contain a dictionary object")
-        if (
-            "residues" not in _data.keys()
-            or "patches" not in _data.keys()
-            or "masses" not in _data.keys()
+        if "patches" not in _data.keys() or not isinstance(
+            _data.get("patches", None), dict
         ):
-            raise KeyError(
-                "The dictionary must contain 'residues', 'masses', and 'patches' keys"
-            )
+            raise KeyError("Data must contain a 'patches' key with a dictionary value")
 
     @staticmethod
     def _parse_ic(line: list, obj):
@@ -920,21 +703,9 @@ class CHARMMTopology(CHARMMParser):
         # split line into tuple pairs
         line = [(line[i], line[i + 1]) for i in range(0, len(line), 2)]
 
-        if isinstance(obj, utils.abstract.AbstractResidue):
-            for a1, a2 in line:
-                atom1 = obj.get_atom(a1)
-                atom2 = obj.get_atom(a2)
-                if atom1 is None or atom2 is None:
-                    warnings.warn(f"[ignoring bond] Found an invalid bond in {line}")
-                    return
-
-                bond = utils.abstract.AbstractBond(atom1, atom2)
-                obj.add_bond(bond)
-
-        elif isinstance(obj, Linkage):
-            for a1, a2 in line:
-                bond = utils.abstract.AbstractBond(a1, a2)
-                obj.add_bond(bond)
+        for a1, a2 in line:
+            bond = utils.abstract.AbstractBond(a1, a2)
+            obj.add_bond(bond)
 
     @staticmethod
     def _parse_delete(line: list, patch):
@@ -962,10 +733,8 @@ __all__ = [
     "set_default_topology",
     "restore_default_topology",
     "has_patch",
-    "has_residue",
     "available_patches",
     "available_linkages",
-    "available_residues",
     "add_patch",
     "add_linkage",
     "has_linkage",
