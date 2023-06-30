@@ -118,7 +118,7 @@ class BaseEntity:
     @classmethod
     def from_json(cls, filename: str):
         """
-        Load a Molecule from a JSON file
+        Make a Molecule from a JSON file
 
         Parameters
         ----------
@@ -126,6 +126,13 @@ class BaseEntity:
             Path to the JSON file
         """
         _dict = utils.json.read(filename)
+        return cls._from_dict(_dict)
+
+    @classmethod
+    def _from_dict(cls, _dict):
+        """
+        Make a Molecule from a JSON dictionary
+        """
         _struct = base_classes.Structure(_dict["id"])
         structure_dict = _dict["structure"]
 
@@ -154,7 +161,7 @@ class BaseEntity:
                 id=structure_dict["atoms"]["id"][i],
                 coord=np.array(structure_dict["atoms"]["coords_3d"][i]),
                 serial_number=structure_dict["atoms"]["serial"][i],
-                element=structure_dict["atoms"]["element"][i],
+                element=structure_dict["atoms"]["element"][i].upper(),
             )
             parent = residue_dict[structure_dict["atoms"]["parent"][i]]
             parent.add(atom)
@@ -1916,7 +1923,15 @@ class BaseEntity:
         with open(filename, "w") as f:
             f.write(content)
 
-    def to_json(self, filename: str, names: list = None, identifiers: list = None):
+    def to_json(
+        self,
+        filename: str,
+        type: str = None,
+        names: list = None,
+        identifiers: list = None,
+        one_letter_code: str = None,
+        three_letter_code: str = None,
+    ):
         """
         Write the molecule to a JSON file
 
@@ -1924,12 +1939,20 @@ class BaseEntity:
         ----------
         filename : str
             Path to the JSON file
+        type : str
+            The type of the molecule to be written to the JSON file (e.g. "protein", "ligand", etc.).
         names : list
             A list of names of the molecules to be written to the JSON file.
         identifiers : list
             A list of identifiers of the molecules to be written to the JSON file (e.g. SMILES, InChI, etc.).
+        one_letter_code : str
+            A one-letter code for the molecule to be written to the JSON file.
+        three_letter_code : str
+            A three-letter code for the molecule to be written to the JSON file.
         """
-        utils.json.write_molecule(self, filename, names, identifiers)
+        utils.json.write_molecule(
+            self, filename, type, names, identifiers, one_letter_code, three_letter_code
+        )
 
     def to_rdkit(self):
         """

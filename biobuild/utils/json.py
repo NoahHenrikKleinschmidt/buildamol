@@ -1,7 +1,7 @@
 """
 This module defines a JSON encoding for biobuild Molecules.
 """
-
+from copy import deepcopy
 import json
 import numpy as np
 import biobuild.utils.auxiliary as aux
@@ -9,9 +9,12 @@ import biobuild.utils.auxiliary as aux
 DICTS = {
     "molecule": {
         "id": None,
+        "type": None,
         "names": [],
         "identifiers": [],
         "formula": None,
+        "one_letter_code": None,
+        "three_letter_code": None,
         "structure": {
             "atoms": {
                 "serial": [],
@@ -60,14 +63,39 @@ DICTS = {
         "bond_length_34": None,
         "bond_length_13": None,
     },
+    "charmm_topology": {
+        "id": None,
+        "patches": [],
+    },
+    "pdbe_compounds": {
+        "id": None,
+        "compounds": [],
+    },
 }
+
+
+def read(filename: str) -> dict:
+    """
+    Read an object's dictionary from a JSON file
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to read
+
+    Returns
+    -------
+    dict
+        The object's encoded dictionary form
+    """
+    return json.load(open(filename, "r"))
 
 
 def get_dict(key: str) -> dict:
     """
     Get the basic dictionary structure for a given key
     """
-    return dict(DICTS[key])
+    return deepcopy(DICTS[key])
 
 
 class NpEncoder(json.JSONEncoder):
@@ -84,6 +112,8 @@ class NpEncoder(json.JSONEncoder):
             return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
+        if isinstance(obj, set):
+            return list(obj)
         return super(NpEncoder, self).default(obj)
 
 
@@ -132,7 +162,13 @@ def encode_ic(ic: "InternalCoordinates"):
 
 
 def encode_molecule(
-    mol: "Molecule", names: list = None, identifiers: list = None, formula: str = None
+    mol: "Molecule",
+    type: str = None,
+    names: list = None,
+    identifiers: list = None,
+    formula: str = None,
+    one_letter_code: str = None,
+    three_letter_code: str = None,
 ) -> dict:
     """
     Encode a Molecule as into a dictionary
@@ -141,12 +177,18 @@ def encode_molecule(
     ----------
     mol : Molecule
         The molecule to encode
+    type : str, optional
+        The type of the molecule (e.g. protein, nucleic acid, etc.).
     names : list, optional
         A list of additional names of the molecules.
     identifiers : list, optional
         A list of additional identifiers of the molecules (e.g. InChI).
     formula : str, optional
         The molecular formula of the molecule. By default this is inferred from the molecule's atoms.
+    one_letter_code : str, optional
+        The one-letter code of the molecule.
+    three_letter_code : str, optional
+        The three-letter code of the molecule.
 
     Returns
     -------
@@ -158,6 +200,9 @@ def encode_molecule(
     _dict["names"] = names or []
     _dict["identifiers"] = identifiers or []
     _dict["formula"] = formula or aux.make_formula(mol.get_atoms())
+    _dict["one_letter_code"] = one_letter_code
+    _dict["three_letter_code"] = three_letter_code
+    _dict["type"] = type
 
     # --------------------
     # encode the structure
@@ -210,80 +255,59 @@ def encode_molecule(
     return _dict
 
 
-def encode(obj, **kwargs):
+def encode_charmm_topology(top: "CHARMMTopology"):
     """
-    Encode an object into a dictionary
+    Encode a CHARMMTopology into a dictionary
 
     Parameters
     ----------
-    obj : object
-        The object to encode
-    kwargs : dict
-        Additional keyword arguments to pass to the encoder
-
-    Returns
-    -------
-    dict
-        The encoded object
+    top : CHARMMTopology
+        The topology to encode
     """
-    if type(obj).__name__ == "Molecule":
-        return encode_molecule(obj, **kwargs)
-    elif type(obj).__name__ == "Linkage":
-        return encode_linkage(obj)
-    elif type(obj).__name__ == "InternalCoordinates":
-        return encode_ic(obj)
-    else:
-        raise TypeError(f"Cannot encode object of type {type(obj)} into a dictionary")
+    _dict = get_dict("charmm_topology")
+    _dict["id"] = top.id
+    for link in top.patches:
+        _dict["patches"].append(encode_linkage(link))
+    return _dict
 
 
-def read(filename: str) -> dict:
+def encode_pdbe_compounds(compounds: "PDBECompounds"):
     """
-    Read a molecule from a JSON file
+    Encode a PDBECompounds object into a dictionary
 
     Parameters
     ----------
-    filename : str
-        The name of the file to read
-
-    Returns
-    -------
-    dict
-        The molecule's encoded dictionary form
+    compounds : PDBECompounds
+        The compounds to encode
     """
-    return json.load(open(filename, "r"))
-
-
-def write(
-    obj,
-    filename: str,
-    **kwargs,
-):
-    """
-    Write a molecule to a JSON file
-
-    Parameters
-    ----------
-    obj : object
-        The object to encode
-    filename : str
-        The name of the file to write
-    kwargs : dict
-        Additional keyword arguments to pass to the encoder
-    """
-    json.dump(
-        encode(obj, **kwargs),
-        open(filename, "w"),
-        indent=4,
-        cls=NpEncoder,
-    )
+    _dict = get_dict("pdbe_compounds")
+    # _dict["id"] = compounds.id
+    for id in compounds.ids:
+        comp_dict = compounds._compounds[id]
+        mol = compounds.get(id)
+        _dict["compounds"].append(
+            encode_molecule(
+                mol,
+                type=comp_dict["type"],
+                names=comp_dict["names"],
+                identifiers=comp_dict["descriptors"],
+                formula=comp_dict["formula"],
+                one_letter_code=comp_dict["one_letter_code"],
+                three_letter_code=comp_dict["three_letter_code"],
+            )
+        )
+    return _dict
 
 
 def write_molecule(
     mol: "Molecule",
     filename: str,
+    type: str = None,
     names: list = None,
     identifiers: list = None,
     formula: str = None,
+    one_letter_code: str = None,
+    three_letter_code: str = None,
 ):
     """
     Write a molecule to a JSON file
@@ -294,15 +318,23 @@ def write_molecule(
         The molecule to encode
     filename : str
         The name of the file to write
+    type : str, optional
+        The type of the molecule (e.g. protein, nucleic acid, etc.).
     names : list, optional
         A list of additional names of the molecules.
     identifiers : list, optional
         A list of additional identifiers of the molecules (e.g. InChI).
     formula : str, optional
         The molecular formula of the molecule. By default this is inferred from the molecule's atoms.
+    one_letter_code : str, optional
+        The one letter code of the molecule.
+    three_letter_code : str, optional
+        The three letter code of the molecule.
     """
     json.dump(
-        encode_molecule(mol, names, identifiers, formula),
+        encode_molecule(
+            mol, type, names, identifiers, formula, one_letter_code, three_letter_code
+        ),
         open(filename, "w"),
         indent=4,
         cls=NpEncoder,
@@ -328,11 +360,49 @@ def write_linkage(link: "Linkage", filename: str):
     )
 
 
+def write_charmm_topology(top, filename: str):
+    """
+    Write a CHARMM topology to a JSON file
+
+    Parameters
+    ----------
+    top : Topology
+        The topology to encode
+    filename : str
+        The name of the file to write
+    """
+    json.dump(
+        encode_charmm_topology(top),
+        open(filename, "w"),
+        indent=4,
+        cls=NpEncoder,
+    )
+
+
+def write_pdbe_compounds(compounds, filename: str):
+    """
+    Write a PDBECompounds object to a JSON file
+
+    Parameters
+    ----------
+    compounds : PDBECompounds
+        The PDBECompounds object to encode
+    filename : str
+        The name of the file to write
+    """
+    json.dump(
+        encode_pdbe_compounds(compounds),
+        open(filename, "w"),
+        indent=4,
+        cls=NpEncoder,
+    )
+
+
 if __name__ == "__main__":
     import biobuild as bb
 
-    man = bb.molecule("MAN")
-    man.to_json("man.json")
+    top = bb.get_default_compounds()
+    for i in range(5, len(top.ids)):
+        top.remove(top.ids[-1])
 
-    link = bb.get_linkage("14bb")
-    write_linkage(link, "link.json")
+    write_pdbe_compounds(top, "comps.json")

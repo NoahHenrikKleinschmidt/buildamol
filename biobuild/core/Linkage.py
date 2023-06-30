@@ -309,7 +309,9 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         """
         new = cls(id=_dict["id"])
         new.add_bond(
-            (_dict["bond"]["target"], _dict["bond"]["source"]),
+            utils.abstract.AbstractBond(
+                _dict["bond"]["target"], _dict["bond"]["source"]
+            ),
         )
         for i in _dict["to_delete"]["target"]:
             new.add_delete(i, "target")

@@ -1,53 +1,113 @@
 """
 This module defines File parsers and data classes to work with the CHARMM force field
 
+CHARMM files can be read using the `CHARMMParser` class. Which implements a child-class `CHARMMTopology` that is used to read and store CHARMM topology files.
+Specifically, the `CHARMMTopology` stores the linkage (patches) data from the topology file.
+
 Reading CHARMM files
 ====================
 
-CHARMM files can be read using the `CHARMMTopology` class.
+The quickest way to read a CHARMM topology file is to use the `read_topology` function.
+
+.. code-block:: python
+
+    import biobuild as bb 
+
+    charmm_topology_file = "top_all36_prot.rtf"
+
+    # read a CHARMM topology file
+    top = bb.read_topology(charmm_topology_file)
+
+There is an optional argument `set_default` that is set to `True` by default. If set to `True` the parsed object is set as the default object for the current session.
+
+Alternatively, the `CHARMMTopology` class can be used to read a CHARMM topology file.
 
 .. code-block:: python
 
     from biobuild.resources import CHARMMTopology
-
-    charmm_topology_file = "top_all36_prot.rtf"
-
-    # load a CHARMM topology file
+    
+    # read a CHARMM topology file
     top = CHARMMTopology.from_file(charmm_topology_file)
+    # works the same as
+    # top = bb.read_topology(charmm_topology_file)
+
+    
+.. note::
+
+    There is currently no implementation of a CHARMM parameter file parser, because biobuild does not use this data.
+    However, the `CHARMMParser` can be used as a base class to implement a custom parser for CHARMM parameter files.
 
 
+Saving and loading CHARMM objects
+=================================
+        
 Because parsing can be a time intensive task, it is recommended to `save` the parsed objects to a pickle file for later use.
-In this case a pre-parsed topology object can be loaded using the `load` method.
+In this case a pre-parsed topology object can be loaded using the `load` method. Both methods accept a file path as argument,
+and both also have a functional equivalent called `save_topology` and `read_topology` (yes, that's the same as above).
 
 .. code-block:: python
 
     # save the parsed objects to a pickle file
+    bb.save_topology(top, "top_all36_prot.pkl")
+    # or 
     top.save("top_all36_prot.pkl")
 
     # load a CHARMM topology file
+    top = bb.read_topology("top_all36_prot.pkl")
+    # or
     top = CHARMMTopology.load("top_all36_prot.pkl")
 
+    
+Topologies also support an encoding agnosting export to JSON format using the `to_json` method (function `export_topology`). This is 
+useful for sharing topologies with other users who may be using a different version of biobuild and therefore could potentially have issues
+with pickled objects, or for programmatic creation of new topologies (since JSON is an easier format to work with than the CHARMM topology file format itself).
+
+.. code-block:: python
+
+    # export a CHARMM topology file to JSON
+    top.to_json("top_all36_prot.json")
+    # or
+    bb.export_topology(top, "top_all36_prot.json")
+    
     
 Working with CHARMM objects
 ===========================
 
-The `CHARMMTopology` class includes methods to work with the parsed data, 
-such as `get_residue` or `get_mass`. They also support adding new data via the corresponding `add_{...}` methods.
+Naturally, the `CHARMMTopology` class includes methods to work with the parsed data, such as `has_linkage` or `get_linkage`. 
+They also support adding new data via the the `add_linkage` method. For these as well (you guessed it) there are functional equivalents, which only work for the currently loaded default topology, however!
+
+
+.. code-block:: python
+
+    # check if a given topology has a linkage
+    top.has_linkage("DISU") # use a specific topology
+    # or
+    bb.has_linkage("DISU") # use the default topology
+
+    # get a linkage
+    top.get_linkage("DISU") # use a specific topology
+    # or
+    bb.get_linkage("DISU") # use the default topology
+
+    # add a linkage
+    my_linkage = bb.linkage(...)
+    top.add_linkage(my_linkage) # use a specific topology
+    # or
+    bb.add_linkage(my_linkage) # use the default topology
+
 
 
 Setting default CHARMM objects
 ==============================
 
-The `biobuild.utils.defaults` module pre-loads default CHARMM topology and parameters objects for convenience. Many methods that make use of 
-these objects such as the `attach` method of `Molecule` instances also accept arguments for custom topology objects.
-For convenience, a custom object can be set as the default, however, using the `set_default_topology` functions.
+biobuild pre-loads a default CHARMM topology for convenience. Many methods that make use of 
+this object such as the `attach` method of `Molecule` instances also accept arguments for custom topology objects.
+For convenience, a custom object can be set as the default, however, using the `set_default_topology` function.
 
 .. code-block:: python
-
-    from biobuild.resources import set_default_topology
     
     # set a custom topology object as the default
-    set_default_topology(top)
+    bb.set_default_topology(top)
 
 
 .. warning::
@@ -86,31 +146,9 @@ import biobuild.utils.defaults as _defaults
 # ===================================================================
 
 
-def load_topology(filename: str, set_default: bool = True) -> "CHARMMTopology":
-    """
-    Load a CHARMM topology from a pickle file.
-
-    Parameters
-    ----------
-    filename: str
-        The name of the topology file
-    set_default: bool
-        If `True`, the topology is set as the default topology
-
-    Returns
-    -------
-    CHARMMTopology
-        The topology object
-    """
-    top = CHARMMTopology.load(filename)
-    if set_default:
-        set_default_topology(top)
-    return top
-
-
 def read_topology(filename: str, set_default: bool = True) -> "CHARMMTopology":
     """
-    Read a CHARMM topology file.
+    Make a CHARMMTopology from a CHARMM topology file, a JSON file or a pickle file.
 
     Parameters
     ----------
@@ -124,7 +162,12 @@ def read_topology(filename: str, set_default: bool = True) -> "CHARMMTopology":
     CHARMMTopology
         The parsed topology object
     """
-    top = CHARMMTopology.from_file(filename)
+    if filename.endswith(".pkl"):
+        top = CHARMMTopology.load(filename)
+    elif filename.endswith(".json"):
+        top = CHARMMTopology.from_json(filename)
+    else:
+        top = CHARMMTopology.from_file(filename)
     if set_default:
         set_default_topology(top)
     return top
@@ -132,7 +175,7 @@ def read_topology(filename: str, set_default: bool = True) -> "CHARMMTopology":
 
 def save_topology(filename: str, topology: "CHARMMTopology" = None):
     """
-    Save a CHARMM topology to a pickle file.
+    Save a CHARMMTopology to a pickle file.
 
     Parameters
     ----------
@@ -144,6 +187,22 @@ def save_topology(filename: str, topology: "CHARMMTopology" = None):
     if topology is None:
         topology = get_default_topology()
     topology.save(filename)
+
+
+def export_topology(filename: str, topology: "CHARMMTopology" = None):
+    """
+    Export a CHARMM topology to a JSON file.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the topology file
+    topology: CHARMMTopology
+        The topology object. If `None`, the default topology is used.
+    """
+    if topology is None:
+        topology = get_default_topology()
+    topology.to_json(filename)
 
 
 def set_default_topology(obj, overwrite: bool = False):
@@ -180,6 +239,16 @@ def get_default_topology() -> "CHARMMTopology":
         The default CHARMMTopology object
     """
     return _defaults.__default_instances__.get("Topology", None)
+
+
+def restore_default_topology():
+    """
+    Restore the default CHARMMTopology object from the backup file
+    """
+    _defaults.__default_instances__["Topology"] = CHARMMTopology.load(
+        DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"
+    )
+    os.remove(DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
 
 
 def has_patch(name: str) -> bool:
@@ -234,16 +303,6 @@ def add_patch(patch, overwrite: bool = False):
 
 
 add_linkage = add_patch
-
-
-def restore_default_topology():
-    """
-    Restore the default CHARMMTopology object from the backup file
-    """
-    _defaults.__default_instances__["Topology"] = CHARMMTopology.load(
-        DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"
-    )
-    os.remove(DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
 
 
 def get_patch(name: str):
@@ -473,6 +532,49 @@ class CHARMMTopology(CHARMMParser):
     @property
     def patches(self):
         return list(self._dict["patches"].values())
+
+    @property
+    def linkages(self):
+        return self.patches
+
+    @classmethod
+    def from_json(cls, filename: str) -> "CHARMMTopology":
+        """
+        Make a CHARMMTopology from a previously exported JSON file.
+
+        Parameters
+        ----------
+        filename: str
+            The path to the JSON file
+        """
+        _dict = utils.json.read(filename)
+        new = cls()
+        for link in _dict["patches"]:
+            new.add_patch(Linkage._from_dict(link))
+        new.id = _dict["id"]
+        new._file = filename
+        return new
+
+    def to_json(self, filename: str = None):
+        """
+        Export the topology as JSON file.
+
+        Parameters
+        ----------
+        filename: str
+            The path to the JSON file to save in. By default, this will be
+            the same filename as the one from which the data was loaded or
+            parsed (adding the file-suffix `.json`)
+        """
+        if not filename:
+            if not self._file:
+                raise ValueError(
+                    "No filename was given and no filename from a source file is available!"
+                )
+            filename = self._file
+            if not filename.endswith(".json"):
+                filename += ".json"
+        utils.json.write_charmm_topology(self, filename)
 
     def get_patch(self, id):
         """
@@ -741,7 +843,7 @@ __all__ = [
     "get_patch",
     "get_linkage",
     "read_topology",
-    "load_topology",
+    "export_topology",
     "save_topology",
 ]
 
