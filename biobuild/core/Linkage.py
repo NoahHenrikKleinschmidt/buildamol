@@ -108,6 +108,7 @@ def patch(
     delete_in_source,
     internal_coordinates: dict,
     id: str = None,
+    description: str = None,
 ) -> "Linkage":
     """
     Make a new `Linkage` instance that describes a "patch" between two molecules.
@@ -134,6 +135,8 @@ def patch(
             - the dihedral angle between the first, second, third and fourth atom
     id : str, optional
         The id of the linkage.
+    description : str, optional
+        A description of the linkage.
 
     Returns
     -------
@@ -147,6 +150,7 @@ def patch(
         delete_in_source=delete_in_source,
         internal_coordinates=internal_coordinates,
         id=id,
+        description=description,
     )
 
 
@@ -156,6 +160,7 @@ def recipe(
     delete_in_target,
     delete_in_source,
     id: str = None,
+    description: str = None,
 ) -> "Linkage":
     """
     Make a new `Linkage` instance that describes a "recipe" to connect two molecules.
@@ -174,6 +179,8 @@ def recipe(
         The atom(s) in the second molecule to delete.
     id : str, optional
         The id of the linkage.
+    description : str, optional
+        A description of the linkage.
 
     Returns
     -------
@@ -186,6 +193,7 @@ def recipe(
         delete_in_target=delete_in_target,
         delete_in_source=delete_in_source,
         id=id,
+        description=description,
     )
 
 
@@ -196,6 +204,7 @@ def linkage(
     delete_in_source,
     internal_coordinates: dict = None,
     id: str = None,
+    description: str = None,
 ) -> "Linkage":
     """
     Make a new `Linkage` instance to connect two molecules together.
@@ -221,6 +230,8 @@ def linkage(
             - the dihedral angle between the first, second, third and fourth atom
     id : str, optional
         The ID of the linkage.
+    description : str, optional
+        A description of the linkage.
 
     Returns
     -------
@@ -228,7 +239,7 @@ def linkage(
         The new linkage instance.
     """
     # make a new linkage
-    new_linkage = Linkage(id=id)
+    new_linkage = Linkage(id=id, description=description)
 
     # add the bond
     new_linkage.add_bond((atom1, atom2))
@@ -262,6 +273,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
     ----------
     id : str, optional
         The ID of the linkage.
+    description : str, optional
+        An additional description of the linkage.
 
     Attributes
     ----------
@@ -280,9 +293,10 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         The atom IDs of the atoms in the linkage.
     """
 
-    def __init__(self, id=None) -> None:
+    def __init__(self, id=None, description: str = None) -> None:
         super().__init__(id)
         self._delete_ids = []
+        self.description = description
 
     @classmethod
     def from_json(cls, filename: str):
