@@ -9,8 +9,3 @@ RESOURCES = os.path.join(BASE, "resources")
 """
 The resources directory of the package
 """
-
-DEFAULT_BONDS_FILE = os.path.join(RESOURCES, "default.bonds.pkl")
-"""
-The path to the default bonds file
-"""
