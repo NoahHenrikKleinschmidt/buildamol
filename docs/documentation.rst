@@ -7,7 +7,7 @@ API Documentation
 =================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
 
    biobuild.core
    biobuild.resources

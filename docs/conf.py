@@ -21,6 +21,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
     "sphinx.ext.autodoc",
+    "sphinx_design",
 ]
 napoleon_numpy_docstring = True
 napoleon_use_param = True
