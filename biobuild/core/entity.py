@@ -175,6 +175,22 @@ class BaseEntity:
         return new
 
     @classmethod
+    def from_pybel(cls, mol):
+        """
+        Load a Molecule from a Pybel molecule
+
+        Parameters
+        ----------
+        mol : pybel.Molecule
+            The Pybel molecule
+        """
+        conv = utils.convert.PybelBioPythonConverter()
+        new = conv.pybel_molecule_to_biopython(mol)
+        new = base_classes.Structure.from_biopython(new)
+        new = cls(new)
+        return new
+
+    @classmethod
     def from_rdkit(cls, mol, id: str = None):
         """
         Load a Molecule from an RDKit molecule
@@ -1953,6 +1969,20 @@ class BaseEntity:
         utils.json.write_molecule(
             self, filename, type, names, identifiers, one_letter_code, three_letter_code
         )
+
+    def to_pybel(self):
+        """
+        Convert the molecule to a Pybel molecule
+
+        Returns
+        -------
+        pybel.Molecule
+            The Pybel molecule
+        """
+        conv = utils.convert.PybelBioPythonConverter()
+        mol = conv.biobuild_to_pybel(self)
+        mol.title = self.id
+        return mol
 
     def to_rdkit(self):
         """

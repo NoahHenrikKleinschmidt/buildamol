@@ -23,6 +23,9 @@ class PybelBioPythonConverter:
     Convert Pybel (openbabel) data structures to Biopython
     """
 
+    def __init__(self) -> None:
+        self.__fileio__ = tempfile.mktemp(suffix=".pdb")
+
     __element_counts__ = {}
     _current_residue = None
 
@@ -194,6 +197,37 @@ class PybelBioPythonConverter:
                 new[0]["A"].add(residue)
 
         return new
+
+    def biobuild_to_pybel(self, obj):
+        """
+        Convert a biobuild object to a pybel object
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if type(obj).__name__ == "Molecule":
+            obj.to_pdb(self.__fileio__)
+        elif type(obj).__name__ == "Structure":
+            io = bio.PDBIO()
+            io.set_structure(obj.to_biopython())
+            io.save(self.__fileio__)
+        else:
+            while not type(obj).__name__ in ["Molecule", "Structure"]:
+                obj = obj.get_parent()
+            return self.biobuild_to_pybel(obj)
+
+        # read the file back in with pybel
+        pybel_obj = next(pybel.readfile("pdb", self.__fileio__), None)
+        if not pybel_obj:
+            raise ValueError("Could not convert to pybel object")
+        return pybel_obj
 
 
 class RDKITBiopythonConverter:
