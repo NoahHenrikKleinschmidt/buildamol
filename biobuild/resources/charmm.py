@@ -667,9 +667,14 @@ class CHARMMTopology(CHARMMParser):
         idx: int
             The index of the current line
         """
+        descr = lines[idx].split("!")
+        if len(descr) == 2:
+            descr = descr[1].strip()
+        else:
+            descr = None
         line = self._read_line(lines[idx])
 
-        patch = Linkage(id=line[1])
+        patch = Linkage(id=line[1], description=descr)
 
         idx += 1
         while idx < len(lines):
@@ -732,17 +737,17 @@ class CHARMMTopology(CHARMMParser):
         atom3 = line[3]
         atom4 = line[4]
 
-        if isinstance(obj, utils.abstract.AbstractResidue):
-            atom1 = obj.get_atom(atom1)
-            atom2 = obj.get_atom(atom2)
-            atom3 = obj.get_atom(atom3)
-            atom4 = obj.get_atom(atom4)
+        # if isinstance(obj, utils.abstract.AbstractResidue):
+        #     atom1 = obj.get_atom(atom1)
+        #     atom2 = obj.get_atom(atom2)
+        #     atom3 = obj.get_atom(atom3)
+        #     atom4 = obj.get_atom(atom4)
 
-            if atom1 is None or atom2 is None or atom3 is None or atom4 is None:
-                warnings.warn(
-                    f"[ignoring line] Found an invalid internal coordinate in {line}"
-                )
-                return
+        #     if atom1 is None or atom2 is None or atom3 is None or atom4 is None:
+        #         warnings.warn(
+        #             f"[ignoring line] Found an invalid internal coordinate in {line}"
+        #         )
+        #         return
 
         if is_improper:
             _bond_lengths = {
