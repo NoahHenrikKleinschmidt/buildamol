@@ -48,14 +48,19 @@ def model_make_full_id(self):
     return (self.id,)
 
 
+# --------------------------- POSSIBLE DELETE ---------------------------
+# the whole set_full_id and whatever can probably be deleted since
+# we are using our own wrapper around the biopython structure anyway
+# --------------------------- POSSIBLE DELETE ---------------------------
 def set_full_id(self, value):
     pass
-
 
 bio.Atom.Atom.full_id = property(atom_make_full_id, set_full_id)
 bio.Residue.Residue.full_id = property(residue_make_full_id, set_full_id)
 bio.Chain.Chain.full_id = property(chain_make_full_id, set_full_id)
 bio.Model.Model.full_id = property(model_make_full_id, set_full_id)
+
+# --------------------------- POSSIBLE DELETE ---------------------------
 
 
 def make_empty_structure(id: str = "empty"):
