@@ -340,7 +340,7 @@ Default stitcher for the case that both molecules are copied
 def stitch(
     target: "Molecule.Molecule",
     source: "Molecule.Molecule",
-    recipe: "Linkage" = None,
+    recipe: "Linkage.Linkage" = None,
     target_removals: tuple = None,
     source_removals: tuple = None,
     target_atom: Union[int, bio.Atom.Atom] = None,

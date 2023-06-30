@@ -15,7 +15,7 @@ class Connector:
         self._target_residue = None
         self._source_residue = None
 
-    def set_target(self, target: "Molecule"):
+    def set_target(self, target: "Molecule.Molecule"):
         """
         Set the target molecule
 
@@ -26,7 +26,7 @@ class Connector:
         """
         self.target = target
 
-    def set_source(self, source: "Molecule"):
+    def set_source(self, source: "Molecule.Molecule"):
         """
         Set the source molecule
 

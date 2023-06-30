@@ -37,7 +37,7 @@ class Patcher(base.Connector):
         super().__init__(copy_target=copy_target, copy_source=copy_source)
         self.patch = None
 
-    def set_patch(self, patch: "Linkage"):
+    def set_patch(self, patch: "Linkage.Linkage"):
         """
         Set the patch
 
@@ -50,9 +50,9 @@ class Patcher(base.Connector):
 
     def apply(
         self,
-        patch: "Linkage" = None,
-        target: "Molecule" = None,
-        source: "Molecule" = None,
+        patch: "Linkage.Linkage" = None,
+        target: "Molecule.Molecule" = None,
+        source: "Molecule.Molecule" = None,
         target_residue=None,
         source_residue=None,
     ):
@@ -459,14 +459,14 @@ to leave the originals intact.
 
 
 def patch(
-    target: "Molecule",
-    source: "Molecule",
-    patch: "Linkage",
+    target: "Molecule.Molecule",
+    source: "Molecule.Molecule",
+    patch: "Linkage.Linkage",
     target_residue=None,
     source_residue=None,
     copy_target: bool = False,
     copy_source: bool = False,
-) -> "Molecule":
+) -> "Molecule.Molecule":
     """
     Patch two molecules together.
     This will merge the source molecule's residues into the target molecule.
