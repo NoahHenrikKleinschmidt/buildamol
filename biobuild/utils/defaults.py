@@ -17,14 +17,17 @@ DEFAULT_CHARMM_TOPOLOGY_FILE = os.path.join(constants.RESOURCES, "CHARMM.top.pkl
 The path to the default CHARMM topology file
 """
 
-DEFAULT_CHARMM_PARAMETERS_FILE = os.path.join(constants.RESOURCES, "CHARMM.prm.pkl")
-"""
-The path to the default CHARMM parameters file
-"""
 
-DEFAULT_PDBE_COMPOUNDS_FILE = os.path.join(constants.RESOURCES, "PDBECompounds.pkl")
+DEFAULT_PDBE_COMPONENT_FILES = {
+    "base": os.path.join(constants.RESOURCES, "components_base.json"),
+    "lipids": os.path.join(constants.RESOURCES, "components_lipids.json"),
+    "sugars": os.path.join(constants.RESOURCES, "components_sugars.json"),
+    "nucleotides": os.path.join(constants.RESOURCES, "components_nucleotides.json"),
+    "amino_acids": os.path.join(constants.RESOURCES, "components_amino_acids.json"),
+    "small_molecules": os.path.join(constants.RESOURCES, "components_small.json"),
+}
 """
-The path to the default PDBe compounds file
+The paths to the default PDBe component files
 """
 
 DEFAULT_SASA_PROBE_RADIUS = 1.4
@@ -75,7 +78,7 @@ def get_default_instance(key):
     obj
         The default instance of the class
     """
-    return __default_instances__[key]
+    return __default_instances__.get(key, None)
 
 
 def set_default_instance(key, obj):
