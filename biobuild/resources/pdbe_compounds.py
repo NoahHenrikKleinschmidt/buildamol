@@ -389,22 +389,84 @@ def set_default_compounds(obj, overwrite: bool = False):
     if not obj.__class__.__name__ == "PDBECompounds":
         raise TypeError("The object must be a PDBECompounds instance.")
     if overwrite:
-        current = defaults.__default_instances__.get("PDBECompounds", None)
+        current = defaults.get_default_instance("PDBECompounds")
         if current:
-            current.save(defaults.DEFAULT_PDBE_COMPOUNDS_FILE + ".bak")
+            current.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
     defaults.__default_instances__["PDBECompounds"] = obj
     if overwrite:
-        obj.save(defaults.DEFAULT_PDBE_COMPOUNDS_FILE)
+        obj.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
 
 
 def restore_default_compounds():
     """
     Restore the default PDBECompounds object from the backup file
     """
-    defaults.__default_instances__["PDBECompounds"] = pickle.load(
-        open(defaults.DEFAULT_PDBE_COMPOUNDS_FILE + ".bak", "rb")
+    defaults.__default_instances__["PDBECompounds"] = PDBECompounds.from_json(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["base"]
     )
-    os.remove(defaults.DEFAULT_PDBE_COMPOUNDS_FILE + ".bak")
+    os.remove(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
+
+
+def load_amino_acids():
+    """
+    Load amino acid components into the default PDBECompounds instance.
+    """
+    comps = get_default_compounds()
+    amino_acids = PDBECompounds.from_json(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["amino_acids"]
+    )
+    comps.merge(amino_acids)
+
+
+def load_lipids():
+    """
+    Load lipid components into the default PDBECompounds instance.
+    """
+    comps = get_default_compounds()
+    lipids = PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["lipids"])
+    comps.merge(lipids)
+
+
+def load_sugars():
+    """
+    Load sugar components into the default PDBECompounds instance.
+    """
+    comps = get_default_compounds()
+    sugars = PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["sugars"])
+    comps.merge(sugars)
+
+
+def load_nucleotides():
+    """
+    Load nucleotide components into the default PDBECompounds instance.
+    """
+    comps = get_default_compounds()
+    nucleotides = PDBECompounds.from_json(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["nucleotides"]
+    )
+    comps.merge(nucleotides)
+
+
+def load_small_molecules():
+    """
+    Load small molecule components into the default PDBECompounds instance.
+    """
+    comps = get_default_compounds()
+    small_molecules = PDBECompounds.from_json(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["small_molecules"]
+    )
+    comps.merge(small_molecules)
+
+
+def load_all_compounds():
+    """
+    Load all available components into the default PDBECompounds instance.
+    """
+    load_amino_acids()
+    load_lipids()
+    load_sugars()
+    load_nucleotides()
+    load_small_molecules()
 
 
 class PDBECompounds:
@@ -600,6 +662,23 @@ class PDBECompounds:
             filename = aux.change_suffix(filename, ".json")
 
         json.write_pdbe_compounds(self, filename)
+
+    def merge(self, other: "PDBECompounds") -> None:
+        """
+        Merge another compounds dictionary into this one.
+
+        Parameters
+        ----------
+        other : PDBECompounds
+            The other object.
+        """
+        for key in other._compounds.keys():
+            if key in self._compounds:
+                warnings.warn(
+                    f"Compound '{key}' already present. It will be overwritten."
+                )
+            self._compounds[key] = other._compounds[key]
+            self._pdb[key] = other._pdb[key]
 
     def get(
         self,
@@ -1084,7 +1163,7 @@ class PDBECompounds:
 
 defaults.set_default_instance(
     "PDBECompounds",
-    PDBECompounds.load(defaults.DEFAULT_PDBE_COMPOUNDS_FILE),
+    PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"]),
 )
 
 
@@ -1148,6 +1227,12 @@ __all__ = [
     "read_compounds",
     "export_compounds",
     "save_compounds",
+    "load_amino_acids",
+    "load_nucleotides",
+    "load_sugars",
+    "load_lipids",
+    "load_small_molecules",
+    "load_all_compounds",
 ]
 
 
