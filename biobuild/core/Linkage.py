@@ -99,6 +99,7 @@ to the ``Molecule``'s ``attach`` method or any other function that requires a li
 """
 
 import biobuild.utils as utils
+import biobuild.structural.neighbors as neighbors
 
 
 def patch(
@@ -125,14 +126,18 @@ def patch(
         The atom(s) in the first molecule to delete.
     delete_in_source : str or tuple of str
         The atom(s) in the second molecule to delete.
-    internal_coordinates : dict
+    internal_coordinates : dict, optional
         The internal coordinates of the atoms in the immediate vicinity of the newly formed bond.
-        This must be a dictionary where keys are tuples of four atoms ids and values tuples containing (in order):
-            - the bond length between the first and second atom
+        If provided, the link can be applied purely geometrically and will not require numeric optimization.
+        If provided, this must be a dictionary where keys are tuples of four atoms ids and values tuples containing (in order):
+
+            - the bond length between the first and second atom (first and third in case of an improper)
             - the bond length between the third and fourth atom
             - the bond angle between the first, second and third atom
             - the bond angle between the second, third and fourth atom
             - the dihedral angle between the first, second, third and fourth atom
+            - True if the internal coordinate is improper, False otherwise
+
     id : str, optional
         The id of the linkage.
     description : str, optional
@@ -223,11 +228,14 @@ def linkage(
         The internal coordinates of the atoms in the immediate vicinity of the newly formed bond.
         If provided, the link can be applied purely geometrically and will not require numeric optimization.
         If provided, this must be a dictionary where keys are tuples of four atoms ids and values tuples containing (in order):
-            - the bond length between the first and second atom
+
+            - the bond length between the first and second atom (first and third in case of an improper)
             - the bond length between the third and fourth atom
             - the bond angle between the first, second and third atom
             - the bond angle between the second, third and fourth atom
             - the dihedral angle between the first, second, third and fourth atom
+            - True if the internal coordinate is improper, False otherwise
+
     id : str, optional
         The ID of the linkage.
     description : str, optional
@@ -242,7 +250,7 @@ def linkage(
     new_linkage = Linkage(id=id, description=description)
 
     # add the bond
-    new_linkage.add_bond((atom1, atom2))
+    new_linkage.add_bond(utils.abstract.AbstractBond(atom1, atom2))
 
     # add the atoms to delete
     if delete_in_target is not None:
@@ -280,8 +288,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
     ----------
     id : str
         The ID of the linkage.
-    bonds : list of tuple of str
-        The bonds to form between the two molecules.
+    bond : tuple of str
+        The bond to form between the two molecules.
     internal_coordinates : list of InternalCoordinate
         The internal coordinates of the atoms in the immediate vicinity of the newly formed bond.
     deletes : tuple of list of str
@@ -297,6 +305,26 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         super().__init__(id)
         self._delete_ids = []
         self.description = description
+
+    @property
+    def bond(self) -> tuple:
+        """
+        The bond to form between the two molecules.
+        """
+        if len(self.bonds) == 0:
+            return None
+        return self.bonds[0]
+
+    @property
+    def _ref_atoms(self) -> tuple:
+        """
+        Reference atoms with 1,2 prefix for the patcher
+        """
+        if not self.bond:
+            return None, None
+        a = f"1{self.bond[0]}" if not self.bond[0].startswith("1") else self.bond[0]
+        b = f"2{self.bond[1]}" if not self.bond[1].startswith("2") else self.bond[1]
+        return a, b
 
     @classmethod
     def from_json(cls, filename: str):
@@ -388,6 +416,51 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
 
     add_id_to_delete = add_delete
 
+    def add_internal_coordinates(self, ic):
+        if isinstance(ic, dict):
+            ic = utils.ic.InternalCoordinates._from_dict(ic)
+        elif isinstance(ic, neighbors.Quartet):
+            ic = utils.ic.InternalCoordinates.from_quartet(ic)
+        elif isinstance(ic, (tuple, list)) and len(ic) == 11:
+            ic = utils.ic.InternalCoordinates(*ic)
+        elif not isinstance(ic, utils.ic.InternalCoordinates):
+            raise TypeError(
+                "The internal coordinate must be an instance of the InternalCoordinates class."
+            )
+
+        # now we need to vet that the internal coordinates span both molecules (by spanning different residues)
+        if isinstance(ic.atom1, str):
+            _residues = list(set(a[0] for a in ic.atoms))
+            use_bare_strings = True
+        else:
+            _residues = list(set(a.get_parent() for a in ic.atoms))
+            use_bare_strings = False
+
+        if len(_residues) != 2:
+            raise ValueError(
+                "The internal coordinates must span two different residues."
+            )
+
+        if use_bare_strings:
+            _residues.sort()
+        else:
+            _residues.sort(key=lambda x: x.id[1])
+        _residues = {_residues[0]: "1", _residues[1]: "2"}
+
+        if not use_bare_strings:
+            prefix = (
+                lambda x: _residues[x.get_parent()] + x.id
+                if not x.id[0] in ("1", "2")
+                else x.id
+            )
+
+            ic.atom1 = prefix(ic.atom1)
+            ic.atom2 = prefix(ic.atom2)
+            ic.atom3 = prefix(ic.atom3)
+            ic.atom4 = prefix(ic.atom4)
+
+        return super().add_internal_coordinates(ic)
+
     def to_json(self, filename: str):
         """
         Write the `Linkage` instance to a JSON file.
@@ -399,6 +472,16 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         """
         utils.json.write_linkage(self, filename)
 
+    def __getitem__(self, index):
+        if len(self.bonds) == 0:
+            raise IndexError("The linkage does not contain a bond.")
+        return self.bonds[0][index]
+
+    def __iter__(self):
+        if len(self.bonds) == 0:
+            raise StopIteration
+        return iter(self.bonds[0])
+
 
 def _dict_to_ics(_dict):
     """
@@ -406,15 +489,26 @@ def _dict_to_ics(_dict):
     """
     ics = []
     for key, value in _dict.items():
-        if len(key) == 4 and len(value) == 5:
-            ic = utils.ic.InternalCoordinates(*key, *value)
+        if len(key) == 4 and len(value) == 6:
+            improper = value[-1]
+
+            ic = utils.ic.InternalCoordinates(
+                *key,
+                bond_length_12=value[0] if not improper else None,
+                bond_length_13=value[0] if improper else None,
+                bond_length_34=value[1],
+                bond_angle_123=value[2],
+                bond_angle_234=value[3],
+                dihedral=value[4],
+                improper=improper,
+            )
         elif len(key) != 4:
             raise ValueError(
                 "The internal coordinate must be provided as a tuple of four atom IDs."
             )
-        elif len(value) != 5:
+        elif len(value) != 6:
             raise ValueError(
-                "The internal coordinate must be provided as a tuple of five values."
+                "The internal coordinate must be provided as a tuple of six values."
             )
         ics.append(ic)
 
@@ -422,7 +516,15 @@ def _dict_to_ics(_dict):
 
 
 if __name__ == "__main__":
-    link = linkage("C1", "O4", ["H1"], ["HO4"])
+    link = linkage(
+        "C1",
+        "O4",
+        ["H1"],
+        ["HO4"],
+        internal_coordinates={
+            ("1C1", "1C2", "2O4", "2C4"): [1.1, 1.2, 1.3, 1.4, 1.5, False]
+        },
+    )
     link.to_json("link.json")
     link2 = Linkage.from_json("link.json")
     pass
