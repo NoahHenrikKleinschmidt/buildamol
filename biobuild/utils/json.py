@@ -5,9 +5,11 @@ from copy import deepcopy
 import json
 import numpy as np
 import biobuild.utils.auxiliary as aux
+import biobuild.utils.info as info
 
 DICTS = {
     "molecule": {
+        "biobuild_version": info.__version__,
         "id": None,
         "type": None,
         "names": [],
@@ -42,6 +44,7 @@ DICTS = {
         },
     },
     "linkage": {
+        "biobuild_version": info.__version__,
         "id": None,
         "bond": {
             "target": None,
@@ -54,6 +57,7 @@ DICTS = {
         "ics": [],
     },
     "ic": {
+        "biobuild_version": info.__version__,
         "atoms": [],
         "improper": False,
         "bond_angle_123": None,
@@ -64,10 +68,12 @@ DICTS = {
         "bond_length_13": None,
     },
     "charmm_topology": {
+        "biobuild_version": info.__version__,
         "id": None,
         "patches": [],
     },
     "pdbe_compounds": {
+        "biobuild_version": info.__version__,
         "id": None,
         "compounds": [],
     },
@@ -281,7 +287,7 @@ def encode_pdbe_compounds(compounds: "PDBECompounds"):
         The compounds to encode
     """
     _dict = get_dict("pdbe_compounds")
-    # _dict["id"] = compounds.id
+    _dict["id"] = getattr(compounds, "id", None)
     for id in compounds.ids:
         comp_dict = compounds._compounds[id]
         mol = compounds.get(id)
