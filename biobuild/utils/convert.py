@@ -11,8 +11,16 @@ import numpy as np
 from periodictable import elements
 
 import Bio.PDB as bio
-from openbabel import pybel
-from rdkit import Chem
+
+try:
+    from openbabel import pybel
+except ImportError:
+    pybel = None
+
+try:
+    from rdkit import Chem
+except ImportError:
+    Chem = None
 
 import biobuild.utils.auxiliary as aux
 import biobuild.utils.defaults as defaults
