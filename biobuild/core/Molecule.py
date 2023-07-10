@@ -483,7 +483,7 @@ __all__ = [
 ]
 
 
-def read_pdb(filename: str, id: str = None) -> "Molecule.Molecule":
+def read_pdb(filename: str, id: str = None) -> "Molecule":
     """
     Read a PDB file and return a molecule.
 
@@ -502,7 +502,7 @@ def read_pdb(filename: str, id: str = None) -> "Molecule.Molecule":
     return Molecule.from_pdb(filename, id=id)
 
 
-def write_pdb(mol: "Molecule.Molecule", filename: str) -> None:
+def write_pdb(mol: "Molecule", filename: str) -> None:
     """
     Write a molecule to a PDB file.
 
@@ -516,7 +516,7 @@ def write_pdb(mol: "Molecule.Molecule", filename: str) -> None:
     mol.to_pdb(filename)
 
 
-def read_cif(filename: str, id: str = None) -> "Molecule.Molecule":
+def read_cif(filename: str, id: str = None) -> "Molecule":
     """
     Read a CIF file and return a molecule.
 
@@ -535,7 +535,7 @@ def read_cif(filename: str, id: str = None) -> "Molecule.Molecule":
     return Molecule.from_cif(filename, id=id)
 
 
-def write_cif(mol: "Molecule.Molecule", filename: str) -> None:
+def write_cif(mol: "Molecule", filename: str) -> None:
     """
     Write a molecule to a CIF file.
 
@@ -549,7 +549,7 @@ def write_cif(mol: "Molecule.Molecule", filename: str) -> None:
     mol.to_cif(filename)
 
 
-def read_smiles(smiles: str, id: str = None) -> "Molecule.Molecule":
+def read_smiles(smiles: str, id: str = None) -> "Molecule":
     """
     Read a SMILES string and return a molecule.
 
@@ -566,16 +566,16 @@ def read_smiles(smiles: str, id: str = None) -> "Molecule.Molecule":
     return Molecule.from_smiles(smiles, id=id)
 
 
-def molecule(mol: str) -> "Molecule.Molecule":
+def molecule(mol) -> "Molecule":
     """
-    Generate a molecule from an input string. This string can be a PDB id, filename, SMILES or InChI string, IUPAC name or abbreviation.
-    This function will try its best to automatically generate the molecule with minimal user effort. However, using a dedicated class method is
+    Generate a molecule from an input. If the input is a string, the string can be a PDB id, some filename, SMILES or InChI string, IUPAC name or abbreviation.
+    This function will try its best to automatically generate the molecule with minimal user effort. However, using a dedicated classmethod is
     recommended for more efficient and predictable results.
 
     Parameters
     ----------
-    mol : str
-        The input string
+    mol : str or structure-like object
+        An input string or structure-like object such as a BioPython Structure or OpenBabel Molecule.
 
     Returns
     -------
@@ -589,11 +589,17 @@ def molecule(mol: str) -> "Molecule.Molecule":
     >>> mol = molecule("GLC.pdb")
     >>> mol = molecule("alpha-d-glucose")
     """
-    if isinstance(mol, bio.Structure.Structure):
+    if isinstance(mol, bio.Structure.Structure) or isinstance(
+        mol, entity.base_classes.Structure
+    ):
         return Molecule(mol)
+    elif "openbabel" in str(type(mol).__mro__[0]):
+        return Molecule.from_pybel(mol)
+    elif "rdkit" in str(type(mol).__mro__[0]):
+        return Molecule.from_rdkit(mol)
 
     if not isinstance(mol, str):
-        raise ValueError("input must be a string")
+        raise ValueError("input must be a structure object or a string")
 
     # ------------------
     # mol may be a PDB id
@@ -625,11 +631,11 @@ def molecule(mol: str) -> "Molecule.Molecule":
 
 
 def polymerize(
-    mol: "Molecule.Molecule",
+    mol: "Molecule",
     n: int,
     link: Union[str, "Linkage.Linkage"] = None,
     inplace: bool = False,
-) -> "Molecule.Molecule":
+) -> "Molecule":
     """
     Polymerize a molecule
 
@@ -657,15 +663,15 @@ def polymerize(
 
 
 def connect(
-    mol_a: "Molecule.Molecule",
-    mol_b: "Molecule.Molecule",
+    mol_a: "Molecule",
+    mol_b: "Molecule",
     link: Union[str, "Linkage.Linkage"],
     at_residue_a: Union[int, "bio.Residue.Residue"] = None,
     at_residue_b: Union[int, "bio.Residue.Residue"] = None,
     copy_a: bool = True,
     copy_b: bool = True,
     _topology=None,
-) -> "Molecule.Molecule":
+) -> "Molecule":
     """
     Connect two molecules together
 
@@ -710,11 +716,11 @@ def connect(
 
 
 def phosphorylate(
-    mol: "Molecule.Molecule",
-    at_atom: Union[int, str, bio.Atom.Atom],
-    delete: Union[int, str, bio.Atom.Atom],
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom],
     inplace: bool = True,
-) -> "Molecule.Molecule":
+) -> "Molecule":
     """
     Phosphorylate a molecule at a specific atom
 
@@ -748,6 +754,41 @@ def phosphorylate(
         mol = mol.copy()
 
     mol.attach(phos, l, at_residue=at_residue)
+    return mol
+
+
+def methylate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom],
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Methylate a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to methylate
+    at_atom : int or str or Atom
+        The atom to methylate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to methylate.
+    inplace : bool
+        Whether to methylate the molecule in place or return a new molecule
+    """
+    methyl = Molecule.from_compound("CH3")
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("METHYLATE")
+    l.add_bond(at_atom.id, "C")
+    l.add_delete("HC1", "source")
+    l.add_delete(delete.id, "target")
+
+    mol.attach(methyl, l, at_residue=at_residue, inplace=inplace)
     return mol
 
 
@@ -960,7 +1001,13 @@ class Molecule(entity.BaseEntity):
         new.set_root(root_atom)
         return new
 
-    def get_residue_connections(self, triplet: bool = True, direct_by: str = "resid"):
+    def get_residue_connections(
+        self,
+        residue_a=None,
+        residue_b=None,
+        triplet: bool = True,
+        direct_by: str = None,
+    ):
         """
         Get bonds between atoms that connect different residues in the structure
         This method is different from `infer_residue_connections` in that it works
@@ -968,6 +1015,9 @@ class Molecule(entity.BaseEntity):
 
         Parameters
         ----------
+        residue_a, residue_b : Union[int, str, tuple, bio.Residue.Residue]
+            The residues to consider. If None, all residues are considered.
+            Otherwise, only between the specified residues are considered.
         triplet : bool
             Whether to include bonds between atoms that are in the same residue
             but neighboring a bond that connects different residues. This is useful
@@ -988,19 +1038,21 @@ class Molecule(entity.BaseEntity):
         set
             A set of tuples of atom pairs that are bonded and connect different residues
         """
-        bonds = super().get_residue_connections(triplet)
+        bonds = super().get_residue_connections(
+            residue_a=residue_a, residue_b=residue_b, triplet=triplet
+        )
         if direct_by is not None:
             direct_connections = None
             if direct_by == "resid":
-                direct_connections = self.get_residue_connections(
-                    triplet=False, direct_by=None
+                direct_connections = super().get_residue_connections(
+                    residue_a=residue_a, residue_b=residue_b, triplet=False
                 )
                 direct_connections1, direct_connections2 = set(
                     a for a, b in direct_connections
                 ), set(b for a, b in direct_connections)
                 direct_connections = direct_connections1.union(direct_connections2)
             bonds = self._direct_bonds(bonds, direct_by, direct_connections)
-        return set(bonds)
+        return bonds
 
     def repeat(self, n: int, link=None, inplace: bool = True):
         """
@@ -1195,7 +1247,7 @@ class Molecule(entity.BaseEntity):
     def stitch_attach(
         self,
         other: "Molecule",
-        recipe: Linkage = None,
+        recipe: "Linkage.Linkage" = None,
         remove_atoms=None,
         other_remove_atoms=None,
         at_atom=None,
