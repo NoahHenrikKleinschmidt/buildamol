@@ -6,6 +6,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 from copy import deepcopy
+import pandas as pd
+import networkx as nx
 
 try:
     import nglview
@@ -31,9 +33,9 @@ class NglViewer:
                 "NGLView is not available. Please install it with `pip install nglview` and be sure to use a compatible environment."
             )
         if molecule.__class__.__name__ in ("Molecule", "AtomGraph", "ResidueGraph"):
-            self.structure = molecule.structure
+            self.structure = molecule.structure.to_biopython()
         else:
-            self.structure = molecule
+            self.structure = molecule.to_biopython()
 
     def show(self):
         """
@@ -330,3 +332,173 @@ class MoleculeViewer3D:
             return obj
         else:
             raise TypeError("Unknown object type")
+
+
+class MoleculeViewer3D_v2:
+    __atom_colors__ = {
+        "C": "black",
+        "O": "red",
+        "H": "lightgray",
+        "N": "blue",
+        "S": "yellow",
+        "P": "purple",
+        "F": "green",
+        "Cl": "green",
+        "Br": "green",
+        "I": "green",
+    }
+
+    def __init__(self) -> None:
+        self.opacity = 0.3
+        self.bond_color = "black"
+
+    def make_df(self, mol) -> tuple:
+        _atom_df = {
+            "x": [atom.coord[0] for atom in mol.get_atoms()],
+            "y": [atom.coord[1] for atom in mol.get_atoms()],
+            "z": [atom.coord[2] for atom in mol.get_atoms()],
+            "atom_id": [atom.id for atom in mol.get_atoms()],
+            "atom_serial": [atom.serial_number for atom in mol.get_atoms()],
+            "atom_element": [atom.element.title() for atom in mol.get_atoms()],
+            "residue_serial": [atom.get_parent().id[1] for atom in mol.get_atoms()],
+            "residue_name": [atom.get_parent().resname for atom in mol.get_atoms()],
+            "chain_id": [atom.get_parent().get_parent().id for atom in mol.get_atoms()],
+        }
+        _atom_df = pd.DataFrame(_atom_df)
+        _atom_df.set_index("atom_serial", inplace=True)
+
+        bonds = nx.get_edge_attributes(mol._AtomGraph, "bond_order")
+        _bond_df = {
+            "a": [i[0].serial_number for i in bonds.keys()],
+            "b": [i[1].serial_number for i in bonds.keys()],
+            "bond_color": [self.bond_color for i in bonds.keys()],
+            "bond_order": [i for i in bonds.values()],
+        }
+        _bond_df = pd.DataFrame(_bond_df)
+
+        return _atom_df, _bond_df
+
+    def link(self, mol: "Molecule"):
+        self._mol = mol
+        atom_df, bond_df = self.make_df(mol)
+        self._atom_df = atom_df
+        self._bond_df = bond_df
+        self._fig = self._setup_fig(atom_df, bond_df)
+        self._fig.update_scenes(
+            xaxis_showgrid=False,
+            xaxis_showline=False,
+            xaxis_showticklabels=False,
+            yaxis_showgrid=False,
+            yaxis_showline=False,
+            yaxis_showticklabels=False,
+            zaxis_showgrid=False,
+            zaxis_showline=False,
+            zaxis_showticklabels=False,
+        )
+
+    def _setup_fig(self, atom_df, bond_df):
+        fig = px.scatter_3d(
+            atom_df,
+            x="x",
+            y="y",
+            z="z",
+            color="atom_element",
+            color_discrete_map=self.__atom_colors__,
+            opacity=self.opacity,
+            hover_data=[
+                "atom_id",
+                "residue_serial",
+                "residue_name",
+                "chain_id",
+            ],
+            template="none",
+        )
+        bonds = []
+        for i, row in bond_df.iterrows():
+            a1 = atom_df.loc[row["a"]]
+            a2 = atom_df.loc[row["b"]]
+            new = go.Scatter3d(
+                x=[a1["x"], a2["x"]],
+                y=[a1["y"], a2["y"]],
+                z=[a1["z"], a2["z"]],
+                mode="lines",
+                line=dict(color=row["bond_color"], width=row["bond_order"] + 1),
+                hoverinfo="skip",
+                showlegend=False,
+            )
+            bonds.append(new)
+        fig.add_traces(bonds)
+
+        return fig
+
+    def show(self):
+        self._fig.show()
+
+    def write_html(self, path):
+        self._fig.write_html(path)
+
+    def reset(self):
+        self._fig = self._setup_fig(self._atom_df, self._bond_df)
+
+    def highlight_atoms(
+        self,
+        *atoms,
+        names: list = None,
+        colors: list = None,
+        opacity: float = 1,
+        showlegend: bool = True,
+    ):
+        atom_scatter = []
+        for idx, atom in enumerate(atoms):
+            atom = self._mol.get_atom(atom)
+            if colors is None:
+                color = self.__atom_colors__.get(atom.element.title(), "black")
+            else:
+                color = colors[idx]
+            if names is None:
+                name = repr(atom)
+            else:
+                name = names[idx]
+            new = go.Scatter3d(
+                x=[atom.coord[0]],
+                y=[atom.coord[1]],
+                z=[atom.coord[2]],
+                mode="markers",
+                marker=dict(color=color, opacity=opacity, size=10),
+                hoverinfo="skip",
+                showlegend=showlegend,
+                name=name,
+            )
+            atom_scatter.append(new)
+        self._fig.add_traces(atom_scatter)
+
+    def highlight_residues(
+        self, *residues, bond_colors: list = None, opacity: float = 1
+    ):
+        residue_traces = []
+        for idx, residue in enumerate(residues):
+            residue = self._mol.get_residue(residue)
+            atoms = self._atom_df[self._atom_df["residue_serial"] == residue.id[1]]
+            bonds = self._bond_df[
+                self._bond_df["a"].isin(atoms.index)
+                & self._bond_df["b"].isin(atoms.index)
+            ]
+            if bond_colors:
+                bonds["bond_color"] = bond_colors[idx]
+            bonds["bond_order"] += 3
+            _op = self.opacity
+            self.opacity = opacity
+            fig = self._setup_fig(atoms, bonds)
+            residue_traces.extend(fig.data)
+            self.opacity = _op
+        self._fig.add_traces(residue_traces)
+
+
+if __name__ == "__main__":
+    import biobuild as bb
+
+    man = bb.molecule("MAN")
+    manv = MoleculeViewer3D_v2()
+    manv.link(man)
+    manv.highlight_residues(1, bond_colors=["red"])
+    manv.show()
