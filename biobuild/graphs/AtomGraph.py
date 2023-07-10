@@ -190,7 +190,7 @@ class AtomGraph(BaseGraph):
             )
 
         if apply_standard_bonds:
-            bonds.extend(struct.apply_standard_bonds(structure, _topology))
+            bonds.extend(struct.apply_reference_bonds(structure, _topology))
 
         if infer_residue_connections:
             bonds.extend(struct.infer_residue_connections(structure, max_bond_length))
