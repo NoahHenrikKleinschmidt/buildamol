@@ -170,7 +170,7 @@ class Patcher(base.Connector):
         if not self.patch:
             raise AttributeError("No patch set")
 
-        _ref_atoms = {int(i[0]) - 1: i[1:] for i in self.patch.bonds[0].atoms}
+        _ref_atoms = {int(i[0]) - 1: i[1:] for i in self.patch._ref_atoms}
         ref_atom_1, ref_atom_2 = super().get_anchors(
             _ref_atoms, target_residue, source_residue
         )

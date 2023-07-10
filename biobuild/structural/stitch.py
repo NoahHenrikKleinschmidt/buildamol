@@ -234,11 +234,11 @@ class Stitcher(base.Connector):
             The number of optimization steps to perform
         """
 
+        self.target.adjust_indexing(self.source)
         bonds = self.target.get_bonds(self._target_residue)
         bonds.extend(self.source.get_bonds(self._source_residue))
 
         tmp = Molecule.Molecule.empty(self.target.id)
-        self.target.adjust_indexing(self.source)
 
         tmp.add_residues(
             self._target_residue,
@@ -297,11 +297,21 @@ class Stitcher(base.Connector):
             edges, angles = self._policy
 
             for bond, angle in zip(edges, angles):
-                bond = (bond[0].full_id, bond[1].full_id)
-                if len(self.target.get_bonds(*bond, either_way=False)) == 0:
-                    self.target.add_bond(*bond)
-
-                bond = self.target.get_bonds(*bond, either_way=False)[0]
+                # we used to use full_id which worked overall good. I think we used to have
+                # also a version with serial for a while. Let's do this again...
+                _bond = self.target.get_bonds(
+                    bond[0].serial_number, bond[1].serial_number, either_way=False
+                )
+                if len(_bond) == 0:
+                    _bond = self.target.get_bonds(
+                        bond[1].serial_number, bond[0].serial_number, either_way=False
+                    )
+                    if len(_bond) == 0:
+                        raise ValueError("Bond not found")
+                    self.target.add_bond(bond[0].serial_number, bond[1].serial_number)
+                    _bond = _bond[0][::-1]
+                else:
+                    _bond = _bond[0]
 
                 # v.draw_vector(
                 #     "rotation",
@@ -311,7 +321,7 @@ class Stitcher(base.Connector):
                 # )
 
                 self.target.rotate_around_bond(
-                    *bond, np.degrees(angle), descendants_only=True
+                    *_bond, np.degrees(angle), descendants_only=True
                 )
 
             self._policy = None, None
