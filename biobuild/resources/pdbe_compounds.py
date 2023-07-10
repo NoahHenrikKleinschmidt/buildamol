@@ -143,6 +143,14 @@ import biobuild.utils.auxiliary as aux
 import biobuild.core.base_classes as base_classes
 import biobuild.core.Molecule as Molecule
 
+__loaded_compounds__ = {
+    "sugars": False,
+    "lipids": False,
+    "small_molecules": False,
+    "amino_acids": False,
+    "nucleotides": False,
+}
+
 __to_float__ = {
     "_chem_comp": set(
         (
@@ -411,51 +419,67 @@ def load_amino_acids():
     """
     Load amino acid components into the default PDBECompounds instance.
     """
+    if __loaded_compounds__["amino_acids"]:
+        return
     comps = get_default_compounds()
     amino_acids = PDBECompounds.from_json(
         defaults.DEFAULT_PDBE_COMPONENT_FILES["amino_acids"]
     )
     comps.merge(amino_acids)
+    __loaded_compounds__["amino_acids"] = True
 
 
 def load_lipids():
     """
     Load lipid components into the default PDBECompounds instance.
     """
+    if __loaded_compounds__["lipids"]:
+        return
     comps = get_default_compounds()
     lipids = PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["lipids"])
     comps.merge(lipids)
+    __loaded_compounds__["lipids"] = True
 
 
 def load_sugars():
     """
     Load sugar components into the default PDBECompounds instance.
     """
+    if __loaded_compounds__["sugars"]:
+        return
     comps = get_default_compounds()
     sugars = PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["sugars"])
     comps.merge(sugars)
+    __loaded_compounds__["sugars"] = True
 
 
 def load_nucleotides():
     """
     Load nucleotide components into the default PDBECompounds instance.
     """
+    if __loaded_compounds__["nucleotides"]:
+        return
+
     comps = get_default_compounds()
     nucleotides = PDBECompounds.from_json(
         defaults.DEFAULT_PDBE_COMPONENT_FILES["nucleotides"]
     )
     comps.merge(nucleotides)
+    __loaded_compounds__["nucleotides"] = True
 
 
 def load_small_molecules():
     """
     Load small molecule components into the default PDBECompounds instance.
     """
+    if __loaded_compounds__["small_molecules"]:
+        return
     comps = get_default_compounds()
     small_molecules = PDBECompounds.from_json(
         defaults.DEFAULT_PDBE_COMPONENT_FILES["small_molecules"]
     )
     comps.merge(small_molecules)
+    __loaded_compounds__["small_molecules"] = True
 
 
 def load_all_compounds():
@@ -769,6 +793,7 @@ class PDBECompounds:
 
         # get the residue
         comp = {
+            "id": mol.id,
             "names": set(i.lower() for i in names),
             "formula": formula,
             "descriptors": identifiers,
