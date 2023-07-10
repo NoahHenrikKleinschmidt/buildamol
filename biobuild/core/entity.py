@@ -32,7 +32,9 @@ class BaseEntity:
     """
 
     def __init__(self, structure, model: int = 0):
-        self._base_struct = base_classes.Structure.from_biopython(structure)
+        if isinstance(structure, bio.Structure.Structure):
+            structure = base_classes.Structure.from_biopython(structure)
+        self._base_struct = structure
         self._id = structure.id
 
         self._model = self._base_struct.child_list[model]
@@ -544,6 +546,28 @@ class BaseEntity:
         else:
             return utils.visual.MoleculeViewer3D(self)
 
+    def vet(
+        self, clash_range: tuple = (0.6, 1.7), angle_range: tuple = (90, 180)
+    ) -> bool:
+        """
+        Vet the structural integrity of a molecule.
+        This will return True if there are no clashes and all angles
+        of adjacent atom triplets are within a tolerable range, False otherwise.
+
+        Parameters
+        ----------
+        clash_range : tuple, optional
+            The minimal and maximal allowed distances for two bonded atoms (in Angstrom).
+        angle_range : tuple, optional
+            The minimal and maximal allowed angles between tree adjacent bonded atoms (in degrees).
+
+        Returns
+        -------
+        bool
+            True if the structure is alright, False otherwise.
+        """
+        return structural.vet_structure(self, clash_range, angle_range)
+
     def copy(self):
         """
         Create a deepcopy of the molecule
@@ -1054,7 +1078,7 @@ class BaseEntity:
         else:
             atom_gen = self._model.get_atoms
 
-        if isinstance(atom, bio.Atom.Atom):
+        if isinstance(atom, base_classes.Atom):
             if atom in atom_gen():
                 return atom
             else:
@@ -1647,7 +1671,9 @@ class BaseEntity:
         self._AtomGraph.add_edges_from(to_add, bond_order=1)
         return bonds
 
-    def get_residue_connections(self, triplet: bool = True):
+    def get_residue_connections(
+        self, residue_a=None, residue_b=None, triplet: bool = True
+    ):
         """
         Get bonds between atoms that connect different residues in the structure
         This method is different from `infer_residue_connections` in that it works
@@ -1655,6 +1681,9 @@ class BaseEntity:
 
         Parameters
         ----------
+        residue_a, residue_b : Union[int, str, tuple, bio.Residue.Residue]
+            The residues to consider. If None, all residues are considered.
+            Otherwise, only between the specified residues are considered.
         triplet : bool
             Whether to include bonds between atoms that are in the same residue
             but neighboring a bond that connects different residues. This is useful
@@ -1666,33 +1695,76 @@ class BaseEntity:
 
         Returns
         -------
-        set
+        list
             A set of tuples of atom pairs that are bonded and connect different residues
         """
-        bonds = set(i for i in self.bonds if i[0].get_parent() != i[1].get_parent())
+        bonds = (i for i in self.bonds if i[0].get_parent() != i[1].get_parent())
 
+        if residue_a is not None and residue_b is None:
+            residue_a = self.get_residue(residue_a)
+            bonds = (
+                i
+                for i in bonds
+                if i[0].get_parent() is residue_a or i[1].get_parent() is residue_a
+            )
+        elif residue_b is not None and residue_a is None:
+            residue_b = self.get_residue(residue_b)
+            bonds = (
+                i
+                for i in bonds
+                if i[0].get_parent() is residue_b or i[1].get_parent() is residue_b
+            )
+        elif residue_a is not None and residue_b is not None:
+            residue_a, residue_b = self.get_residue(residue_a), self.get_residue(
+                residue_b
+            )
+            bonds = (
+                i
+                for i in bonds
+                if (i[0].get_parent() is residue_a and i[1].get_parent() is residue_b)
+                or (i[1].get_parent() is residue_a and i[0].get_parent() is residue_b)
+            )
         if triplet:
-            _new = set()
-            for atom1, atom2 in bonds:
-                neighs = self.get_neighbors(atom1)
-                neighs.remove(atom2)
-                neighs -= set(i for i in neighs if i.element == "H")
-                if len(neighs) == 1:
-                    neigh = neighs.pop()
-                    if neigh.get_parent() == atom1.get_parent():
-                        _new.add((atom1, neigh))
-                    continue
+            bonds = self._make_bond_triplets(bonds)
+        return list(bonds)
 
-                neighs = self.get_neighbors(atom2)
-                neighs.remove(atom1)
-                neighs -= set(i for i in neighs if i.element == "H")
-                if len(neighs) == 1:
-                    neigh = neighs.pop()
-                    if neigh.get_parent() == atom2.get_parent():
-                        _new.add((atom2, neigh))
-                    continue
+    def _make_bond_triplets(self, bonds) -> set:
+        """
+        Make triplets of bonds for bonds that are connected to either side of a bond.
 
-            bonds.update(_new)
+        Parameters
+        ----------
+        bonds : iterable
+            A set of tuples of atom pairs that are bonded
+
+        Returns
+        -------
+        set
+            A set of tuples of atom pairs that are bonded and connect to either partner of the original bonds
+            These are added to the original bonds set.
+        """
+        bonds = set(bonds)
+        _new = set()
+        for atom1, atom2 in bonds:
+            neighs = self.get_neighbors(atom1)
+            neighs.remove(atom2)
+            neighs -= set(i for i in neighs if i.element == "H")
+            if len(neighs) == 1:
+                neigh = neighs.pop()
+                if neigh.get_parent() is atom1.get_parent():
+                    _new.add((atom1, neigh))
+                continue
+
+            neighs = self.get_neighbors(atom2)
+            neighs.remove(atom1)
+            neighs -= set(i for i in neighs if i.element == "H")
+            if len(neighs) == 1:
+                neigh = neighs.pop()
+                if neigh.get_parent() is atom2.get_parent():
+                    _new.add((atom2, neigh))
+                continue
+
+        bonds.update(_new)
         return bonds
 
     def infer_residue_connections(
@@ -1998,6 +2070,17 @@ class BaseEntity:
         mol = conv.pdbio_to_rdkit()
         mol.SetProp("_Name", self.id)
         return mol
+
+    def to_biopython(self):
+        """
+        Convert the molecule to a Biopython structure
+
+        Returns
+        -------
+        Bio.PDB.Structure.Structure
+            The Biopython structure
+        """
+        return self._base_struct.to_biopython()
 
     def infer_missing_atoms(self, _topology=None, _compounds=None):
         """
