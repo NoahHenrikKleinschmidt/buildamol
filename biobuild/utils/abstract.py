@@ -354,7 +354,7 @@ class AbstractBond:
         self.atom1 = atom1 if atom1 else self.atom1
         self.atom2 = atom2 if atom2 else self.atom2
 
-    def __get_item__(self, key):
+    def __getitem__(self, key):
         return self.atoms[key]
 
     def __iter__(self):
@@ -364,4 +364,6 @@ class AbstractBond:
         return item in self.atoms
 
     def __repr__(self):
-        return f"AbstractBond({self.atom1.id}, {self.atom2.id})"
+        id1 = getattr(self.atom1, "id", self.atom1)
+        id2 = getattr(self.atom2, "id", self.atom2)
+        return f"AbstractBond({id1}, {id2})"
