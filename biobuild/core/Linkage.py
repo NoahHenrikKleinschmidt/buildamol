@@ -363,6 +363,14 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             new.add_internal_coordinates(
                 utils.ic.InternalCoordinates._from_dict(i),
             )
+        has_two_residues = False
+        for i in new.internal_coordinates:
+            if any([j.startswith("2") for j in i.atoms]):
+                has_two_residues = True
+        if not has_two_residues:
+            raise ValueError(
+                "The linkage contains only internal coordinates for one residue. It must contain internal coordinates spanning both residues!"
+            )
         return new
 
     @property
@@ -436,20 +444,18 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             _residues = list(set(a.get_parent() for a in ic.atoms))
             use_bare_strings = False
 
-        if len(_residues) != 2:
-            raise ValueError(
-                "The internal coordinates must span two different residues."
-            )
-
         if use_bare_strings:
             _residues.sort()
         else:
             _residues.sort(key=lambda x: x.id[1])
-        _residues = {_residues[0]: "1", _residues[1]: "2"}
+
+        _residues_dict = {_residues[0]: "1"}
+        if len(_residues) == 2:
+            _residues_dict[_residues[1]] = "2"
 
         if not use_bare_strings:
             prefix = (
-                lambda x: _residues[x.get_parent()] + x.id
+                lambda x: _residues_dict[x.get_parent()] + x.id
                 if not x.id[0] in ("1", "2")
                 else x.id
             )
