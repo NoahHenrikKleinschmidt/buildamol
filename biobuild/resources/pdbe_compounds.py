@@ -355,6 +355,7 @@ def add_compound(
     names: list = None,
     identifiers: list = None,
     formula: str = None,
+    overwrite: bool = False,
 ):
     """
     Add a compound to the currently loaded default PDBECompounds instance.
@@ -363,10 +364,23 @@ def add_compound(
     ----------
     mol : Molecule
         The molecule to add.
+    type : str, optional
+        The type of compound. For instance `protein`, `dna`, `rna`, `ligand`, `water`, `ion`, `other`.
+    names : list, optional
+        A list of names for the compound.
+    identifiers : list, optional
+        A list of identifiers for the compound.
+    formula : str, optional
+        The chemical formula of the compound.
+    overwrite : bool, optional
+        Whether to hardcode overwrite the current default PDBECompounds instance.
+        This will make the compound available for all future sessions.
     """
     get_default_compounds().add(
         mol, type=type, names=names, identifiers=identifiers, formula=formula
     )
+    if overwrite:
+        set_default_compounds(get_default_compounds(), overwrite=True)
 
 
 def get_default_compounds() -> "PDBECompounds":
@@ -1060,6 +1074,7 @@ class PDBECompounds:
                         (a.replace(",", "'"), b.replace(",", "'"))
                         for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
                     ],
+                    "parents": [(1, 1) for i in bonds["atom_id_1"]],
                     "orders": np.array(bonds["value_order"]),
                 },
                 "residues": {
@@ -1088,9 +1103,12 @@ class PDBECompounds:
         struct = self._make_structure(compound)
         mol = Molecule(struct)
         for bdx in range(len(pdb["bonds"]["bonds"])):
-            bond = pdb["bonds"]["bonds"][bdx]
+            a, b = pdb["bonds"]["bonds"][bdx]
+            res_a, res_b = pdb["bonds"]["parents"][bdx]
+            a = mol.get_atom(a, residue=res_a)
+            b = mol.get_atom(b, residue=res_b)
             for _ in range(_bond_order_rev_map.get(pdb["bonds"]["orders"][bdx])):
-                mol.add_bond(*bond)
+                mol.add_bond(a, b)
 
         return mol
 
@@ -1229,6 +1247,10 @@ def _molecule_to_pdbx_dict(mol):
         "bonds": {
             "bonds": [
                 (a.id.replace(",", "'"), b.id.replace(",", "'"))
+                for a, b in _bond_dict.keys()
+            ],
+            "parents": [
+                (a.get_parent().id[1], b.get_parent().id[1])
                 for a, b in _bond_dict.keys()
             ],
             "orders": [_bond_order_map.get(i) for i in _bond_dict.values()],
