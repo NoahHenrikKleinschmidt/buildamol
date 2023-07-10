@@ -263,23 +263,27 @@ class Quartet:
             raise TypeError("This quartet is not an improper")
 
     @property
-    def bond_length_12(self):
+    def dist_12(self):
         return np.linalg.norm(self._atoms[1].coord - self._atoms[0].coord)
 
     @property
-    def bond_length_23(self):
+    def dist_23(self):
         return np.linalg.norm(self._atoms[2].coord - self._atoms[1].coord)
 
     @property
-    def bond_length_34(self):
+    def dist_34(self):
         return np.linalg.norm(self._atoms[3].coord - self._atoms[2].coord)
 
     @property
-    def bond_angle_123(self):
+    def dist_13(self):
+        return np.linalg.norm(self._atoms[2].coord - self._atoms[0].coord)
+
+    @property
+    def angle_123(self):
         return base.compute_angle(self._atoms[0], self._atoms[1], self._atoms[2])
 
     @property
-    def bond_angle_234(self):
+    def angle_234(self):
         return base.compute_angle(self._atoms[1], self._atoms[2], self._atoms[3])
 
     @property

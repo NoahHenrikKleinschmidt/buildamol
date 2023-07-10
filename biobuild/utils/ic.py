@@ -70,6 +70,26 @@ class InternalCoordinates:
         )
         return new
 
+    @classmethod
+    def from_quartet(cls, quartet):
+        """
+        Make an InternalCoordinate from a Quartet
+        """
+        new = cls(
+            quartet.atom1,
+            quartet.atom2,
+            quartet.atom3,
+            quartet.atom4,
+            bond_length_12=quartet.dist_12,
+            bond_length_34=quartet.dist_34,
+            bond_angle_123=quartet.angle_123,
+            bond_angle_234=quartet.angle_234,
+            dihedral=quartet.dihedral,
+            bond_length_13=quartet.dist_13,
+            improper=quartet.improper,
+        )
+        return new
+
     @property
     def angles(self):
         """
