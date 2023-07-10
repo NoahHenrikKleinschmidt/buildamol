@@ -5,14 +5,14 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="biobuild",
-    version="3.0.2",
+    version="3.1.5",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A python package for building organic molecules",
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={
-        "biobuild.resources": ["*.pkl", "*.cif"],
+        "biobuild.resources": ["*.pkl", "*.json", "*.cif"],
     },
     url="TBA",
     packages=[
@@ -46,6 +46,9 @@ setuptools.setup(
     optional_requires={
         "openbabel": ["openbabel"],
         "nglview": ["nglview"],
+        "rdkit": ["rdkit"],
+        "openmm": ["openmm"],
+        "md": ["openmm", "openbabel"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
