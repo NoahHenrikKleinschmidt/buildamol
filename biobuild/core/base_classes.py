@@ -69,9 +69,13 @@ class ID:
         return hash(self.__id)
 
     def __eq__(self, other):
+        if not isinstance(other, ID):
+            return False
         return self.__id == other.__id
 
     def __ne__(self, other):
+        if not isinstance(other, ID):
+            return True
         return self.__id != other.__id
 
 
