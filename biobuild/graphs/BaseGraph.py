@@ -131,14 +131,24 @@ class BaseGraph(nx.Graph):
 
         Examples
         --------
-        In case of this graph
+        In case of this graph:
+        
+        .. code-block::
+
+            A---B---C---D---E
+                \\
+                F---H
+                |
+                G
+        
         ```
         A---B---C---D---E
-             \\
-              F---H
-              |
-              G
+                \\
+                F---H
+                |
+                G
         ```
+        
         >>> graph.get_descendants("B", "C")
         {"D", "E"}
         >>> graph.get_descendants("B", "F")
