@@ -149,12 +149,12 @@ class AutoLabel:
         return neighbors.atom[0]
 
     def _parse_carbon_labels(self):
-        carbons = self._df[self._df.element == "C"]
         c1 = self._parse_c1()
         self._df.loc[self._df.atom == c1, "label"] = "1"
         self._c1_row = self._df[self._df.atom == c1]
         idx = 2
         c_current = c1
+        carbons = self._df[self._df.element == "C"]
         while (carbons.label == "none").any():
             c_next = self._parse_c_next(c_current)
             if c_next is None:
@@ -322,6 +322,39 @@ def relabel_hydrogens(molecule):
                 hydrogen.id = f"H{_n}{i+1}"
 
     return molecule
+
+
+def vet_structure(
+    molecule, clash_range: tuple = (0.6, 1.7), angle_range: tuple = (90, 180)
+) -> bool:
+    """
+    Check for basic structure integrity.
+    This will return False if there are clashes within the structure,
+    or invalid angles.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        A biobuild Molecule
+    clash_range : tuple
+        The minimal and maximal allowed distances between bonded atoms (in Angstrom).
+    angle_range : tuple
+        The minimal and maximal allowed angle between a triplet of adjacent bonded atoms (in degrees).
+
+    Returns
+    -------
+    bool
+        True if the structure is free from any obstacles,
+        False otherwise.
+    """
+    for a, b in molecule.get_bonds():
+        d = base.compute_distance(a, b)
+        if not clash_range[0] <= d <= clash_range[1]:
+            return False
+    for angle in molecule.angles.values():
+        if not angle_range[0] <= angle <= angle_range[1]:
+            return False
+    return True
 
 
 def compute_residue_radius(residue):
@@ -621,6 +654,29 @@ def apply_reference_bonds(structure, _compounds=None):
         return bonds
 
 
+def atoms_in_area(structure, center, radius):
+    """
+    Get all atoms in a given area around a center point.
+
+    Parameters
+    ----------
+    structure : Structure
+        The structure to search for atoms.
+    center : np.ndarray
+        The center point of the area to search.
+    radius : float
+        The radius of the area to search.
+
+    Yields
+    ------
+    Atom
+        The atoms in the area.
+    """
+    for atom in structure.get_atoms():
+        if np.linalg.norm(atom.coord - center) < radius:
+            yield atom
+
+
 def compute_internal_coordinates(bonds: list):
     """
     Compute internal coordinates for a structure.
@@ -643,7 +699,7 @@ def compute_internal_coordinates(bonds: list):
         angle_234 = base.compute_angle(quartet[1], quartet[2], quartet[3])
         dihedral = base.compute_dihedral(quartet[0], quartet[1], quartet[2], quartet[3])
         l_12 = base.compute_distance(quartet[0], quartet[1])
-        # l_23 = base.compute_distance(quartet[1], quartet[2])
+        l_13 = base.compute_distance(quartet[0], quartet[2])
         l_34 = base.compute_distance(quartet[2], quartet[3])
 
         ic = _ic.InternalCoordinates(
@@ -656,6 +712,7 @@ def compute_internal_coordinates(bonds: list):
             angle_123,
             angle_234,
             dihedral,
+            l_13 if quartet.improper else None,
             improper=quartet.improper,
         )
         ics.append(ic)
