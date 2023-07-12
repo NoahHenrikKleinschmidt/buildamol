@@ -2169,14 +2169,12 @@ class BaseEntity:
                 self._AtomGraph[atom1][atom2]["bond_order"] = (
                     self._AtomGraph[atom1][atom2].get("bond_order", 1) - 1
                 )
-        if b in self.locked_bonds:
-            self.locked_bonds.remove(b)
+        self.locked_bonds.discard(b)
 
         if either_way:
             if b[::-1] in self._bonds:
-                self._bonds.remove(b[::-1])
-            if b[::-1] in self.locked_bonds:
-                self.locked_bonds.remove(b[::-1])
+                self._bonds.discard(b[::-1])
+            self.locked_bonds.discard(b[::-1])
             if self._AtomGraph.has_edge(atom2, atom1):
                 self._AtomGraph.remove_edge(atom2, atom1)
 
