@@ -34,6 +34,7 @@ class Stitcher(base.Connector):
         super().__init__(copy_target, copy_source)
         self._removals = (None, None)
         self._policy = None, None
+        self._optimize_bystander_radius = 5
 
     def apply(
         self,
@@ -247,19 +248,18 @@ class Stitcher(base.Connector):
             _copy=True,
         )
 
-        # we could also add all neighbors of the anchor atom
-        # ...
-        neighs = (
-            n.copy()
-            for n in self.target.get_neighbors(self._anchors[0], n=3)
-            if not any(i is n for i in tmp.get_atoms())
-        )
-        idx = 0
-        for n in neighs:
-            n.id = "neigh{}".format(idx)
-            idx += 1
-            tmp.add_atoms(n, residue=tmp.residues[0])
-            tmp.add_bond(self._anchors[0].serial_number, n.serial_number)
+        # we could also add all close-by atoms
+        r = self._optimize_bystander_radius
+        for atom in self.target.get_atoms():
+            if atom - self._anchors[0] < r or atom - self._anchors[1] < r:
+                if atom in tmp.get_atoms():
+                    continue
+                tmp.add_atoms(atom, _copy=True)
+        for atom in self.source.get_atoms():
+            if atom - self._anchors[0] < r or atom - self._anchors[1] < r:
+                if atom in tmp.get_atoms():
+                    continue
+                tmp.add_atoms(atom, _copy=True)
 
         for b in bonds:
             b = (b[0].serial_number, b[1].serial_number)
@@ -270,7 +270,7 @@ class Stitcher(base.Connector):
         graph.make_detailed(include_outliers=True, include_heteroatoms=True, f=1.2)
 
         edges = sorted(tmp.get_residue_connections())
-        env = optimizers.MultiBondRotatron(graph, edges)
+        env = optimizers.MultiBondRotatron(graph, edges, mask_same_residues=False)
 
         best, _ = optimizers.scipy_optimize(env, int(steps), **kwargs)
         self._policy = edges, best
@@ -336,15 +336,15 @@ __default_keep_keep_stitcher__ = Stitcher(False, False)
 Default stitcher for the case that both molecules are kept
 """
 
-__default_keep_copy_stitcher__ = Stitcher(False, True)
-"""
-Default stitcher for the case that the target molecule is kept and the source molecule is copied
-"""
+# __default_keep_copy_stitcher__ = Stitcher(False, True)
+# """
+# Default stitcher for the case that the target molecule is kept and the source molecule is copied
+# """
 
-__default_copy_copy_stitcher__ = Stitcher(True, True)
-"""
-Default stitcher for the case that both molecules are copied
-"""
+# __default_copy_copy_stitcher__ = Stitcher(True, True)
+# """
+# Default stitcher for the case that both molecules are copied
+# """
 
 
 def stitch(

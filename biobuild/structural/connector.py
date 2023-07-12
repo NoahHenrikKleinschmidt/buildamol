@@ -69,12 +69,21 @@ class Connector:
         if not _ref_atoms[0]:
             ref_atom_1 = [self.target.root_atom]
         else:
-            ref_atom_1 = self.target.get_atoms(_ref_atoms[0])
+            # the whole point of this stuff is to allow the stitcher (which uses this)
+            # to also work with patches (which would nromally have a 1/2 prefix) which would
+            # otherwise prevent anchor finding...
+            if isinstance(_ref_atoms[0], str) and _ref_atoms[0].startswith("1"):
+                ref_atom_1 = self.target.get_atoms(_ref_atoms[0][1:])
+            else:
+                ref_atom_1 = self.target.get_atoms(_ref_atoms[0])
 
         if not _ref_atoms[1]:
             ref_atom_2 = [self.source.root_atom]
         else:
-            ref_atom_2 = self.source.get_atoms(_ref_atoms[1])
+            if isinstance(_ref_atoms[1], str) and _ref_atoms[1].startswith("2"):
+                ref_atom_2 = self.source.get_atoms(_ref_atoms[1][1:])
+            else:
+                ref_atom_2 = self.source.get_atoms(_ref_atoms[1])
 
         if target_residue:
             target_residue = self.target.get_residue(target_residue)
