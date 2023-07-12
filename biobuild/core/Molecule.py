@@ -801,7 +801,7 @@ class Molecule(entity.BaseEntity):
     ----------
     structure : bio.PDB.Structure
         A biopython structure object
-    root_atom : str or int or bio.PDB.Atom
+    root_atom : str or int or Atom
         The id or the serial number of the root atom
         at which the molecule would be attached to a another
         structure such as protein scaffold or another Molecule.
@@ -815,7 +815,7 @@ class Molecule(entity.BaseEntity):
     def __init__(
         self,
         structure,
-        root_atom: Union[str, int, bio.Atom.Atom] = None,
+        root_atom: Union[str, int, entity.base_classes.Atom] = None,
         model: int = 0,
         chain: str = None,
     ):
@@ -998,6 +998,10 @@ class Molecule(entity.BaseEntity):
         """
         _compound_2d, _compound_3d = resources.pubchem.query(query, by=by, idx=idx)
         new = _molecule_from_pubchem(_compound_2d.iupac_name, _compound_3d)
+        _new = cls(new.structure)
+        _new._bonds = new._bonds
+        new = _new
+        new.id = _compound_2d.iupac_name
         new.set_root(root_atom)
         return new
 
@@ -1102,8 +1106,8 @@ class Molecule(entity.BaseEntity):
         self,
         other: "Molecule",
         link: Union[str, "Linkage.Linkage"] = None,
-        at_residue: Union[int, bio.Residue.Residue] = None,
-        other_residue: Union[int, bio.Residue.Residue] = None,
+        at_residue: Union[int, "entity.base_classes.Residue"] = None,
+        other_residue: Union[int, "entity.base_classes.Residue"] = None,
         inplace: bool = True,
         other_inplace: bool = False,
         _topology=None,
@@ -1239,7 +1243,7 @@ class Molecule(entity.BaseEntity):
                 "No patch was found with the given name. Either set a default patch or provide a patch when attaching."
             )
 
-        p = structural.__default_keep_copy_patcher__
+        p = structural.__default_keep_keep_patcher__
         p.apply(patch, self, other, at_residue, other_residue)
         p.merge()
         return self
@@ -1317,7 +1321,7 @@ class Molecule(entity.BaseEntity):
             other_residue = other.attach_residue
 
         # since we are already copying before we can use the keep-keep stitcher, actually...
-        p = structural.__default_keep_copy_stitcher__
+        p = structural.__default_keep_keep_stitcher__
         p.apply(
             self,
             other,
@@ -1357,21 +1361,24 @@ class Molecule(entity.BaseEntity):
                 "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 + mol2)"
             )
 
-        if patch.has_IC:
-            p = structural.__default_copy_copy_patcher__
-            p.apply(patch, self, other)
-        else:
-            p = structural.__default_copy_copy_stitcher__
-            p.apply(
-                self,
-                other,
-                patch.deletes[0],
-                patch.deletes[1],
-                patch.bonds[0][0],
-                patch.bonds[0][1],
-            )
-        new = p.merge()
+        new = self.attach(other, patch, inplace=False, other_inplace=False)
         return new
+
+        # if patch.has_IC:
+        #     p = structural.__default_copy_copy_patcher__
+        #     p.apply(patch, self, other)
+        # else:
+        #     p = structural.__default_copy_copy_stitcher__
+        #     p.apply(
+        #         self,
+        #         other,
+        #         patch.deletes[0],
+        #         patch.deletes[1],
+        #         patch.bonds[0][0],
+        #         patch.bonds[0][1],
+        #     )
+        # new = p.merge()
+        # return new
 
     def __iadd__(self, other) -> "Molecule":
         """
