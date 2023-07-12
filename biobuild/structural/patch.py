@@ -107,9 +107,9 @@ class Patcher(base.Connector):
         self.get_anchors(target_residue, source_residue)
 
         # compute internal coordinates to rebuild the source molecule
-        _ics = infer.compute_internal_coordinates(self.source.bonds)
-        self._source_ICs = abstract.AbstractEntity()
-        self._source_ICs.internal_coordinates = _ics
+        # _ics = infer.compute_internal_coordinates(self.source.bonds)
+        # self._source_ICs = abstract.AbstractEntity()
+        # self._source_ICs.internal_coordinates = _ics
 
         # self._v.draw_edges(self.source.bonds, color="red", opacity=0.5)
 
@@ -244,6 +244,9 @@ class Patcher(base.Connector):
             #     color="brown",
             #     opacity=0.6,
             # )
+
+            if np.isnan(_new_coords).any():
+                continue
 
             self._source_computed_anchors[atom4] = atom4.coord
             atom4.set_coord(_new_coords)
@@ -445,17 +448,17 @@ __default_keep_keep_patcher__ = Patcher(copy_target=False, copy_source=False)
 Default instance of the Patcher that will modify the target molecule in place
 """
 
-__default_keep_copy_patcher__ = Patcher(copy_target=False, copy_source=True)
-"""
-Default instance of the Patcher that will modify the target molecule in place
-but use a copy of the source molecule to leave it intact.
-"""
+# __default_keep_copy_patcher__ = Patcher(copy_target=False, copy_source=True)
+# """
+# Default instance of the Patcher that will modify the target molecule in place
+# but use a copy of the source molecule to leave it intact.
+# """
 
-__default_copy_copy_patcher__ = Patcher(copy_target=True, copy_source=True)
-"""
-Default instance of the Patcher that will copy both the target and source molecules
-to leave the originals intact.
-"""
+# __default_copy_copy_patcher__ = Patcher(copy_target=True, copy_source=True)
+# """
+# Default instance of the Patcher that will copy both the target and source molecules
+# to leave the originals intact.
+# """
 
 
 def patch(
