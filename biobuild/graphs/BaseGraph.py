@@ -265,7 +265,12 @@ class BaseGraph(nx.Graph):
         self._locked_edges = set()
 
     def rotate_around_edge(
-        self, node_1, node_2, angle: float, descendants_only: bool = False
+        self,
+        node_1,
+        node_2,
+        angle: float,
+        descendants_only: bool = False,
+        update_coords: bool = True,
     ):
         """
         Rotate descending nodes around a specific edge by a given angle.
@@ -279,6 +284,13 @@ class BaseGraph(nx.Graph):
         descendants_only: bool, optional
             Whether to only rotate the descending nodes, by default False, in which case the entire graph
             will be rotated.
+        update_coords: bool, optional
+            Whether to update the coordinates of the nodes after rotation, by default True.
+
+        Returns
+        -------
+        new_coords: dict
+            The new coordinates of the nodes after rotation.
         """
 
         # get the node coordinates as a dictionary
@@ -319,18 +331,21 @@ class BaseGraph(nx.Graph):
         # apply the rotation matrix to the node coordinates
         node_coords_rotated = r.apply(node_coords)
 
-        # now adjust for the translational shift around the axis
+        # now adjust for the translatisonal shift around the axis
         _diff = node_coords_rotated[idx_2] - node_coords[idx_2]
         node_coords_rotated -= _diff
 
         # update the node coordinates in the graph
-        for i, node in enumerate(nodes):
-            node.coord = node_coords_rotated[i]
+        new_coords = {i: node_coords_rotated[idx] for idx, i in enumerate(nodes.keys())}
 
-        new_coords = {i: i.coord for i in self.nodes}
+        if update_coords:
+            for node, coord in new_coords.items():
+                node.coord = coord
 
-        # set the node attributes in the graph
-        nx.set_node_attributes(self, new_coords, "coord")
+            # set the node attributes in the graph
+            nx.set_node_attributes(self, new_coords, "coord")
+
+        return new_coords
 
     def _get_structure(self):
         """
