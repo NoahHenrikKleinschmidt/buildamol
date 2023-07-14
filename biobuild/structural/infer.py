@@ -96,6 +96,8 @@ class AutoLabel:
             for neighbor in self.graph.neighbors(atom):
                 ndx += 1
                 n_num = pt.elements.symbol(neighbor.element.title()).number
+                if n_num != 1 and n_num != 6:
+                    n_num *= 10
                 n_num *= self._bond_orders.get((atom, neighbor), 1)
                 edx += n_num
             neighbors.append(ndx)
@@ -932,16 +934,8 @@ def _H_id_match(H, non_H):
 if __name__ == "__main__":
     import biobuild as bb
 
-    mol = bb.molecule("/Users/noahhk/GIT/biobuild/support/examples/man9.pdb")
-    mol.infer_bonds()
-    for atom in mol.get_atoms():
-        if atom.element != "H":
-            continue
-        for neigh in mol.get_neighbors(atom, 2):
-            print(
-                atom.id, neigh.id, _H_id_match(atom, neigh), _H_dist_match(atom, neigh)
-            )
-
-    mol.show()
+    mol = bb.Molecule.from_pubchem(
+        "L-apiose"
+    )  # ("/Users/noahhk/GIT/biobuild/support/examples/man9.pdb")
     autolabel(mol)
-    pass
+    print(mol.atoms)
