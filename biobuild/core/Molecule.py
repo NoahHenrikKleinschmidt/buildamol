@@ -999,7 +999,7 @@ class Molecule(entity.BaseEntity):
         _compound_2d, _compound_3d = resources.pubchem.query(query, by=by, idx=idx)
         new = _molecule_from_pubchem(_compound_2d.iupac_name, _compound_3d)
         _new = cls(new.structure)
-        _new._bonds = new._bonds
+        _new.add_bonds(*new._bonds)
         new = _new
         new.id = _compound_2d.iupac_name
         new.set_root(root_atom)
