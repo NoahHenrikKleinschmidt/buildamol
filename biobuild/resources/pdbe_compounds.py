@@ -312,9 +312,7 @@ def has_compound(compound: str, search_by: str = None) -> bool:
     return False
 
 
-def get_compound(
-    compound: str, search_by: str = None, return_type: str = "molecule"
-) -> Molecule:
+def get_compound(compound: str, search_by: str = None, return_type: str = "molecule"):
     """
     Get a compound from the currently loaded default PDBECompounds instance.
 
@@ -328,13 +326,14 @@ def get_compound(
         By default, all search types are used.
 
     return_type : str, optional
-        The type of object to return. One of `molecule` (a biobuild Molecule), `structure` (a biopython structure only, does not include connectivity), `dict` (the compound data and coordinate dictionaries).
+        The type of object to return. One of `molecule` (a biobuild Molecule), `structure` (a biobuild structure only, does not include connectivity), `dict` (the compound data and coordinate dictionaries).
         Defaults to `molecule`.
 
     Returns
     -------
-    Molecule
-        The molecule object.
+    object or list
+        The molecule object, structure, or tuple of dictionaries.
+        If multiple compounds are found matching, they are returned as a list.
     """
     if not has_compound(compound, search_by=search_by):
         raise ValueError(
@@ -345,7 +344,10 @@ def get_compound(
         if comps.has_residue(compound, by=by):
             comp = comps.get(compound, by=by, return_type=return_type)
             if return_type == "dict":
-                comp = comp, comps._pdb[comp["id"]]
+                if isinstance(comp, list):
+                    comp = [(c, comps._pdb[c["id"]]) for c in comp]
+                else:
+                    comp = comp, comps._pdb[comp["id"]]
             return comp
 
 
