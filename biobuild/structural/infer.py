@@ -54,6 +54,7 @@ class AutoLabel:
     def __init__(self, atom_graph):
         self.graph = atom_graph
         self._bond_orders = nx.get_edge_attributes(self.graph, "bond_order")
+        self._cycles = nx.cycle_basis(self.graph)
         self._df_all = self._make_df()
         self._df = None
 
@@ -104,22 +105,37 @@ class AutoLabel:
             neighbor_element_sum.append(edx)
         return neighbors, neighbor_element_sum
 
+    def _in_cycle(self, atom):
+        """
+        Check if a list of atoms is in a cycle.
+        """
+        for cycle in self._cycles:
+            if set(atom).issubset(cycle):
+                return True
+        return False
+
     def _make_df(self):
         """
         Make a dataframe of the molecule connectivity.
         """
 
         neighbors, neighbor_element_sum = self._neighbors(self.graph.nodes)
+        in_cycle = [self._in_cycle([a]) for a in self.graph.nodes]
         self._df = pd.DataFrame(
             {
                 "atom": list(self.graph.nodes),
                 "element": [a.element.title() for a in self.graph.nodes],
                 "neighbors": neighbors,
                 "neighbor_element_sum": neighbor_element_sum,
+                "in_cycle": in_cycle,
                 "residue": [a.get_parent().id[1] for a in self.graph.nodes],
             }
         )
-        self._df["total"] = self._df.neighbors * self._df.neighbor_element_sum
+        self._df["total"] = (
+            self._df.neighbors
+            * self._df.neighbor_element_sum
+            * (10 * self._df.in_cycle + 1)
+        )
         self._df["label"] = "none"
         return self._df
 
@@ -935,7 +951,7 @@ if __name__ == "__main__":
     import biobuild as bb
 
     mol = bb.Molecule.from_pubchem(
-        "L-apiose"
+        "3-Deoxy-D-Lyxo-Heptopyran-2-ularic Acid"
     )  # ("/Users/noahhk/GIT/biobuild/support/examples/man9.pdb")
     autolabel(mol)
     print(mol.atoms)
