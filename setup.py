@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="biobuild",
-    version="3.1.24",
+    version="3.1.15",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A python package for building organic molecules",
@@ -41,7 +41,7 @@ setuptools.setup(
         "pubchempy",
         "tabulate",
         "scikit-learn",
-        "ipywidgets<8.0",
+        "ipywidgets<8.0.1...",
     ],
     optional_requires={
         "openbabel": ["openbabel"],
