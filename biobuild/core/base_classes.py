@@ -96,6 +96,8 @@ class Atom(ID, bio.Atom.Atom):
         if not fullname:
             fullname = id
         ID.__init__(self)
+        if element:
+            element = element.upper()
         bio.Atom.Atom.__init__(
             self,
             id,
@@ -168,7 +170,7 @@ class Atom(ID, bio.Atom.Atom):
             self.altloc,
             self.fullname,
             self.serial_number,
-            self.element,
+            self.element.upper(),
             self.pqr_charge,
             self.radius,
         )
