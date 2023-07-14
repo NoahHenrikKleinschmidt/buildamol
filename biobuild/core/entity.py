@@ -2039,7 +2039,13 @@ class BaseEntity:
             A three-letter code for the molecule to be written to the JSON file.
         """
         utils.json.write_molecule(
-            self, filename, type, names, identifiers, one_letter_code, three_letter_code
+            mol=self,
+            filename=filename,
+            type=type,
+            names=names,
+            identifiers=identifiers,
+            one_letter_code=one_letter_code,
+            three_letter_code=three_letter_code,
         )
 
     def to_pybel(self):
