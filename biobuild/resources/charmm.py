@@ -246,9 +246,9 @@ def restore_default_topology():
     Restore the default CHARMMTopology object from the backup file
     """
     _defaults.__default_instances__["Topology"] = CHARMMTopology.load(
-        DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"
+        _defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"
     )
-    os.remove(DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
+    os.remove(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
 
 
 def has_patch(name: str) -> bool:
