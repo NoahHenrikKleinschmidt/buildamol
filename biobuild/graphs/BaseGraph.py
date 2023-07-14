@@ -361,3 +361,7 @@ class BaseGraph(nx.Graph):
         while not isinstance(structure, bio.Structure.Structure):
             structure = structure.get_parent()
         return structure
+
+    def __str__(self):
+        lines = "\n".join(nx.generate_network_text(self))
+        return lines

@@ -302,7 +302,7 @@ class Residue(ID, bio.Residue.Residue):
         bio.Residue.Residue.add(self, atom)
 
     def __repr__(self):
-        return f"Residue({self.resname}, {self.serial_number}, chain={self.parent.id if self.parent else None})"
+        return f"Residue({self.resname}, {self.serial_number})"
 
     def __lt__(self, other):
         return self.serial_number < other.serial_number

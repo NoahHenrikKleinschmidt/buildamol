@@ -1403,12 +1403,13 @@ class Molecule(entity.BaseEntity):
         Add multiple identical molecules together using the * operator (i.e. mol * 3)
         This requires that the molecule has a patch defined
         """
+        if not self._linkage:
+            raise RuntimeError("Cannot multiply a molecule without a patch defined")
+
         if not isinstance(n, int):
             raise TypeError("Can only multiply a molecule by an integer")
         if n <= 0:
             raise ValueError("Can only multiply a molecule by a positive integer")
-        if not self._linkage:
-            raise RuntimeError("Cannot multiply a molecule without a patch defined")
 
         new = self + self
         for i in range(n - 2):
@@ -1421,15 +1422,19 @@ class Molecule(entity.BaseEntity):
         Add multiple identical molecules together using the *= operator (i.e. mol *= 3)
         This requires that the molecule has a patch defined
         """
-        if not self._linkage:
-            raise RuntimeError("Cannot multiply a molecule without a patch defined")
-
         self.repeat(n)
-
         return self
 
     def __repr__(self):
         return f"Molecule({self.id})"
+
+    def __str__(self):
+        string = f"Molecule {self.id}:\n"
+        if len(self.residues) > 1:
+            string += str(self.make_residue_graph())
+        else:
+            string += str(self.residues[0])
+        return string
 
 
 def _molecule_from_pubchem(id, comp):
