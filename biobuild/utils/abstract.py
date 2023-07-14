@@ -300,15 +300,15 @@ class AbstractAtom:
         return f"AbstractAtom({self.id})"
 
 
-@attr.s
+@attr.s(hash=True)
 class AbstractBond:
     """
     A representation of a single Bond between two atoms (or atom types)
     optionally, a bond spring constant (K) and length can be supplied.
     """
 
-    atom1 = attr.ib(type=Union[AbstractAtom, str])
-    atom2 = attr.ib(type=Union[AbstractAtom, str])
+    atom1 = attr.ib(type=Union[AbstractAtom, str], hash=True)
+    atom2 = attr.ib(type=Union[AbstractAtom, str], hash=True)
 
     K = attr.ib(type=float, default=None)
     length = attr.ib(type=float, default=None)

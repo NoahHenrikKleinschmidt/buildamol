@@ -488,6 +488,9 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             raise StopIteration
         return iter(self.bonds[0])
 
+    def __hash__(self) -> int:
+        return hash(self.id) + hash(tuple(self.bonds))
+
 
 def _dict_to_ics(_dict):
     """
