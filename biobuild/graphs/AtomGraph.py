@@ -3,6 +3,7 @@ import Bio.PDB as bio
 
 import biobuild.structural as struct
 from biobuild.graphs.BaseGraph import BaseGraph
+import biobuild.core.base_classes as base_classes
 
 
 class AtomGraph(BaseGraph):
@@ -106,13 +107,13 @@ class AtomGraph(BaseGraph):
         self.add_edges_from(other.edges)
         nx.set_edge_attributes(self, bond_orders, "bond_order")
 
-    def get_neighbors(self, atom: bio.Atom.Atom, n: int = 1, mode="upto"):
+    def get_neighbors(self, atom: "base_classes.Atom", n: int = 1, mode="upto"):
         """
         Get the neighbors of a node
 
         Parameters
         ----------
-        atom : bio.Atom.Atom
+        atom : Atom
             The atom
         n : int, optional
             The number of bonds to separate the atom from its neighbors.

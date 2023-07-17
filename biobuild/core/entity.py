@@ -25,11 +25,23 @@ class BaseEntity:
 
     Parameters
     ----------
-    structure : Bio.PDB.Structure
+    structure : Structure or Bio.PDB.Structure
         The biopython structure
     model : int
         The index of the model to use (default: 0)
     """
+
+    __slots__ = (
+        "_base_struct",
+        "_model",
+        "_id",
+        "_bonds",
+        "_AtomGraph",
+        "_linkage",
+        "_working_chain",
+        "_root_atom",
+        "_attach_residue",
+    )
 
     def __init__(self, structure, model: int = 0):
         if isinstance(structure, bio.Structure.Structure):
@@ -443,7 +455,7 @@ class BaseEntity:
         else:
             self._attach_residue = self.get_residue(value)
 
-    def get_root(self) -> bio.Atom.Atom:
+    def get_root(self) -> base_classes.Atom:
         """
         Get the root atom of the molecule. The root atom is the atom
         at which it is attached to another molecule.
@@ -558,6 +570,8 @@ class BaseEntity:
         ----------
         clash_range : tuple, optional
             The minimal and maximal allowed distances for two bonded atoms (in Angstrom).
+            The minimal distance is also used for non-bonded atoms.
+
         angle_range : tuple, optional
             The minimal and maximal allowed angles between tree adjacent bonded atoms (in degrees).
 
@@ -622,8 +636,8 @@ class BaseEntity:
 
     def rotate_descendants(
         self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
         angle: float,
     ):
         """
@@ -631,9 +645,9 @@ class BaseEntity:
 
         Parameters
         ----------
-        atom1 : Union[str, int, bio.Atom.Atom]
+        atom1 : Union[str, int, base_classes.Atom]
             The first atom
-        atom2 : Union[str, int, bio.Atom.Atom]
+        atom2 : Union[str, int, base_classes.Atom]
             The second atom (whose downstream neighbors are rotated)
         angle : float
             The angle to rotate by in degrees
@@ -642,8 +656,8 @@ class BaseEntity:
 
     def rotate_ancestors(
         self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
         angle: float,
     ):
         """
@@ -651,9 +665,9 @@ class BaseEntity:
 
         Parameters
         ----------
-        atom1 : Union[str, int, bio.Atom.Atom]
+        atom1 : Union[str, int, base_classes.Atom]
             The first atom (whose upstream neighbors are rotated)
-        atom2 : Union[str, int, bio.Atom.Atom]
+        atom2 : Union[str, int, base_classes.Atom]
             The second atom
         angle : float
             The angle to rotate by in degrees
@@ -662,8 +676,8 @@ class BaseEntity:
 
     def rotate_around_bond(
         self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
         angle: float,
         descendants_only: bool = False,
     ):
@@ -719,8 +733,8 @@ class BaseEntity:
 
     def get_ancestors(
         self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
     ):
         """
         Get the atoms upstream of a bond. This will return the set
@@ -760,8 +774,8 @@ class BaseEntity:
 
     def get_descendants(
         self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
     ):
         """
         Get the atoms downstream of a bond. This will return the set
@@ -804,7 +818,7 @@ class BaseEntity:
 
     def get_neighbors(
         self,
-        atom: Union[int, str, tuple, bio.Atom.Atom],
+        atom: Union[int, str, tuple, base_classes.Atom],
         n: int = 1,
         mode: str = "upto",
     ):
@@ -1022,7 +1036,7 @@ class BaseEntity:
                 by = "id"
             elif isinstance(atoms[0], tuple):
                 by = "full_id"
-            elif isinstance(atoms[0], bio.Atom.Atom):
+            elif isinstance(atoms[0], base_classes.Atom):
                 return atoms
             else:
                 raise ValueError(
@@ -1069,7 +1083,7 @@ class BaseEntity:
 
         Returns
         -------
-        atom : bio.Atom.Atom
+        atom : base_classes.Atom
             The atom
         """
         if residue is not None:
@@ -1111,8 +1125,8 @@ class BaseEntity:
 
     def get_bonds(
         self,
-        atom1: Union[int, str, tuple, bio.Atom.Atom, bio.Residue.Residue] = None,
-        atom2: Union[int, str, tuple, bio.Atom.Atom] = None,
+        atom1: Union[int, str, tuple, base_classes.Atom, bio.Residue.Residue] = None,
+        atom2: Union[int, str, tuple, base_classes.Atom] = None,
         either_way: bool = True,
         residue_internal: bool = True,
     ):
@@ -1346,7 +1360,7 @@ class BaseEntity:
 
     def rename_atom(
         self,
-        atom: Union[int, bio.Atom.Atom],
+        atom: Union[int, base_classes.Atom],
         name: str,
         residue: Union[int, bio.Residue.Residue] = None,
     ):
@@ -1355,7 +1369,7 @@ class BaseEntity:
 
         Parameters
         ----------
-        atom : int or bio.Atom.Atom
+        atom : int or base_classes.Atom
             The atom to rename, either the object itself or its serial number
         name : str
             The new name (id)
@@ -1372,14 +1386,14 @@ class BaseEntity:
         #     p.child_dict.pop(_old)
         #     p.child_dict[name] = atom
 
-    def add_atoms(self, *atoms: bio.Atom.Atom, residue=None, _copy: bool = False):
+    def add_atoms(self, *atoms: base_classes.Atom, residue=None, _copy: bool = False):
         """
         Add atoms to the structure. This will automatically adjust the atom's serial number to
         fit into the structure.
 
         Parameters
         ----------
-        atoms : bio.Atom.Atom
+        atoms : base_classes.Atom
             The atoms to add
         residue : int or str
             The residue to which the atoms should be added,
@@ -1404,13 +1418,13 @@ class BaseEntity:
         _max_serial = sum(1 for i in self._model.get_atoms())
         for atom in atoms:
             if _copy:
-                atom = deepcopy(atom)
+                atom = atom.copy()
             _max_serial += 1
             atom.set_serial_number(_max_serial)
             target.add(atom)
             self._AtomGraph.add_node(atom)
 
-    def remove_atoms(self, *atoms: Union[int, str, tuple, bio.Atom.Atom]) -> list:
+    def remove_atoms(self, *atoms: Union[int, str, tuple, base_classes.Atom]) -> list:
         """
         Remove one or more atoms from the structure
 
@@ -1451,8 +1465,8 @@ class BaseEntity:
 
     def add_bond(
         self,
-        atom1: Union[int, str, tuple, bio.Atom.Atom],
-        atom2: Union[int, str, tuple, bio.Atom.Atom],
+        atom1: Union[int, str, tuple, base_classes.Atom],
+        atom2: Union[int, str, tuple, base_classes.Atom],
     ):
         """
         Add a bond between two atoms
@@ -1465,20 +1479,7 @@ class BaseEntity:
         """
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
-
-        if not atom1:
-            raise ValueError("Atom1 not found!")
-        if not atom2:
-            raise ValueError("Atom2 not found!")
-
-        # if (atom1, atom2) not in self._bonds:
-        self._bonds.append((atom1, atom2))
-        if not self._AtomGraph.has_edge(atom1, atom2):
-            self._AtomGraph.add_edge(atom1, atom2, bond_order=1)
-        else:
-            self._AtomGraph.edges[atom1, atom2]["bond_order"] = (
-                self._AtomGraph.edges[atom1, atom2].get("bond_order", 0) + 1
-            )
+        self._add_bond(atom1, atom2)
 
     def add_bonds(self, *bonds):
         """
@@ -1496,8 +1497,8 @@ class BaseEntity:
 
     def remove_bond(
         self,
-        atom1: Union[int, str, tuple, bio.Atom.Atom],
-        atom2: Union[int, str, tuple, bio.Atom.Atom],
+        atom1: Union[int, str, tuple, base_classes.Atom],
+        atom2: Union[int, str, tuple, base_classes.Atom],
         either_way: bool = True,
     ):
         """
@@ -1522,7 +1523,7 @@ class BaseEntity:
 
         self._remove_bond(atom1, atom2)
 
-    def purge_bonds(self, atom: Union[int, str, bio.Atom.Atom] = None):
+    def purge_bonds(self, atom: Union[int, str, base_classes.Atom] = None):
         """
         Remove all bonds connected to an atom
 
@@ -1563,8 +1564,8 @@ class BaseEntity:
 
     def lock_bond(
         self,
-        atom1: Union[int, str, tuple, bio.Atom.Atom],
-        atom2: Union[int, str, tuple, bio.Atom.Atom],
+        atom1: Union[int, str, tuple, base_classes.Atom],
+        atom2: Union[int, str, tuple, base_classes.Atom],
         both_ways: bool = False,
     ):
         """
@@ -1590,8 +1591,8 @@ class BaseEntity:
 
     def unlock_bond(
         self,
-        atom1: Union[int, str, tuple, bio.Atom.Atom],
-        atom2: Union[int, str, tuple, bio.Atom.Atom],
+        atom1: Union[int, str, tuple, base_classes.Atom],
+        atom2: Union[int, str, tuple, base_classes.Atom],
         both_ways: bool = False,
     ):
         """
@@ -1620,8 +1621,8 @@ class BaseEntity:
 
     def is_locked(
         self,
-        atom1: Union[int, str, tuple, bio.Atom.Atom],
-        atom2: Union[int, str, tuple, bio.Atom.Atom],
+        atom1: Union[int, str, tuple, base_classes.Atom],
+        atom2: Union[int, str, tuple, base_classes.Atom],
     ):
         """
         Check if a bond is locked
@@ -1865,9 +1866,9 @@ class BaseEntity:
 
     def compute_angle(
         self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
-        atom3: Union[str, int, bio.Atom.Atom],
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
+        atom3: Union[str, int, base_classes.Atom],
     ):
         """
         Compute the angle between three atoms where atom2 is the middle atom.
@@ -1893,10 +1894,10 @@ class BaseEntity:
 
     def compute_dihedral(
         self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
-        atom3: Union[str, int, bio.Atom.Atom],
-        atom4: Union[str, int, bio.Atom.Atom],
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
+        atom3: Union[str, int, base_classes.Atom],
+        atom4: Union[str, int, base_classes.Atom],
     ):
         """
         Compute the dihedral angle between four atoms
@@ -2160,6 +2161,25 @@ class BaseEntity:
         ]
         for bond in bonds:
             self._remove_bond(*bond)
+
+    def _add_bond(self, atom1, atom2):
+        """
+        Add a bond between two atoms
+        This method expects the atoms to be present in the structure!
+        """
+        if not atom1:
+            raise ValueError("Atom1 not found!")
+        if not atom2:
+            raise ValueError("Atom2 not found!")
+
+        # if (atom1, atom2) not in self._bonds:
+        self._bonds.append((atom1, atom2))
+        if not self._AtomGraph.has_edge(atom1, atom2):
+            self._AtomGraph.add_edge(atom1, atom2, bond_order=1)
+        else:
+            self._AtomGraph.edges[atom1, atom2]["bond_order"] = (
+                self._AtomGraph.edges[atom1, atom2].get("bond_order", 0) + 1
+            )
 
     def _remove_bond(self, atom1, atom2, either_way: bool = False):
         """

@@ -48,6 +48,8 @@ import periodictable as pt
 
 
 class ID:
+    __slots__ = ("__id",)
+
     def __init__(self):
         self.__id = str(uuid4())
 
@@ -80,6 +82,29 @@ class ID:
 
 
 class Atom(ID, bio.Atom.Atom):
+    __slots__ = (
+        "id",
+        "parent",
+        "name",
+        "fullname",
+        "coord",
+        "mass",
+        "serial_number",
+        "bfactor",
+        "occupancy",
+        "altloc",
+        "element",
+        "pqr_charge",
+        "radius",
+        "level",
+        "disordered_flag",
+        "anisou_array",
+        "siguij_array",
+        "sigatm_array",
+        "xtra",
+        "_sorting_keys",
+    )
+
     def __init__(
         self,
         id: str,
@@ -219,6 +244,19 @@ class Atom(ID, bio.Atom.Atom):
 
 
 class Residue(ID, bio.Residue.Residue):
+    __slots__ = (
+        "level",
+        "disordered",
+        "resname",
+        "segid",
+        "internal_coord",
+        "_id",
+        "parent",
+        "child_list",
+        "child_dict",
+        "xtra",
+    )
+
     def __init__(self, resname, segid, icode):
         ID.__init__(self)
         bio.Residue.Residue.__init__(
@@ -334,6 +372,16 @@ class Residue(ID, bio.Residue.Residue):
 
 
 class Chain(ID, bio.Chain.Chain):
+    __slots__ = (
+        "level",
+        "internal_coord",
+        "_id",
+        "parent",
+        "child_list",
+        "child_dict",
+        "xtra",
+    )
+
     def __init__(self, id):
         ID.__init__(self)
         super(bio.Chain.Chain, self).__init__(id)
@@ -418,6 +466,16 @@ class Chain(ID, bio.Chain.Chain):
 
 
 class Model(bio.Model.Model, ID):
+    __slots__ = (
+        "level",
+        # "serial_num",
+        "_id",
+        "parent",
+        "child_list",
+        "child_dict",
+        "xtra",
+    )
+
     def __init__(self, id):
         ID.__init__(self)
         super(bio.Model.Model, self).__init__(id)
@@ -510,6 +568,15 @@ class Model(bio.Model.Model, ID):
 
 
 class Structure(ID, bio.Structure.Structure):
+    __slots__ = (
+        "level",
+        "_id",
+        "parent",
+        "child_list",
+        "child_dict",
+        "xtra",
+    )
+
     def __init__(self, id):
         ID.__init__(self)
         super(bio.Structure.Structure, self).__init__(id)
