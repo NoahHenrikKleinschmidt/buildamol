@@ -378,7 +378,7 @@ def vet_structure(
             if a is b:
                 continue
             dist = base.compute_distance(a, b)
-            if dist < clash_range[0]:
+            if dist <= clash_range[0]:
                 return False
     return True
 
