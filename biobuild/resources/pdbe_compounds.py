@@ -418,17 +418,30 @@ def set_default_compounds(obj, overwrite: bool = False):
             current.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
     defaults.__default_instances__["PDBECompounds"] = obj
     if overwrite:
-        obj.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
+        obj.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
 
 
-def restore_default_compounds():
+def restore_default_compounds(overwrite: bool = True):
     """
     Restore the default PDBECompounds object from the backup file
+
+    Parameters
+    ----------
+    overwrite : bool
+        If set to `True`, the backup file will be permanently saved as the default again.
     """
+    if not os.path.isfile(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak"):
+        raise FileNotFoundError(
+            "No backup file found. The default PDBECompounds object has not been modified."
+        )
     defaults.__default_instances__["PDBECompounds"] = PDBECompounds.from_json(
-        defaults.DEFAULT_PDBE_COMPONENT_FILES["base"]
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak"
     )
-    os.remove(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
+    if overwrite:
+        os.rename(
+            defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak",
+            defaults.DEFAULT_PDBE_COMPONENT_FILES["base"],
+        )
 
 
 def load_amino_acids():
