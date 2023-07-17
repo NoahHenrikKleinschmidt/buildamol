@@ -375,10 +375,37 @@ def vet_structure(
             return False
     for a in molecule.get_atoms():
         for b in molecule.get_atoms():
+            if a is b:
+                continue
             dist = base.compute_distance(a, b)
             if dist < clash_range[0]:
                 return False
     return True
+
+
+def find_clashes(molecule, min_dist: float = 0.6):
+    """
+    Find all clashing atoms within a molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        A biobuild Molecule
+    min_dist : float
+        The minimal allowed distance between atoms (in Angstrom).
+
+    Yields
+    -------
+    tuple
+        A tuple of clashing atoms.
+    """
+    for a in molecule.get_atoms():
+        for b in molecule.get_atoms():
+            if a is b:
+                continue
+            dist = base.compute_distance(a, b)
+            if dist <= min_dist:
+                yield (a, b)
 
 
 def compute_residue_radius(residue):
