@@ -4,6 +4,33 @@ Auxiliary tools for PDB files.
 
 from tabulate import tabulate
 
+__amino_acids = set(
+    (
+        "ALA",
+        "ARG",
+        "ASN",
+        "ASP",
+        "CYS",
+        "GLN",
+        "GLU",
+        "GLY",
+        "HIS",
+        "ILE",
+        "LEU",
+        "LYS",
+        "MET",
+        "PHE",
+        "PRO",
+        "SER",
+        "THR",
+        "TRP",
+        "TYR",
+        "VAL",
+        "CSE",  # selenocysteines
+        "SEC",
+    )
+)
+
 
 def write_pdb(mol, filename, symmetric: bool = True):
     """
@@ -120,7 +147,7 @@ def make_connect_table(mol, symmetric=True):
     return table
 
 
-atom_line = "HETATM{serial}{neg_adj}{element}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
+atom_line = "{prefix}{serial}{neg_adj}{element}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
 
 
 def make_atoms_table(mol):
@@ -147,8 +174,15 @@ def make_atoms_table(mol):
             charge = ""
         else:
             charge = str(int(atom.pqr_charge)) + ("-" if atom.pqr_charge < 0 else "+")
+
+        if atom.get_parent().resname in __amino_acids:
+            prefix = "ATOM  "
+        else:
+            prefix = "HETATM"
+
         lines.append(
             atom_line.format(
+                prefix=prefix,
                 serial=left_adjust(str(atom.serial_number), 5),
                 neg_adj=neg_adj,
                 id=right_adjust(
