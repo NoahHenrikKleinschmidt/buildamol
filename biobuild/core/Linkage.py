@@ -101,6 +101,8 @@ to the ``Molecule``'s ``attach`` method or any other function that requires a li
 import biobuild.utils as utils
 import biobuild.structural.neighbors as neighbors
 
+__all__ = ["Linkage", "recipe", "patch", "linkage"]
+
 
 def patch(
     atom1,

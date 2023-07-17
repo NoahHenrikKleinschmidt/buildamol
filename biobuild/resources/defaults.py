@@ -31,3 +31,6 @@ def import_custom_resources(directory_name: str, overwrite: bool = False):
     if overwrite:
         pdbe_compounds.set_default_compounds(compounds, overwrite=True)
         charmm.set_default_topology(topology, overwrite=True)
+
+
+__all__ = ["export_custom_resources", "import_custom_resources"]

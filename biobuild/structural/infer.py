@@ -356,6 +356,7 @@ def vet_structure(
         A biobuild Molecule
     clash_range : tuple
         The minimal and maximal allowed distances between bonded atoms (in Angstrom).
+        The lower limit is also used for non-bonded atoms.
     angle_range : tuple
         The minimal and maximal allowed angle between a triplet of adjacent bonded atoms (in degrees).
 
@@ -372,6 +373,11 @@ def vet_structure(
     for angle in molecule.angles.values():
         if not angle_range[0] <= angle <= angle_range[1]:
             return False
+    for a in molecule.get_atoms():
+        for b in molecule.get_atoms():
+            dist = base.compute_distance(a, b)
+            if dist < clash_range[0]:
+                return False
     return True
 
 
