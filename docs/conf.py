@@ -9,7 +9,7 @@
 project = "biobuild"
 copyright = "2023, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "3.1.40"
+release = "3.2.12"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

@@ -1,5 +1,5 @@
 """
 Basic information about the package.
 """
-__version__ = "3.1.40"
+__version__ = "3.2.12"
 __author__ = "Noah Kleinschmidt"
