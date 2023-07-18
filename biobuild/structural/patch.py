@@ -436,7 +436,7 @@ class Patcher(base.Connector):
 
         atoms = _obj.get_atoms(id, by="id")
         if _res:
-            atoms = [i for i in atoms if i.get_parent() == _res]
+            atoms = [i for i in atoms if i.get_parent() is _res]
         if len(atoms) == 0:
             raise PatchError("No atom found with id {}".format(atom))
         atom = atoms[_idx]
@@ -517,52 +517,68 @@ def patch(
 if __name__ == "__main__":
     import biobuild as bb
 
-    man = "support/examples/MAN.pdb"
-    man1 = bb.Molecule.from_pdb(man)
-    man1.infer_bonds()
+    ser = bb.molecule("ser.json")
+    his = bb.molecule("his.json")
 
-    man2 = man1.copy()
+    link = bb.Linkage.from_json("peptide_linkage.json")
 
-    # now make sure that man2 has some different coordinates
-    man2.rotate_around_bond(1, 2, 35)
-    r = np.random.rand(3) * 0.1
-    for i in man2.atoms:
-        i.coord += r
+    patcher = Patcher(copy_target=False, copy_source=False)
+    v = ser.draw()
+    patcher._v = v
+    patcher.apply(link, ser, ser.copy())
+    merged = patcher.merge()
 
-    man1.lock_all()
-    man2.lock_all()
+    patcher.apply(link, merged, ser.copy())
+    merged = patcher.merge()
 
-    top = bb.get_default_topology()
+    merged.show()
 
-    colors = ["red", "green", "blue", "orange", "purple", "pink", "black"]
+    # man = "support/examples/MAN.pdb"
+    # man1 = bb.Molecule.from_pdb(man)
+    # man1.infer_bonds()
 
-    patcher = Patcher(False, True)
-    for i in ("14bb", "14bb", "12ab"):
-        # v2 = bb.utils.visual.MoleculeViewer3D(man1)
-        # patcher._v = v2
+    # man2 = man1.copy()
 
-        patch_or_recipe = top.get_patch(i)
-        patcher.apply(patch_or_recipe, man1, man2)
-        man1 = patcher.merge()
+    # # now make sure that man2 has some different coordinates
+    # man2.rotate_around_bond(1, 2, 35)
+    # r = np.random.rand(3) * 0.1
+    # for i in man2.atoms:
+    #     i.coord += r
 
-        new = man1
-        seen_atoms = set()
-        for atom in new.atoms:
-            assert atom.serial_number not in seen_atoms
-            seen_atoms.add(atom.serial_number)
+    # man1.lock_all()
+    # man2.lock_all()
 
-        res_con = bb.structural.infer_residue_connections(new.chain, triplet=True)
+    # top = bb.get_default_topology()
 
-        v2 = bb.utils.visual.MoleculeViewer3D(man1)
-        for idx, residue in enumerate(man1.residues):
-            bonds = [
-                i
-                for i in man1.bonds
-                if i[0] in residue.child_list and i[1] in residue.child_list
-            ]
-            v2.draw_edges(edges=bonds, color=colors[idx], linewidth=2)
+    # colors = ["red", "green", "blue", "orange", "purple", "pink", "black"]
 
-        # v2.draw_edges(edges=list(new.bonds), color="blue", opacity=1)
-        # v2.draw_edges(edges=list(new._locked_bonds), color="red", linewidth=3)
-        # v2.draw_edges(edges=res_con, color="limegreen", linewidth=4)
-        v2.show()
+    # patcher = Patcher(False, True)
+    # for i in ("14bb", "14bb", "12ab"):
+    #     # v2 = bb.utils.visual.MoleculeViewer3D(man1)
+    #     # patcher._v = v2
+
+    #     patch_or_recipe = top.get_patch(i)
+    #     patcher.apply(patch_or_recipe, man1, man2)
+    #     man1 = patcher.merge()
+
+    #     new = man1
+    #     seen_atoms = set()
+    #     for atom in new.atoms:
+    #         assert atom.serial_number not in seen_atoms
+    #         seen_atoms.add(atom.serial_number)
+
+    #     res_con = bb.structural.infer_residue_connections(new.chain, triplet=True)
+
+    #     v2 = bb.utils.visual.MoleculeViewer3D(man1)
+    #     for idx, residue in enumerate(man1.residues):
+    #         bonds = [
+    #             i
+    #             for i in man1.bonds
+    #             if i[0] in residue.child_list and i[1] in residue.child_list
+    #         ]
+    #         v2.draw_edges(edges=bonds, color=colors[idx], linewidth=2)
+
+    #     # v2.draw_edges(edges=list(new.bonds), color="blue", opacity=1)
+    #     # v2.draw_edges(edges=list(new._locked_bonds), color="red", linewidth=3)
+    #     # v2.draw_edges(edges=res_con, color="limegreen", linewidth=4)
+    #     v2.show()
