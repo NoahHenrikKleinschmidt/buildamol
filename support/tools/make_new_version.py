@@ -18,13 +18,15 @@ FILES_TO_UPDATE = {
 }
 
 
-VERSION_PATTERN = r"\"(\d+\.\d+\.\d+-?[ab]?)\""
+VERSION_PATTERN = r"\"(\d+\.\d+\.\d+-?(a|b|dev)?)\""
 
 REPLACEMENT_PATTERNS = {
     "inpackage": "__version__ ?= ?{}\n",
     "setup": "version ?= ?{},",
     "docs": "release ?= ?{}",
 }
+
+DEFAULT_COMMIT_MESSAGE = "[automatic] Version update to {}"
 
 
 def version_to_tuple(version: str):
@@ -89,6 +91,8 @@ def make_new_version(
         new_version += "-a"
     elif args.beta:
         new_version += "-b"
+    elif args.dev:
+        new_version += "-dev"
     return new_version
 
 
@@ -166,19 +170,40 @@ def setup():
         help="The new version designation. This can be either '+'=increment base by one (e.g. '1.1.1' -> '1.1.2'), '++' to update the mid by one and reset the base (e.g. '1.1.4' -> '1.2.0'), or '+++' to increment the top by one and reset mid and base (e.g. '1.4.2' -> '2.0.0'). Use '-' to leave the version unchanged (e.g. when you only want to remove an alpha or beta tag). Alternatively, a specific string can be provided as the version directly (e.g. '5.2.1').",
     )
     parser.add_argument(
-        "-a", "--alpha", action="store_true", help="mark version as an alpha-release"
+        "-a",
+        "--alpha",
+        action="store_true",
+        help="mark version as an alpha-release (add -a to the end of the version)",
     )
     parser.add_argument(
-        "-b", "--beta", action="store_true", help="mark version as a beta-release"
+        "-b",
+        "--beta",
+        action="store_true",
+        help="mark version as a beta-release (add -b to the end of the version)",
     )
     parser.add_argument(
         "-d",
+        "--dev",
+        action="store_true",
+        help="mark version as a development release (add -dev to the end of the version)",
+    )
+    parser.add_argument(
+        "-u",
         "--build-docs",
         action="store_true",
         help="build a new version of the documentation. This requires a directory named 'docs' wherein the sphinx conf.py and makefile are stored is located in the base directory (same as where the main package directory and setup.py are stored).",
     )
     parser.add_argument(
         "-i", "--install", action="store_true", help="pip-install the new version"
+    )
+    parser.add_argument(
+        "-g", "--git", action="store_true", help="commit the updated files"
+    )
+    parser.add_argument(
+        "-c",
+        "--commit-message",
+        default=None,
+        help="the commit message to use when committing the updated files. A default message will be used if this is not provided.",
     )
 
     args = parser.parse_args()
@@ -214,6 +239,17 @@ def install():
     subprocess.run("pip install " + BASE_DIR, shell=True)
 
 
+def commit(args, new_version):
+    """
+    Commit the changes
+    """
+    for filename in FILES_TO_UPDATE:
+        subprocess.run("git add " + filename, shell=True)
+    if args.commit_message is None:
+        args.commit_message = DEFAULT_COMMIT_MESSAGE.format(new_version)
+    subprocess.run(f"git commit -m '{args.commit_message}'", shell=True)
+
+
 def main(args):
     for filename, pattern in FILES_TO_UPDATE.items():
         new_version = make_new_version(filename, pattern, args)
@@ -223,6 +259,8 @@ def main(args):
         install()
     if args.build_docs:
         build_docs()
+    if args.git:
+        commit(args, new_version)
     print("Update to {} complete".format(new_version))
 
 
