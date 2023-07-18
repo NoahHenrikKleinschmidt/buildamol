@@ -12,7 +12,7 @@ DEFAULT_BOND_LENGTH = 1.6
 The default length of a bond in Angstrom
 """
 
-DEFAULT_CHARMM_TOPOLOGY_FILE = os.path.join(constants.RESOURCES, "CHARMM.top.pkl")
+DEFAULT_CHARMM_TOPOLOGY_FILE = os.path.join(constants.RESOURCES, "topology.json")
 """
 The path to the default CHARMM topology file
 """

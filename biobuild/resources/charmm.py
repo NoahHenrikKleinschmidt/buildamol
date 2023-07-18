@@ -223,10 +223,10 @@ def set_default_topology(obj, overwrite: bool = False):
     if overwrite:
         current = _defaults.__default_instances__.get("Topology", None)
         if current:
-            current.save(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
+            current.to_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
     _defaults.__default_instances__["Topology"] = obj
     if overwrite:
-        obj.save(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE)
+        obj.to_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE)
 
 
 def get_default_topology() -> "CHARMMTopology":
@@ -250,7 +250,7 @@ def restore_default_topology(overwrite: bool = True):
     overwrite : bool
         If set to `True`, the backup is permanently set as the default again.
     """
-    _defaults.__default_instances__["Topology"] = CHARMMTopology.load(
+    _defaults.__default_instances__["Topology"] = CHARMMTopology.from_json(
         _defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"
     )
     if overwrite:
@@ -649,12 +649,10 @@ class CHARMMTopology(CHARMMParser):
         """
         with open(filename, "r") as file:
             lines = file.read().split("\n")  # readlines but remove the endlines
-            lines = [
-                line.strip().split("!") for line in lines
-            ]  # get rid of all comments
-            lines = [
-                line[0] for line in lines if line[0] != ""
-            ]  # get rid of all empty lines
+            lines = [line.strip() for line in lines]
+            # lines = [
+            #     line[0] for line in lines if line[0] != ""
+            # ]  # get rid of all empty lines
 
         idx = 0
         while idx < len(lines):
@@ -688,6 +686,9 @@ class CHARMMTopology(CHARMMParser):
         idx += 1
         while idx < len(lines):
             line = self._read_line(lines[idx])
+            if len(line) == 0:
+                idx += 1
+                continue
             start = line[0]
 
             if start == "" or re.match("GROU(P| )", start):
@@ -840,7 +841,7 @@ class CHARMMTopology(CHARMMParser):
 
 
 # Set the default topology to the CHARMM topology
-set_default_topology(CHARMMTopology.load(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE))
+set_default_topology(CHARMMTopology.from_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE))
 
 
 __all__ = [
@@ -862,11 +863,13 @@ __all__ = [
 ]
 
 if __name__ == "__main__":
-    _carbs = "/Users/noahhk/GIT/biobuild/support/toppar_charmm/carbohydrates.rtf"
-    _top = CHARMMTopology.from_file(_carbs)
+    # _carbs = "/Users/noahhk/GIT/biobuild/support/toppar_charmm/carbohydrates.rtf"
+    # _top = CHARMMTopology.from_file(_carbs)
+    patches = "/Users/noahhk/GIT/biobuild/support/charmm_topology/patches.rtf"
+    _top = CHARMMTopology.from_file(patches)
     print(_top)
 
     from biobuild.utils.defaults import DEFAULT_CHARMM_TOPOLOGY_FILE
 
     _save_to = "/Users/noahhk/GIT/biobuild/biobuild/resources/"
-    _top.save(_save_to + os.path.basename(DEFAULT_CHARMM_TOPOLOGY_FILE))
+    _top.to_json(_save_to + os.path.basename(DEFAULT_CHARMM_TOPOLOGY_FILE))

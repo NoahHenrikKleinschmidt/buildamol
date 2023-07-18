@@ -351,7 +351,7 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         _dict : dict
             The JSON dictionary.
         """
-        new = cls(id=_dict["id"])
+        new = cls(id=_dict["id"], description=_dict["description"])
         new.add_bond(
             utils.abstract.AbstractBond(
                 _dict["bond"]["target"], _dict["bond"]["source"]
@@ -365,14 +365,15 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             new.add_internal_coordinates(
                 utils.ic.InternalCoordinates._from_dict(i),
             )
-        has_two_residues = False
-        for i in new.internal_coordinates:
-            if any([j.startswith("2") for j in i.atoms]):
-                has_two_residues = True
-        if not has_two_residues:
-            raise ValueError(
-                "The linkage contains only internal coordinates for one residue. It must contain internal coordinates spanning both residues!"
-            )
+        if len(new.internal_coordinates) != 0:
+            has_two_residues = False
+            for i in new.internal_coordinates:
+                if any([j.startswith("2") for j in i.atoms]):
+                    has_two_residues = True
+            if not has_two_residues:
+                raise ValueError(
+                    f"The linkage '{new.id}' contains only internal coordinates for one residue. It must contain internal coordinates spanning both residues!"
+                )
         return new
 
     @property
