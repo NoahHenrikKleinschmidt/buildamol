@@ -423,26 +423,58 @@ def compute_quartets(bonds: list):
                 continue
 
             quartet = None
-            if atom_2 is atom_4:
+            # ------------------- #
+            # NEW IMPLEMENTATION  #
+            # ------------------- #
+            if atom_1 is atom_4:
+                if atom_2 is atom_5:
+                    quartet = Quartet(atom_1, atom_6, atom_2, atom_3, True)
+                elif atom_3 is atom_5:
+                    quartet = Quartet(atom_1, atom_6, atom_2, atom_3, True)
+            elif atom_2 is atom_4:
                 if atom_1 is atom_5:
                     quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
-
                 elif atom_3 is atom_5:
                     quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
-
-            elif atom_2 is atom_5:
-                if atom_1 is atom_4 or atom_3 is atom_4:
-                    quartet = Quartet(atom_1, atom_3, atom_2, atom_6, True)
-
+            elif atom_3 is atom_4:
+                if atom_2 is atom_5:
+                    quartet = Quartet(atom_1, atom_6, atom_2, atom_3, True)
+            ###
+            elif atom_1 is atom_6:
+                if atom_2 is atom_5:
+                    quartet = Quartet(atom_1, atom_6, atom_2, atom_3, True)
             elif atom_2 is atom_6:
                 if atom_1 is atom_5:
-                    quartet = Quartet(atom_6, atom_1, atom_4, atom_3, False)
-
+                    quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
                 elif atom_3 is atom_5:
                     quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
+            elif atom_3 is atom_6:
+                if atom_2 is atom_5:
+                    quartet = Quartet(atom_1, atom_4, atom_2, atom_3, True)
+            ###
+            # ------------------- #
+            # this needs overhauling, there seems some logic error in there somewhere...
+            # if atom_2 is atom_4:
+            #     if atom_1 is atom_5:
+            #         quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
+
+            #     elif atom_3 is atom_5:
+            #         quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
+
+            # elif atom_2 is atom_5:
+            #     if atom_1 is atom_4 or atom_3 is atom_4:
+            #         quartet = Quartet(atom_1, atom_3, atom_2, atom_6, True)
+
+            # elif atom_2 is atom_6:
+            #     if atom_1 is atom_5:
+            #         quartet = Quartet(atom_6, atom_1, atom_4, atom_3, False)
+
+            #     elif atom_3 is atom_5:
+            #         quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
 
             if quartet:
-                quartets.add(quartet)
+                if len(set(quartet.atoms)) == 4:
+                    quartets.add(quartet)
 
     return quartets
 
@@ -495,3 +527,63 @@ def generate_triplets(bonds: list):
                 yield (atom_11, atom_12, atom_22)
             elif atom_12 is atom_22:
                 yield (atom_11, atom_12, atom_21)
+
+
+def generate_quartets(bonds: list):
+    """
+    Generate all possible quartets of atoms from a list of bonds.
+
+    Parameters
+    ----------
+    bonds : list
+        A list of bonds
+
+    Yields
+    ------
+    quartet : Quartet
+        A quartet of atoms
+    """
+    triplets = compute_triplets(bonds)
+    for triplet1 in triplets:
+        atom_1, atom_2, atom_3 = triplet1
+
+        for triplet2 in triplets:
+            atom_4, atom_5, atom_6 = triplet2
+
+            # decision tree to map atoms into quartets
+            if triplet1 is triplet2:
+                continue
+
+            quartet = None
+            # ------------------- #
+            # NEW IMPLEMENTATION  #
+            # ------------------- #
+            if atom_1 is atom_4:
+                if atom_2 is atom_5:
+                    quartet = Quartet(atom_1, atom_6, atom_2, atom_3, True)
+                elif atom_3 is atom_5:
+                    quartet = Quartet(atom_1, atom_6, atom_2, atom_3, True)
+            elif atom_2 is atom_4:
+                if atom_1 is atom_5:
+                    quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
+                elif atom_3 is atom_5:
+                    quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
+            elif atom_3 is atom_4:
+                if atom_2 is atom_5:
+                    quartet = Quartet(atom_1, atom_6, atom_2, atom_3, True)
+            ###
+            elif atom_1 is atom_6:
+                if atom_2 is atom_5:
+                    quartet = Quartet(atom_1, atom_6, atom_2, atom_3, True)
+            elif atom_2 is atom_6:
+                if atom_1 is atom_5:
+                    quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
+                elif atom_3 is atom_5:
+                    quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
+            elif atom_3 is atom_6:
+                if atom_2 is atom_5:
+                    quartet = Quartet(atom_1, atom_4, atom_2, atom_3, True)
+
+            if quartet:
+                if len(set(quartet.atoms)) == 4:
+                    yield quartet
