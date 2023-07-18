@@ -288,8 +288,7 @@ class Stitcher(base.Connector):
 
                 tmp.add_atoms(atom, residue=bystanders, _copy=False)
 
-        for b in bonds:
-            tmp._add_bond(*b)
+        tmp._add_bonds(*bonds)
         tmp._add_bond(self._anchors[0], self._anchors[1])
 
         graph = tmp.make_residue_graph()
