@@ -141,13 +141,22 @@ def make_connect_table(mol, symmetric=True):
 
     lines = []
     for atom in connectivity:
-        lines.append(("CONECT", atom, *connectivity[atom]))
-    table = tabulate(lines, tablefmt="plain")
+        line = "CONECT" + left_adjust(str(atom), 5)
+        for c in connectivity[atom]:
+            line += left_adjust(str(c), 5)
+            if len(line) > 70:
+                lines.append(line)
+                line = "CONECT" + left_adjust(str(atom), 5)
+        lines.append(line)
+    return "\n".join(lines)
+    #     lines.append(("CONECT", atom, *connectivity[atom]))
+    # table = tabulate(lines, tablefmt="plain")
     # table = table.replace("  ", "   ")
     return table
 
 
-atom_line = "{prefix}{serial}{neg_adj}{element}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
+# atom_line = "{prefix}{serial}{neg_adj}{element}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
+atom_line = "{prefix}{serial}{neg_adj}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
 
 
 def make_atoms_table(mol):
@@ -166,10 +175,13 @@ def make_atoms_table(mol):
     """
     lines = []
     for atom in mol.get_atoms():
-        if len(atom.id) > 3:
-            neg_adj = ""
-        else:
-            neg_adj = " "
+        neg_adj = " "
+        # if len(atom.id) > 3:
+        #     neg_adj = ""
+        #     altloc_len = 2
+        # else:
+        #     neg_adj = " "
+        # altloc_len = 1
         if atom.pqr_charge is None:
             charge = ""
         else:
@@ -185,13 +197,14 @@ def make_atoms_table(mol):
                 prefix=prefix,
                 serial=left_adjust(str(atom.serial_number), 5),
                 neg_adj=neg_adj,
-                id=right_adjust(
-                    atom.id.replace(atom.element.upper(), "").replace(
-                        atom.element.title(), ""
-                    ),
-                    2,
-                ),
-                altloc=atom.altloc,
+                id=right_adjust(atom.id.upper(), 4),
+                # id=right_adjust(
+                #     atom.id.replace(atom.element.upper(), "").replace(
+                #         atom.element.title(), ""
+                #     ),
+                #     2,
+                # ),
+                altloc=right_adjust(atom.altloc, 1),
                 residue=left_adjust(atom.get_parent().resname, 3),
                 chain=atom.get_parent().get_parent().id,
                 # resseq=left_adjust(" ", 3),
@@ -200,7 +213,9 @@ def make_atoms_table(mol):
                 x=left_adjust(f"{atom.coord[0]:.3f}", 8),
                 y=left_adjust(f"{atom.coord[1]:.3f}", 8),
                 z=left_adjust(f"{atom.coord[2]:.3f}", 8),
+                # occ=left_adjust("1.00", 6),
                 occ=left_adjust(f"{atom.occupancy:.2f}", 6),
+                # temp=left_adjust("0.00", 6),
                 temp=left_adjust(f"{atom.bfactor:.2f}", 6),
                 seg=right_adjust("", 3),
                 element=left_adjust(atom.element.upper(), 2),
