@@ -75,10 +75,27 @@ class MoleculeViewer3D:
         "I": "green",
     }
 
+    __continuous_colors__ = [
+        "navy",
+        "blue",
+        "teal",
+        "green",
+        "lightgreen",
+        "yellow",
+        "orange",
+        "red",
+        "crimson",
+        "darkred",
+        "brown",
+        "purple",
+        "pink",
+    ]
+
     def __init__(self, molecule, bonds=None):
         self.mol = molecule
         self.opacity = 0.3
         self._bonds_obj = bonds if bonds else molecule
+        self._color_idx = 0
 
         # preprocess to make sure a residue graph can
         # be drawn without issue as residues by default
@@ -148,6 +165,110 @@ class MoleculeViewer3D:
                     showlegend=False,
                 ),
             )
+
+    def draw_atom(self, atom, color=None, opacity=None, showlegend=True):
+        """
+        Draw an atom on the figure
+
+        Parameters
+        ----------
+        atom : Atom or str or int
+            The atom to draw
+        color : str
+            The color of the atom
+        opacity : float
+            The opacity of the atom
+        showlegend : bool
+            Whether to show the legend or not
+        """
+        atom = self.mol.get_atom(atom)
+        if not atom:
+            return
+        if not color:
+            color = self.get_color(atom)
+        if not opacity:
+            opacity = min(1, self.opacity * 1.2)
+        self.draw_point(atom.id, atom.coord, color, opacity, showlegend)
+
+    def draw_bond(self, a, b, color=None, linewidth=2, showlegend=True):
+        """
+        Draw a bond between two atoms
+
+        Parameters
+        ----------
+        a : Atom or str or int
+            The first atom in the bond
+        b : Atom or str or int
+            The second atom in the bond
+        color : str
+            The color of the bond
+        linewidth : float
+            The width of the bond
+        showlegend : bool
+            Whether to show the legend or not
+        """
+        _a = self.mol.get_atom(a)
+        _b = self.mol.get_atom(b)
+        if _a:
+            a = _a
+        if _b:
+            b = _b
+
+        self.draw_vector(
+            f"{a.id}-{b.id}",
+            a.coord,
+            b.coord - a.coord,
+            color=color,
+            linewidth=linewidth,
+            showlegend=showlegend,
+        )
+
+    def draw_residue(self, res, color=None, opacity=None, linewidth=4):
+        """
+        Draw a residue on the figure
+
+        Parameters
+        ----------
+        res : Residue or str or int
+            The residue to draw
+        color : str
+            The color of the residue
+        opacity : float
+            The opacity of the residue
+        linewidth : float
+            The width of the residue
+        """
+        res = self.mol.get_residue(res)
+        if not res:
+            return
+        if not color:
+            color = self.__continuous_colors__[self._color_idx]
+            self._color_idx += 1
+            if self._color_idx >= len(self.__continuous_colors__):
+                self._color_idx = 0
+        if not opacity:
+            opacity = self.opacity
+        bonds = self.mol.get_bonds(res)
+        self.draw_edges(bonds, color, linewidth, opacity)
+
+    def colorize(self, color_dict=None, linewidth=4):
+        """
+        Colorize the different residues
+
+        Parameters
+        ----------
+        color_dict
+            A dictionary with residue names as keys and colors as values.
+        """
+        if color_dict:
+            for res in self.mol.residues:
+                if res.resname in color_dict:
+                    self.draw_residue(res, color_dict[res.resname], linewidth=linewidth)
+                else:
+                    self.draw_residue(res, "gray", linewidth=linewidth)
+        else:
+            for res in self.mol.residues:
+                self.draw_residue(res, linewidth=linewidth)
 
     def draw_point(self, id, coords, color="black", opacity=1.0, showlegend=True):
         """
