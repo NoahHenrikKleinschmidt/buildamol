@@ -1108,6 +1108,7 @@ class Molecule(entity.BaseEntity):
         link: Union[str, "Linkage.Linkage"] = None,
         at_residue: Union[int, "entity.base_classes.Residue"] = None,
         other_residue: Union[int, "entity.base_classes.Residue"] = None,
+        use_patch: bool = True,
         inplace: bool = True,
         other_inplace: bool = False,
         _topology=None,
@@ -1119,13 +1120,16 @@ class Molecule(entity.BaseEntity):
         ----------
         other : Molecule
             The other molecule to attach to this one
-        link : str or Patch or Recipe
+        link : str or Linkage
             Either a Patch to apply when attaching or a Recipe to use when stitching.
             If None is defined, the default patch or recipe that was set earlier on the molecule is used.
         at_residue : int or Residue
             The residue to attach the other molecule to. If None, the defined `attach_residue` is used.
         other_residue : int or Residue
             The residue in the other molecule to attach this molecule to. If None, the defined `attach_residue` of the other molecule is used.
+        use_patch : bool
+            If the specified linkage is a patch (has internal coordinates) it can and is by default applied as a patch. However, it can also be used as a recipe.
+            Set this to false if you want to use the patch as a recipe.
         inplace : bool
             If True the molecule is directly modified, otherwise a copy of the molecule is returned.
         other_inplace : bool
@@ -1157,7 +1161,7 @@ class Molecule(entity.BaseEntity):
                 _topology = resources.get_default_topology()
             link = _topology.get_patch(link)
 
-        if link.has_IC:
+        if link.has_IC and use_patch:
             obj.patch_attach(
                 _other,
                 link,
@@ -1491,23 +1495,29 @@ def _molecule_from_pubchem(id, comp):
 
 
 if __name__ == "__main__":
-    ser = Molecule.from_pubchem("SER")
-    ser.to_cif("ser.cif")
-    ser.to_pdb("ser.pdb")
-    recipe = Linkage()
-    recipe.add_delete("O1", "target")
-    recipe.add_delete("HO1", "target")
-    recipe.add_delete("HO4", "source")
-    recipe.add_bond(("C1", "O4"))
+    ser = Molecule.from_json("ser.json")
+    link = Linkage.from_json("peptide_linkage.json")
 
-    glc = Molecule.from_compound("GLC")
-    glc.set_linkage(recipe)
+    pep = ser.attach(ser, link, use_patch=False)
+    pep.show()
 
-    glc2 = glc.copy()
+    # ser = Molecule.from_pubchem("SER")
+    # ser.to_cif("ser.cif")
+    # ser.to_pdb("ser.pdb")
+    # recipe = Linkage()
+    # recipe.add_delete("O1", "target")
+    # recipe.add_delete("HO1", "target")
+    # recipe.add_delete("HO4", "source")
+    # recipe.add_bond(("C1", "O4"))
 
-    _current_residues = len(glc.residues)
-    glc3 = glc + glc2
-    glc3.show()
+    # glc = Molecule.from_compound("GLC")
+    # glc.set_linkage(recipe)
+
+    # glc2 = glc.copy()
+
+    # _current_residues = len(glc.residues)
+    # glc3 = glc + glc2
+    # glc3.show()
     # glc3 = glc % "14bb" + glc
     pass
     # import pickle
