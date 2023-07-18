@@ -1500,6 +1500,13 @@ class BaseEntity:
         for bond in bonds:
             self.add_bond(*bond)
 
+    def _add_bonds(self, *bonds):
+        """
+        Add multiple bonds at once. This requires that the tuple objects are indeed Atoms in the structure!
+        """
+        for bond in bonds:
+            self._add_bond(*bond)
+
     def remove_bond(
         self,
         atom1: Union[int, str, tuple, base_classes.Atom],
