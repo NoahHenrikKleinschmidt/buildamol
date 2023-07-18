@@ -369,14 +369,19 @@ class BaseEntity:
         return structural.compute_triplets(self.bonds)
 
     @property
-    def atom_quartets(self):
+    def atom_quartets(self) -> list:
         """
         Compute quartets of four consequtively bonded atoms
+
+        Returns
+        -------
+        atom_quartets : list
+            A list of atom quartets
         """
         if len(self.bonds) == 0:
             warnings.warn("No bonds found (yet), returning empty list")
             return []
-        return structural.compute_quartets(self.bonds)
+        return list(structural.compute_quartets(self.bonds))
 
     @property
     def angles(self):
@@ -1863,6 +1868,37 @@ class BaseEntity:
         PDB file that may have used a different labelling scheme for atoms.
         """
         structural.relabel_hydrogens(self)
+
+    def get_quartets(self):
+        """
+        A generator for all atom quartets in the structure
+        """
+        yield from structural.neighbors.generate_quartets(self.bonds)
+
+    def quartet(
+        self,
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
+        atom3: Union[str, int, base_classes.Atom],
+        atom4: Union[str, int, base_classes.Atom],
+    ):
+        """
+        Make an atom quartet from four atoms.
+
+        Parameters
+        ----------
+        atom1, atom2, atom3, atom4
+            The four atoms that make up the quartet.
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+        atom3 = self.get_atom(atom3)
+        atom4 = self.get_atom(atom4)
+        atoms = [atom1, atom2, atom3, atom4]
+        for quartet in self.get_quartets():
+            if quartet == atoms:
+                return quartet
+        raise ValueError("The given atoms do not form a quartet.")
 
     def compute_angle(
         self,
