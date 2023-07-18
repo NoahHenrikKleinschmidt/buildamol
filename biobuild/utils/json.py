@@ -46,6 +46,7 @@ DICTS = {
     "linkage": {
         "biobuild_version": info.__version__,
         "id": None,
+        "description": None,
         "bond": {
             "target": None,
             "source": None,
@@ -129,6 +130,7 @@ def encode_linkage(link: "Linkage"):
     """
     _dict = get_dict("linkage")
     _dict["id"] = link.id
+    _dict["description"] = link.description
     a, b = link.bonds[0]
     a = getattr(a, "id", a)
     b = getattr(b, "id", b)
