@@ -559,9 +559,11 @@ class BaseEntity:
             The viewer object
         """
         if residue_graph:
-            return utils.visual.MoleculeViewer3D(self.make_residue_graph())
+            return self.make_residue_graph().draw()
         else:
-            return utils.visual.MoleculeViewer3D(self)
+            v = utils.visual.MoleculeViewer3D()
+            v.link(self)
+            return v
 
     def vet(
         self, clash_range: tuple = (0.6, 1.7), angle_range: tuple = (90, 180)
@@ -586,6 +588,22 @@ class BaseEntity:
             True if the structure is alright, False otherwise.
         """
         return structural.vet_structure(self, clash_range, angle_range)
+
+    def find_clashes(self, clash_threshold: float = 0.6) -> list:
+        """
+        Find all clashes in the molecule.
+
+        Parameters
+        ----------
+        clash_threshold : float, optional
+            The minimal allowed distance between two atoms (in Angstrom).
+
+        Returns
+        -------
+        list
+            A list of tuples of atoms that clash.
+        """
+        return [i for i in structural.find_clashes(self, clash_threshold)]
 
     def copy(self):
         """
@@ -1177,9 +1195,10 @@ class BaseEntity:
                 ]
 
         if atom1:
-            atom1 = self.get_atom(atom1)
+            atom1 = self.get_atoms(atom1)
         if atom2:
-            atom2 = self.get_atom(atom2)
+            atom2 = self.get_atoms(atom2)
+
         return self._get_bonds(atom1, atom2, either_way)
 
     def get_residue(
@@ -2161,6 +2180,28 @@ class BaseEntity:
         """
         The core function of `get_bonds` which expects atoms to be provided as Atom objects
         """
+        iterable_a = isinstance(atom1, (list, tuple))
+        iterable_b = isinstance(atom2, (list, tuple))
+
+        if iterable_a and iterable_b:
+            bonds = []
+            for a1 in atom1:
+                for a2 in atom2:
+                    bonds.extend(self._get_bonds(a1, a2, either_way=either_way))
+            return bonds
+
+        elif iterable_a:
+            bonds = []
+            for a1 in atom1:
+                bonds.extend(self._get_bonds(a1, atom2, either_way=either_way))
+            return bonds
+
+        elif iterable_b:
+            bonds = []
+            for a2 in atom2:
+                bonds.extend(self._get_bonds(atom1, a2, either_way=either_way))
+            return bonds
+
         if atom1 and atom2:
             if either_way:
                 return [

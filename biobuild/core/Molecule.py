@@ -593,6 +593,8 @@ def molecule(mol) -> "Molecule":
         mol, entity.base_classes.Structure
     ):
         return Molecule(mol)
+    elif isinstance(mol, Molecule):
+        return mol.copy()
     elif "openbabel" in str(type(mol).__mro__[0]):
         return Molecule.from_pybel(mol)
     elif "rdkit" in str(type(mol).__mro__[0]):
