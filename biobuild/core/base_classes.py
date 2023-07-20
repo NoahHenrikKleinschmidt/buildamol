@@ -48,10 +48,11 @@ import periodictable as pt
 
 
 class ID:
-    __slots__ = ("__id",)
+    __global_idx__ = 0
 
     def __init__(self):
-        self.__id = str(uuid4())
+        self.__id = ID.__global_idx__ + 1
+        ID.__global_idx__ += 1
 
     def copy(self):
         new = deepcopy(self)
@@ -65,10 +66,14 @@ class ID:
         return id in self.child_dict
 
     def _new_id(self):
-        self.__id = str(uuid4())
+        self.__id = ID.__global_idx__ + 1
+        ID.__global_idx__ += 1
+
+    def _adopt_id(self, id):
+        self.__id = id
 
     def __hash__(self):
-        return hash(self.__id)
+        return self.__id
 
     def __eq__(self, other):
         if not isinstance(other, ID):
@@ -255,6 +260,7 @@ class Residue(ID, bio.Residue.Residue):
         "child_list",
         "child_dict",
         "xtra",
+        "coord",
     )
 
     def __init__(self, resname, segid, icode):
