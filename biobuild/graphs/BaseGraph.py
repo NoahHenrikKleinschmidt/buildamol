@@ -9,7 +9,6 @@ import Bio.PDB as bio
 import networkx as nx
 import numpy as np
 from scipy.spatial.transform import Rotation
-import biobuild.utils.visual as vis
 
 
 class BaseGraph(nx.Graph):
@@ -63,6 +62,13 @@ class BaseGraph(nx.Graph):
         return list(self.structure.get_atoms())
 
     @property
+    def nodes_in_cycles(self) -> set:
+        """
+        Returns the nodes in cycles
+        """
+        return nx.cycle_basis(self)
+
+    @property
     def bonds(self):
         """
         Returns the bonds in the molecule
@@ -81,10 +87,10 @@ class BaseGraph(nx.Graph):
 
         Returns
         -------
-        MoleculeViewer3D
-            The 3D viewer
+        PlotlyViewer3D
+            A 3D viewer
         """
-        return vis.MoleculeViewer3D(self)
+        raise NotImplementedError
 
     @abstractmethod
     def get_neighbors(self, node, n: int = 1, mode="upto"):
@@ -127,7 +133,7 @@ class BaseGraph(nx.Graph):
         Returns
         -------
         set
-            The descendants of the node
+            The descendant nodes
 
         Examples
         --------
@@ -143,10 +149,10 @@ class BaseGraph(nx.Graph):
         
         ```
         A---B---C---D---E
-                \\
-                F---H
-                |
-                G
+             \\
+              F---H
+              |
+              G
         ```
         
         >>> graph.get_descendants("B", "C")
@@ -156,33 +162,67 @@ class BaseGraph(nx.Graph):
         >>> graph.get_descendants("B", "A")
         set() # because in this direction there are no other nodes
         """
-        # if node_1 == node_2:
-        if node_1 is node_2:
-            raise ValueError(
-                "Cannot get descendants if only one node is given (no direction)!"
-            )
-
-        neighbors = self.get_neighbors(node_2)
-        neighbors.remove(node_1)
-        if len(neighbors) == 0:
-            return neighbors
-
-        _new_neighbors = neighbors.copy()
+        neighs = set(self.adj[node_2])
+        neighs.remove(node_1)
         _seen = set((node_1, node_2))
-
-        while len(_new_neighbors) > 0:
-            neighbor = _new_neighbors.pop()
-            descendants = self.get_neighbors(neighbor)
-
+        _new_neighs = set(neighs)
+        while len(_new_neighs) > 0:
+            neigh = _new_neighs.pop()
+            descendants = set(self.adj[neigh])
             descendants -= _seen
-            _seen.add(neighbor)
-            neighbors.add(neighbor)
-
+            _seen.add(neigh)
+            neighs.add(neigh)
             if len(descendants) == 0:
                 continue
-            _new_neighbors.update(descendants)
+            _new_neighs.update(descendants)
+        return neighs
 
-        return neighbors
+    def get_ancestors(self, node_1, node_2):
+        """
+        Get all ancestor nodes that come before a specific edge
+        defined in the direction from node1 to node2 (i.e. get all
+        nodes that comebefore node1). This method is directed
+        in contrast to the `get_neighbors()` method, which will get all neighboring
+        nodes of an anchor node irrespective of direction.
+
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes that define the edge
+
+        Returns
+        -------
+        set
+            The ancestor nodes
+
+        Examples
+        --------
+        In case of this graph:
+        
+        .. code-block::
+
+            A---B---C---D---E
+                \\
+                F---H
+                |
+                G
+        
+        ```
+        A---B---C---D---E
+             \\
+              F---H
+              |
+              G
+        ```
+        
+        >>> graph.get_ancestors("B", "C")
+        {"A", "F", "G", "H"}
+        >>> graph.get_ancestors("F", "B")
+        {"H", "G"}
+        >>> graph.get_ancestors("A", "B")
+        set() # because in this direction there are no other nodes
+        """
+        return self.get_descendants(node_2, node_1)
 
     def direct_edges(self):
         """
@@ -292,22 +332,22 @@ class BaseGraph(nx.Graph):
         new_coords: dict
             The new coordinates of the nodes after rotation.
         """
-
-        # get the node coordinates as a dictionary
-        # # we do this in order to update the node attributes later...
-        # node_dict = nx.get_node_attributes(self, 'coord')
-
-        if node_1 not in self.nodes or node_2 not in self.nodes:
-            raise ValueError("One or more nodes not in graph!")
-        elif node_1 == node_2:
+        # ---------- sanity checks ----------
+        # We can skip these here for a little performance boost
+        # since we should assume that these methods are only ever
+        # called from their wrappers in the entity classes...
+        # ---------- sanity checks ----------
+        # if node_1 not in self.nodes or node_2 not in self.nodes:
+        #     raise ValueError("One or more nodes not in graph!")
+        if node_1 is node_2:
             raise ValueError("Cannot rotate around an edge with only one node!")
         elif self.is_locked(node_1, node_2):
             raise ValueError("Cannot rotate around a locked edge!")
 
         # we need to get a reference node index to normalise the rotated
         # coordinates to the original coordinate system
-        indices = list(self.nodes)
-        idx_1 = indices.index(node_1)
+        # indices = list(self.nodes)
+        idx_1 = next(idx for idx, i in enumerate(self.nodes) if i is node_1)
 
         # define the axis of rotation as the cross product of the edge's vectors
         edge_vector = node_2.coord - node_1.coord
@@ -325,8 +365,9 @@ class BaseGraph(nx.Graph):
 
         node_coords = np.array(tuple(nodes.values()))
 
-        indices = list(nodes.keys())
-        idx_2 = indices.index(node_2)
+        # indices = list(nodes.keys())
+        # idx_2 = indices.index(node_2)
+        idx_2 = next(idx for idx, i in enumerate(nodes.keys()) if i is node_2)
 
         # apply the rotation matrix to the node coordinates
         node_coords_rotated = r.apply(node_coords)
@@ -342,10 +383,9 @@ class BaseGraph(nx.Graph):
             for node, coord in new_coords.items():
                 node.coord = coord
 
-            # set the node attributes in the graph
-            nx.set_node_attributes(self, new_coords, "coord")
-
-        return new_coords
+        _new_coords = {i: i.coord for i in self.nodes}
+        _new_coords.update(new_coords)
+        return _new_coords
 
     def _get_structure(self):
         """
@@ -365,3 +405,56 @@ class BaseGraph(nx.Graph):
     def __str__(self):
         lines = "\n".join(nx.generate_network_text(self))
         return lines
+
+
+if __name__ == "__main__":
+    import biobuild as bb
+    from timeit import timeit
+
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    mol = bb.molecule(
+        "/Users/noahhk/GIT/biobuild/biobuild/optimizers/_testing/files/EX7.json"
+    )
+    v = mol.draw()
+    g = BaseGraph(None, mol.bonds)
+    ref_atom_graph = mol.make_atom_graph()
+
+    a, b = mol.get_atoms(68, 65)
+
+    x = g.get_descendants(a, b)
+    for i in x:
+        v.draw_atom(i, color="purple")
+
+    measure_performance = True
+    repeats = 500
+    number = 800
+    if measure_performance:
+        test_old = lambda: BaseGraph.get_descendants_old(ref_atom_graph, a, b)
+        test_new = lambda: g.get_descendants(a, b)
+        # test_2 = lambda: g.get_descendants_2(a, b)
+
+        times_old = [timeit(test_old, number=number) for _ in range(repeats)]
+        times_new = [timeit(test_new, number=number) for _ in range(repeats)]
+        # times_2 = [timeit(test_2, number=number) for _ in range(repeats)]
+
+        sns.distplot(times_old, label="old", kde=True, bins=20)
+        sns.distplot(times_new, label="new", kde=True, bins=20)
+        # sns.distplot(times_2, label="2", kde=True, bins=20)
+        plt.legend()
+        plt.show()
+
+    pass
+
+# v.draw_edges((a, b), color="limegreen", linewidth=4, elongate=1.1)
+# ref_decendants = ref_atom_graph.get_descendants(a, b)
+
+# descendants = g.get_descendants_2(a, b)
+
+# for i in descendants:
+#     v.draw_atom(i, color="purple")
+# for i in ref_decendants:
+#     v.draw_atom(i, color="orange")
+# v.show()
+# pass
