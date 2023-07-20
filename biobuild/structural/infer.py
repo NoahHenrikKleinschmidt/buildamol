@@ -209,11 +209,12 @@ class AutoLabel:
                     _neighbor_connect_dict[neighbor].append(hetero)
                 self._df.loc[self._df.atom == hetero, "label"] = label
             heteros = self._df[(self._df.element != "C") * (self._df.element != "H")]
-        for _heteros in _neighbor_connect_dict.values():
+        for _atom, _heteros in _neighbor_connect_dict.items():
             idx = 1
 
             if len(_heteros) > 1:
                 for h in _heteros:
+                    # if h.element == _atom.element:
                     self._df.loc[self._df.atom == h, "label"] += str(idx)
                     idx += 1
 
