@@ -42,7 +42,8 @@ then all atoms, residues, chains and models will be converted to their biobuild 
     
 """
 from copy import deepcopy
-from uuid import uuid4
+
+# from uuid import uuid4
 import Bio.PDB as bio
 import periodictable as pt
 

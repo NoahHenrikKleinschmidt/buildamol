@@ -3,6 +3,7 @@ import Bio.PDB as bio
 
 import biobuild.structural as struct
 from biobuild.graphs.BaseGraph import BaseGraph
+import biobuild.utils.visual as vis
 
 
 class ResidueGraph(BaseGraph):
@@ -202,6 +203,11 @@ class ResidueGraph(BaseGraph):
                         if atom not in _added_nodes:
                             self.add_edge(atom, residue)
                             _added_nodes.add(atom)
+
+    def draw(self):
+        v = vis.ResidueGraphViewer3D()
+        v.link(self)
+        return v
 
     def direct_edges(self):
         """

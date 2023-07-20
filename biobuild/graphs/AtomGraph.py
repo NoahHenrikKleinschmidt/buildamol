@@ -4,6 +4,7 @@ import Bio.PDB as bio
 import biobuild.structural as struct
 from biobuild.graphs.BaseGraph import BaseGraph
 import biobuild.core.base_classes as base_classes
+import biobuild.utils.visual as vis
 
 
 class AtomGraph(BaseGraph):
@@ -92,6 +93,11 @@ class AtomGraph(BaseGraph):
         if locked:
             new._locked_edges.update(mol.locked_bonds)
         return new
+
+    def draw(self):
+        v = vis.AtomGraphViewer3D()
+        v.link(self)
+        return v
 
     def migrate_bonds(self, other):
         """
