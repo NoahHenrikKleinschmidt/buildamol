@@ -57,6 +57,7 @@ class AutoLabel:
         self._cycles = nx.cycle_basis(self.graph)
         self._df_all = self._make_df()
         self._df = None
+        self._element_counter = defaultdict(int)
 
     @property
     def carbons(self):
@@ -190,10 +191,25 @@ class AutoLabel:
                 neighbors = self.graph.neighbors(hetero)
                 neighbors = self._df[self._df.atom.isin(neighbors)]
                 # remove c1 row
-                if len(neighbors[neighbors.element != "H"]) > 1:
+                if (
+                    len(
+                        neighbors[
+                            (neighbors.element != "H") * (neighbors.element != "C")
+                        ]
+                    )
+                    > 1
+                ):
                     neighbors = neighbors[neighbors.atom != self._c1_row.atom.iloc[0]]
                 neighbors = neighbors[neighbors.label != "none"]
-                neighbors = neighbors.sort_values("label", ascending=False)
+
+                if len(neighbors[neighbors.element == "C"]) > 0:
+                    neighbors = neighbors[neighbors.element == "C"]
+                    use_blank_label = True
+                else:
+                    use_blank_label = False
+
+                # used to by: sort by "label", and ascending=False
+                neighbors = neighbors.sort_values("total", ascending=True)
                 # neighbors = neighbors.sort_values(
                 #     ["neighbors", "neighbor_element_sum"], ascending=False
                 # )
@@ -203,20 +219,24 @@ class AutoLabel:
 
                 neighbor = neighbors.atom.iloc[-1]
                 label = neighbors.label.iloc[-1]
-                if neighbor not in _neighbor_connect_dict:
-                    _neighbor_connect_dict[neighbor] = [hetero]
+                if neighbor.element not in _neighbor_connect_dict:
+                    _neighbor_connect_dict[neighbor] = {hetero.element: [hetero]}
                 else:
-                    _neighbor_connect_dict[neighbor].append(hetero)
+                    _neighbor_connect_dict[neighbor][hetero.element].append(hetero)
+
+                if not use_blank_label:
+                    self._element_counter[hetero.element] += 1
+                    label += chr(self._element_counter[hetero.element] + 64)
+
                 self._df.loc[self._df.atom == hetero, "label"] = label
             heteros = self._df[(self._df.element != "C") * (self._df.element != "H")]
-        for _atom, _heteros in _neighbor_connect_dict.items():
-            idx = 1
-
+        for _heteros in _neighbor_connect_dict.values():
             if len(_heteros) > 1:
-                for h in _heteros:
-                    # if h.element == _atom.element:
-                    self._df.loc[self._df.atom == h, "label"] += str(idx)
-                    idx += 1
+                # idx = 1
+                for h in _heteros.values():
+                    for idx, atom in enumerate(h):
+                        self._df.loc[self._df.atom == h, "label"] += str(idx + 1)
+                    # idx += 1
 
     def _parse_hydrogen_labels(self):
         _neighbor_connect_dict = {}
@@ -260,11 +280,9 @@ class AutoLabel:
         for idx in range(len(_label_counts)):
             label = _label_counts.label.iloc[idx]
             count = _label_counts["count"].iloc[idx]
-            if count == 1:
-                continue
             atoms = self._df[self._df.label == label].atom
-            for atom in atoms:
-                self._df.loc[self._df.atom == atom, "label"] += str(idx)
+            for j, atom in enumerate(atoms):
+                self._df.loc[self._df.atom == atom, "label"] += str(j + 1)
 
 
 def autolabel(molecule):
@@ -984,8 +1002,6 @@ def _H_id_match(H, non_H):
 if __name__ == "__main__":
     import biobuild as bb
 
-    mol = bb.Molecule.from_pubchem(
-        "3-Deoxy-D-Lyxo-Heptopyran-2-ularic Acid"
-    )  # ("/Users/noahhk/GIT/biobuild/support/examples/man9.pdb")
+    mol = bb.Molecule.from_pubchem("1-ethyl-4-methyltriazole")
     autolabel(mol)
-    print(mol.atoms)
+    mol.show()
