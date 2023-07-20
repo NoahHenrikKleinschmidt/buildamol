@@ -8,6 +8,7 @@ import networkx as nx
 from collections import defaultdict
 import warnings
 import numpy as np
+from scipy.spatial.distance import cdist
 
 from Bio.PDB import NeighborSearch
 import periodictable as pt
@@ -192,12 +193,8 @@ class AutoLabel:
                 neighbors = self._df[self._df.atom.isin(neighbors)]
                 # remove c1 row
                 if (
-                    len(
-                        neighbors[
-                            (neighbors.element != "H") * (neighbors.element != "C")
-                        ]
-                    )
-                    > 1
+                    len(neighbors[(neighbors.element != "H")]) > 1
+                    and len(neighbors[neighbors.element == "C"]) > 1
                 ):
                     neighbors = neighbors[neighbors.atom != self._c1_row.atom.iloc[0]]
                 neighbors = neighbors[neighbors.label != "none"]
@@ -210,9 +207,7 @@ class AutoLabel:
 
                 # used to by: sort by "label", and ascending=False
                 neighbors = neighbors.sort_values("total", ascending=True)
-                # neighbors = neighbors.sort_values(
-                #     ["neighbors", "neighbor_element_sum"], ascending=False
-                # )
+
                 neighbors = neighbors.reset_index(drop=True)
                 if len(neighbors) == 0:
                     continue
@@ -226,6 +221,8 @@ class AutoLabel:
 
                 if not use_blank_label:
                     self._element_counter[hetero.element] += 1
+                    if not label[-1].isdigit():
+                        label = label[:-1]
                     label += chr(self._element_counter[hetero.element] + 64)
 
                 self._df.loc[self._df.atom == hetero, "label"] = label
@@ -402,7 +399,7 @@ def vet_structure(
     return True
 
 
-def find_clashes(molecule, min_dist: float = 0.6):
+def find_clashes(molecule, min_dist: float = 0.7):
     """
     Find all clashing atoms within a molecule.
 
@@ -418,13 +415,12 @@ def find_clashes(molecule, min_dist: float = 0.6):
     tuple
         A tuple of clashing atoms.
     """
-    for a in molecule.get_atoms():
-        for b in molecule.get_atoms():
-            if a is b:
-                continue
-            dist = base.compute_distance(a, b)
-            if dist <= min_dist:
-                yield (a, b)
+    atoms = list(molecule.get_atoms())
+    atom_coords = np.array([atom.get_coord() for atom in atoms])
+    dists = cdist(atom_coords, atom_coords)
+    np.fill_diagonal(dists, np.inf)
+    for i, j in zip(*np.where(np.triu(dists) < min_dist)):
+        yield atoms[i], atoms[j]
 
 
 def compute_residue_radius(residue):
@@ -1003,5 +999,6 @@ if __name__ == "__main__":
     import biobuild as bb
 
     mol = bb.Molecule.from_pubchem("1-ethyl-4-methyltriazole")
+    # mol = bb.Molecule.from_pubchem("GlcNAc")
     autolabel(mol)
     mol.show()
