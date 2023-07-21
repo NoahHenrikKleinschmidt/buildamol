@@ -662,6 +662,7 @@ class BaseEntity:
         atom1: Union[str, int, base_classes.Atom],
         atom2: Union[str, int, base_classes.Atom],
         angle: float,
+        angle_is_degrees: bool = True,
     ):
         """
         Rotate all descendant atoms (atoms after atom2) of a bond.
@@ -673,15 +674,24 @@ class BaseEntity:
         atom2 : Union[str, int, base_classes.Atom]
             The second atom (whose downstream neighbors are rotated)
         angle : float
-            The angle to rotate by in degrees
+            The angle to rotate by
+        angle_is_degrees : bool
+            Whether the angle is given in degrees (default) or radians
         """
-        self.rotate_around_bond(atom1, atom2, angle, descendants_only=True)
+        self.rotate_around_bond(
+            atom1,
+            atom2,
+            angle,
+            descendants_only=True,
+            angle_is_degrees=angle_is_degrees,
+        )
 
     def rotate_ancestors(
         self,
         atom1: Union[str, int, base_classes.Atom],
         atom2: Union[str, int, base_classes.Atom],
         angle: float,
+        angle_is_degrees: bool = True,
     ):
         """
         Rotate all ancestor atoms (atoms before atom1) of a bond
@@ -693,9 +703,17 @@ class BaseEntity:
         atom2 : Union[str, int, base_classes.Atom]
             The second atom
         angle : float
-            The angle to rotate by in degrees
+            The angle to rotate by
+        angle_is_degrees : bool
+            Whether the angle is given in degrees (default) or radians
         """
-        self.rotate_around_bond(atom2, atom1, angle, descendants_only=True)
+        self.rotate_around_bond(
+            atom2,
+            atom1,
+            angle,
+            descendants_only=True,
+            angle_is_degrees=angle_is_degrees,
+        )
 
     def rotate_around_bond(
         self,
@@ -703,6 +721,7 @@ class BaseEntity:
         atom2: Union[str, int, base_classes.Atom],
         angle: float,
         descendants_only: bool = False,
+        angle_is_degrees: bool = True,
     ):
         """
         Rotate the structure around a bond
@@ -718,6 +737,8 @@ class BaseEntity:
         descendants_only
             Whether to only rotate the descendants of the bond, i.e. only atoms that come after atom2
             (sensible only for linear molecules, or bonds that are not part of a circular structure).
+        angle_is_degrees
+            Whether the angle is given in degrees (default) or radians
         
         Examples
         --------
@@ -749,10 +770,9 @@ class BaseEntity:
         atom2 = self.get_atom(atom2)
         if (atom1, atom2) in self.locked_bonds:
             raise RuntimeError("Cannot rotate around a locked bond")
-
-        angle = np.radians(angle)
-
-        self._AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
+        if angle_is_degrees:
+            angle = np.radians(angle)
+        self._rotate_around_bond(atom1, atom2, angle, descendants_only)
 
     def get_ancestors(
         self,
@@ -1986,24 +2006,29 @@ class BaseEntity:
         atom4 = self.get_atom(atom4)
         return structural.compute_dihedral(atom1, atom2, atom3, atom4)
 
-    def make_atom_graph(self, locked: bool = True):
+    def get_atom_graph(self, _copy: bool = True):
         """
-        Generate an AtomGraph for the Molecule
+        Get an AtomGraph for the Molecule
 
         Parameters
         ----------
-        locked : bool
-            If True, the graph will also migrate the information on any locked bonds into the graph.
+        _copy : bool
+            If True, not the "original" AtomGraph object that the Molecule relies on is returned but a new one.
+            However, the molecule will still be linked to the new graph. This is useful if you want to make changes
+            to the graph itself (not including changes to the graph nodes, i.e. the atoms itself, such as rotations).
 
         Returns
         -------
         AtomGraph
             The generated graph
         """
-        graph = deepcopy(self._AtomGraph)
-        if not locked:
-            graph.unlock_all()
-        return graph
+        if not _copy:
+            return self._AtomGraph
+        atom_graph = graphs.AtomGraph(self.id, [])
+        atom_graph.add_nodes_from(self._AtomGraph.nodes)
+        atom_graph.migrate_bonds(self._AtomGraph)
+        atom_graph._locked_edges.update(self._AtomGraph._locked_edges)
+        return atom_graph
 
     def update_atom_graph(self):
         """
@@ -2207,8 +2232,9 @@ class BaseEntity:
                 return [
                     i
                     for i in self.bonds
-                    if (atom1 is i[0] and atom2 is i[1])
-                    or (atom1 is i[1] and atom2 is i[0])
+                    # ALL OF THESE USED TO BE is COMPARISONS!
+                    if (atom1 == i[0] and atom2 == i[1])
+                    or (atom1 == i[1] and atom2 == i[0])
                     # if (atom1.full_id == i[0].full_id and atom2.full_id == i[1].full_id)
                     # or (atom1.full_id == i[1].full_id and atom2.full_id == i[0].full_id)
                 ]
@@ -2216,19 +2242,19 @@ class BaseEntity:
                 return [
                     i
                     for i in self.bonds
-                    if (atom1 is i[0] and atom2 is i[1])
+                    if (atom1 == i[0] and atom2 == i[1])
                     # if (atom1.full_id == i[0].full_id and atom2.full_id == i[1].full_id)
                 ]
         elif atom1:
             if either_way:
-                return [i for i in self.bonds if (atom1 is i[0] or atom1 is i[1])]
+                return [i for i in self.bonds if (atom1 == i[0] or atom1 == i[1])]
             else:
-                return [i for i in self.bonds if atom1 is i[0]]
+                return [i for i in self.bonds if atom1 == i[0]]
         elif atom2:
             if either_way:
-                return [i for i in self.bonds if (atom2 is i[0] or atom2 is i[1])]
+                return [i for i in self.bonds if (atom2 == i[0] or atom2 == i[1])]
             else:
-                return [i for i in self.bonds if atom2 is i[1]]
+                return [i for i in self.bonds if atom2 == i[1]]
         else:
             raise ValueError("No atom provided")
 
@@ -2359,6 +2385,23 @@ class BaseEntity:
                 self.remove_bond(*old)
                 self.add_bond(*new)
         return directed
+
+    def _rotate_around_bond(
+        self,
+        atom1: base_classes.Atom,
+        atom2: base_classes.Atom,
+        angle: float,
+        descendants_only: bool = False,
+    ):
+        """
+        Rotate the structure around a bond. This is the same as the `rotate_around_bond` method,
+        but expects the atoms to be provided as Atom objects. And it does not check if a bond is locked.
+
+        Note
+        ----
+        This function expects the angle to be in RADIANS! Contrary to the `rotate_around_bond` method!
+        """
+        self._AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
 
     def __mod__(self, patch):
         """
