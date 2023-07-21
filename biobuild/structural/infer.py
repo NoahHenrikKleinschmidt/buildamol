@@ -423,6 +423,59 @@ def find_clashes(molecule, min_dist: float = 0.7):
         yield atoms[i], atoms[j]
 
 
+def sample_atoms_around_reference(
+    reference_coord: np.ndarray,
+    candidates: np.ndarray,
+    num_samples: int,
+    max_radius: float = 10.0,
+):
+    """
+    Sample atoms around a reference coordinate. Such that they are spacially evenly distributed around the central reference coordinates.
+
+    Parameters
+    ----------
+    reference_coord : np.ndarray
+        The reference coordinate to sample around.
+    candidates : np.ndarray
+        The atoms to sample from. This must be an array of Atom objects.
+    num_samples : int
+        The number of samples to generate.
+    max_radius : float
+        The maximum radius to sample for.
+
+    Returns
+    -------
+    samples : np.ndarray
+        The sampled atoms.
+    """
+    # Get the coordinates of the atoms
+    coordinates = np.array([i.coord for i in candidates])
+
+    # Generate azimuth and elevation angles evenly spaced in a sphere
+    phi = np.linspace(0, 2 * np.pi, num_samples)
+    theta = np.linspace(0, np.pi, num_samples)
+
+    # Create a grid of angles
+    phi_grid, theta_grid = np.meshgrid(phi, theta)
+
+    # Convert spherical coordinates to Cartesian coordinates
+    x = max_radius * np.sin(theta_grid) * np.cos(phi_grid) + reference_coord[0]
+    y = max_radius * np.sin(theta_grid) * np.sin(phi_grid) + reference_coord[1]
+    z = max_radius * np.cos(theta_grid) + reference_coord[2]
+
+    # Combine the x, y, z coordinates to get the sampled points
+    sampled_coordinates = np.column_stack((x.ravel(), y.ravel(), z.ravel()))
+
+    # Find the closest coordinates from the possible_coordinates array
+    closest_indices = np.argmin(
+        np.linalg.norm(sampled_coordinates[:, None] - coordinates, axis=2),
+        axis=1,
+    )
+    samples = candidates[closest_indices]
+
+    return samples
+
+
 def compute_residue_radius(residue):
     """
     Compute the radius of a residue by computing the distance between its center of mass
