@@ -14,7 +14,6 @@ class AtomGraph(BaseGraph):
 
     def __init__(self, id, bonds: list):
         super().__init__(id, bonds)
-        nx.set_node_attributes(self, {i: i.coord for i in self.nodes}, "coord")
 
     @classmethod
     def from_biopython(
@@ -138,7 +137,7 @@ class AtomGraph(BaseGraph):
             self._neighborhood = struct.AtomNeighborhood(self)
         return self._neighborhood.get_neighbors(atom, n, mode)
 
-    def direct_edges(self, root_node, edges=None):
+    def direct_edges(self, root_node=None, edges=None, adopt: bool = False):
         """
         Sort the edges such that the first atom in each edge
         is the one with the lower serial number.
@@ -146,31 +145,34 @@ class AtomGraph(BaseGraph):
         Parameters
         ----------
         root_node
-            The root node to use for sorting the edges
+            The root node to use for sorting the edges. If not provided, the central node is used.
         edges : list, optional
             The edges to sort, by default None, in which case
             all edges are sorted.
+        adopt : bool, optional
+            Whether to adopt the sorted edges and drop the un-sorted ones, by default False.
 
         Returns
         -------
         list
             The sorted edges
         """
+        if not root_node:
+            root_node = self.central_node
+
         if edges is None:
             edges = list(self.edges)
 
         if root_node not in self.nodes:
             raise ValueError(f"Root node {root_node} not in graph")
 
-        _directed = []
-        for node1, node2 in edges:
-            d1 = nx.shortest_path_length(self, source=root_node, target=node1)
-            d2 = nx.shortest_path_length(self, source=root_node, target=node2)
-            if d1 > d2:
-                edge = (node2, node1)
-            else:
-                edge = (node1, node2)
-            _directed.append(edge)
+        _directed = nx.dfs_tree(self, source=root_node).edges
+        _directed = [i for i in _directed if i in edges or i[::-1] in edges]
+        if adopt:
+            edges_to_drop = (i for i in edges if i not in _directed)
+            self.remove_edges_from(edges_to_drop)
+            self.add_edges_from(_directed)
+
         return _directed
 
     @staticmethod

@@ -62,11 +62,26 @@ class BaseGraph(nx.Graph):
         return list(self.structure.get_atoms())
 
     @property
+    def central_node(self):
+        """
+        Returns the central most node of the graph.
+        This is computed based on the mean of all node coordinates.
+        """
+        # get the central node
+        center = np.mean([i.coord for i in self.nodes])
+        # get the node closest to the center
+        root_node = min(self.nodes, key=lambda x: np.linalg.norm(x.coord - center))
+        return root_node
+
+    @property
     def nodes_in_cycles(self) -> set:
         """
         Returns the nodes in cycles
         """
-        return nx.cycle_basis(self)
+        cycles = nx.cycle_basis(self)
+        if len(cycles) == 0:
+            return set()
+        return set.union(*[set(i) for i in cycles])
 
     @property
     def bonds(self):
@@ -224,12 +239,54 @@ class BaseGraph(nx.Graph):
         """
         return self.get_descendants(node_2, node_1)
 
+    def find_rotatable_edges(self, root_node=None, min_descendants: int = 1):
+        """
+        Find all edges in the graph that are rotatable (i.e. not locked and not in a circular constellation).
+        You can also filter and direct the edges.
+
+        Parameters
+        ----------
+        root_node
+            A root node by which to direct the edges (closer to further).
+        min_descendants: int, optional
+            The minimum number of descendants that an edge must have to be considered rotatable.
+
+        Returns
+        -------
+        list
+            A list of rotatable edges
+        """
+        circulars = self.nodes_in_cycles
+        rotatable_edges = [
+            i
+            for i in self.edges
+            if not self.is_locked(*i) and not (i[0] in circulars and i[1] in circulars)
+        ]
+        if root_node is not None:
+            _directed = nx.dfs_tree(self, root_node)
+            rotatable_edges = [
+                i
+                for i in _directed.edges
+                if i in rotatable_edges or i[::-1] in rotatable_edges
+            ]
+
+        rotatable_edges = [
+            i
+            for i in rotatable_edges
+            if len(self.get_descendants(*i)) > min_descendants
+        ]
+        return rotatable_edges
+
     def direct_edges(self):
         """
-        Sort all edges such that the first node is always earlier
+        Sort all edges such that the first node is always "earlier"
         in the sequence than the second node.
         """
-        raise NotImplementedError
+        root_node = self.central_node
+        _directed = nx.dfs_tree(self, source=root_node).edges
+        edges_to_drop = (i for i in self.edges if i not in _directed)
+        self.remove_edges_from(edges_to_drop)
+        self.add_edges_from(_directed)
 
     def lock_edge(self, node_1, node_2):
         """
@@ -419,7 +476,7 @@ if __name__ == "__main__":
     )
     v = mol.draw()
     g = BaseGraph(None, mol.bonds)
-    ref_atom_graph = mol.make_atom_graph()
+    ref_atom_graph = mol.get_atom_graph()
 
     a, b = mol.get_atoms(68, 65)
 

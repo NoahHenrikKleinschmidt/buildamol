@@ -1,5 +1,7 @@
+from typing import Union
 import networkx as nx
 import Bio.PDB as bio
+import numpy as np
 
 import biobuild.structural as struct
 from biobuild.graphs.BaseGraph import BaseGraph
@@ -24,10 +26,6 @@ class ResidueGraph(BaseGraph):
         self._residues = {i.id: i for i in self.nodes}
         for r in self.nodes:
             r.coord = r.center_of_mass()
-
-        nx.set_node_attributes(
-            self, {i: i.center_of_mass() for i in self.nodes}, "coord"
-        )
 
     @classmethod
     def from_molecule(cls, mol, detailed: bool = False, locked: bool = True):
@@ -140,11 +138,36 @@ class ResidueGraph(BaseGraph):
 
         return new
 
+    def add_atomic_bonds(self, *edges):
+        """
+        Add atom-level bonds to the graph.
+
+        Parameters
+        ----------
+        *edges
+            The edges to add
+        """
+        for edge in edges:
+            p1, p2 = edge[0].get_parent(), edge[1].get_parent()
+            self.remove_edges_from(((p1, p2),))
+            if p1 is not p2:
+                new_edges = ((p1, edge[0]), (p2, edge[1]), edge)
+            else:
+                new_edges = ((p1, edge[0]), edge)
+
+            self.add_edges_from(new_edges)
+            # self._atomic_bonds.setdefault(
+            #     (edge[0].get_parent(), edge[1].get_parent()), []
+            # ).append(edge)
+
     def make_detailed(
         self,
-        include_outliers: bool = False,
+        include_samples: bool = True,
+        include_far_away: bool = False,
         include_heteroatoms: bool = False,
-        f: float = 1.5,
+        n_samples: Union[int, float] = 0.3,
+        f: float = 1.0,
+        no_hydrogens: bool = True,
     ):
         """
         Use a detailed representation of the residues in the molecule by adding the specific atoms
@@ -156,7 +179,11 @@ class ResidueGraph(BaseGraph):
 
         Parameters
         ----------
-        include_outliers : bool
+        include_samples : bool
+            If True, a number of atoms are sampled from each residue and included in the detailed
+            representation.
+
+        include_far_away : bool
             If True, atoms that are not involved in residue connections are also included if their
             distance to the residue's center of mass is greater than f * the 75th percentile of
             atom distances to the residue's center of mass.
@@ -165,10 +192,18 @@ class ResidueGraph(BaseGraph):
             If True, all hetero-atoms are included in the detailed representation, regardless of
             their distance to the residue center of mass.
 
+        n_samples : int or float
+            The number or fraction of atoms to sample from each residue if include_samples is True.
+            If a fraction in range (0,1) is given instead of an integer, the number of atoms to
+            sample is adjusted according to the residue size.
+
         f : float
             The factor by which the 75th percentile of atom distances to the residue's center of mass
             is multiplied to determine the cutoff distance for outlier atoms. This is only used if
             include_outliers is True.
+
+        no_hydrogens : bool
+            If True, hydrogens are not included in the detailed representation.
         """
 
         self.clear_edges()
@@ -188,9 +223,51 @@ class ResidueGraph(BaseGraph):
             self.add_edge(*e3)
             _added_nodes.update(e1)
 
-        if include_outliers:
+        if include_samples:
+            for residue in self.residues:
+                if no_hydrogens:
+                    atoms = np.array(
+                        [i for i in residue.child_list if i.element != "H"]
+                    )
+                else:
+                    atoms = np.array(residue.child_list)
+
+                n = n_samples
+                if n_samples < 1:
+                    n = int(np.ceil(len(atoms) * n_samples))
+
+                samples = struct.sample_atoms_around_reference(
+                    residue.center_of_mass(), atoms, num_samples=n
+                )
+                for i in samples:
+                    if i not in _added_nodes:
+                        self.add_edge(i, residue)
+                        _added_nodes.add(i)
+
+                # WORKS! BUT THE OTHER ONE IS SOO MUCH NICER!!!
+                # if len(atoms) > n_samples:
+                #     coords = np.array([i.coord for i in atoms])
+                #     dists = coords - residue.center_of_mass()
+                #     dists /= np.linalg.norm(dists, axis=1)[:, None]
+                #     # evenly sample atoms that are all around the residue
+                #     # by taking the dot product of the distance vectors
+                #     # and the center of mass vector
+                #     # and taking the n_samples atoms with the highest dot product
+                #     # this is a proxy for the atoms that are "furthest" from the residue
+                #     # center of mass
+                #     dot = np.dot(dists, residue.center_of_mass())
+                #     idx = np.argsort(dot)[-n_samples:]
+                #     atoms = atoms[idx]
+                # for atom in atoms:
+                #     if atom not in _added_nodes:
+                #         self.add_edge(atom, residue)
+                #         _added_nodes.add(atom)
+
+        if include_far_away:
             for residue in self.residues:
                 outliers = struct.compute_outlier_atoms(residue, f=f)
+                if no_hydrogens:
+                    outliers = (i for i in outliers if i.element != "H")
                 for outlier in outliers:
                     if outlier not in _added_nodes:
                         self.add_edge(outlier, residue)
@@ -330,6 +407,13 @@ class ResidueGraph(BaseGraph):
         """
         return {residue.id: residue.center_of_mass() for residue in self.residues}
 
+    def find_rotatable_edges(self, root_node=None, min_descendants: int = 1):
+        edges = super().find_rotatable_edges(root_node, min_descendants)
+        edges = [
+            i for i in edges if i[0] not in self.residues and i[1] not in self.residues
+        ]
+        return edges
+
 
 if __name__ == "__main__":
     import biobuild as bb
@@ -337,7 +421,15 @@ if __name__ == "__main__":
     f = "support/examples/man9.pdb"
     mol = bb.Molecule.from_pdb(f)
     mol.infer_bonds(restrict_residues=False)
+    b = mol.get_bonds("C1", "O4")
+
     man = ResidueGraph.from_molecule(mol)
+    man.add_atomic_bonds(*b)
+    man.make_detailed(include_far_away=True, n_samples=0.2)
+    x = man.find_rotatable_edges()
+    v = man.draw()
+    v.draw_edges(*mol.bonds, color="blue", opacity=0.1)
+    v.show()
 
     # _man = "support/examples/MAN9.pdb"
     # _man = bb.Molecule.from_pdb(_man)
@@ -347,7 +439,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import networkx as nx
 
-    man.make_detailed(True, f=1)
+    man.make_detailed(True)
 
     import biobuild.utils.visual as vis
 
