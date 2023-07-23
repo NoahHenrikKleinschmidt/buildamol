@@ -292,10 +292,10 @@ class Stitcher(base.Connector):
         tmp._add_bond(self._anchors[0], self._anchors[1])
 
         graph = tmp.make_residue_graph()
-        graph.make_detailed(include_outliers=True, include_heteroatoms=True, f=0.8)
+        graph.make_detailed()
 
         edges = sorted(tmp.get_residue_connections())
-        env = optimizers.MultiBondRotatron(graph, edges, mask_same_residues=False)
+        env = optimizers.DistanceRotatron(graph, edges)
 
         best, _ = optimizers.scipy_optimize(env, int(steps), **kwargs)
         self._policy = edges, best
