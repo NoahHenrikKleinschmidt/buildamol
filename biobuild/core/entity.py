@@ -1166,6 +1166,30 @@ class BaseEntity:
 
         return next(_atom, None)
 
+    def get_bond(
+        self,
+        atom1: Union[int, str, tuple, base_classes.Atom],
+        atom2: Union[int, str, tuple, base_classes.Atom],
+        add_if_not_present: bool = True,
+    ) -> tuple:
+        """
+        Get/make a bond between two atoms.
+
+        Parameters
+        ----------
+        atom1: str or int or tuple or Atom
+            The first atom
+        atom2: str or int or tuple or Atom
+            The second atom
+        add_if_not_present : bool
+            Whether to add the bond if it is not present
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+        if add_if_not_present and (atom1, atom2) not in self.bonds:
+            self.add_bond(atom1, atom2)
+        return (atom1, atom2)
+
     def get_bonds(
         self,
         atom1: Union[int, str, tuple, base_classes.Atom, bio.Residue.Residue] = None,
