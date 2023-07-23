@@ -418,8 +418,17 @@ def find_clashes(molecule, min_dist: float = 0.7):
     atoms = list(molecule.get_atoms())
     atom_coords = np.array([atom.get_coord() for atom in atoms])
     dists = cdist(atom_coords, atom_coords)
+    edge_mask = np.zeros(dists.shape, dtype=bool)
+    for a, b in molecule.get_bonds():
+        i = atoms.index(a)
+        j = atoms.index(b)
+        edge_mask[i, j] = True
+        edge_mask[j, i] = True
+    dists[edge_mask] = np.inf
     np.fill_diagonal(dists, np.inf)
-    for i, j in zip(*np.where(np.triu(dists) < min_dist)):
+    dists = np.triu(dists)
+    xs, ys = np.where((0 < dists) * (dists < min_dist))
+    for i, j in zip(xs, ys):
         yield atoms[i], atoms[j]
 
 
@@ -1052,6 +1061,8 @@ if __name__ == "__main__":
     import biobuild as bb
 
     mol = bb.Molecule.from_pubchem("1-ethyl-4-methyltriazole")
+    x = find_clashes(mol)
+
     # mol = bb.Molecule.from_pubchem("GlcNAc")
     autolabel(mol)
     mol.show()
