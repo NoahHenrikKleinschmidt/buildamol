@@ -139,8 +139,9 @@ class AtomGraph(BaseGraph):
 
     def direct_edges(self, root_node=None, edges=None, adopt: bool = False):
         """
-        Sort the edges such that the first atom in each edge
-        is the one with the lower serial number.
+        Sort the edges such that the first node (atom) in each edge
+        is the one closest to the root node. If the root node is not provided, the
+        central node is used.
 
         Parameters
         ----------
@@ -150,7 +151,7 @@ class AtomGraph(BaseGraph):
             The edges to sort, by default None, in which case
             all edges are sorted.
         adopt : bool, optional
-            Whether to adopt the sorted edges and drop the un-sorted ones, by default False.
+            Whether to adopt the sorted edges and drop the unsorted ones, by default False.
 
         Returns
         -------

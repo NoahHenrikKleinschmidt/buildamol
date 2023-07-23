@@ -206,10 +206,20 @@ class ResidueGraph(BaseGraph):
             If True, hydrogens are not included in the detailed representation.
         """
 
-        self.clear_edges()
+        # self.clear_edges()
 
         _added_nodes = set()
         for edge in self._atomic_bonds_list:
+            if not edge[0] in self.nodes:
+                self.add_edge(edge[0], edge[0].get_parent())
+            if self.has_edge(edge[1], edge[1].parent):
+                self.remove_edge(edge[1], edge[1].parent)
+            if self.has_edge(edge[0].parent, edge[1].parent):
+                self.remove_edge(edge[0].parent, edge[1].parent)
+            # if edge[0].parent == edge[1].parent and self.has_edge(
+            #     edge[1], edge[1].parent
+            # ):
+            #     self.remove_edge(edge[1], edge[1].parent)
             self.add_edge(*edge)
             _added_nodes.update(edge)
 
@@ -280,6 +290,21 @@ class ResidueGraph(BaseGraph):
                         if atom not in _added_nodes:
                             self.add_edge(atom, residue)
                             _added_nodes.add(atom)
+
+        # prune edge triplets of atoms that are part of the same residues
+        for triplet in nx.cycle_basis(self):
+            if len(triplet) == 3:
+                length_12 = np.linalg.norm(triplet[0].coord - triplet[1].coord)
+                length_23 = np.linalg.norm(triplet[1].coord - triplet[2].coord)
+                length_13 = np.linalg.norm(triplet[0].coord - triplet[2].coord)
+                lengths = [length_12, length_23, length_13]
+                # remove the longest edge
+                if lengths.index(max(lengths)) == 0:
+                    self.remove_edge(triplet[0], triplet[1])
+                elif lengths.index(max(lengths)) == 1:
+                    self.remove_edge(triplet[1], triplet[2])
+                else:
+                    self.remove_edge(triplet[0], triplet[2])
 
     def draw(self):
         v = vis.ResidueGraphViewer3D()
@@ -407,12 +432,53 @@ class ResidueGraph(BaseGraph):
         """
         return {residue.id: residue.center_of_mass() for residue in self.residues}
 
-    def find_rotatable_edges(self, root_node=None, min_descendants: int = 1):
-        edges = super().find_rotatable_edges(root_node, min_descendants)
+    def find_rotatable_edges(
+        self, root_node=None, min_descendants: int = 1, min_ancestors: int = 1
+    ):
+        edges = super().find_rotatable_edges(root_node, min_descendants, min_ancestors)
         edges = [
             i for i in edges if i[0] not in self.residues and i[1] not in self.residues
         ]
         return edges
+
+    def direct_edges(self, root_node=None, edges=None, adopt: bool = False):
+        """
+        Sort the edges such that the first node in each edge
+        is the one closer to the root node. If no root node is provided,
+        the central node is used.
+
+        Parameters
+        ----------
+        root_node
+            The root node to use for sorting the edges. If not provided, the central node is used.
+        edges : list, optional
+            The edges to sort, by default None, in which case
+            all edges are sorted.
+        adopt : bool, optional
+            Whether to adopt the sorted edges and drop the un-sorted ones, by default False.
+
+        Returns
+        -------
+        list
+            The sorted edges
+        """
+        if not root_node:
+            root_node = self.central_node
+
+        if edges is None:
+            edges = list(self.edges)
+
+        if root_node not in self.nodes:
+            raise ValueError(f"Root node {root_node} not in graph")
+
+        _directed = nx.dfs_tree(self, source=root_node).edges
+        _directed = [i for i in _directed if i in edges or i[::-1] in edges]
+        if adopt:
+            edges_to_drop = (i for i in edges if i not in _directed)
+            self.remove_edges_from(edges_to_drop)
+            self.add_edges_from(_directed)
+
+        return _directed
 
 
 if __name__ == "__main__":

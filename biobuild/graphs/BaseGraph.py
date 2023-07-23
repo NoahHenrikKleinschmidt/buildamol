@@ -239,7 +239,14 @@ class BaseGraph(nx.Graph):
         """
         return self.get_descendants(node_2, node_1)
 
-    def find_rotatable_edges(self, root_node=None, min_descendants: int = 1):
+    def find_rotatable_edges(
+        self,
+        root_node=None,
+        min_descendants: int = 1,
+        min_ancestors: int = 1,
+        max_descendants: int = None,
+        max_ancestors: int = None,
+    ):
         """
         Find all edges in the graph that are rotatable (i.e. not locked and not in a circular constellation).
         You can also filter and direct the edges.
@@ -250,12 +257,23 @@ class BaseGraph(nx.Graph):
             A root node by which to direct the edges (closer to further).
         min_descendants: int, optional
             The minimum number of descendants that an edge must have to be considered rotatable.
+        min_ancestors: int, optional
+            The minimum number of ancestors that an edge must have to be considered rotatable.
+        max_descendants: int, optional
+            The maximum number of descendants that an edge must have to be considered rotatable.
+        max_ancestors: int, optional
+            The maximum number of ancestors that an edge must have to be considered rotatable.
 
         Returns
         -------
         list
             A list of rotatable edges
         """
+        if not max_descendants:
+            max_descendants = np.inf
+        if not max_ancestors:
+            max_ancestors = np.inf
+
         circulars = self.nodes_in_cycles
         rotatable_edges = [
             i
@@ -273,8 +291,10 @@ class BaseGraph(nx.Graph):
         rotatable_edges = [
             i
             for i in rotatable_edges
-            if len(self.get_descendants(*i)) > min_descendants
+            if min_descendants < len(self.get_descendants(*i)) < max_descendants
+            and min_ancestors < len(self.get_ancestors(*i)) < max_ancestors
         ]
+
         return rotatable_edges
 
     def direct_edges(self):
