@@ -3,13 +3,13 @@ This module contains utility functions for the optimizers.
 """
 
 import numpy as np
-import biobuild.optimizers.environments as environments
+import biobuild.optimizers.environments.Rotatron as Rotatron
 import biobuild.optimizers.agents as agents
 
 
-def apply_solution(sol: np.ndarray, env: "environments.Rotatron", obj):
+def apply_solution(sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule"):
     """
-    Apply a solution to an object
+    Apply a solution to a Molecule object.
 
     Parameters
     ----------
@@ -17,15 +17,14 @@ def apply_solution(sol: np.ndarray, env: "environments.Rotatron", obj):
         The solution of rotational angles in radians to apply
     env : environments.Rotatron
         The environment used to find the solution
-    obj
-        The object to apply the solution to
+    mol : Molecule
+        The molecule to apply the solution to
 
     Returns
     -------
     obj
         The object with the solution applied
     """
-    angles = np.degrees(sol)
     bonds = env.rotatable_edges
 
     if not len(angles) == len(bonds):
@@ -35,42 +34,17 @@ def apply_solution(sol: np.ndarray, env: "environments.Rotatron", obj):
 
     for i, bond in enumerate(bonds):
         angle = angles[i]
-        bond = obj.get_bonds(bond[0].full_id, bond[1].full_id)
+        bond = mol.get_bonds(bond[0].full_id, bond[1].full_id)
         if len(bond) == 0:
             raise ValueError(
                 f"Object and environment do not match (bond mismatch): {bond}"
             )
         bond = bond[0]
-        obj.rotate_around_bond(*bond, angle, descendants_only=True)
+        mol.rotate_around_bond(
+            *bond, angle, descendants_only=True, angle_is_degrees=False
+        )
 
     return obj
 
 
-def has_clashes(mol: "Molecule", min_distance: float = 0.95):
-    """
-    Check if there are any atoms in the molecule that are too close to each other.
-
-    Parameters
-    ----------
-    mol : Molecule
-        The molecule to check for clashes
-    min_distance : float, optional
-        The minimum distance between atoms to be considered a clash, if None is given,
-        the default of 0.95 Angstroms is used.
-
-    Returns
-    -------
-    bool
-        Whether there are any clashes (True) or not (False)
-    """
-    if min_distance is None:
-        min_distance = 0.95
-
-    for atom_a in mol.get_atoms():
-        for atom_b in mol.get_atoms():
-            if atom_a is atom_b:
-                continue
-            distance = atom_a - atom_b
-            if distance < min_distance:
-                return True
-    return False
+__all__ = ["apply_solution"]
