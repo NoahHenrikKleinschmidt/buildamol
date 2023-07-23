@@ -55,7 +55,7 @@ def scipy_optimize(
 def genetic_optimize(
     env,
     max_steps: int = 1e3,
-    stop_if_done: bool = False,
+    stop_if_done: bool = True,
     threshold: float = 1e-4,
     variation: float = 0.3,
     population_size: int = 20,
@@ -112,7 +112,7 @@ def genetic_optimize(
     population = np.stack([blank] * population_size)
     evals = np.zeros(population_size)
 
-    bests = np.zeros(max(10, max_steps * 0.05))
+    bests = np.zeros(max(10, int(max_steps * 0.05)))
 
     pop_range = np.arange(0, population_size)
     children_range = np.arange(0, n_children)
@@ -174,7 +174,7 @@ def swarm_optimize(
     env,
     n_particles: int = 10,
     max_steps: int = 30,
-    stop_if_done: bool = False,
+    stop_if_done: bool = True,
     threshold: float = 1e-5,
     variation: float = 0.1,
     recycle: float = 0.3,
