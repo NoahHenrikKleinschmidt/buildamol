@@ -673,6 +673,7 @@ def connect(
     copy_a: bool = True,
     copy_b: bool = True,
     _topology=None,
+    use_patch: bool = True,
 ) -> "Molecule":
     """
     Connect two molecules together
@@ -698,6 +699,9 @@ def connect(
     _topology : CHARMMTopology
         A specific topology to use in case a pre-existing patch is used as link and only the string identifier
         is supplied.
+    use_patch : bool
+        If the linkage has internal coordinates available (i.e. is a "patch") these are used by default. Set this to False
+        to force-use stitching and its associated conformational optimization instead.
 
     Returns
     -------
@@ -713,6 +717,7 @@ def connect(
         other_residue=at_residue_b,
         inplace=not copy_a,
         _topology=_topology,
+        use_patch=use_patch,
     )
     return new
 
