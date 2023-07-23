@@ -2079,6 +2079,9 @@ class BaseEntity:
         graph = graphs.ResidueGraph.from_molecule(self, detailed, locked)
         return graph
 
+    get_residue_graph = make_residue_graph
+    make_atom_graph = get_atom_graph
+
     def to_pdb(self, filename: str, symmetric: bool = True):
         """
         Write the molecule to a PDB file
