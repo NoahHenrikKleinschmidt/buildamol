@@ -91,7 +91,7 @@ class AtomGraph(BaseGraph):
         new = cls(mol.id, mol.bonds)
         if locked:
             new._locked_edges.update(mol.locked_bonds)
-        self._molecule = mol
+        new._molecule = mol
         return new
 
     def draw(self):
