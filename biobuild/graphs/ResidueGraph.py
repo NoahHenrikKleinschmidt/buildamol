@@ -20,6 +20,7 @@ class ResidueGraph(BaseGraph):
     def __init__(self, id, bonds: list):
         super().__init__(id, bonds)
         self._AtomGraph = None
+        self._molecule = None
         self._atomic_bonds = {}
         self._atomic_bonds_list = []
 
@@ -67,6 +68,7 @@ class ResidueGraph(BaseGraph):
         new = cls(mol.id, main_connections)
         new._AtomGraph = mol._AtomGraph
         new._structure = mol.structure
+        new._molecule = mol
 
         new._atomic_bonds_list = list(connections)
 
@@ -137,6 +139,22 @@ class ResidueGraph(BaseGraph):
             new._atomic_bonds.setdefault((parent_1, parent_2), []).append(bond)
 
         return new
+
+    def get_residue(self, r):
+        """
+        Get a residue in the molecule.
+
+        Parameters
+        ----------
+        r : str or Residue
+            The residue or it's id
+
+        Returns
+        -------
+        Residue
+            The residue
+        """
+        return self._molecule.get_residue(r)
 
     def add_atomic_bonds(self, *edges):
         """

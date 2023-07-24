@@ -20,6 +20,7 @@ class BaseGraph(nx.Graph):
         super().__init__(bonds)
         self.id = id
         self._structure = None
+        self._molecule = None
         self._neighborhood = None
         self._locked_edges = set()
         self._structure_was_searched = False
