@@ -86,12 +86,12 @@ def quick_optimize(
             graph = mol.make_residue_graph()
             graph.make_detailed()
             edges = mol.get_residue_connections()
-            edges = graph.direct_edges(edges)
+            edges = graph.direct_edges(None, edges)
         else:
             graph = mol.make_atom_graph()
             edges = mol.find_rotatable_edges(min_descendants=5, max_descendants=10)
 
-        env = DistanceRotatron.DistanceRotatron(graph, edges, radius=25)
+        env = DistanceRotatron(graph, edges, radius=25)
 
     if algorithm == "genetic":
         agent = agents.genetic_optimize
