@@ -223,7 +223,8 @@ def set_default_topology(obj, overwrite: bool = False):
     if overwrite:
         current = _defaults.__default_instances__.get("Topology", None)
         if current:
-            current.to_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
+            if not os.path.exists(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"):
+                current.to_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
     _defaults.__default_instances__["Topology"] = obj
     if overwrite:
         obj.to_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE)
@@ -306,6 +307,8 @@ def add_patch(patch, overwrite: bool = False):
     overwrite: bool
         If `True`, the topology with the added patch is saved as the new default topology
     """
+    if patch.id is None:
+        raise ValueError("The linkage must have an ID")
     get_default_topology().add_patch(patch)
     if overwrite:
         set_default_topology(get_default_topology(), overwrite=True)
@@ -321,7 +324,7 @@ def get_patch(name: str):
     Parameters
     ----------
     name: str
-        The name of the patch
+        The name/id of the patch
 
     Returns
     -------

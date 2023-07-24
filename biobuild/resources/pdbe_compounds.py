@@ -415,10 +415,31 @@ def set_default_compounds(obj, overwrite: bool = False):
     if overwrite:
         current = defaults.get_default_instance("PDBECompounds")
         if current:
-            current.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
+            if not os.path.exists(
+                defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak"
+            ):
+                current.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
     defaults.__default_instances__["PDBECompounds"] = obj
     if overwrite:
         obj.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
+
+
+def save_as_default_compounds(obj):
+    """
+    Save a PDBECompounds object as the new default. This will leave the currently active default object unchanged, but will
+    overwrite the default file for any future sessions.
+
+    Parameters
+    ----------
+    obj : PDBECompounds
+        The PDBECompounds object to set as the new default
+    """
+    if not obj.__class__.__name__ == "PDBECompounds":
+        raise TypeError("The object must be a PDBECompounds instance.")
+    current = defaults.get_default_instance("PDBECompounds")
+    if current:
+        current.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
+    obj.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
 
 
 def restore_default_compounds(overwrite: bool = True):
@@ -444,6 +465,45 @@ def restore_default_compounds(overwrite: bool = True):
         )
 
 
+def unload_by_types(*t: str):
+    """
+    Unload all loaded compounds from the default PDBECompounds instance of a given types.
+
+    Parameters
+    ----------
+    t: str
+        The types to unload.
+    """
+
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] in t]
+    for i in ids:
+        comps.remove(i)
+
+
+def subset_compounds_by_types(*t: str) -> "PDBECompounds":
+    """
+    Get a new PDBECompounds object containing only compounds from the currently loaded default compounds of the given types.
+
+    Parameters
+    ----------
+    t: str
+        The types to include.
+
+    Returns
+    -------
+    PDBECompounds
+        A new PDBECompounds object containing only compounds of the given types.
+    """
+    new = PDBECompounds()
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] in t]
+    for i in ids:
+        new._compounds[i] = comps._compounds[i].copy()
+        new._pdb[i] = comps._pdb[i].copy()
+    return new
+
+
 def load_amino_acids():
     """
     Load amino acid components into the default PDBECompounds instance.
@@ -458,6 +518,19 @@ def load_amino_acids():
     __loaded_compounds__["amino_acids"] = True
 
 
+def unload_amino_acids():
+    """
+    Unload amino acid components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["amino_acids"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "AMINO-ACID"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["amino_acids"] = False
+
+
 def load_lipids():
     """
     Load lipid components into the default PDBECompounds instance.
@@ -470,6 +543,19 @@ def load_lipids():
     __loaded_compounds__["lipids"] = True
 
 
+def unload_lipids():
+    """
+    Unload lipid components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["lipids"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "LIPID"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["lipids"] = False
+
+
 def load_sugars():
     """
     Load sugar components into the default PDBECompounds instance.
@@ -480,6 +566,19 @@ def load_sugars():
     sugars = PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["sugars"])
     comps.merge(sugars)
     __loaded_compounds__["sugars"] = True
+
+
+def unload_sugars():
+    """
+    Unload sugar components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["sugars"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "SACCHARIDE"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["sugars"] = False
 
 
 def load_nucleotides():
@@ -497,6 +596,19 @@ def load_nucleotides():
     __loaded_compounds__["nucleotides"] = True
 
 
+def unload_nucleotides():
+    """
+    Unload nucleotide components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["nucleotides"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "NUCLEIC-ACID"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["nucleotides"] = False
+
+
 def load_small_molecules():
     """
     Load small molecule components into the default PDBECompounds instance.
@@ -511,6 +623,19 @@ def load_small_molecules():
     __loaded_compounds__["small_molecules"] = True
 
 
+def unload_small_molecules():
+    """
+    Unload small molecule components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["small_molecules"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "SMALL-MOLECULE"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["small_molecules"] = False
+
+
 def load_all_compounds():
     """
     Load all available components into the default PDBECompounds instance.
@@ -520,6 +645,17 @@ def load_all_compounds():
     load_sugars()
     load_nucleotides()
     load_small_molecules()
+
+
+def unload_all_compounds():
+    """
+    Unload all available components from the default PDBECompounds instance.
+    """
+    unload_amino_acids()
+    unload_lipids()
+    unload_sugars()
+    unload_nucleotides()
+    unload_small_molecules()
 
 
 class PDBECompounds:
@@ -535,8 +671,10 @@ class PDBECompounds:
         The ID of the PDBECompounds object. Defaults to None.
     """
 
-    def __init__(self, compounds: dict, id=None) -> None:
+    def __init__(self, compounds: dict = None, id=None) -> None:
         self.id = id
+        if not compounds:
+            compounds = {}
         self._compounds = {k: None for k in compounds.keys()}
         self._pdb = dict(self._compounds)
         self._setup_dictionaries(compounds)
@@ -1295,6 +1433,16 @@ __all__ = [
     "load_lipids",
     "load_small_molecules",
     "load_all_compounds",
+    "unload_amino_acids",
+    "unload_nucleotides",
+    "unload_sugars",
+    "unload_lipids",
+    "unload_small_molecules",
+    "unload_all_compounds",
+    "save_as_default_compounds",
+    "unload_by_types",
+    "subset_compounds_by_types",
+    "_molecule_to_pdbx_dict",
 ]
 
 
