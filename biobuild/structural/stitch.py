@@ -277,7 +277,8 @@ class Stitcher(base.Connector):
                 orig_coords_target[atom] = (atom.coord[0], atom.coord[1], atom.coord[2])
                 orig_parents_target[atom] = atom.parent
 
-                tmp.add_atoms(atom, residue=bystanders, _copy=False)
+                bystanders.add(atom)
+                tmp._AtomGraph.add_node(atom)
 
         for atom in self.source.get_atoms():
             if structural_base.compute_distance(atom, self._anchors[1]) < r:
@@ -286,13 +287,14 @@ class Stitcher(base.Connector):
                 orig_coords_source[atom] = (atom.coord[0], atom.coord[1], atom.coord[2])
                 orig_parents_source[atom] = atom.parent
 
-                tmp.add_atoms(atom, residue=bystanders, _copy=False)
+                bystanders.add(atom)
+                tmp._AtomGraph.add_node(atom)
 
         tmp._add_bonds(*bonds)
         tmp._add_bond(self._anchors[0], self._anchors[1])
 
         graph = tmp.make_residue_graph()
-        graph.make_detailed()
+        graph.make_detailed(n_samples=0.5)
 
         edges = sorted(tmp.get_residue_connections())
         env = optimizers.DistanceRotatron(graph, edges)
@@ -304,12 +306,14 @@ class Stitcher(base.Connector):
         self._source_residue.parent = source_residue_parent
 
         for atom in self._target_residue.child_list:
+            atom.parent = self._target_residue
             orig_coords = orig_coords_target[atom]
             atom.coord[0] = orig_coords[0]
             atom.coord[1] = orig_coords[1]
             atom.coord[2] = orig_coords[2]
 
         for atom in self._source_residue.child_list:
+            atom.parent = self._source_residue
             orig_coords = orig_coords_source[atom]
             atom.coord[0] = orig_coords[0]
             atom.coord[1] = orig_coords[1]
@@ -391,19 +395,9 @@ class Stitcher(base.Connector):
             for bond, angle in zip(edges, angles):
                 # we used to use full_id which worked overall good. I think we used to have
                 # also a version with serial for a while. Let's do this again...
-                _bond = self.target.get_bonds(
-                    bond[0].serial_number, bond[1].serial_number, either_way=False
-                )
-                if len(_bond) == 0:
-                    _bond = self.target.get_bonds(
-                        bond[1].serial_number, bond[0].serial_number, either_way=False
-                    )
-                    if len(_bond) == 0:
-                        raise ValueError("Bond not found")
-                    self.target.add_bond(bond[0].serial_number, bond[1].serial_number)
-                    _bond = _bond[0][::-1]
-                else:
-                    _bond = _bond[0]
+                # UPDATE: By now there should be no issues with the atom's being in there
+                # so we don't actually need to use the full_id anymore
+                _bond = bond
 
                 # v.draw_vector(
                 #     "rotation",
@@ -413,7 +407,7 @@ class Stitcher(base.Connector):
                 # )
 
                 self.target.rotate_around_bond(
-                    *_bond, np.degrees(angle), descendants_only=True
+                    *_bond, angle, descendants_only=True, angle_is_degrees=False
                 )
 
             self._policy = None, None
