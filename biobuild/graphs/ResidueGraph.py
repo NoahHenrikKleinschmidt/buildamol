@@ -451,9 +451,16 @@ class ResidueGraph(BaseGraph):
         return {residue.id: residue.center_of_mass() for residue in self.residues}
 
     def find_rotatable_edges(
-        self, root_node=None, min_descendants: int = 1, min_ancestors: int = 1
+        self,
+        root_node=None,
+        min_descendants: int = 1,
+        min_ancestors: int = 1,
+        max_descendants: int = None,
+        max_ancestors: int = None,
     ):
-        edges = super().find_rotatable_edges(root_node, min_descendants, min_ancestors)
+        edges = super().find_rotatable_edges(
+            root_node, min_descendants, min_ancestors, max_descendants, max_ancestors
+        )
         edges = [
             i for i in edges if i[0] not in self.residues and i[1] not in self.residues
         ]
@@ -492,7 +499,7 @@ class ResidueGraph(BaseGraph):
         _directed = nx.dfs_tree(self, source=root_node).edges
         _directed = [i for i in _directed if i in edges or i[::-1] in edges]
         if adopt:
-            edges_to_drop = (i for i in edges if i not in _directed)
+            edges_to_drop = (i for i in self.edges if i not in _directed)
             self.remove_edges_from(edges_to_drop)
             self.add_edges_from(_directed)
 

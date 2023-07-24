@@ -48,6 +48,15 @@ class Rotatron(gym.Env):
             dtype=bool,
         )
 
+        self.edge_lengths = np.array(
+            [
+                np.linalg.norm(
+                    self.state[self.node_dict[e[0]]] - self.state[self.node_dict[e[1]]]
+                )
+                for e in self.rotatable_edges
+            ]
+        )
+
         self._best_state = self.state.copy()
         self._best_action = self.blank()
         self._action_history = self.blank()
@@ -69,7 +78,7 @@ class Rotatron(gym.Env):
     def get_edge_vector(self, _edge):
         adx, bdx = self.get_node_idx(_edge[0]), self.get_node_idx(_edge[1])
         vec = self.state[bdx] - self.state[adx]
-        return vec / np.linalg.norm(vec)
+        return vec
 
     def get_node_coords(self, _node):
         return self.state[self.get_node_idx(_node)]
@@ -95,6 +104,10 @@ class Rotatron(gym.Env):
         edx = self.get_edge_idx(edge)
         mask = self.edge_masks[edx]
         vec = self.get_edge_vector(edge)
+        # new version where the lengths are pre-computed
+        # since we are only rotating the lengths should not change...
+        length = self.edge_lengths[edx]
+        vec /= length
         ref_coord = self.get_node_coords(edge[0])
 
         rot = Rotation.from_rotvec(vec * angle)

@@ -4,13 +4,13 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.spatial.transform import Rotation
 
-import biobuild.optimizers.environments.Rotatron as Rotatron
+import biobuild.optimizers.Rotatron as Rotatron
 import biobuild.structural as structural
 import biobuild.utils.auxiliary as aux
 import biobuild.graphs.BaseGraph as BaseGraph
 
 
-class DistanceRotatron(Rotatron):
+class DistanceRotatron(Rotatron.Rotatron):
     """
     A distance-based Rotatron environment.
 
@@ -26,6 +26,10 @@ class DistanceRotatron(Rotatron):
         Set to -1 to disable.
     clash_distance : float
         The distance at which atoms are considered to be clashing.
+    pushback : float
+        The pushback factor for the distance calculation.
+        The higher this value, the shorter the retraction effect.
+        Tweak this parameter only if you know what you're doing and adjusting the radius alone is not enough.
     mask_rotation_units : bool
         If True, atoms that are part of the same rotational unit (i.e. between two rotational edges) are
         masked off from each other when computing the evaluation. This prevents atoms from interferring with
@@ -50,6 +54,7 @@ class DistanceRotatron(Rotatron):
         rotatable_edges: list = None,
         radius: float = -1,
         clash_distance: float = 0.9,
+        pushback: float = 3,
         # clash_penalty: float = 3.0,
         mask_rotation_units: bool = True,
         crop_nodes_further_than: float = -1,
@@ -88,13 +93,17 @@ class DistanceRotatron(Rotatron):
                 graph.remove_nodes_from(nodes_to_drop)
         # =====================================
 
-        Rotatron.__init__(self, graph, rotatable_edges)
+        Rotatron.Rotatron.__init__(self, graph, rotatable_edges)
         self.action_space = gym.spaces.Box(
             low=bounds[0], high=bounds[1], shape=(len(self.rotatable_edges),)
         )
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
         )
+
+        # =====================================
+
+        self._pushback = pushback
 
         # =====================================
 
@@ -106,21 +115,24 @@ class DistanceRotatron(Rotatron):
         # =====================================
 
         if not self.mask_rotation_units:
-            masker = lambda x: x < self._radius
+
+            def masker(x):
+                return x < self._radius
+
         else:
-            masker = lambda x: (
-                (x < self._radius)
-                * (
-                    1
-                    - self.edge_masks[self._current_edge_idx]
-                    * self.edge_masks[self._current_edge_idx, self._current_node_index]
-                )
-            ).astype(bool)
+
+            def masker(x):
+                mask = (x < self._radius).astype(np.int8)
+                if self.edge_masks[self._current_edge_idx, self._current_node_index]:
+                    mask *= (1 - self.edge_masks[self._current_edge_idx]).astype(
+                        np.int8
+                    )
+                return mask.astype(bool)
 
         def concatenation_wrapper(x):
             mask = masker(x)
             self._current_node_index = (self._current_edge_idx + 1) % self.n_edges
-            if not np.any(mask):
+            if not np.logical_or.reduce(mask):
                 return -1
             return self._concatenation_function(x[mask])
 
@@ -179,12 +191,15 @@ class DistanceRotatron(Rotatron):
             self.concatenation_function, 1, pairwise_dists
         )
         mask = rowwise_dist_eval > -1
-        if not np.any(mask) == 1:
+        if not np.logical_or.reduce(mask):
             return self._last_eval
 
-        # I ADDED THE ** 3 ( if it breaks now that's why)
-        rowwise_dist_eval[mask] = self.n_nodes / ((rowwise_dist_eval[mask] ** 3 + 1e-6))
+        rowwise_dist_eval[mask] **= self._pushback
+        rowwise_dist_eval[mask] += 1e-6
+        rowwise_dist_eval[mask] /= self.n_nodes
+        rowwise_dist_eval[mask] **= -1
         rowwise_dist_eval[mask] = np.log(rowwise_dist_eval[mask])
+
         final = np.sum(rowwise_dist_eval[mask])
         self._state_dists[:, :] = pairwise_dists
         self._last_eval = final
@@ -233,11 +248,11 @@ if __name__ == "__main__":
     edges = graph.find_rotatable_edges(min_descendants=10)
 
     d = DistanceRotatron(graph, edges, radius=-1, bounds=(0, 0.5))
-    import stable_baselines3 as sb3
+    # import stable_baselines3 as sb3
 
-    model = sb3.PPO("MlpPolicy", d, verbose=1)
-    model.learn(total_timesteps=10000)
-    model.save("ppo_distance_rotatron")
+    # model = sb3.PPO("MlpPolicy", d, verbose=1)
+    # model.learn(total_timesteps=10000)
+    # model.save("ppo_distance_rotatron")
 
     x_ = d._best_eval
     x0 = d.step(d.blank())
