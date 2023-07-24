@@ -228,7 +228,7 @@ class Stitcher(base.Connector):
                 atom.set_serial_number(adx)
                 adx += 1
 
-    def _optimize(self, steps: int = 1e4, **kwargs):
+    def _optimize(self, steps: int = 1e3, **kwargs):
         """
         Optimize the geometry of the source molecule
 
