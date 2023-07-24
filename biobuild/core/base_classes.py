@@ -620,7 +620,19 @@ class Structure(ID, bio.Structure.Structure):
             for chain in model.get_chains():
                 c = Chain(chain.id)
                 for residue in chain.get_residues():
-                    r = Residue(residue.resname, residue.segid, rdx)
+                    # ------------------------ NOTE -------------------------
+                    # This is a little weird bugfix where I found
+                    # that sometimes the segid was "     " instead of " ".
+                    # This is a little hacky, but it works.
+                    # It could be that there is a problem with the pdb module
+                    # but that one has already seen enough modification so
+                    # I don't want to tinker with it again...
+                    # -------------------------------------------------------
+                    segid = residue.segid
+                    if len(segid) > 1:
+                        segid = segid[0]
+                    # -------------------------------------------------------
+                    r = Residue(residue.resname, segid, rdx)
                     rdx += 1
                     for atom in residue.get_atoms():
                         a = Atom(
