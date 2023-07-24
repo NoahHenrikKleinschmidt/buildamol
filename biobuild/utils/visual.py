@@ -41,7 +41,8 @@ class NglViewer:
         """
         Show the molecule in a Jupyter notebook
         """
-        return nglview.show_biopython(self.structure)
+        fig = nglview.show_biopython(self.structure)
+        return fig
 
 
 class PlotlyViewer3D:
@@ -133,6 +134,7 @@ class PlotlyViewer3D:
         linewidth=1.5,
         opacity=1.0,
         showlegend=True,
+        hoverinfo: str = "skip",
         elongate: float = 1.0,
     ):
         new = go.Scatter3d(
@@ -142,14 +144,20 @@ class PlotlyViewer3D:
             mode="lines",
             line=dict(color=color, width=linewidth),
             name=id,
-            hoverinfo="skip",
+            hoverinfo=hoverinfo,
             opacity=opacity,
             showlegend=showlegend,
         )
         self.add(new)
 
     def draw_edges(
-        self, *edges, color="black", linewidth=1, opacity=1.0, elongate: float = 1.0
+        self,
+        *edges,
+        color="black",
+        linewidth=1,
+        opacity=1.0,
+        elongate: float = 1.0,
+        showlegend: bool = True,
     ):
         for edge in edges:
             self.draw_vector(
@@ -160,6 +168,7 @@ class PlotlyViewer3D:
                 linewidth=linewidth,
                 opacity=opacity,
                 elongate=elongate,
+                showlegend=showlegend,
             )
 
     def draw_points(
@@ -188,7 +197,11 @@ class PlotlyViewer3D:
         colors: list = None,
         opacity: float = 1,
         showlegend: bool = True,
+        hoverinfo: str = "name",
     ):
+        if colors is not None and not isinstance(colors, list):
+            colors = [colors] * len(atoms)
+
         atom_scatter = []
         for idx, atom in enumerate(atoms):
             atom = self._src.get_atom(atom)
@@ -206,7 +219,7 @@ class PlotlyViewer3D:
                 z=[atom.coord[2]],
                 mode="markers",
                 marker=dict(color=color, opacity=opacity, size=10),
-                hoverinfo="skip",
+                hoverinfo=hoverinfo,
                 showlegend=showlegend,
                 name=name,
             )
@@ -214,8 +227,15 @@ class PlotlyViewer3D:
         self.add(atom_scatter)
 
     def highlight_residues(
-        self, *residues, bond_colors: list = None, opacity: float = 0.6
+        self,
+        *residues,
+        bond_colors: list = None,
+        opacity: float = 0.6,
+        linewidth: float = 2,
     ):
+        if not isinstance(bond_colors, list):
+            bond_colors = [bond_colors] * len(residues)
+
         residue_traces = []
         for idx, residue in enumerate(residues):
             residue = self._src.get_residue(residue)
@@ -225,15 +245,48 @@ class PlotlyViewer3D:
                 & self._bond_df["b"].isin(atoms.index)
             ]
             if bond_colors:
-                bonds["bond_color"] = bond_colors[idx]
-            bonds["bond_order"] = bonds["bond_order"] + 2
+                bonds.loc[:, "bond_color"] = bond_colors[idx]
+            bonds.loc[:, "bond_order"] = bonds["bond_order"] + linewidth
             _op = self.opacity
             self.opacity = opacity
             fig = self._setup_fig(atoms, bonds)
             residue_traces.extend(fig.data)
             self.opacity = _op
-            bonds["bond_order"] = bonds["bond_order"] - 2
+            bonds.loc[:, "bond_order"] = bonds["bond_order"] - linewidth
         self.add(residue_traces)
+
+    def draw_atoms(
+        self,
+        *atoms,
+        names: list = None,
+        colors: list = None,
+        opacity: float = None,
+        showlegend: bool = True,
+        hoverinfo: str = "name",
+    ):
+        if not opacity:
+            opacity = self.opacity
+        self.highlight_atoms(
+            *atoms,
+            names=names,
+            colors=colors,
+            opacity=opacity,
+            showlegend=showlegend,
+            hoverinfo=hoverinfo,
+        )
+
+    def draw_residues(
+        self,
+        *residues,
+        bond_colors: list = None,
+        opacity: float = None,
+        linewidth: float = 2,
+    ):
+        if not opacity:
+            opacity = self.opacity
+        self.highlight_residues(
+            *residues, bond_colors=bond_colors, opacity=opacity, linewidth=linewidth
+        )
 
     def draw_atom(self, atom, id=None, color=None, opacity=None):
         if color is None:
@@ -520,9 +573,14 @@ if __name__ == "__main__":
     bb.load_sugars()
     man = bb.molecule("MAN")
     man.repeat(5, "14bb")
-    manv = ResidueGraphViewer3D()
-    manv.link(man.make_residue_graph(detailed=True))
-    # manv.highlight_residues(1, bond_colors=["red"])
-    manv.rainbow()
-    manv.show()
-    pass
+    v = MoleculeViewer3D()
+    v.link(man)
+    atoms = man.atoms[:10]
+    v.draw_atoms(*atoms)
+
+    # manv = ResidueGraphViewer3D()
+    # manv.link(man.make_residue_graph(detailed=True))
+    # # manv.highlight_residues(1, bond_colors=["red"])
+    # manv.rainbow()
+    # manv.show()
+    # pass
