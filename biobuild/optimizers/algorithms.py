@@ -272,7 +272,7 @@ def swarm_optimize(
                 0, variation, size=blank.shape
             )
 
-        if stop_if_done and env.is_done():
+        if stop_if_done and env.is_done(env.state):
             break
 
         if stop_if_done and np.var(evals) < threshold:
