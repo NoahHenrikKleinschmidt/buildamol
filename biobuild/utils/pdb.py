@@ -94,7 +94,14 @@ def parse_connect_lines(filename):
     known_bonds = set()
     for line in lines:
         if line.startswith("CONECT"):
-            tokens = line.split()[1:]
+            # split the line into tokens of length 5
+            line = line[6:]
+            tokens = [
+                line[i : i + 5].strip()
+                for i in range(0, len(line), 5)
+                if len(line[i : i + 5].strip()) > 0
+            ]
+
             atom_a = int(tokens[0])
             for token in tokens[1:]:
                 b = (atom_a, int(token))
@@ -363,8 +370,8 @@ def left_adjust(s, n):
 if __name__ == "__main__":
     import biobuild as bb
 
-    glc = bb.molecule(
-        "/Users/noahhk/GIT/biobuild/docs/_tutorials/large.pkl"
+    parse_connect_lines(
+        "/Users/noahhk/GIT/glycosylator/final_scaffold_superduper.2023-07-26 20:51:40.416918.pdb"
     )  # ("/Users/noahhk/GIT/iupac_labeller/data/myglc3.pdb")
     glc.autolabel()
     b = write_pdb(glc, "ser.pdb")
