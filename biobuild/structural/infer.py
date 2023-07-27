@@ -399,7 +399,7 @@ def vet_structure(
     return True
 
 
-def find_clashes(molecule, min_dist: float = 0.7):
+def find_clashes(molecule, min_dist: float = 0.9):
     """
     Find all clashing atoms within a molecule.
 
