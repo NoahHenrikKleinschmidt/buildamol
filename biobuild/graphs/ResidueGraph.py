@@ -186,14 +186,14 @@ class ResidueGraph(BaseGraph):
         n_samples: Union[int, float] = 0.3,
         f: float = 1.0,
         no_hydrogens: bool = True,
-    ):
+    ) -> "ResidueGraph":
         """
         Use a detailed representation of the residues in the molecule by adding the specific atoms
         that connect the residues together. This is useful for visualization and analysis.
 
         Note
         ----
-        This function is not reversible.
+        This function is not reversible. It is applied in-place.
 
         Parameters
         ----------
@@ -324,20 +324,12 @@ class ResidueGraph(BaseGraph):
                 else:
                     self.remove_edge(triplet[0], triplet[2])
 
+        return self
+
     def draw(self):
         v = vis.ResidueGraphViewer3D()
         v.link(self)
         return v
-
-    def direct_edges(self):
-        """
-        Sort the edges such that the first atom in each edge
-        is the one with the lower serial number.
-        """
-        for edge in self.edges:
-            if self.__idx_method__(edge[0]) > self.__idx_method__(edge[1]):
-                self.remove_edge(*edge)
-                self.add_edge(edge[1], edge[0])
 
     def lock_centers(self):
         """
@@ -465,45 +457,6 @@ class ResidueGraph(BaseGraph):
             i for i in edges if i[0] not in self.residues and i[1] not in self.residues
         ]
         return edges
-
-    def direct_edges(self, root_node=None, edges=None, adopt: bool = False):
-        """
-        Sort the edges such that the first node in each edge
-        is the one closer to the root node. If no root node is provided,
-        the central node is used.
-
-        Parameters
-        ----------
-        root_node
-            The root node to use for sorting the edges. If not provided, the central node is used.
-        edges : list, optional
-            The edges to sort, by default None, in which case
-            all edges are sorted.
-        adopt : bool, optional
-            Whether to adopt the sorted edges and drop the un-sorted ones, by default False.
-
-        Returns
-        -------
-        list
-            The sorted edges
-        """
-        if not root_node:
-            root_node = self.central_node
-
-        if edges is None:
-            edges = list(self.edges)
-
-        if root_node not in self.nodes:
-            raise ValueError(f"Root node {root_node} not in graph")
-
-        _directed = nx.dfs_tree(self, source=root_node).edges
-        _directed = [i for i in _directed if i in edges or i[::-1] in edges]
-        if adopt:
-            edges_to_drop = (i for i in self.edges if i not in _directed)
-            self.remove_edges_from(edges_to_drop)
-            self.add_edges_from(_directed)
-
-        return _directed
 
 
 if __name__ == "__main__":

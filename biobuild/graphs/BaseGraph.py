@@ -298,16 +298,38 @@ class BaseGraph(nx.Graph):
 
         return rotatable_edges
 
-    def direct_edges(self):
+    def direct_edges(self, root_node=None, edges: list = None) -> list:
         """
-        Sort all edges such that the first node is always "earlier"
-        in the sequence than the second node.
+        Sort the edges such that the first node in each edge
+        is the one closer to the root node. If no root node is provided,
+        the central node is used.
+
+        Parameters
+        ----------
+        root_node
+            The root node to use for sorting the edges. If not provided, the central node is used.
+        edges : list, optional
+            The edges to sort, by default None, in which case
+            all edges are sorted.
+
+        Returns
+        -------
+        list
+            The sorted edges
         """
-        root_node = self.central_node
+        if not root_node:
+            root_node = self.central_node
+
+        if edges is None:
+            edges = list(self.edges)
+
+        if root_node not in self.nodes:
+            raise ValueError(f"Root node {root_node} not in graph")
+
         _directed = nx.dfs_tree(self, source=root_node).edges
-        edges_to_drop = (i for i in self.edges if i not in _directed)
-        self.remove_edges_from(edges_to_drop)
-        self.add_edges_from(_directed)
+        _directed = [i for i in _directed if i in edges or i[::-1] in edges]
+
+        return _directed
 
     def lock_edge(self, node_1, node_2):
         """
