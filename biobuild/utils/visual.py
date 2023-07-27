@@ -63,7 +63,7 @@ class PlotlyViewer3D:
     ]
 
     __atom_colors__ = {
-        "C": "black",
+        "C": "darkslategray",
         "O": "red",
         "H": "lightgray",
         "N": "blue",
@@ -78,7 +78,7 @@ class PlotlyViewer3D:
     def __init__(self) -> None:
         PlotlyViewer3D.reset(self)
         self._color_idx = 0
-        self.opacity = 0.3
+        self.opacity = 1.0
         self.bond_color = "black"
         self.bond_linewidth = 1
 
