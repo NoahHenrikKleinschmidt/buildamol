@@ -150,16 +150,13 @@ class Rotatron(gym.Env):
         dict
             Additional information
         """
-        per_edge_evals = []
+
         for i, edge in enumerate(self.rotatable_edges):
             new_state = self.rotate(
                 edge,
                 action[i],
             )
-            per_edge_evals.append(self.eval(new_state))
-            pass
-
-        e = per_edge_evals[-1]
+        e = self.eval(new_state)
         done = self.is_done(new_state)
         self._action_history += action
 
@@ -167,7 +164,7 @@ class Rotatron(gym.Env):
             self._best_eval = e
             self._best_action = self._action_history.copy()
             self._best_state = new_state
-        return new_state, e, done, {"per_edge_evals": per_edge_evals}
+        return new_state, e, done, {}
 
     def is_done(self, state):
         """
@@ -245,6 +242,7 @@ class Rotatron(gym.Env):
                 e
                 for e in graph.edges
                 if e not in graph._locked_edges
+                and graph.edges[e[0]][e[1]]["bond_order"] == 1
                 and not (e[0] in _circulars and e[1] in _circulars)
                 and len(graph.get_descendants(*e)) > 1
             ]
