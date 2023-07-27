@@ -189,6 +189,24 @@ class BaseEntity:
         return new
 
     @classmethod
+    def from_openmm(cls, topology, positions):
+        """
+        Load a Molecule from an OpenMM topology and positions
+
+        Parameters
+        ----------
+        topology : simtk.openmm.app.Topology
+            The OpenMM topology
+        positions : simtk.unit.Quantity
+            The OpenMM positions
+        """
+        conv = utils.convert.OpenMMBioPythonConverter()
+        conv._openmm_to_pdbio(topology, positions)
+        new = cls.from_pdb(conv.__fileio__)
+
+        return new
+
+    @classmethod
     def from_pybel(cls, mol):
         """
         Load a Molecule from a Pybel molecule
@@ -223,7 +241,7 @@ class BaseEntity:
                 id = mol.GetProp("_Name")
 
         conv = utils.convert.RDKITBiopythonConverter()
-        conv.rdkit_to_pdbio(mol)
+        conv._rdkit_to_pdbio(mol)
         new = cls.from_pdb(conv.__fileio__, id=id)
         return new
 
@@ -2184,6 +2202,17 @@ class BaseEntity:
             three_letter_code=three_letter_code,
         )
 
+    def to_openmm(self):
+        """
+        Convert the molecule to an OpenMM Topology
+
+        Returns
+        -------
+        openmm.app.Topology
+            The OpenMM topology
+        """
+        return utils.convert.OpenMMBioPythonConverter().biobuild_to_openmm(self)
+
     def to_pybel(self):
         """
         Convert the molecule to a Pybel molecule
@@ -2209,7 +2238,7 @@ class BaseEntity:
         """
         conv = utils.convert.RDKITBiopythonConverter()
         conv.molecule_to_pdbio(self)
-        mol = conv.pdbio_to_rdkit()
+        mol = conv._pdbio_to_rdkit()
         mol.SetProp("_Name", self.id)
         return mol
 

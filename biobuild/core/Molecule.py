@@ -599,6 +599,12 @@ def molecule(mol) -> "Molecule":
         return Molecule.from_pybel(mol)
     elif "rdkit" in str(type(mol).__mro__[0]):
         return Molecule.from_rdkit(mol)
+    elif (
+        "openmm" in str(type(mol).__mro__[0])
+        and hasattr(mol, "topology")
+        and hasattr(mol, "positions")
+    ):
+        return Molecule.from_openmm(mol.topology, mol.positions)
 
     if not isinstance(mol, str):
         raise ValueError("input must be a structure object or a string")
