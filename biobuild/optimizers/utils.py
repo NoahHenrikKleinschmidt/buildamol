@@ -2,6 +2,7 @@
 This module contains utility functions for the optimizers.
 """
 
+from typing import Union
 import numpy as np
 import biobuild.optimizers.Rotatron as Rotatron
 import biobuild.optimizers.DistanceRotatron as DistanceRotatron
@@ -49,10 +50,11 @@ def apply_solution(sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule"):
     return mol
 
 
-def quick_optimize(
+def optimize(
     mol: "Molecule",
     env: "Rotatron.Rotatron" = None,
-    algorithm: str = "genetic",
+    algorithm: Union[str, callable] = "genetic",
+    **kwargs,
 ) -> "Molecule":
     """
     Quickly optimize a molecule using a specific algorithm.
@@ -70,11 +72,14 @@ def quick_optimize(
         The molecule to optimize. This molecule will be modified in-place.
     env : Rotatron.Rotatron, optional
         The environment to use, by default None
-    algorithm : str, optional
+    algorithm : str or callable, optional
         The algorithm to use, by default "genetic". This can be:
         - "genetic": A genetic algorithm
         - "swarm": A particle swarm optimization algorithm
         - "gradient": A gradient descent algorithm (default scipy implementation)
+        - or some other callable that takes an environment as its first argument
+    **kwargs
+        Additional keyword arguments to pass to the algorithm
 
     Returns
     -------
@@ -84,7 +89,7 @@ def quick_optimize(
     if env is None:
         if sum(1 for i in mol.get_atoms()) > 50:
             graph = mol.make_residue_graph()
-            graph.make_detailed()
+            graph.make_detailed(n_samples=0.5)
             edges = mol.get_residue_connections()
             edges = graph.direct_edges(None, edges)
         else:
@@ -102,7 +107,7 @@ def quick_optimize(
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
 
-    sol, eval = agent(env)
+    sol, eval = agent(env, **kwargs)
 
     # in case of the genetic algorithm, the solution is a list of solutions
     # so we need to take the first one
@@ -113,4 +118,4 @@ def quick_optimize(
     return final
 
 
-__all__ = ["apply_solution", "quick_optimize"]
+__all__ = ["apply_solution", "optimize"]
