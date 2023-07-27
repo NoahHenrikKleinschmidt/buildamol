@@ -3,8 +3,8 @@ This module contains utility functions for the optimizers.
 """
 
 import numpy as np
-import biobuild.optimizers.environments.Rotatron as Rotatron
-import biobuild.optimizers.environments.DistanceRotatron as DistanceRotatron
+import biobuild.optimizers.Rotatron as Rotatron
+import biobuild.optimizers.DistanceRotatron as DistanceRotatron
 
 import biobuild.optimizers.algorithms as agents
 
@@ -17,7 +17,7 @@ def apply_solution(sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule"):
     ----------
     sol : np.ndarray
         The solution of rotational angles in radians to apply
-    env : environments.Rotatron
+    env : Rotatron
         The environment used to find the solution
     mol : Molecule
         The molecule to apply the solution to
@@ -89,7 +89,7 @@ def quick_optimize(
             edges = graph.direct_edges(None, edges)
         else:
             graph = mol.make_atom_graph()
-            edges = mol.find_rotatable_edges(min_descendants=5, max_descendants=10)
+            edges = graph.find_rotatable_edges(min_descendants=5, max_descendants=10)
 
         env = DistanceRotatron(graph, edges, radius=25)
 
@@ -103,6 +103,11 @@ def quick_optimize(
         raise ValueError(f"Unknown algorithm: {algorithm}")
 
     sol, eval = agent(env)
+
+    # in case of the genetic algorithm, the solution is a list of solutions
+    # so we need to take the first one
+    if sol.shape[0] != len(env.rotatable_edges):
+        sol = sol[0]
 
     final = apply_solution(sol, env, mol)
     return final

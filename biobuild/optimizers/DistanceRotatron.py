@@ -2,11 +2,8 @@ import gym
 
 import numpy as np
 from scipy.spatial.distance import cdist
-from scipy.spatial.transform import Rotation
 
 import biobuild.optimizers.Rotatron as Rotatron
-import biobuild.structural as structural
-import biobuild.utils.auxiliary as aux
 import biobuild.graphs.BaseGraph as BaseGraph
 
 
@@ -24,54 +21,50 @@ class DistanceRotatron(Rotatron.Rotatron):
     radius : float
         The radius around rotatable edges to include in the distance calculation.
         Set to -1 to disable.
+    pushback : float
+        Short distances between atoms are given higher weight in the evaluation using this factor.
     clash_distance : float
         The distance at which atoms are considered to be clashing.
-    pushback : float
-        The pushback factor for the distance calculation.
-        The higher this value, the shorter the retraction effect.
-        Tweak this parameter only if you know what you're doing and adjusting the radius alone is not enough.
-    mask_rotation_units : bool
-        If True, atoms that are part of the same rotational unit (i.e. between two rotational edges) are
-        masked off from each other when computing the evaluation. This prevents atoms from interferring with
-        the clash detection. This has less of an impact for larger radii but is curcial for small radii!
-    crop_nodes_further_than: float
+    crop_nodes_further_than : float
         Nodes that are further away than this factor times the radius from any rotatable edge at the beginning
         of the optimization are removed from the graph and not considered during optimization. This speeds up
         computation. Set to -1 to disable.
+    n_smallest : int
+        The number of smallest distances to use when computing the evaluation for each node.
     concatenation_function : callable
-        The function to use when computing the evaluation for each node.
-        This function should take a 1D array and return a scalar.
+        A custom function to use when computing the evaluation for each node.
+        This function should take the environment (self) as first argument and a 1D array of pairwise-distances from one node to all others as second argument and return a scalar.
     bounds : tuple
         The bounds for the minimal and maximal rotation angles.
     """
-
-    # clash_penalty : float
-    #     The penalty for a clash between atoms.
 
     def __init__(
         self,
         graph: "BaseGraph.BaseGraph",
         rotatable_edges: list = None,
-        radius: float = -1,
+        radius: float = 20,
+        pushback: float = 2,
         clash_distance: float = 0.9,
-        pushback: float = 3,
-        # clash_penalty: float = 3.0,
-        mask_rotation_units: bool = True,
         crop_nodes_further_than: float = -1,
-        concatenation_function: callable = np.mean,
+        n_smallest: int = 5,
+        concatenation_function: callable = None,
         bounds: tuple = (-np.pi, np.pi),
     ):
         self.radius = radius
         self.crop_radius = crop_nodes_further_than * radius if radius > 0 else -1
-        # self.clash_penalty = clash_penalty
         self.clash_distance = clash_distance
-        self.mask_rotation_units = mask_rotation_units
+        self.pushback = pushback
+        self.n_smallest = n_smallest
+
+        if concatenation_function is None:
+
+            def concatenation_function(self, x):
+                smallest = np.sum(np.sort(x)[: self.n_smallest])
+                return np.mean(x) + self.pushback * smallest
+
         self._concatenation_function = concatenation_function
 
         self._bounds_tuple = bounds
-
-        self._current_edge_idx = 0
-        self._current_node_index = 0
 
         # =====================================
 
@@ -103,10 +96,6 @@ class DistanceRotatron(Rotatron.Rotatron):
 
         # =====================================
 
-        self._pushback = pushback
-
-        # =====================================
-
         if radius > 0:
             self._radius = radius
         else:
@@ -114,46 +103,13 @@ class DistanceRotatron(Rotatron.Rotatron):
 
         # =====================================
 
-        if not self.mask_rotation_units:
-
-            def masker(x):
-                return x < self._radius
-
-        else:
-
-            def masker(x):
-                mask = (x < self._radius).astype(np.int8)
-                if self.edge_masks[self._current_edge_idx, self._current_node_index]:
-                    mask *= (1 - self.edge_masks[self._current_edge_idx]).astype(
-                        np.int8
-                    )
-                return mask.astype(bool)
-
         def concatenation_wrapper(x):
-            mask = masker(x)
-            self._current_node_index = (self._current_edge_idx + 1) % self.n_edges
+            mask = x < self._radius
             if not np.logical_or.reduce(mask):
                 return -1
-            return self._concatenation_function(x[mask])
+            return self._concatenation_function(self, x[mask])
 
         self.concatenation_function = concatenation_wrapper
-
-        # =====================================
-
-        # if self.clash_penalty > 0:
-
-        #     def clash_handler():
-        #         clashes = self._state_dists < self.clash_distance
-        #         self._state_dists[clashes] = (
-        #             self._state_dists[clashes] ** self.clash_penalty
-        #         )
-
-        # else:
-
-        #     def clash_handler():
-        #         pass
-
-        # self.clash_handler = clash_handler
 
         # =====================================
 
@@ -163,7 +119,7 @@ class DistanceRotatron(Rotatron.Rotatron):
         self._best_eval = self._last_eval
         self._best_clashes = self.count_clashes()
 
-    def eval(self, state):  # , diff=True):
+    def eval(self, state):
         """
         Calculate the evaluation score for a given state
 
@@ -180,49 +136,35 @@ class DistanceRotatron(Rotatron.Rotatron):
         pairwise_dists = cdist(state, state)
         np.fill_diagonal(pairwise_dists, self._radius)
 
-        # if diff:
-        #     mask = np.abs(pairwise_dists - self._state_dists) < 1e-4
-        #     mask *= pairwise_dists > self.clash_distance
-        #     pairwise_dists[mask] = self._radius + 1
+        dist_eval = np.apply_along_axis(self.concatenation_function, 1, pairwise_dists)
+        mask = dist_eval > -1
 
-        # self.clash_handler()
-
-        rowwise_dist_eval = np.apply_along_axis(
-            self.concatenation_function, 1, pairwise_dists
-        )
-        mask = rowwise_dist_eval > -1
         if not np.logical_or.reduce(mask):
             return self._last_eval
 
-        rowwise_dist_eval[mask] **= self._pushback
-        rowwise_dist_eval[mask] += 1e-6
-        rowwise_dist_eval[mask] /= self.n_nodes
-        rowwise_dist_eval[mask] **= -1
-        rowwise_dist_eval[mask] = np.log(rowwise_dist_eval[mask])
+        mean_dist_eval = 1.0 / np.mean(dist_eval[mask])
 
-        final = np.sum(rowwise_dist_eval[mask])
+        final = np.log(mean_dist_eval)
         self._state_dists[:, :] = pairwise_dists
         self._last_eval = final
         return final
 
     def step(self, action):
         for i, edge in enumerate(self.rotatable_edges):
-            self._current_edge_idx = i
             new_state = self.rotate(
                 edge,
                 action[i],
             )
 
-        done = self.is_done()
         self._last_eval = self.eval(new_state)
-        self._action_history += action
         clashes = self.count_clashes()
+        done = clashes == 0
+        self._action_history += action
 
         if self._last_eval < self._best_eval and clashes <= self._best_clashes:
             self._best_eval = self._last_eval
             self._best_state *= 0
             self._best_state += new_state
-            # self._best_action *= 0
             self._best_action += self._action_history
             self._best_clashes = clashes
 
