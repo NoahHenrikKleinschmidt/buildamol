@@ -316,9 +316,10 @@ class BaseEntity:
         if value is None or len(value) == 0:
             self._bonds.clear()
             self._AtomGraph.clear_edges()
-        self._bonds = value
-        self._AtomGraph.clear_edges()
-        self._AtomGraph.add_edges_from(value)
+        else:
+            self._bonds = value
+            self._AtomGraph.clear_edges()
+            self._AtomGraph.add_edges_from(value)
 
     @property
     def locked_bonds(self):
@@ -589,7 +590,7 @@ class BaseEntity:
         """
         return structural.vet_structure(self, clash_range, angle_range)
 
-    def find_clashes(self, clash_threshold: float = 0.6) -> list:
+    def find_clashes(self, clash_threshold: float = 0.9) -> list:
         """
         Find all clashes in the molecule.
 
@@ -604,6 +605,22 @@ class BaseEntity:
             A list of tuples of atoms that clash.
         """
         return [i for i in structural.find_clashes(self, clash_threshold)]
+
+    def count_clashes(self, clash_threshold: float = 0.9) -> int:
+        """
+        Count all clashes in the molecule.
+
+        Parameters
+        ----------
+        clash_threshold : float, optional
+            The minimal allowed distance between two atoms (in Angstrom).
+
+        Returns
+        -------
+        int
+            The number of clashes.
+        """
+        return sum(1 for i in structural.find_clashes(self, clash_threshold))
 
     def copy(self):
         """
@@ -1004,9 +1021,13 @@ class BaseEntity:
         for residue in residues:
             if isinstance(residue, bio.Residue.Residue):
                 if residue in self.residues:
-                    return residue
+                    _residues.append(residue)
+                    continue
                 else:
-                    return self.get_residue(residue.id[1], by="seqid", chain=chain)
+                    residues.append(
+                        self.get_residue(residue.id[1], by="seqid", chain=chain)
+                    )
+                    continue
 
             if by is None:
                 if isinstance(residue, int):
@@ -1777,28 +1798,28 @@ class BaseEntity:
         bonds = (i for i in self.bonds if i[0].get_parent() != i[1].get_parent())
 
         if residue_a is not None and residue_b is None:
-            residue_a = self.get_residue(residue_a)
+            residue_a = self.get_residues(residue_a)
             bonds = (
                 i
                 for i in bonds
-                if i[0].get_parent() is residue_a or i[1].get_parent() is residue_a
+                if i[0].get_parent() in residue_a or i[1].get_parent() in residue_a
             )
         elif residue_b is not None and residue_a is None:
-            residue_b = self.get_residue(residue_b)
+            residue_b = self.get_residues(residue_b)
             bonds = (
                 i
                 for i in bonds
-                if i[0].get_parent() is residue_b or i[1].get_parent() is residue_b
+                if i[0].get_parent() in residue_b or i[1].get_parent() in residue_b
             )
         elif residue_a is not None and residue_b is not None:
-            residue_a, residue_b = self.get_residue(residue_a), self.get_residue(
+            residue_a, residue_b = self.get_residues(residue_a), self.get_residues(
                 residue_b
             )
             bonds = (
                 i
                 for i in bonds
-                if (i[0].get_parent() is residue_a and i[1].get_parent() is residue_b)
-                or (i[1].get_parent() is residue_a and i[0].get_parent() is residue_b)
+                if (i[0].get_parent() in residue_a and i[1].get_parent() in residue_b)
+                or (i[1].get_parent() in residue_a and i[0].get_parent() in residue_b)
             )
         if triplet:
             bonds = self._make_bond_triplets(bonds)
@@ -2203,25 +2224,25 @@ class BaseEntity:
         """
         return self._base_struct.to_biopython()
 
-    def infer_missing_atoms(self, _topology=None, _compounds=None):
-        """
-        Infer missing atoms in the structure based on a reference topology or compounds database.
-        By default, if a residue is not available in the topology, the compounds database is used.
+    # def infer_missing_atoms(self, _topology=None, _compounds=None):
+    #     """
+    #     Infer missing atoms in the structure based on a reference topology or compounds database.
+    #     By default, if a residue is not available in the topology, the compounds database is used.
 
-        Parameters
-        ----------
-        _topology
-            A specific topology to use for referencing.
-            If None, the default CHARMM topology is used.
-        _compounds
-            A specific compounds object to use for referencing.
-            If None, the default compounds object is used.
-        """
-        structural.fill_missing_atoms(self._base_struct, _topology, _compounds)
-        for atom in self._base_struct.get_atoms():
-            if atom not in self._AtomGraph:
-                self._AtomGraph.add_node(atom)
-        self.infer_bonds()
+    #     Parameters
+    #     ----------
+    #     _topology
+    #         A specific topology to use for referencing.
+    #         If None, the default CHARMM topology is used.
+    #     _compounds
+    #         A specific compounds object to use for referencing.
+    #         If None, the default compounds object is used.
+    #     """
+    #     structural.fill_missing_atoms(self._base_struct, _topology, _compounds)
+    #     for atom in self._base_struct.get_atoms():
+    #         if atom not in self._AtomGraph:
+    #             self._AtomGraph.add_node(atom)
+    #     self.infer_bonds()
 
     def _get_bonds(
         self,
