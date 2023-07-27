@@ -14,6 +14,21 @@ try:
 except:
     nglview = None
 
+default_plotly_opacity = 1.0
+"""
+The default opacity for plotly-based visualizations.
+"""
+
+default_plotly_bond_color = "black"
+"""
+The default color for plotly-based bond visualizations.
+"""
+
+default_plotly_linewidth = 1.2
+"""
+The default linewidth for plotly-based bond visualizations.
+"""
+
 
 class NglViewer:
     """
@@ -43,6 +58,23 @@ class NglViewer:
         """
         fig = nglview.show_biopython(self.structure)
         return fig
+
+
+def rgba_to_hex(rgba: tuple) -> str:
+    """
+    Convert an rgba color to hex.
+
+    Parameters
+    ----------
+    rgba : tuple
+        The rgba color to convert.
+
+    Returns
+    -------
+    str
+        The hex color.
+    """
+    return "#" + "".join([hex(int(i * 255))[2:] for i in rgba])
 
 
 class PlotlyViewer3D:
@@ -78,9 +110,9 @@ class PlotlyViewer3D:
     def __init__(self) -> None:
         PlotlyViewer3D.reset(self)
         self._color_idx = 0
-        self.opacity = 1.0
-        self.bond_color = "black"
-        self.bond_linewidth = 1
+        self.opacity = default_plotly_opacity
+        self.bond_color = default_plotly_bond_color
+        self.bond_linewidth = default_plotly_linewidth
 
     def _get_color(self):
         color = self.__continuous_colors__[self._color_idx]
