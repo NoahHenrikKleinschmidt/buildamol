@@ -1363,7 +1363,7 @@ class PDBECompounds:
 
 defaults.set_default_instance(
     "PDBECompounds",
-    PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"]),
+    read_compounds(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"], set_default=False),
 )
 
 
