@@ -844,7 +844,9 @@ class CHARMMTopology(CHARMMParser):
 
 
 # Set the default topology to the CHARMM topology
-set_default_topology(CHARMMTopology.from_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE))
+set_default_topology(
+    read_topology(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE, set_default=False)
+)
 
 
 __all__ = [

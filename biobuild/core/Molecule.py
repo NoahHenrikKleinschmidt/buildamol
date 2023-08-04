@@ -616,15 +616,22 @@ def molecule(mol) -> "Molecule":
         return resources.get_compound(mol)
 
     if os.path.isfile(mol):
-        if mol.endswith(".pdb"):
+        _mol = mol.lower()
+        if _mol.endswith(".pdb"):
             return Molecule.from_pdb(mol)
-        elif mol.endswith(".cif"):
+        elif _mol.endswith(".cif"):
             return Molecule.from_cif(mol)
-        elif mol.endswith(".pkl"):
+        elif _mol.endswith(".pkl"):
             return Molecule.load(mol)
-        elif mol.endswith(".json"):
+        elif _mol.endswith(".json"):
             return Molecule.from_json(mol)
-
+        elif (
+            _mol.endswith(".mol")
+            or _mol.endswith(".mol2")
+            or _mol.endswith(".sdf")
+            or _mol.endswith(".sd")
+        ):
+            return Molecule.from_molfile(mol)
     try:
         return Molecule.from_pubchem(mol)
     except:
@@ -1191,32 +1198,6 @@ class Molecule(entity.BaseEntity):
             )
         return obj
 
-    def optimize(self, only_if_clashes: bool = False, inplace: bool = True):
-        """
-        Optimize the molecule by removing all atoms that are not part of any bond.
-
-        Parameters
-        ----------
-        inplace : bool
-            If True the molecule is directly modified, otherwise a copy of the molecule is returned.
-        only_if_clashes : bool
-            If True, the structure first checks for clashes and only optimizes if there are any.
-        Returns
-        -------
-        molecule
-            The modified molecule (either the original object or a copy)
-        """
-        if not inplace:
-            obj = self.copy()
-        else:
-            obj = self
-
-        if only_if_clashes:
-            if not optimizers.has_clashes(obj):
-                return obj
-        obj._optimize()
-        return obj
-
     def patch_attach(
         self,
         other: "Molecule",
@@ -1352,67 +1333,210 @@ class Molecule(entity.BaseEntity):
         self = p.merge()
         return self
 
-    def _optimize(self):
+    def optimize(
+        self,
+        residue_graph: bool = True,
+        algorithm: str = "genetic",
+        rotatron: str = "distance",
+        rotatron_kws: dict = None,
+        algorithm_kws: dict = None,
+        inplace: bool = True,
+    ):
         """
-        Optimize the molecule.
+        Optimize the molecule's conformation. This is a convenience method with less
+        customizability than a manual optimization using the `optimizers` module.
+
+        Parameters
+        ----------
+        residue_graph : bool
+            Whether to use the residue graph or the full atom graph for optimization.
+            The residue graph is faster but less accurate.
+        algorithm : str
+            The optimization algorithm to use. This can be one of the following:
+            - "genetic" for a genetic algorithm
+            - "gradient" for a scipy-implemented gradient-based optimization
+            - "swarm" for a particle swarm optimization
+        rotatron : str
+            The rotatron to use. This can be one of the following:
+            - "distance" for a distance-based rotatron
+            - "overlap" for an overlap-based rotatron
+        algorithm_kws : dict
+            Keyword arguments to pass to the optimization algorithm
+        rotatron_kws : dict
+            Keyword arguments to pass to the rotatron
+        inplace : bool
+            Whether to optimize the molecule in place or return a copy.
+
+        Returns
+        -------
+        molecule
+            The optimized molecule (either the original object or a copy)
         """
-        g = self.make_residue_graph(detailed=True)
-        edges = self.get_residue_connections()
-        env = optimizers.MultiBondRotatron(g, edges)
-        sol, _ = optimizers.scipy_optimize(env)
-        out = optimizers.apply_solution(sol, env, self)
+
+        if algorithm == "genetic":
+            algorithm = optimizers.genetic_optimize
+        elif algorithm == "gradient":
+            algorithm = optimizers.scipy_optimize
+        elif algorithm == "swarm":
+            algorithm = optimizers.swarm_optimize
+        else:
+            raise ValueError(f"Unknown optimization algorithm {algorithm}")
+
+        if rotatron == "distance":
+            rotatron = optimizers.DistanceRotatron
+        elif rotatron == "overlap":
+            rotatron = optimizers.OverlapRotatron
+        else:
+            raise ValueError(f"Unknown rotatron {rotatron}")
+
+        if not algorithm_kws:
+            algorithm_kws = {}
+
+        if not rotatron_kws:
+            rotatron_kws = {}
+
+        if not inplace:
+            obj = self.copy()
+        else:
+            obj = self
+
+        if residue_graph:
+            graph = obj.make_residue_graph(detailed=True)
+        else:
+            graph = obj.make_atom_graph(_copy=False)
+
+        edges = graph.find_rotatable_edges(
+            graph.central_node, min_ancestors=1, min_descendants=1
+        )
+
+        env = rotatron(graph, edges, **rotatron_kws)
+        sol, _ = algorithm(env, **algorithm_kws)
+        out = optimizers.apply_solution(sol, env, obj)
         return out
 
     def __add__(self, other) -> "Molecule":
         """
         Add two molecules together. This will return a new molecule.
         """
-        if not isinstance(other, Molecule):
-            raise TypeError("Can only add two molecules together")
+        if isinstance(other, (tuple, list)):
+            new = self + other[0]
+            for o in other[1:]:
+                new += o
+            return new
 
-        patch = self._linkage
-        if not patch:
-            patch = other._linkage
-        if not patch:
-            raise RuntimeError(
-                "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 + mol2)"
-            )
+        elif isinstance(other, Molecule):
+            patch = self._linkage
+            if not patch:
+                patch = other._linkage
+            if not patch:
+                raise RuntimeError(
+                    "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 + mol2)"
+                )
+            new = self.attach(other, patch, inplace=False, other_inplace=False)
+            return new
 
-        new = self.attach(other, patch, inplace=False, other_inplace=False)
+        new = self.copy()
+        if isinstance(other, entity.base_classes.Atom):
+            new.add_atoms(other)
+
+        elif isinstance(other, entity.base_classes.Residue):
+            new.add_residues(other)
+
+        elif isinstance(other, entity.base_classes.Chain):
+            new._model.add(other)
+
+        elif isinstance(other, entity.base_classes.Model):
+            new._base_struct.add(other)
+
         return new
-
-        # if patch.has_IC:
-        #     p = structural.__default_copy_copy_patcher__
-        #     p.apply(patch, self, other)
-        # else:
-        #     p = structural.__default_copy_copy_stitcher__
-        #     p.apply(
-        #         self,
-        #         other,
-        #         patch.deletes[0],
-        #         patch.deletes[1],
-        #         patch.bonds[0][0],
-        #         patch.bonds[0][1],
-        #     )
-        # new = p.merge()
-        # return new
 
     def __iadd__(self, other) -> "Molecule":
         """
         Attach another molecule to this one
         """
-        if not isinstance(other, Molecule):
-            raise TypeError("Can only add two molecules together")
+        if isinstance(other, (tuple, list)):
+            for o in other:
+                self += o
+            return self
 
-        patch = self._linkage
-        if not patch:
-            patch = other._linkage
-        if not patch:
-            raise RuntimeError(
-                "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 += mol2)"
-            )
+        elif isinstance(other, Molecule):
+            patch = self._linkage
+            if not patch:
+                patch = other._linkage
+            if not patch:
+                raise RuntimeError(
+                    "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 += mol2)"
+                )
 
-        self.attach(other, patch)
+            self.attach(other, patch)
+            return self
+
+        elif isinstance(other, entity.base_classes.Atom):
+            self.add_atoms(other)
+
+        elif isinstance(other, entity.base_classes.Residue):
+            self.add_residues(other)
+
+        elif isinstance(other, entity.base_classes.Chain):
+            self._model.add(other)
+
+        elif isinstance(other, entity.base_classes.Model):
+            self._base_struct.add(other)
+
+        return self
+
+    def __sub__(self, other) -> "Molecule":
+        """
+        Remove atoms, residues, chains or models from the molecule
+        """
+        if isinstance(other, (tuple, list)):
+            new = self.copy()
+            for o in other:
+                new -= o
+            return new
+
+        new = self.copy()
+        if isinstance(other, entity.base_classes.Atom):
+            new.remove_atoms(other)
+
+        elif isinstance(other, entity.base_classes.Residue):
+            new.remove_residues(other)
+
+        elif isinstance(other, entity.base_classes.Chain):
+            new._model.detach_child(other.get_id())
+
+        elif isinstance(other, entity.base_classes.Model):
+            new._base_struct.detach_child(other.get_id())
+
+        elif isinstance(other, Molecule):
+            new.remove_residues(*other.residues)
+
+        return new
+
+    def __isub__(self, other) -> "Molecule":
+        """
+        Remove atoms, residues, chains or models from the molecule
+        """
+        if isinstance(other, (tuple, list)):
+            for o in other:
+                self -= o
+            return self
+
+        elif isinstance(other, entity.base_classes.Atom):
+            self.remove_atoms(other)
+
+        elif isinstance(other, entity.base_classes.Residue):
+            self.remove_residues(other)
+
+        elif isinstance(other, entity.base_classes.Chain):
+            self._model.detach_child(other.get_id())
+
+        elif isinstance(other, entity.base_classes.Model):
+            self._base_struct.detach_child(other.get_id())
+
+        elif isinstance(other, Molecule):
+            self.remove_residues(*other.residues)
+
         return self
 
     def __mul__(self, n) -> "Molecule":
@@ -1428,9 +1552,9 @@ class Molecule(entity.BaseEntity):
         if n <= 0:
             raise ValueError("Can only multiply a molecule by a positive integer")
 
-        new = self + self
+        new = self.attach(self, self._linkage, inplace=False, other_inplace=False)
         for i in range(n - 2):
-            new += self
+            new = new.attach(self, self._linkage, inplace=True, other_inplace=False)
 
         return new
 
@@ -1471,13 +1595,16 @@ def _molecule_from_pubchem(id, comp):
         The molecule
     """
     bonds = comp.bonds
-    structure = bio.Structure.Structure(id)
-    model = bio.Model.Model(0)
-    structure.add(model)
-    chain = bio.Chain.Chain("A")
-    model.add(chain)
-    residue = bio.Residue.Residue((" ", 1, " "), "UNK", 1)
-    chain.add(residue)
+    mol = Molecule.empty(id)
+    residue = entity.base_classes.Residue("UNK", " ", 1)
+    mol.add_residues(residue)
+    # structure = bio.Structure.Structure(id)
+    # model = bio.Model.Model(0)
+    # structure.add(model)
+    # chain = bio.Chain.Chain("A")
+    # model.add(chain)
+    # residue = bio.Residue.Residue((" ", 1, " "), "UNK", 1)
+    # chain.add(residue)
 
     element_counts = {}
     adx = 1
@@ -1500,21 +1627,68 @@ def _molecule_from_pubchem(id, comp):
         residue.add(_atom)
         adx += 1
 
-    mol = Molecule(structure)
     for bond in bonds:
         mol.add_bond(bond.aid1, bond.aid2)
 
     return mol
 
+    # def _molecule_from_ctfile(id, ctfile):
+    #     """
+    #     Convert a CTFile object to a Molecule.
+
+    #     Parameters
+    #     ----------
+    #     id : str
+    #         The id of the molecule
+    #     ctfile : CTFile
+    #         The CTFile object
+
+    #     Returns
+    #     -------
+    #     Molecule
+    #         The molecule
+    #     """
+    #     new = Molecule.empty(id)
+    #     residue = entity.base_classes.Residue("UNK", " ", 1)
+    #     new.add_residues(residue)
+
+    # element_counts = {}
+    # for atom in ctfile.atoms:
+    #     element_counts.setdefault(atom.atom_symbol, 1)
+    #     count = element_counts[atom.atom_symbol]
+    #     element_counts[atom.atom_symbol] += 1
+
+    #     x = float(atom._ctab_data["x"])
+    #     y = float(atom._ctab_data["y"])
+    #     z = float(atom._ctab_data["z"])
+
+    #     _atom = entity.base_classes.Atom(
+    #         id=f"{atom.atom_symbol}{count}",
+    #         coord=np.array((x, y, z)),
+    #         serial_number=int(atom.atom_number),
+    #         pqr_charge=float(atom.charge),
+    #     )
+    #     residue.add(_atom)
+
+    # for bond in ctfile.bonds:
+    #     a, b = bond.first_atom, bond.second_atom
+    #     a = int(a.atom_number)
+    #     b = int(b.atom_number)
+    #     order = int(bond._ctab_data["bond_type"])
+    #     for i in range(order):
+    #         new.add_bond(a, b)
+
+    return new
+
 
 if __name__ == "__main__":
-    ser = Molecule.from_json("ser.json")
-    link = Linkage.from_json("peptide_linkage.json")
+    # ser = Molecule.from_json("ser.json")
+    # link = Linkage.from_json("peptide_linkage.json")
 
-    pep = ser.attach(ser, link, use_patch=False)
-    pep.show()
+    # pep = ser.attach(ser, link, use_patch=False)
+    # pep.show()
 
-    # ser = Molecule.from_pubchem("SER")
+    # # ser = Molecule.from_pubchem("SER")
     # ser.to_cif("ser.cif")
     # ser.to_pdb("ser.pdb")
     # recipe = Linkage()
@@ -1565,7 +1739,7 @@ if __name__ == "__main__":
     # man.infer_bonds()
     # man.
 
-    man = Molecule.from_pdb("/Users/noahhk/GIT/biobuild/support/examples/MAN9.pdb")
+    man = Molecule.from_pubchem("benzene")
     man.infer_bonds(restrict_residues=False)
 
     g = man.make_residue_graph(True)

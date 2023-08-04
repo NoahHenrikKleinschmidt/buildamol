@@ -10,6 +10,7 @@ import biobuild.utils.convert as convert
 import biobuild.utils.pdb as pdb
 import biobuild.utils.cif as cif
 import biobuild.utils.json as json
+import biobuild.utils.sdmol as sdmol
 import biobuild.utils.ic as ic
 import biobuild.utils.auxiliary as auxiliary
 

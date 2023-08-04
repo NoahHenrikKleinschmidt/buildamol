@@ -143,6 +143,19 @@ class BaseEntity:
         return cls._from_dict(_dict)
 
     @classmethod
+    def from_molfile(cls, filename: str):
+        """
+        Make a Molecule from a molfile
+
+        Parameters
+        ----------
+        filename : str
+            Path to the molfile
+        """
+        rdmol = utils.sdmol.read_mol(filename)
+        return cls.from_rdkit(rdmol)
+
+    @classmethod
     def _from_dict(cls, _dict):
         """
         Make a Molecule from a JSON dictionary
@@ -2164,6 +2177,17 @@ class BaseEntity:
         content = utils.remove_nonprintable(content)
         with open(filename, "w") as f:
             f.write(content)
+
+    def to_molfile(self, filename: str):
+        """
+        Write the molecule to a Molfile
+
+        Parameters
+        ----------
+        filename : str
+            Path to the Mol file
+        """
+        utils.sdmol.write_mol(self, filename)
 
     def to_json(
         self,

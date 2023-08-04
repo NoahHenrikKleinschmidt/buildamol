@@ -468,7 +468,15 @@ class RDKITBiopythonConverter(PDBIO):
         Mol
             The converted object
         """
-        mol = Chem.MolFromPDBFile(self.__fileio__, proximityBonding=False)
+        try:
+            mol = Chem.MolFromPDBFile(
+                self.__fileio__, proximityBonding=False, removeHs=False
+            )
+        except:
+            mol = Chem.MolFromPDBFile(
+                self.__fileio__, proximityBonding=False, removeHs=True
+            )
+
         if mol is None:
             raise ValueError("Could not convert PDB file to RDKit Mol")
         return mol
