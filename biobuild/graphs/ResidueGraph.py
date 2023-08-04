@@ -183,7 +183,7 @@ class ResidueGraph(BaseGraph):
         include_samples: bool = True,
         include_far_away: bool = False,
         include_heteroatoms: bool = False,
-        n_samples: Union[int, float] = 0.3,
+        n_samples: Union[int, float] = 0.5,
         f: float = 1.0,
         no_hydrogens: bool = True,
     ) -> "ResidueGraph":
