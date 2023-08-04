@@ -19,12 +19,12 @@ The path to the default CHARMM topology file
 
 
 DEFAULT_PDBE_COMPONENT_FILES = {
-    "base": os.path.join(constants.RESOURCES, "components_base.json"),
-    "lipids": os.path.join(constants.RESOURCES, "components_lipids.json"),
-    "sugars": os.path.join(constants.RESOURCES, "components_sugars.json"),
-    "nucleotides": os.path.join(constants.RESOURCES, "components_nucleotides.json"),
-    "amino_acids": os.path.join(constants.RESOURCES, "components_amino_acids.json"),
-    "small_molecules": os.path.join(constants.RESOURCES, "components_small.json"),
+    "base": os.path.join(constants.RESOURCES, "components_base.pkl"),
+    "lipids": os.path.join(constants.RESOURCES, "components_lipids.pkl"),
+    "sugars": os.path.join(constants.RESOURCES, "components_sugars.pkl"),
+    "nucleotides": os.path.join(constants.RESOURCES, "components_nucleotides.pkl"),
+    "amino_acids": os.path.join(constants.RESOURCES, "components_amino_acids.pkl"),
+    "small_molecules": os.path.join(constants.RESOURCES, "components_small.pkl"),
 }
 """
 The paths to the default PDBe component files

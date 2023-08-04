@@ -3073,6 +3073,90 @@
         },
         {
             "biobuild_version": "3.2.25",
+            "id": "16ba",
+            "description": "(i)1->6(i-1) equatorial at C1 and equatorial at C6",
+            "bond": {
+                "target": "1O6",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO6"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "biobuild_version": "3.2.25",
+                    "atoms": [
+                        "1C5",
+                        "1C6",
+                        "1O6",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 105.37,
+                    "bond_angle_234": 113.93,
+                    "dihedral": 172.71,
+                    "bond_length_12": 1.5616,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "biobuild_version": "3.2.25",
+                    "atoms": [
+                        "1C6",
+                        "1O6",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.93,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -63.49,
+                    "bond_length_12": 1.4311,
+                    "bond_length_34": 1.411,
+                    "bond_length_13": null
+                },
+                {
+                    "biobuild_version": "3.2.25",
+                    "atoms": [
+                        "1O6",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.67,
+                    "bond_angle_234": 110.86,
+                    "dihedral": 122.13,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5323,
+                    "bond_length_13": 1.3896
+                },
+                {
+                    "biobuild_version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O6",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.411
+                }
+            ]
+        },
+        {
+            "biobuild_version": "3.2.25",
             "id": "SUCR",
             "description": "pram; make sucrose, apply to AGLC,BFRU",
             "bond": {

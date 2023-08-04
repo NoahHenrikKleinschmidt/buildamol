@@ -511,8 +511,8 @@ def load_amino_acids():
     if __loaded_compounds__["amino_acids"]:
         return
     comps = get_default_compounds()
-    amino_acids = PDBECompounds.from_json(
-        defaults.DEFAULT_PDBE_COMPONENT_FILES["amino_acids"]
+    amino_acids = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["amino_acids"], set_default=False
     )
     comps.merge(amino_acids)
     __loaded_compounds__["amino_acids"] = True
@@ -538,7 +538,9 @@ def load_lipids():
     if __loaded_compounds__["lipids"]:
         return
     comps = get_default_compounds()
-    lipids = PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["lipids"])
+    lipids = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["lipids"], set_default=False
+    )
     comps.merge(lipids)
     __loaded_compounds__["lipids"] = True
 
@@ -563,7 +565,9 @@ def load_sugars():
     if __loaded_compounds__["sugars"]:
         return
     comps = get_default_compounds()
-    sugars = PDBECompounds.from_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["sugars"])
+    sugars = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["sugars"], set_default=False
+    )
     comps.merge(sugars)
     __loaded_compounds__["sugars"] = True
 
@@ -589,8 +593,8 @@ def load_nucleotides():
         return
 
     comps = get_default_compounds()
-    nucleotides = PDBECompounds.from_json(
-        defaults.DEFAULT_PDBE_COMPONENT_FILES["nucleotides"]
+    nucleotides = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["nucleotides"], set_default=False
     )
     comps.merge(nucleotides)
     __loaded_compounds__["nucleotides"] = True
@@ -616,8 +620,8 @@ def load_small_molecules():
     if __loaded_compounds__["small_molecules"]:
         return
     comps = get_default_compounds()
-    small_molecules = PDBECompounds.from_json(
-        defaults.DEFAULT_PDBE_COMPONENT_FILES["small_molecules"]
+    small_molecules = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["small_molecules"], set_default=False
     )
     comps.merge(small_molecules)
     __loaded_compounds__["small_molecules"] = True
