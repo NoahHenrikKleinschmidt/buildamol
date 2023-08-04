@@ -11,6 +11,7 @@ except ImportError:
 
 try:
     from rdkit import Chem
+    from rdkit.Chem import AllChem
 
     use_rdkit = True
 except ImportError:
@@ -23,11 +24,14 @@ if not use_openbabel and not use_rdkit:
     def read_smiles(smiles: str, add_hydrogens: bool = True):
         raise ImportError("Could not import either OpenBabel or RDKit")
 
+    def make_smiles(structure):
+        raise ImportError("Could not import either OpenBabel or RDKit")
+
 elif use_rdkit:
 
     def read_smiles(smiles: str, add_hydrogens: bool = True):
         """
-        Read a SMILES string into a Bio.PDB.Structure
+        Read a SMILES string using RDKit
 
         Parameters
         ----------
@@ -38,8 +42,7 @@ elif use_rdkit:
 
         Returns
         -------
-        structure : Bio.PDB.Structure
-            The structure
+        Chem.Mol
         """
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
@@ -48,16 +51,40 @@ elif use_rdkit:
         if add_hydrogens:
             mol = Chem.AddHs(mol)
 
-        converter = convert.RDKITBiopythonConverter()
-        mol = converter.rdkit_to_biopython(mol)
+        AllChem.EmbedMolecule(mol)
+        AllChem.UFFOptimizeMolecule(mol)
 
         return mol
+
+    def make_smiles(
+        molecule: "Molecule", isomeric: bool = True, add_hydrogens: bool = False
+    ) -> str:
+        """
+        Generate a SMILES string from a molecule
+
+        Parameters
+        ----------
+        molecule : Molecule
+            The molecule to convert
+        isomeric : bool
+            Whether to include isomeric information
+        add_hydrogens : bool
+            Whether to add hydrogens to the SMILES string
+        Returns
+        -------
+        smiles : str
+            The SMILES string
+        """
+        rdmol = molecule.to_rdkit()
+        if not add_hydrogens:
+            rdmol = Chem.RemoveHs(rdmol)
+        return Chem.MolToSmiles(rdmol, isomericSmiles=isomeric)
 
 elif use_openbabel:
 
     def read_smiles(smiles: str, add_hydrogens: bool = True):
         """
-        Read a SMILES string into a Bio.PDB.Structure
+        Read a SMILES string using OpenBabel
 
         Parameters
         ----------
@@ -68,8 +95,7 @@ elif use_openbabel:
 
         Returns
         -------
-        structure : Bio.PDB.Structure
-            The structure
+        pybel.Molecule
         """
         mol = pybel.readstring("smi", smiles)
         if mol is None:
@@ -78,11 +104,37 @@ elif use_openbabel:
 
         if not add_hydrogens:
             mol.removeh()
-
-        converter = convert.PybelBioPythonConverter()
-        mol = converter.pybel_molecule_to_biopython(mol)
-
         return mol
 
+    def make_smiles(
+        molecule: "Molecule", isomeric: bool = True, add_hydrogens: bool = False
+    ) -> str:
+        """
+        Generate a SMILES string from a molecule
 
-__all__ = ["read_smiles"]
+        Parameters
+        ----------
+        molecule : Molecule
+            The molecule to convert
+        isomeric : bool
+            Whether to include isomeric information
+        add_hydrogens : bool
+            Whether to add hydrogens to the SMILES string
+
+        Returns
+        -------
+        smiles : str
+            The SMILES string
+        """
+        obmol = molecule.to_pybel()
+        if not add_hydrogens:
+            obmol.removeh()
+        return obmol.write("smi", isomeric=isomeric)
+
+
+__all__ = [
+    "read_smiles",
+    "make_smiles",
+    "use_openbabel",
+    "use_rdkit",
+]

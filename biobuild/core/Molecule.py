@@ -632,13 +632,15 @@ def molecule(mol) -> "Molecule":
             or _mol.endswith(".sd")
         ):
             return Molecule.from_molfile(mol)
-    try:
-        return Molecule.from_pubchem(mol)
-    except:
-        pass
+
+    if " " not in mol:
+        try:
+            return Molecule.from_smiles(mol)
+        except:
+            pass
 
     try:
-        return Molecule.from_smiles(mol)
+        return Molecule.from_pubchem(mol)
     except:
         pass
 
@@ -971,9 +973,14 @@ class Molecule(entity.BaseEntity):
         Molecule
             The Molecule object
         """
-        struct = structural.read_smiles(smiles, add_hydrogens)
-        struct.id = id if id else smiles
-        return cls(struct, root_atom)
+        obj = structural.read_smiles(smiles, add_hydrogens)
+        if structural.smiles.use_rdkit:
+            new = cls.from_rdkit(obj, id=id)
+        elif structural.smiles.use_openbabel:
+            obj.title = id
+            new = cls.from_pybel(obj)
+        new.set_root(root_atom)
+        return new
 
     @classmethod
     def from_pubchem(
@@ -1024,6 +1031,26 @@ class Molecule(entity.BaseEntity):
         new.id = _compound_2d.iupac_name
         new.set_root(root_atom)
         return new
+
+    def to_smiles(self, isomeric: bool = True, write_hydrogens: bool = False) -> str:
+        """
+        Convert the molecule to a SMILES string
+
+        Parameters
+        ----------
+        isomeric : bool
+            Whether to include stereochemistry information in the SMILES string
+        write_hydrogens : bool
+            Whether to include hydrogens in the SMILES string
+
+        Returns
+        -------
+        str
+            The SMILES string
+        """
+        return structural.make_smiles(
+            self, isomeric=isomeric, add_hydrogens=write_hydrogens
+        )
 
     def get_residue_connections(
         self,
