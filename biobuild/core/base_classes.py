@@ -49,6 +49,11 @@ import periodictable as pt
 
 
 class ID:
+    """
+    The base class for Biobuild's internal object identification.
+    All classes that inheret from this class will be recorded as unique objects.
+    """
+
     __global_idx__ = 0
 
     def __init__(self):
@@ -88,6 +93,33 @@ class ID:
 
 
 class Atom(ID, bio.Atom.Atom):
+    """
+    An Atom object that inherits from Biopython's Atom class.
+
+    Parameters
+    ----------
+    id : str
+        The atom identifier
+    coord : ndarray
+        The atom coordinates
+    serial_number : int, optional
+        The atom serial number. The default is 1.
+    bfactor : float, optional
+        The atom bfactor. The default is 0.0.
+    occupancy : float, optional
+        The atom occupancy. The default is 1.0.
+    fullname : str, optional
+        The atom fullname. The default is None, in which case the id is used again.
+    element : str, optional
+        The atom element. The default is None, in which case it is inferred based on the id.
+    altloc : str, optional
+        The atom altloc. The default is " ".
+    pqr_charge : float, optional
+        The atom pqr_charge. The default is None.
+    radius : float, optional
+        The atom radius. The default is None.
+    """
+
     __slots__ = (
         "id",
         "parent",
@@ -250,6 +282,20 @@ class Atom(ID, bio.Atom.Atom):
 
 
 class Residue(ID, bio.Residue.Residue):
+    """
+    A Residue object that inherits from Biopython's Residue class.
+
+    Parameters
+    ----------
+    resname : str
+        The residue name
+    segid : str
+        The residue segid.
+    icode : int
+        The residue icode.
+        This is the residue serial number.
+    """
+
     __slots__ = (
         "level",
         "disordered",
@@ -379,6 +425,15 @@ class Residue(ID, bio.Residue.Residue):
 
 
 class Chain(ID, bio.Chain.Chain):
+    """
+    A Chain object that inherits from Biopython's Chain class.
+
+    Parameters
+    ----------
+    id : str
+        The chain identifier
+    """
+
     __slots__ = (
         "level",
         "internal_coord",
@@ -473,6 +528,15 @@ class Chain(ID, bio.Chain.Chain):
 
 
 class Model(bio.Model.Model, ID):
+    """
+    A Model object that inherits from Biopython's Model class.
+
+    Parameters
+    ----------
+    id : int or str
+        The model identifier
+    """
+
     __slots__ = (
         "level",
         # "serial_num",
@@ -575,6 +639,15 @@ class Model(bio.Model.Model, ID):
 
 
 class Structure(ID, bio.Structure.Structure):
+    """
+    A Structure object that inherits from Biopython's Structure class.
+
+    Parameters
+    ----------
+    id : str
+        The structure identifier
+    """
+
     __slots__ = (
         "level",
         "_id",
