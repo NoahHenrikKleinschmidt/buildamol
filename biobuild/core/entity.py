@@ -559,7 +559,7 @@ class BaseEntity:
 
     def show(self, residue_graph: bool = False):
         """
-        Open a browser window to view the molecule in 3D
+        Open a browser window to view the molecule in 3D using Plotly
 
         Parameters
         ----------
@@ -575,9 +575,15 @@ class BaseEntity:
         """
         return utils.visual.NglViewer(self).show()
 
+    def py3dmol(self):
+        """
+        View the molecule in 3D through py3Dmol
+        """
+        return utils.visual.Py3DmolViewer(self).view
+
     def draw(self, residue_graph: bool = False):
         """
-        Prepare a view of the molecule in 3D
+        Prepare a view of the molecule in 3D using Plotly
         but do not open a browser window.
 
         Parameters

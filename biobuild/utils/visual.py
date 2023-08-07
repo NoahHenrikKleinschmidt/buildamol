@@ -14,6 +14,14 @@ try:
 except:
     nglview = None
 
+try:
+    import py3Dmol
+    from rdkit import Chem
+except:
+    py3Dmol = None
+    Chem = None
+
+
 default_plotly_opacity = 1.0
 """
 The default opacity for plotly-based visualizations.
@@ -30,9 +38,56 @@ The default linewidth for plotly-based bond visualizations.
 """
 
 
+class Py3DmolViewer:
+    """
+    View a molecule in 3D using the py3Dmol library.
+
+    Attributes
+    ----------
+    view : py3Dmol.view
+        The py3Dmol view object.
+
+    Parameters
+    ----------
+    molecule
+        The molecule to view. This may be any object that holds
+        a biopython structure e.g. a Molecule, AtomGraph, or ResidueGraph.
+    width : int
+        The width of the viewer in pixels.
+    height : int
+        The height of the viewer in pixels.
+    """
+
+    def __init__(self, molecule, width: int = 500, height: int = 500) -> None:
+        if py3Dmol is None or Chem is None:
+            raise ImportError(
+                "py3Dmol and/or rdkit are not available. Please install them and be sure to use a compatible (Jupyter) environment."
+            )
+        if molecule.__class__.__name__ == "Molecule":
+            mol = molecule.to_rdkit()
+        elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+            mol = molecule._molecule.to_rdkit()
+        elif "Chem" in molecule.__class__.mro()[0]:
+            mol = molecule
+        else:
+            raise ValueError(
+                f"Unsupported molecule type: {molecule.__class__.__name__}"
+            )
+
+        self.view = py3Dmol.view(width=width, height=height)
+        self.view.addModel(Chem.MolToMolBlock(mol), "sdf")
+        self.view.setStyle({"stick": {}})
+
+    def show(self):
+        """
+        Show the molecule in a Jupyter notebook
+        """
+        return self.view.show()
+
+
 class NglViewer:
     """
-    View a molecule or graph object in 3D using
+    View a molecule in 3D using
     the NGLView library.
 
     Parameters
@@ -139,6 +194,7 @@ class PlotlyViewer3D:
                     xaxis=dict(showgrid=False, showline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, showline=False, showticklabels=False),
                     zaxis=dict(showgrid=False, showline=False, showticklabels=False),
+                    # aspectmode="cube",
                 ),
                 template="simple_white",
             )
@@ -605,10 +661,14 @@ if __name__ == "__main__":
     bb.load_sugars()
     man = bb.molecule("MAN")
     man.repeat(5, "14bb")
-    v = MoleculeViewer3D()
-    v.link(man)
-    atoms = man.atoms[:10]
-    v.draw_atoms(*atoms)
+    v = Py3DmolViewer(man)
+    v.show()
+
+    # v = MoleculeViewer3D()
+    # v.link(man)
+    # atoms = man.atoms[:10]
+    # v.draw_atoms(*atoms)
+    # v.show()
 
     # manv = ResidueGraphViewer3D()
     # manv.link(man.make_residue_graph(detailed=True))
