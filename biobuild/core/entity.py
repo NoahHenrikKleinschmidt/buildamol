@@ -581,6 +581,12 @@ class BaseEntity:
         """
         return utils.visual.Py3DmolViewer(self).view
 
+    def chem2dview(self):
+        """
+        View the molecule in 2D through RDKit
+        """
+        return utils.visual.Chem2DViewer(self)
+
     def draw(self, residue_graph: bool = False):
         """
         Prepare a view of the molecule in 3D using Plotly
@@ -1101,6 +1107,39 @@ class BaseEntity:
             _residues.extend(_residue)
 
         return _residues
+
+    def count_atoms(self) -> int:
+        """
+        Count the number of atoms in the structure
+
+        Returns
+        -------
+        int
+            The number of atoms
+        """
+        return sum(1 for i in self._model.get_atoms())
+
+    def count_residues(self) -> int:
+        """
+        Count the number of residues in the structure
+
+        Returns
+        -------
+        int
+            The number of residues
+        """
+        return sum(1 for i in self._model.get_residues())
+
+    def count_chains(self) -> int:
+        """
+        Count the number of chains in the structure
+
+        Returns
+        -------
+        int
+            The number of chains
+        """
+        return sum(1 for i in self._model.get_chains())
 
     def get_atoms(self, *atoms: Union[int, str, tuple], by: str = None) -> list:
         """
@@ -2110,6 +2149,7 @@ class BaseEntity:
         atom_graph.add_nodes_from(self._AtomGraph.nodes)
         atom_graph.migrate_bonds(self._AtomGraph)
         atom_graph._locked_edges.update(self._AtomGraph._locked_edges)
+        atom_graph._molecule = self
         return atom_graph
 
     def update_atom_graph(self):
@@ -2135,6 +2175,7 @@ class BaseEntity:
             This is only relevant if detailed is True.
         """
         graph = graphs.ResidueGraph.from_molecule(self, detailed, locked)
+        graph._molecule = self
         return graph
 
     get_residue_graph = make_residue_graph

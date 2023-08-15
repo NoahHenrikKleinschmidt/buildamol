@@ -480,6 +480,8 @@ __all__ = [
     "connect",
     "polymerize",
     "phosphorylate",
+    "make_smiles",
+    "query_pubchem",
 ]
 
 
@@ -564,6 +566,61 @@ def read_smiles(smiles: str, id: str = None) -> "Molecule":
         The molecule
     """
     return Molecule.from_smiles(smiles, id=id)
+
+
+def make_smiles(
+    mol: "Molecule", isomeric: bool = True, write_hydrogens: bool = False
+) -> str:
+    """
+    Generate a SMILES string from a molecule.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule
+    isomeric : bool
+        Whether to include stereochemistry information
+    write_hydrogens : bool
+        Whether to include hydrogens in the SMILES string
+
+    Returns
+    -------
+    smiles : str
+        The SMILES string
+    """
+    return mol.to_smiles(isomeric, write_hydrogens)
+
+
+def query_pubchem(query: str, by: str = "name") -> "Molecule":
+    """
+    Query the PubChem database for a given
+    query string to obtain a Molecule object.
+
+    Parameters
+    ----------
+    query : str
+        The query string
+    by : str
+        The type of query to perform. Can be one of:
+        he method to search by. This can be any of the following:
+
+        - cid
+        - name
+        - smiles
+        - sdf
+        - inchi
+        - inchikey
+        - formula
+
+    Returns
+    -------
+    Molecule or None
+        The molecule or None if no match was found
+    """
+    try:
+        return Molecule.from_pubchem(query, by=by)
+    except:
+        return None
 
 
 def molecule(mol) -> "Molecule":
@@ -1363,8 +1420,8 @@ class Molecule(entity.BaseEntity):
     def optimize(
         self,
         residue_graph: bool = True,
-        algorithm: str = "genetic",
-        rotatron: str = "distance",
+        algorithm: str = None,
+        rotatron: str = None,
         rotatron_kws: dict = None,
         algorithm_kws: dict = None,
         inplace: bool = True,
@@ -1379,13 +1436,16 @@ class Molecule(entity.BaseEntity):
             Whether to use the residue graph or the full atom graph for optimization.
             The residue graph is faster but less accurate.
         algorithm : str
-            The optimization algorithm to use. This can be one of the following:
+            The optimization algorithm to use. If not provided, an algorithm is determined based on the molecule's size.
+            This can be one of the following:
             - "genetic" for a genetic algorithm
-            - "gradient" for a scipy-implemented gradient-based optimization
+            - "scipy" for a scipy-implemented gradient-based optimization
             - "swarm" for a particle swarm optimization
+            - "anneal" for a simulated annealing optimization
+            - "rdkit" for an RDKit-implemented force-field-based optimization (if RDKit is installed)
         rotatron : str
             The rotatron to use. This can be one of the following:
-            - "distance" for a distance-based rotatron
+            - "distance" for a distance-based rotatron (default)
             - "overlap" for an overlap-based rotatron
         algorithm_kws : dict
             Keyword arguments to pass to the optimization algorithm
@@ -1399,16 +1459,31 @@ class Molecule(entity.BaseEntity):
         molecule
             The optimized molecule (either the original object or a copy)
         """
+        if not algorithm_kws:
+            algorithm_kws = {}
 
-        if algorithm == "genetic":
-            algorithm = optimizers.genetic_optimize
-        elif algorithm == "gradient":
+        if not rotatron_kws:
+            rotatron_kws = {}
+
+        algorithm = algorithm or optimizers.auto_algorithm(self)
+
+        if algorithm == "rdkit":
+            obj = self.copy() if not inplace else self
+            out = optimizers.rdkit_optimize(obj)
+            out.id = self.id
+            return out
+        elif algorithm == "scipy":
             algorithm = optimizers.scipy_optimize
+        elif algorithm == "genetic":
+            algorithm = optimizers.genetic_optimize
         elif algorithm == "swarm":
             algorithm = optimizers.swarm_optimize
+        elif algorithm == "anneal":
+            algorithm = optimizers.anneal_optimize
         else:
-            raise ValueError(f"Unknown optimization algorithm {algorithm}")
+            raise ValueError(f"Unknown algorithm {algorithm}")
 
+        rotatron = rotatron or "distance"
         if rotatron == "distance":
             rotatron = optimizers.DistanceRotatron
         elif rotatron == "overlap":
@@ -1416,16 +1491,7 @@ class Molecule(entity.BaseEntity):
         else:
             raise ValueError(f"Unknown rotatron {rotatron}")
 
-        if not algorithm_kws:
-            algorithm_kws = {}
-
-        if not rotatron_kws:
-            rotatron_kws = {}
-
-        if not inplace:
-            obj = self.copy()
-        else:
-            obj = self
+        obj = self.copy() if not inplace else self
 
         if residue_graph:
             graph = obj.make_residue_graph(detailed=True)
@@ -1438,6 +1504,8 @@ class Molecule(entity.BaseEntity):
 
         env = rotatron(graph, edges, **rotatron_kws)
         sol, _ = algorithm(env, **algorithm_kws)
+        if sol.shape[0] != len(env.rotatable_edges):
+            sol = sol[0]
         out = optimizers.apply_solution(sol, env, obj)
         return out
 
