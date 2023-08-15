@@ -183,6 +183,7 @@ class ResidueGraph(BaseGraph):
         include_samples: bool = True,
         include_far_away: bool = False,
         include_heteroatoms: bool = False,
+        include_clashes: bool = True,
         n_samples: Union[int, float] = 0.5,
         f: float = 1.0,
         no_hydrogens: bool = True,
@@ -209,6 +210,9 @@ class ResidueGraph(BaseGraph):
         include_heteroatoms : bool
             If True, all hetero-atoms are included in the detailed representation, regardless of
             their distance to the residue center of mass.
+
+        include_clashes : bool
+            If True, all atoms that are involved in a clash are included in the detailed representation.
 
         n_samples : int or float
             The number or fraction of atoms to sample from each residue if include_samples is True.
@@ -308,6 +312,13 @@ class ResidueGraph(BaseGraph):
                         if atom not in _added_nodes:
                             self.add_edge(atom, residue)
                             _added_nodes.add(atom)
+
+        if include_clashes:
+            for atoms in self._molecule.find_clashes():
+                for atom in atoms:
+                    if atom not in _added_nodes:
+                        self.add_edge(atom, atom.get_parent())
+                        _added_nodes.add(atom)
 
         # prune edge triplets of atoms that are part of the same residues
         for triplet in nx.cycle_basis(self):
