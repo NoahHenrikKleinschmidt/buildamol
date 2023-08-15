@@ -280,7 +280,7 @@ class Patcher(base.Connector):
         # compute translation vector
         old_centroid = _old_coords.mean(axis=0)
         new_centroid = _new_coords.mean(axis=0)
-        translation_vector = new_centroid - old_centroid
+        # translation_vector = new_centroid - old_centroid
 
         # self._v.draw_vector(
         #     "translation vector",
@@ -296,39 +296,62 @@ class Patcher(base.Connector):
         U, S, VT = np.linalg.svd(H)
         R = VT.T @ U.T
 
-        for atom in self.source.get_atoms():
-            # self._v.draw_point(
-            #     atom.id + " (old)",
-            #     atom.coord,
-            #     color="brown",
-            #     opacity=0.3,
-            #     showlegend=False,
-            # )
+        atoms = [
+            i
+            for i in self.source.get_atoms()
+            if i not in self._anchors and i not in self._source_computed_anchors.keys()
+        ]
+        atom_coords = np.array([i.coord for i in atoms])
+        atom_coords -= old_centroid
+        atom_coords = atom_coords @ R.T
+        atom_coords += new_centroid  # old_centroid + translation_vector
 
-            if atom in self._source_computed_anchors.keys():
-                continue
-                # vec = self._source_computed_anchors[atom] - old_centroid
-                # new_coord = (R @ vec) + old_centroid + translation_vector
+        for atom, coord in zip(atoms, atom_coords):
+            atom.set_coord(coord)
 
-                # self._v.draw_point(
-                #     atom.id + " (new computed from old)",
-                #     new_coord,
-                #     color="purple",
-                #     opacity=0.6,
-                # )
+        # THE OLD STUFF HERE WORKED JUST FINE BUT IS LESS EFFICIENT SINCE WE
+        # KEEP PERFORMING THE MATRIX MULTIPLICATIONS MANY TIMES IN A PYTHON
+        # LOOP. THE NEW STUFF ABOVE IS MORE EFFICIENT SINCE WE ONLY PERFORM
+        # THE MATRIX MULTIPLICATIONS ONCE AND THEN APPLY THE TRANSFORMATION
+        # TO ALL ATOMS AT ONCE.
 
-            vec = atom.coord - old_centroid
-            new_coord = (R @ vec) + old_centroid + translation_vector
-            atom.set_coord(new_coord)
+        # for atom in self.source.get_atoms():
+        # self._v.draw_point(
+        #     atom.id + " (old)",
+        #     atom.coord,
+        #     color="brown",
+        #     opacity=0.3,
+        #     showlegend=False,
+        # )
 
-            # self._v.draw_point(
-            #     atom.id + " (new)",
-            #     atom.coord,
-            #     color="lightblue",
-            #     opacity=0.6,
-            # )
+        # if atom in self._source_computed_anchors.keys():
+        #     continue
 
-        # self._v.draw_edges(self.source.bonds, color="blue", opacity=0.6)
+        # vec = self._source_computed_anchors[atom] - old_centroid
+        # new_coord = (R @ vec) + old_centroid + translation_vector
+
+        # self._v.draw_point(
+        #     atom.id + " (new computed from old)",
+        #     new_coord,
+        #     color="purple",
+        #     opacity=0.6,
+        # )
+
+        # atom.set_coord(current[idx])
+        # idx += 1
+
+        # vec = atom.coord - old_centroid
+        # new_coord = (R @ vec) + old_centroid + translation_vector
+        # atom.set_coord(new_coord)
+
+        # self._v.draw_point(
+        #     atom.id + " (new)",
+        #     atom.coord,
+        #     color="lightblue",
+        #     opacity=0.6,
+        # )
+
+    # self._v.draw_edges(self.source.bonds, color="blue", opacity=0.6)
 
     def _match_IC(self, n_target: int, n_source: int):
         """
@@ -517,21 +540,33 @@ def patch(
 if __name__ == "__main__":
     import biobuild as bb
 
-    ser = bb.molecule("ser.json")
-    his = bb.molecule("his.json")
+    bb.load_sugars()
 
-    link = bb.Linkage.from_json("peptide_linkage.json")
+    glc = bb.get_compound("GLC")
 
     patcher = Patcher(copy_target=False, copy_source=False)
-    v = ser.draw()
+    v = glc.draw()
     patcher._v = v
-    patcher.apply(link, ser, ser.copy())
-    merged = patcher.merge()
 
-    patcher.apply(link, merged, ser.copy())
+    link = bb.get_linkage("14bb")
+    a, b = patcher.apply(link, glc, glc.copy())
     merged = patcher.merge()
-
     merged.show()
+    # ser = bb.molecule("ser.json")
+    # his = bb.molecule("his.json")
+
+    # link = bb.Linkage.from_json("peptide_linkage.json")
+
+    # patcher = Patcher(copy_target=False, copy_source=False)
+    # v = ser.draw()
+    # patcher._v = v
+    # patcher.apply(link, ser, ser.copy())
+    # merged = patcher.merge()
+
+    # patcher.apply(link, merged, ser.copy())
+    # merged = patcher.merge()
+
+    # merged.show()
 
     # man = "support/examples/MAN.pdb"
     # man1 = bb.Molecule.from_pdb(man)

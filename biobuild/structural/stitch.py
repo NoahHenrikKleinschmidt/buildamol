@@ -151,7 +151,7 @@ class Stitcher(base.Connector):
         # compute translation vector
         old_centroid = _old_coords.mean(axis=0)
         new_centroid = _new_coords.mean(axis=0)
-        translation_vector = new_centroid - old_centroid
+        
 
         _relative_old_coords = _old_coords - old_centroid
         _relative_new_coords = _new_coords - new_centroid
@@ -163,7 +163,7 @@ class Stitcher(base.Connector):
         # self._v.draw_edges(self.source.bonds, color="black", opacity=0.5)
         atom_coords = np.array([atom.coord for atom in self.source.get_atoms()])
         atom_coords = (
-            (R @ (atom_coords - old_centroid).T).T + old_centroid + translation_vector
+            (R @ (atom_coords - old_centroid).T).T + new_centroid
         )
         for coord, atom in zip(atom_coords, self.source.get_atoms()):
             atom.set_coord(coord)
@@ -549,17 +549,33 @@ def stitch(
 if __name__ == "__main__":
     import biobuild as bb
 
-    ser = bb.Molecule.from_pubchem("SER")
-    ser.autolabel()
+    bb.load_sugars()
+    glc = bb.Molecule.from_compound("GLC")
 
-    mol3 = bb.Molecule.from_pubchem("tert-butyl acetate")
-    # mol3.autolabel()
+    s = Stitcher(False, False)
+    s.apply(
+        glc,
+        glc.copy(),
+        ["O1", "HO1"],
+        [
+            "HO4",
+        ],
+        "C1",
+        "O4",
+    )
+    s.merge().show()
 
-    # attach the red bit to the serine
-    l1 = bb.linkage("C6", "O3", ["H12"], ["HO3"])
+    # ser = bb.Molecule.from_pubchem("SER")
+    # ser.autolabel()
 
-    out = stitch(mol3, ser, l1)
-    out.show()
+    # mol3 = bb.Molecule.from_pubchem("tert-butyl acetate")
+    # # mol3.autolabel()
+
+    # # attach the red bit to the serine
+    # l1 = bb.linkage("C6", "O3", ["H12"], ["HO3"])
+
+    # out = stitch(mol3, ser, l1)
+    # out.show()
     # import biobuild as bb
 
     # glc = bb.Molecule.from_compound("GLC")
