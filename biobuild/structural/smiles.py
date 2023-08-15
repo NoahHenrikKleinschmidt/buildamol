@@ -9,15 +9,17 @@ try:
 except ImportError:
     use_openbabel = False
 
-try:
-    from rdkit import Chem
-    from rdkit.Chem import AllChem
+import biobuild.utils.convert as convert
+import biobuild.utils.auxiliary as aux
 
+if aux.HAS_RDKIT:
+    Chem = aux.Chem
+    AllChem = aux.AllChem
+    aux.RDLogger.DisableLog("rdApp.*")
     use_rdkit = True
-except ImportError:
+else:
     use_rdkit = False
 
-import biobuild.utils.convert as convert
 
 if not use_openbabel and not use_rdkit:
 
