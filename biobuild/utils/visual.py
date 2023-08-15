@@ -4,10 +4,11 @@ Visualization auxiliary functions
 
 import plotly.graph_objects as go
 import plotly.express as px
-import numpy as np
-from copy import deepcopy
 import pandas as pd
 import networkx as nx
+import matplotlib.colors as colors
+
+import biobuild.utils.auxiliary as aux
 
 try:
     import nglview
@@ -16,11 +17,16 @@ except:
 
 try:
     import py3Dmol
-    from rdkit import Chem
 except:
     py3Dmol = None
-    Chem = None
 
+try:
+    from rdkit.Chem import Draw
+
+except:
+    Draw = None
+
+Chem = aux.Chem
 
 default_plotly_opacity = 1.0
 """
@@ -36,6 +42,101 @@ default_plotly_linewidth = 1.2
 """
 The default linewidth for plotly-based bond visualizations.
 """
+
+
+class Chem2DViewer:
+    """
+    View a molecule in 2D using the RDKit library.
+
+    Parameters
+    ----------
+    molecule
+        The molecule to view. This may be any object that holds
+        a biopython structure e.g. a Molecule, AtomGraph, or ResidueGraph.
+    """
+
+    def __init__(self, molecule, highlight_color: str = "cyan"):
+        if Chem is None:
+            raise ImportError(
+                "rdkit is not available. Please install it and be sure to use a compatible environment."
+            )
+        if hasattr(molecule, "to_rdkit"):
+            mol = molecule.to_rdkit()
+        elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+            mol = molecule._molecule.to_rdkit()
+        elif "Chem" in str(molecule.__class__.mro()[0]):
+            mol = molecule
+        else:
+            raise ValueError(
+                f"Unsupported molecule type: {molecule.__class__.__name__}"
+            )
+        mol.RemoveAllConformers()
+        self.mol = mol
+        self._atoms_to_highlight = []
+        self._bonds_to_highlight = []
+        self.highlight_color = highlight_color
+
+    def draw(self, draw_hydrogens: bool = False, width: int = 1000, height: int = 500):
+        """
+        Generate the 2D image.
+
+        Parameters
+        ----------
+        draw_hydrogens : bool
+            Whether to draw hydrogens.
+        width : int
+            The width of the image in pixels.
+        height : int
+            The height of the image in pixels.
+        """
+        if not draw_hydrogens:
+            mol = Chem.rdmolops.RemoveHs(self.mol)
+        else:
+            mol = self.mol
+        return Draw.MolToImage(
+            mol,
+            size=(width, height),
+            highlightAtoms=self._atoms_to_highlight,
+            highlightBonds=self._bonds_to_highlight,
+            highlightColor=colors.to_rgb(self.highlight_color),
+        )
+
+    def show(self, draw_hydrogens: bool = False):
+        """
+        Show the molecule
+
+        Parameters
+        ----------
+        draw_hydrogens : bool
+            Whether to draw hydrogens.
+        """
+        return self.draw(draw_hydrogens=draw_hydrogens).show()
+
+    def highlight_atoms(self, *atoms):
+        """
+        Highlight atoms in the molecule.
+
+        Parameters
+        ----------
+        atoms : list
+            The Biobuild Atoms to highlight.
+        """
+        self._atoms_to_highlight.extend(atom.serial_number for atom in atoms)
+
+    def highlight_bonds(self, *bonds):
+        """
+        Highlight bonds in the molecule.
+
+        Parameters
+        ----------
+        bonds : list
+            The bonds (tuples of Biobuild Atoms) to highlight.
+        """
+
+        self._bonds_to_highlight.extend(
+            self.mol.GetBondBetweenAtoms(a.serial_number, b.serial_number).GetIdx()
+            for a, b in bonds
+        )
 
 
 class Py3DmolViewer:
@@ -63,11 +164,11 @@ class Py3DmolViewer:
             raise ImportError(
                 "py3Dmol and/or rdkit are not available. Please install them and be sure to use a compatible (Jupyter) environment."
             )
-        if molecule.__class__.__name__ == "Molecule":
+        if hasattr(molecule, "to_rdkit"):
             mol = molecule.to_rdkit()
         elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
             mol = molecule._molecule.to_rdkit()
-        elif "Chem" in molecule.__class__.mro()[0]:
+        elif "Chem" in str(molecule.__class__.mro()[0]):
             mol = molecule
         else:
             raise ValueError(
@@ -102,10 +203,14 @@ class NglViewer:
             raise ImportError(
                 "NGLView is not available. Please install it with `pip install nglview` and be sure to use a compatible environment."
             )
-        if molecule.__class__.__name__ in ("Molecule", "AtomGraph", "ResidueGraph"):
+        if hasattr(molecule, "to_biopython"):
+            self.structure = molecule.to_biopython()
+        elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
             self.structure = molecule.structure.to_biopython()
         else:
-            self.structure = molecule.to_biopython()
+            raise ValueError(
+                f"Unsupported molecule type: {molecule.__class__.__name__}"
+            )
 
     def show(self):
         """
@@ -224,6 +329,7 @@ class PlotlyViewer3D:
         showlegend=True,
         hoverinfo: str = "skip",
         elongate: float = 1.0,
+        legendgroup: str = None,
     ):
         new = go.Scatter3d(
             x=[coord_a[0], coord_a[0] + (coord_b[0] - coord_a[0]) * elongate],
@@ -235,6 +341,7 @@ class PlotlyViewer3D:
             hoverinfo=hoverinfo,
             opacity=opacity,
             showlegend=showlegend,
+            legendgroup=legendgroup,
         )
         self.add(new)
 
@@ -246,6 +353,7 @@ class PlotlyViewer3D:
         opacity=1.0,
         elongate: float = 1.0,
         showlegend: bool = True,
+        name: str = None,
     ):
         for edge in edges:
             self.draw_vector(
@@ -257,6 +365,7 @@ class PlotlyViewer3D:
                 opacity=opacity,
                 elongate=elongate,
                 showlegend=showlegend,
+                legendgroup=name,
             )
 
     def draw_points(
@@ -310,6 +419,7 @@ class PlotlyViewer3D:
                 hoverinfo=hoverinfo,
                 showlegend=showlegend,
                 name=name,
+                legendgroup="Highlighted",
             )
             atom_scatter.append(new)
         self.add(atom_scatter)
@@ -661,7 +771,7 @@ if __name__ == "__main__":
     bb.load_sugars()
     man = bb.molecule("MAN")
     man.repeat(5, "14bb")
-    v = Py3DmolViewer(man)
+    v = Chem2DViewer(man)
     v.show()
 
     # v = MoleculeViewer3D()
