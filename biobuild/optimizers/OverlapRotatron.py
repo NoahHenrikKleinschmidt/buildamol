@@ -13,8 +13,8 @@ import biobuild.graphs.BaseGraph as BaseGraph
 
 __all__ = [
     "OverlapRotatron",
-    "likelihood_overlap",
-    "bhattacharyya_overlap",
+    # "likelihood_overlap",
+    # "bhattacharyya_overlap",
     "jensen_shannon_overlap",
     "MVN",
 ]
@@ -41,66 +41,66 @@ def MVN(points):
     )
 
 
-def likelihood_overlap(mvn1, mvn2):
-    """
-    Compute the overlap between two gaussians using likelihoods.
+# def likelihood_overlap(mvn1, mvn2):
+#     """
+#     Compute the overlap between two gaussians using likelihoods.
 
-    Parameters
-    ----------
-    mvn1, mvn2 : scipy.stats.multivariate_normal
-        The two gaussians to compute the overlap for.
-    Returns
-    -------
-    overlap : float
-        The overlap between the two gaussians.
-    """
-    center1 = mvn1.mean
-    center2 = mvn2.mean
+#     Parameters
+#     ----------
+#     mvn1, mvn2 : scipy.stats.multivariate_normal
+#         The two gaussians to compute the overlap for.
+#     Returns
+#     -------
+#     overlap : float
+#         The overlap between the two gaussians.
+#     """
+#     center1 = mvn1.mean
+#     center2 = mvn2.mean
 
-    # Compute the overlap between the two distributions
-    # using the likelihoods of the centers of the distributions
-    dist1 = mvn1.pdf(center2)
-    dist2 = mvn2.pdf(center1)
+#     # Compute the overlap between the two distributions
+#     # using the likelihoods of the centers of the distributions
+#     dist1 = mvn1.pdf(center2)
+#     dist2 = mvn2.pdf(center1)
 
-    if dist1 == 0 or dist2 == 0:
-        return 0
+#     if dist1 == 0 or dist2 == 0:
+#         return 0
 
-    overlap = np.log(dist1) - np.log(dist2)
-    return overlap
+#     overlap = np.log(dist1) - np.log(dist2)
+#     return overlap
 
 
-def bhattacharyya_overlap(mvn1, mvn2):
-    """
-    Compute the overlap between two gaussians using the Bhattacharyya coefficient.
+# def bhattacharyya_overlap(mvn1, mvn2):
+#     """
+#     Compute the overlap between two gaussians using the Bhattacharyya coefficient.
 
-    Parameters
-    ----------
-    mvn1, mvn2 : scipy.stats.multivariate_normal
-        The two gaussians to compute the overlap for.
+#     Parameters
+#     ----------
+#     mvn1, mvn2 : scipy.stats.multivariate_normal
+#         The two gaussians to compute the overlap for.
 
-    Returns
-    -------
-    overlap : float
-        The overlap between the two gaussians.
-    """
+#     Returns
+#     -------
+#     overlap : float
+#         The overlap between the two gaussians.
+#     """
 
-    # Create Multivariate Normal distributions for each Gaussian
-    center1 = mvn1.mean
-    center2 = mvn2.mean
+#     # Create Multivariate Normal distributions for each Gaussian
+#     center1 = mvn1.mean
+#     center2 = mvn2.mean
 
-    dist1 = mvn1.pdf(center2)
-    dist2 = mvn2.pdf(center1)
+#     dist1 = mvn1.pdf(center2)
+#     dist2 = mvn2.pdf(center1)
 
-    dist = dist1 * dist2
-    if dist == 0:
-        return dist
+#     dist = dist1 * dist2
+#     if dist == 0:
+#         return dist
 
-    # Compute the Bhattacharyya coefficient (overlap between the distributions)
-    bhattacharyya_coefficient = np.sqrt(dist)
+#     # Compute the Bhattacharyya coefficient (overlap between the distributions)
+#     bhattacharyya_coefficient = np.sqrt(dist)
 
-    # Compute the Bhattacharyya distance
-    bhattacharyya_distance = np.log(bhattacharyya_coefficient)
-    return bhattacharyya_distance
+#     # Compute the Bhattacharyya distance
+#     bhattacharyya_distance = np.log(bhattacharyya_coefficient)
+#     return bhattacharyya_distance
 
 
 def jensen_shannon_overlap(mvn1, mvn2):
