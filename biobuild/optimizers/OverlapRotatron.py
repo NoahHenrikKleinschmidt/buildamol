@@ -4,6 +4,9 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.stats import multivariate_normal
 
+from sklearn.mixture import GaussianMixture
+from scipy.stats import entropy
+
 
 import biobuild.optimizers.Rotatron as Rotatron
 import biobuild.graphs.BaseGraph as BaseGraph
@@ -13,13 +16,13 @@ __all__ = [
     "likelihood_overlap",
     "bhattacharyya_overlap",
     "jensen_shannon_overlap",
-    "gaussian",
+    "MVN",
 ]
 
 
-def gaussian(points):
+def MVN(points):
     """
-    Compute the mean and covariance matrix of a given set of points.
+    Compute a multi-variate normal distribution for a given set of points.
 
     Parameters
     ----------
@@ -28,49 +31,36 @@ def gaussian(points):
 
     Returns
     -------
-    center : np.ndarray
-        The mean of the points.
-    covariance : np.ndarray
-        The covariance matrix of the points.
+    mvn : scipy.stats.multivariate_normal
+        The multi-variate normal distribution for the points.
     """
-    # Compute the center (mean) of the points cloud
-    center = np.mean(points, axis=0)
-
-    # Compute the covariance matrix of the points cloud
-    covariance = np.cov(points, rowvar=False)
-
-    return center, covariance
+    return multivariate_normal(
+        mean=np.mean(points, axis=0),
+        cov=np.cov(points, rowvar=False),
+        allow_singular=True,
+    )
 
 
-def likelihood_overlap(center1, center2, cov1, cov2):
+def likelihood_overlap(mvn1, mvn2):
     """
     Compute the overlap between two gaussians using likelihoods.
 
     Parameters
     ----------
-    center1 : np.ndarray
-        The center of the first gaussian.
-    center2 : np.ndarray
-        The center of the second gaussian.
-    cov1 : np.ndarray
-        The covariance matrix of the first gaussian.
-    cov2 : np.ndarray
-        The covariance matrix of the second gaussian.
-
+    mvn1, mvn2 : scipy.stats.multivariate_normal
+        The two gaussians to compute the overlap for.
     Returns
     -------
     overlap : float
         The overlap between the two gaussians.
     """
-
-    # Create Multivariate Normal distributions for each Gaussian
-    dist1 = multivariate_normal(mean=center1, cov=cov1)
-    dist2 = multivariate_normal(mean=center2, cov=cov2)
+    center1 = mvn1.mean
+    center2 = mvn2.mean
 
     # Compute the overlap between the two distributions
     # using the likelihoods of the centers of the distributions
-    dist1 = dist1.pdf(center2)
-    dist2 = dist2.pdf(center1)
+    dist1 = mvn1.pdf(center2)
+    dist2 = mvn2.pdf(center1)
 
     if dist1 == 0 or dist2 == 0:
         return 0
@@ -79,20 +69,14 @@ def likelihood_overlap(center1, center2, cov1, cov2):
     return overlap
 
 
-def bhattacharyya_overlap(center1, center2, cov1, cov2):
+def bhattacharyya_overlap(mvn1, mvn2):
     """
     Compute the overlap between two gaussians using the Bhattacharyya coefficient.
 
     Parameters
     ----------
-    center1 : np.ndarray
-        The center of the first gaussian.
-    center2 : np.ndarray
-        The center of the second gaussian.
-    cov1 : np.ndarray
-        The covariance matrix of the first gaussian.
-    cov2 : np.ndarray
-        The covariance matrix of the second gaussian.
+    mvn1, mvn2 : scipy.stats.multivariate_normal
+        The two gaussians to compute the overlap for.
 
     Returns
     -------
@@ -101,11 +85,11 @@ def bhattacharyya_overlap(center1, center2, cov1, cov2):
     """
 
     # Create Multivariate Normal distributions for each Gaussian
-    dist1 = multivariate_normal(mean=center1, cov=cov1)
-    dist2 = multivariate_normal(mean=center2, cov=cov2)
+    center1 = mvn1.mean
+    center2 = mvn2.mean
 
-    dist1 = dist1.pdf(center2)
-    dist2 = dist2.pdf(center1)
+    dist1 = mvn1.pdf(center2)
+    dist2 = mvn2.pdf(center1)
 
     dist = dist1 * dist2
     if dist == 0:
@@ -119,20 +103,14 @@ def bhattacharyya_overlap(center1, center2, cov1, cov2):
     return bhattacharyya_distance
 
 
-def jensen_shannon_overlap(center1, center2, cov1, cov2):
+def jensen_shannon_overlap(mvn1, mvn2):
     """
     Compute the overlap between two gaussians using the Jensen-Shannon divergence.
 
     Parameters
     ----------
-    center1 : np.ndarray
-        The center of the first gaussian.
-    center2 : np.ndarray
-        The center of the second gaussian.
-    cov1 : np.ndarray
-        The covariance matrix of the first gaussian.
-    cov2 : np.ndarray
-        The covariance matrix of the second gaussian.
+    mvn1, mvn2 : scipy.stats.multivariate_normal
+        The two gaussians to compute the overlap for.
 
     Returns
     -------
@@ -141,13 +119,13 @@ def jensen_shannon_overlap(center1, center2, cov1, cov2):
     """
 
     # Create Multivariate Normal distributions for each Gaussian
-    dist1 = multivariate_normal(mean=center1, cov=cov1)
-    dist2 = multivariate_normal(mean=center2, cov=cov2)
+    center1 = mvn1.mean
+    center2 = mvn2.mean
 
-    pdf1_center1 = dist1.pdf(center1)
-    pdf2_center2 = dist2.pdf(center2)
-    pdf1_center2 = dist1.pdf(center2)
-    pdf2_center1 = dist2.pdf(center1)
+    pdf1_center1 = mvn1.pdf(center1)
+    pdf2_center2 = mvn2.pdf(center2)
+    pdf1_center2 = mvn1.pdf(center2)
+    pdf2_center1 = mvn2.pdf(center1)
 
     mean_center1 = (pdf1_center1 + pdf2_center1) / 2
     mean_center2 = (pdf1_center2 + pdf2_center2) / 2
@@ -167,7 +145,7 @@ def _kl_divergence(p, q):
     return np.sum(np.where(p != 0, p * np.log(p / q), 0))
 
 
-Rotatron = Rotatron.Rotatron
+# Rotatron = Rotatron.Rotatron
 
 
 class OverlapRotatron(Rotatron):
@@ -190,6 +168,8 @@ class OverlapRotatron(Rotatron):
         A specific distance function to use for calculating the overlap. This function
         should take two arrays of shape (1, 3) (centers) and two arrays of shape (3, 3) (covariances)
         and return a scalar.
+    ignore_further_than : float
+        If greater than 0, centroids that are further than this distance from each other are evaluated as 0 overlap automatically.
     bounds : tuple
         The bounds for the minimal and maximal rotation angles.
     """
@@ -201,19 +181,24 @@ class OverlapRotatron(Rotatron):
         clash_distance: float = 0.9,
         crop_nodes_further_than: float = -1,
         distance_function: callable = None,
+        ignore_further_than: float = -1,
         bounds: tuple = (-np.pi, np.pi),
     ):
         self.crop_radius = crop_nodes_further_than
         self.clash_distance = clash_distance
-        self._bounds_tuple = bounds
-        # =====================================
-        if not distance_function:
-            distance_function = bhattacharyya_overlap
+        self.ignore_further_than = ignore_further_than > 0
+        self._ignore_distance = ignore_further_than
+        self.distance_function = distance_function or jensen_shannon_overlap
 
-        self._distance_function = distance_function
+        self._bounds_tuple = bounds
+
         # =====================================
 
         rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)
+        self.graph = graph
+        self.rotatable_edges = rotatable_edges
+        self.n_nodes = len(self.graph.nodes)
+        self.n_edges = len(self.rotatable_edges)
 
         # =====================================
         if self.crop_radius > 0:
@@ -229,42 +214,47 @@ class OverlapRotatron(Rotatron):
             if np.max(dists) != 0:
                 nodes_to_drop = [nodes[i] for i, d in enumerate(dists) if d]
                 graph.remove_nodes_from(nodes_to_drop)
+
         # =====================================
 
-        Rotatron.__init__(self, graph, rotatable_edges)
         self.action_space = gym.spaces.Box(
             low=bounds[0], high=bounds[1], shape=(len(self.rotatable_edges),)
         )
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
         )
+        Rotatron.__init__(self, graph, rotatable_edges)
 
         # =====================================
 
-        self._residue_graph = self.graph.__class__.__name__ == "ResidueGraph"
+        self._generate_rotation_unit_masks()
+        self._find_rotation_units()
+        self.rotation_units = {
+            k: v for k, v in self.rotation_units.items() if len(v) > 1
+        }
 
         # =====================================
 
-        residues = list(
-            set(i.parent for i in self.graph.nodes if i.__class__.__name__ == "Atom")
-        )
+        # self._gmms = {
+        #     k: gmm(self.state[mask], 1) for k, mask in self.rotation_units.items()
+        # }
 
-        self._residue_masks = np.array(
-            [
-                np.array(
-                    [
-                        i.parent == r if i.__class__.__name__ == "Atom" else False
-                        for i in self.graph.nodes
-                    ]
-                )
-                for r in residues
-            ]
-        )
+        # this is the mainloop for computing pairwise overlaps
+        n = 0
+        for i, gmm1 in enumerate(self.rotation_units):
+            for j, gmm2 in enumerate(self.rotation_units):
+                if i >= j:
+                    continue
+                n += 1
+        self.overlaps = np.zeros(n + 1)
+        self.centers = np.zeros((n + 1, 3))
+        self.covariances = np.zeros((n + 1, 3, 3))
 
         # =====================================
 
-        self._gaussian_centers = np.zeros((len(self._residue_masks), 3))
-        self._gaussian_covariances = np.zeros((len(self._residue_masks), 3, 3))
+        self._last_eval = self.eval(self.state)
+        self._best_eval = self._last_eval
+        self._backup_eval = self._last_eval
 
         # =====================================
 
@@ -282,33 +272,29 @@ class OverlapRotatron(Rotatron):
         float
             The evaluation for the state
         """
-        # for each residue compute the gaussian
+        gaussians = []
+        for i, mask in self.rotation_units.items():
+            gaussians.append(MVN(state[mask]))
 
-        # for i, mask in enumerate(self._residue_masks):
-        #     points = state[mask]
-        #     center, covariance = gaussian(points)
-        #     self._gaussian_centers[i] = center
-        #     self._gaussian_covariances[i] = covariance
+        idx = 0
+        for i, G1 in enumerate(gaussians):
+            for j, G2 in enumerate(gaussians):
+                if i >= j:
+                    continue
 
-        # for each residue in the graph, pairwise compute the overlap between the gaussians
-        # and return the sum of the overlaps
-        overlaps = []
-        centers = {}
-        covariances = {}
-        for i, mask in enumerate(self._residue_masks[:-1]):
-            if i not in centers:
-                centers[i], covariances[i] = gaussian(state[mask])
-            for j, mask2 in enumerate(self._residue_masks[i + 1 :], start=i + 1):
-                if j not in centers:
-                    centers[j], covariances[j] = gaussian(state[mask2])
+                if (
+                    self.ignore_further_than
+                    and np.linalg.norm(G1.mean - G2.mean) > self._ignore_distance
+                ):
+                    self.overlaps[idx] = 0
+                else:
+                    self.overlaps[idx] = self.distance_function(G1, G2)
+                idx += 1
 
-                overlap = self._distance_function(
-                    centers[i], centers[j], covariances[i], covariances[j]
-                )
-                if not np.isfinite(overlap):
-                    overlap = 0
-                overlaps.append(overlap)
-        return np.mean(overlaps)
+        return np.mean(self.overlaps)
+
+    def _init_eval(self, state):
+        return np.inf
 
 
 if __name__ == "__main__":
@@ -319,28 +305,47 @@ if __name__ == "__main__":
         "/Users/noahhk/GIT/biobuild/biobuild/optimizers/_testing/files/EX6.json"
     )
 
-    graph = mol.get_residue_graph()
-    graph.make_detailed(n_samples=0.8)
+    graph = mol.get_atom_graph()
+    graph.show()
 
+    graph = mol.get_residue_graph()
+    graph.make_detailed(n_samples=0.5, include_far_away=True)
+    graph.show()
+    exit()
     edges = graph.find_rotatable_edges(mol.get_atom(168), min_descendants=10)
 
-    # v = graph.draw()
-    # v.draw_edges(*edges, color="magenta", linewidth=3, opacity=1.0)
-    # v.show()
+    # env = OverlapRotatron(
+    #     graph,
+    #     edges,
+    #     distance_function=jensen_shannon_overlap,
+    # )
+
+    # out = bb.optimizers.optimize(mol.copy(), env, "genetic", max_generations=30)
+    # out.show()
+
+    # # v = graph.draw()
+    # # v.draw_edges(*edges, color="magenta", linewidth=3, opacity=1.0)
+    # # v.show()
     from alive_progress import alive_bar
 
-    n = 30
+    n = 10
     clashes = np.zeros((3, n))
     times = np.zeros((3, n))
     with alive_bar(n * 3) as bar:
         for i, func in enumerate(
             [likelihood_overlap, bhattacharyya_overlap, jensen_shannon_overlap]
         ):
-            env = OverlapRotatron(graph, edges, distance_function=func)
+            env = OverlapRotatron(
+                graph,
+                edges,
+                distance_function=func,
+            )
             for j in range(n):
                 t1 = time()
                 out = bb.optimizers.optimize(
-                    mol.copy(), env, "genetic", max_generations=100
+                    mol.copy(),
+                    env,
+                    "swarm",
                 )
                 t = time() - t1
                 times[i, j] = t
@@ -372,56 +377,57 @@ if __name__ == "__main__":
 
     sns.despine()
 
+    plt.savefig("overlap_rotatron_dist_func_comparisons_EX6.png")
     plt.show()
 
-    v = out.draw()
-    v.draw_edges(*mol.bonds, color="lightblue", opacity=0.5)
-    v.show()
+    # v = out.draw()
+    # v.draw_edges(*mol.bonds, color="lightblue", opacity=0.5)
+    # v.show()
 
-    if False:
-        # FOR MAKING THE COOL FIGURES
-        graph = mol.get_atom_graph()
+    # if False:
+    #     # FOR MAKING THE COOL FIGURES
+    #     graph = mol.get_atom_graph()
 
-        # edges = graph.find_rotatable_edges(min_descendants=10)
-        edges = [mol.get_bond(150, 152)]
+    #     # edges = graph.find_rotatable_edges(min_descendants=10)
+    #     edges = [mol.get_bond(150, 152)]
 
-        d = OverlapRotatron(graph, edges, bounds=(0, 0.5))
+    #     d = OverlapRotatron(graph, edges, bounds=(0, 0.5))
 
-        angles = np.arange(-np.pi, np.pi, np.pi / 10)
-        evals = []
-        for i in angles:
-            new_state, e, done, _ = d.step([i])
-            evals.append(e)
-            d.reset()
+    #     angles = np.arange(-np.pi, np.pi, np.pi / 10)
+    #     evals = []
+    #     for i in angles:
+    #         new_state, e, done, _ = d.step([i])
+    #         evals.append(e)
+    #         d.reset()
 
-        evals = np.array(evals)
-        import matplotlib.pyplot as plt
-        import seaborn as sns
+    #     evals = np.array(evals)
+    #     import matplotlib.pyplot as plt
+    #     import seaborn as sns
 
-        rgba_to_hex = lambda x: "#%02x%02x%02x" % tuple([int(i * 255) for i in x])
+    #     rgba_to_hex = lambda x: "#%02x%02x%02x" % tuple([int(i * 255) for i in x])
 
-        cmap = sns.color_palette("coolwarm", len(evals))
+    #     cmap = sns.color_palette("coolwarm", len(evals))
 
-        # evals /= np.min(evals)
+    #     # evals /= np.min(evals)
 
-        v = mol.draw()
-        v.draw_edges(edges[0], color="magenta", linewidth=3, opacity=1.0)
-        for i, e in enumerate(evals):
-            s = mol.copy()
-            s.rotate_around_bond(
-                *edges[0], angles[i], descendants_only=True, angle_is_degrees=False
-            )
-            v.draw_edges(*s.bonds, color=rgba_to_hex(cmap[i]), linewidth=3, opacity=0.6)
+    #     v = mol.draw()
+    #     v.draw_edges(edges[0], color="magenta", linewidth=3, opacity=1.0)
+    #     for i, e in enumerate(evals):
+    #         s = mol.copy()
+    #         s.rotate_around_bond(
+    #             *edges[0], angles[i], descendants_only=True, angle_is_degrees=False
+    #         )
+    #         v.draw_edges(*s.bonds, color=rgba_to_hex(cmap[i]), linewidth=3, opacity=0.6)
 
-        v.show()
+    #     v.show()
 
-        plt.plot(angles, evals)
+    #     plt.plot(angles, evals)
 
-        best_angle = angles[np.argmin(evals)]
-        s = mol.copy()
-        s.rotate_around_bond(
-            *edges[0], best_angle, descendants_only=True, angle_is_degrees=False
-        )
-        v.draw_edges(*s.bonds, color="limegreen", linewidth=3, opacity=1.0)
+    #     best_angle = angles[np.argmin(evals)]
+    #     s = mol.copy()
+    #     s.rotate_around_bond(
+    #         *edges[0], best_angle, descendants_only=True, angle_is_degrees=False
+    #     )
+    #     v.draw_edges(*s.bonds, color="limegreen", linewidth=3, opacity=1.0)
 
-        pass
+    #     pass

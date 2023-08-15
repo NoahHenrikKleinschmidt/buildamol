@@ -7,10 +7,14 @@ import numpy as np
 import biobuild.optimizers.Rotatron as Rotatron
 import biobuild.optimizers.DistanceRotatron as DistanceRotatron
 
+import biobuild.core.Molecule as Molecule
 import biobuild.optimizers.algorithms as agents
+import biobuild.utils.auxiliary as aux
 
 
-def apply_solution(sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule"):
+def apply_solution(
+    sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule.Molecule"
+) -> "Molecule.Molecule":
     """
     Apply a solution to a Molecule object.
 
@@ -51,11 +55,11 @@ def apply_solution(sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule"):
 
 
 def optimize(
-    mol: "Molecule",
+    mol: "Molecule.Molecule",
     env: "Rotatron.Rotatron" = None,
-    algorithm: Union[str, callable] = "genetic",
+    algorithm: Union[str, callable] = None,
     **kwargs,
-) -> "Molecule":
+) -> "Molecule.Molecule":
     """
     Quickly optimize a molecule using a specific algorithm.
 
@@ -63,20 +67,23 @@ def optimize(
     ----
     This is a convenience function that will automatically create an environment and determine edges.
     However, that means that the environment will be created from scratch every time this function is called.
-    Also, the environment will likely not taylor to any specifc requiremehts of the molecule. For better performance
+    Also, the environment will likely not taylor to any specifc requirements of the situation. For better performance
     and control, it is recommended to create an environment manually and supply it to the function using the `env` argument.
 
     Parameters
     ----------
     mol : Molecule
         The molecule to optimize. This molecule will be modified in-place.
-    env : Rotatron.Rotatron, optional
-        The environment to use, by default None
+    env : Rotatron, optional
+        The environment to use. This needs to be a Rotatron instance that is fully set up and ready to use.
     algorithm : str or callable, optional
-        The algorithm to use, by default "genetic". This can be:
+        The algorithm to use. If not provided, an algorithm is automatically determined, depending on the molecule size.
+        If provided, this can be:
         - "genetic": A genetic algorithm
         - "swarm": A particle swarm optimization algorithm
-        - "gradient": A gradient descent algorithm (default scipy implementation)
+        - "anneal": A simulated annealing algorithm
+        - "scipy": A gradient descent algorithm (default scipy implementation, can be changed using a 'method' keyword argument)
+        - "rdkit": A force field based optimization using RDKit (if installed)
         - or some other callable that takes an environment as its first argument
     **kwargs
         Additional keyword arguments to pass to the algorithm
@@ -86,10 +93,24 @@ def optimize(
     Molecule
         The optimized molecule
     """
+    algorithm = algorithm or auto_algorithm(mol)
+    if algorithm == "genetic":
+        agent = agents.genetic_optimize
+    elif algorithm == "swarm":
+        agent = agents.swarm_optimize
+    elif algorithm == "scipy":
+        agent = agents.scipy_optimize
+    elif algorithm == "anneal":
+        agent = agents.anneal_optimize
+    elif algorithm == "rdkit":
+        return agents.rdkit_optimize(mol, **kwargs)
+    elif not callable(algorithm):
+        raise ValueError(f"Unknown algorithm: {algorithm}")
+
     if env is None:
-        if sum(1 for i in mol.get_atoms()) > 50:
+        if mol.count_atoms() > 500:
             graph = mol.make_residue_graph()
-            graph.make_detailed(n_samples=0.5)
+            graph.make_detailed(n_samples=0.6)
             edges = mol.get_residue_connections()
             edges = graph.direct_edges(None, edges)
         else:
@@ -98,24 +119,25 @@ def optimize(
 
         env = DistanceRotatron(graph, edges, radius=25)
 
-    if algorithm == "genetic":
-        agent = agents.genetic_optimize
-    elif algorithm == "swarm":
-        agent = agents.swarm_optimize
-    elif algorithm == "gradient":
-        agent = agents.scipy_optimize
-    else:
-        raise ValueError(f"Unknown algorithm: {algorithm}")
-
     sol, eval = agent(env, **kwargs)
 
     # in case of the genetic algorithm, the solution is a list of solutions
     # so we need to take the first one
-    if sol.shape[0] != len(env.rotatable_edges):
+    if sol.shape[0] != env.n_edges:
         sol = sol[0]
 
     final = apply_solution(sol, env, mol)
     return final
 
 
-__all__ = ["apply_solution", "optimize"]
+def auto_algorithm(mol):
+    """
+    Decide which algorithm to use for a quick-optimize based on the molecule size.
+    """
+    if mol.count_atoms() < 500:
+        if aux.HAS_RDKIT:
+            return "rdkit"
+    return "swarm"
+
+
+__all__ = ["apply_solution", "optimize", "auto_algorithm"]

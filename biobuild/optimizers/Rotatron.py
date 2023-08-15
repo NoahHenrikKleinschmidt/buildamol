@@ -4,8 +4,6 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.spatial.transform import Rotation
 
-import biobuild.structural as structural
-import biobuild.utils.auxiliary as aux
 import biobuild.graphs.BaseGraph as BaseGraph
 
 
@@ -37,6 +35,43 @@ class Rotatron(gym.Env):
         self.state = self._make_state_from_graph(self.graph)
         self._backup_state = self.state.copy()
 
+        self.rotation_unit_masks = np.ones(
+            (len(graph.nodes), len(graph.nodes)), dtype=bool
+        )
+        self._generate_edge_masks()
+        self._generate_edge_lengths()
+
+        self._edge_node_coords = np.array(
+            [
+                [self.get_node_idx(e[0]), self.get_node_idx(e[1])]
+                for e in self.rotatable_edges
+            ]
+        )
+
+        self._best_state = self.state.copy()
+        self._best_action = self.blank()
+        self._action_history = self.blank()
+        self._last_eval = self._init_eval(self.state)
+        self._best_eval = self._last_eval
+        self._backup_eval = self._last_eval
+
+    def _generate_edge_lengths(self):
+        """
+        Compute the lengths of the edges
+        """
+        self.edge_lengths = np.array(
+            [
+                np.linalg.norm(
+                    self.state[self.node_dict[e[0]]] - self.state[self.node_dict[e[1]]]
+                )
+                for e in self.rotatable_edges
+            ]
+        )
+
+    def _generate_edge_masks(self):
+        """
+        Compute the edge masks of downstream nodes
+        """
         self.edge_masks = np.array(
             [
                 [
@@ -47,20 +82,6 @@ class Rotatron(gym.Env):
             ],
             dtype=bool,
         )
-
-        self.edge_lengths = np.array(
-            [
-                np.linalg.norm(
-                    self.state[self.node_dict[e[0]]] - self.state[self.node_dict[e[1]]]
-                )
-                for e in self.rotatable_edges
-            ]
-        )
-
-        self._best_state = self.state.copy()
-        self._best_action = self.blank()
-        self._action_history = self.blank()
-        self._best_eval = np.inf
 
     @property
     def best(self):
@@ -80,10 +101,19 @@ class Rotatron(gym.Env):
         vec = self.state[bdx] - self.state[adx]
         return vec
 
+    def _get_edge_vector(self, edx):
+        adx, bdx = self._edge_node_coords[edx]
+        vec = self.state[bdx] - self.state[adx]
+        return vec
+
+    def _get_edge_ref_coord(self, edx):
+        adx, bdx = self._edge_node_coords[edx]
+        return self.state[adx]
+
     def get_node_coords(self, _node):
         return self.state[self.get_node_idx(_node)]
 
-    def rotate(self, edge, angle):
+    def rotate(self, edge, angle, edx=None):
         """
         Rotate the graph around an edge
 
@@ -101,7 +131,7 @@ class Rotatron(gym.Env):
         """
         if -1e-3 < angle < 1e-3:
             return self.state
-        edx = self.get_edge_idx(edge)
+        edx = edx or self.get_edge_idx(edge)
         mask = self.edge_masks[edx]
         vec = self.get_edge_vector(edge)
         # new version where the lengths are pre-computed
@@ -109,6 +139,37 @@ class Rotatron(gym.Env):
         length = self.edge_lengths[edx]
         vec /= length
         ref_coord = self.get_node_coords(edge[0])
+
+        rot = Rotation.from_rotvec(vec * angle)
+        self.state[mask] = rot.apply(self.state[mask] - ref_coord) + ref_coord
+        return self.state
+
+    def _rotate(self, edx, angle):
+        """
+        Rotate the graph around an edge. This is the version that is used in the step function.
+
+        Parameters
+        ----------
+        edx : int
+            The edge index to rotate around
+        angle : float
+            The angle to rotate by
+
+        Returns
+        -------
+        np.ndarray
+            The new state of the environment
+        """
+        if -1e-3 < angle < 1e-3:
+            return self.state
+
+        mask = self.edge_masks[edx]
+        vec = self._get_edge_vector(edx)
+        # new version where the lengths are pre-computed
+        # since we are only rotating the lengths should not change...
+        length = self.edge_lengths[edx]
+        vec /= length
+        ref_coord = self._get_edge_ref_coord(edx)
 
         rot = Rotation.from_rotvec(vec * angle)
         self.state[mask] = rot.apply(self.state[mask] - ref_coord) + ref_coord
@@ -129,6 +190,12 @@ class Rotatron(gym.Env):
             The evaluation for the state
         """
         return np.inf
+
+    def _init_eval(self, state):
+        """
+        The evaluation score that is computed before the first step
+        """
+        return self.eval(state)
 
     def step(self, action):
         """
@@ -187,17 +254,12 @@ class Rotatron(gym.Env):
         Reset the environment
         """
         if state:
-            self.state[:, :] = 0
-            self.state += self._backup_state
+            self.state[:, :] = self._backup_state
         if best:
-            self._best_state[:, :] = 0
-            self._best_state += self._backup_state
+            self._best_state[:, :] = self._backup_state
             self._best_action[:] = 0
             self._action_history[:] = 0
-            self._best_eval = self.eval(self.state)
-
-        # for idx, node in enumerate(self.graph.nodes):
-        #     node.coord = self.state[idx]
+            self._best_eval = self._backup_eval
 
     def blank(self):
         """
@@ -242,8 +304,84 @@ class Rotatron(gym.Env):
                 e
                 for e in graph.edges
                 if e not in graph._locked_edges
-                and graph.edges[e[0]][e[1]]["bond_order"] == 1
+                and graph.edges[e].get("bond_order", 1) == 1
+                and not "Residue" in type(e[0]).__name__
+                and not "Residue" in type(e[1]).__name__
                 and not (e[0] in _circulars and e[1] in _circulars)
                 and len(graph.get_descendants(*e)) > 1
             ]
         return rotatable_edges
+
+    def _generate_rotation_unit_masks(self):
+        """
+        Generate a boolean mask (n_nodes, n_nodes) where all nodes
+        that are part of the same rotation unit are set to False
+        """
+        dists1 = cdist(self.state, self.state)
+        for i, angle in enumerate(np.random.random(self.n_edges)):
+            state2 = self._rotate(i, angle)
+        dists2 = cdist(state2, state2)
+        for i, angle in enumerate(np.random.random(self.n_edges)):
+            state3 = self._rotate(i, angle)
+        dists3 = cdist(state3, state3)
+
+        d12 = np.abs(dists1 - dists2) < 1e-4
+        d13 = np.abs(dists1 - dists3) < 1e-4
+        d23 = np.abs(dists2 - dists3) < 1e-4
+
+        dists = np.sum([d12, d13, d23], axis=0) == 3
+        self.rotation_unit_masks = ~dists
+        self.reset()
+
+    def _node_rotation_unit_mask(self, edx, ndx):
+        """
+        Get the rotation unit mask for a node
+
+        Parameters
+        ----------
+        edx : int
+            The edge index
+        ndx : int
+            The node index
+
+        Returns
+        -------
+        np.ndarray
+            The rotation unit mask
+        """
+        array = self.edge_masks[edx]
+        if array[ndx]:
+            return ~array
+        return array
+
+    def _find_rotation_units(self):
+        self.rotation_units = {}
+        patterns = []
+        rdx = 0
+        for edx, mask in enumerate(self.rotation_unit_masks):
+            pattern = ~mask
+            if any(np.all(i == pattern) for i in patterns):
+                pdx = next(
+                    idx for idx, i in enumerate(patterns) if np.all(i == pattern)
+                )
+                self.rotation_units[pdx].add(edx)
+                continue
+            patterns.append(pattern)
+            self.rotation_units[rdx] = {edx}
+            rdx += 1
+        self.rotation_units = {
+            r: np.array(list(v)) for r, v in self.rotation_units.items()
+        }
+        pass
+
+
+if __name__ == "__main__":
+    import biobuild as bb
+
+    bb.load_sugars()
+    mol = bb.molecule("GLC") % "14bb"
+    mol *= 4
+
+    rot = Rotatron(mol.get_atom_graph())
+    rot._generate_rotation_unit_masks()
+    rot._find_rotation_units()

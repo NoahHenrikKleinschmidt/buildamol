@@ -6,8 +6,10 @@ from scipy.spatial.distance import cdist
 import biobuild.optimizers.Rotatron as Rotatron
 import biobuild.graphs.BaseGraph as BaseGraph
 
+# Rotatron = Rotatron.Rotatron
 
-class DistanceRotatron(Rotatron.Rotatron):
+
+class DistanceRotatron(Rotatron):
     """
     A distance-based Rotatron environment.
 
@@ -86,16 +88,6 @@ class DistanceRotatron(Rotatron.Rotatron):
                 graph.remove_nodes_from(nodes_to_drop)
         # =====================================
 
-        Rotatron.Rotatron.__init__(self, graph, rotatable_edges)
-        self.action_space = gym.spaces.Box(
-            low=bounds[0], high=bounds[1], shape=(len(self.rotatable_edges),)
-        )
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
-        )
-
-        # =====================================
-
         if radius > 0:
             self._radius = radius
         else:
@@ -105,18 +97,28 @@ class DistanceRotatron(Rotatron.Rotatron):
 
         def concatenation_wrapper(x):
             mask = x < self._radius
+            mask = np.logical_and(mask, self.rotation_unit_masks[self.ndx])
+            self.ndx += 1
             if not np.logical_or.reduce(mask):
                 return -1
             return self._concatenation_function(self, x[mask])
 
         self.concatenation_function = concatenation_wrapper
+        self._state_dists = np.zeros((len(graph.nodes), len(graph.nodes)))
 
         # =====================================
 
-        self._state_dists = np.zeros((self.state.shape[0], self.state.shape[0]))
-        self._last_eval = np.inf
-        self._last_eval = self.eval(self.state)
-        self._best_eval = self._last_eval
+        self.edx = 0
+
+        Rotatron.__init__(self, graph, rotatable_edges)
+        self.action_space = gym.spaces.Box(
+            low=bounds[0], high=bounds[1], shape=(len(self.rotatable_edges),)
+        )
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
+        )
+        # =====================================
+
         self._best_clashes = self.count_clashes()
 
     def eval(self, state):
@@ -136,13 +138,14 @@ class DistanceRotatron(Rotatron.Rotatron):
         pairwise_dists = cdist(state, state)
         np.fill_diagonal(pairwise_dists, self._radius)
 
+        self.ndx = 0
         dist_eval = np.apply_along_axis(self.concatenation_function, 1, pairwise_dists)
         mask = dist_eval > -1
 
         if not np.logical_or.reduce(mask):
             return self._last_eval
 
-        mean_dist_eval = 1.0 / np.mean(dist_eval[mask])
+        mean_dist_eval = np.divide(1.0, np.mean(dist_eval[mask]))
 
         final = np.log(mean_dist_eval)
         self._state_dists[:, :] = pairwise_dists
@@ -151,10 +154,8 @@ class DistanceRotatron(Rotatron.Rotatron):
 
     def step(self, action):
         for i, edge in enumerate(self.rotatable_edges):
-            new_state = self.rotate(
-                edge,
-                action[i],
-            )
+            self.edx = i
+            new_state = self._rotate(i, action[i])
 
         self._last_eval = self.eval(new_state)
         clashes = self.count_clashes()
@@ -170,7 +171,7 @@ class DistanceRotatron(Rotatron.Rotatron):
 
         return new_state, self._last_eval, done, {}
 
-    def is_done(self):
+    def is_done(self, state):
         return self.count_clashes() == 0
 
     def count_clashes(self):
