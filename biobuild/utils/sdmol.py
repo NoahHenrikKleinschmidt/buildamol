@@ -4,12 +4,10 @@ Functions to deal with SD and Mol files
 
 import os
 
-try:
-    from rdkit import Chem
+import biobuild.utils.auxiliary as aux
 
-    has_rdkit = True
-except ImportError:
-    has_rdkit = False
+has_rdkit = aux.HAS_RDKIT
+Chem = aux.Chem
 
 
 # import biobuild.core.Molecule as Molecule
