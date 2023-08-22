@@ -307,7 +307,6 @@ class Residue(ID, bio.Residue.Residue):
         "child_list",
         "child_dict",
         "xtra",
-        "coord",
     )
 
     def __init__(self, resname, segid, icode):
@@ -342,6 +341,10 @@ class Residue(ID, bio.Residue.Residue):
     @full_id.setter
     def full_id(self, value):
         pass
+
+    @property
+    def coord(self):
+        return self.center_of_mass()
 
     # def add(self, atom):
     #     if atom.get_id() not in self.child_dict:
