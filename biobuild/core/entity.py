@@ -390,8 +390,7 @@ class BaseEntity:
         return sorted(self._AtomGraph.nodes)
         # return list(self._model.get_atoms())
 
-    @property
-    def atom_triplets(self):
+    def get_atom_triplets(self):
         """
         Compute triplets of three consequtively bonded atoms
         """
@@ -400,8 +399,7 @@ class BaseEntity:
             return []
         return structural.compute_triplets(self.bonds)
 
-    @property
-    def atom_quartets(self) -> list:
+    def get_atom_quartets(self) -> list:
         """
         Compute quartets of four consequtively bonded atoms
 
@@ -415,8 +413,7 @@ class BaseEntity:
             return []
         return list(structural.compute_quartets(self.bonds))
 
-    @property
-    def angles(self):
+    def compute_angles(self):
         """
         Compute all angles of consecutively bonded atom triplets within the molecule.
 
@@ -430,8 +427,7 @@ class BaseEntity:
             for triplet in structural.generate_triplets(self.bonds)
         }
 
-    @property
-    def dihedrals(self):
+    def compute_dihedrals(self):
         """
         Compute all dihedrals of consecutively bonded atom quartets within the molecule.
 
@@ -510,6 +506,7 @@ class BaseEntity:
             This may be an Atom object, an atom serial number, an atom id (must be unique), or the full-id tuple.
         """
         self.root_atom = atom
+        return self
 
     def get_linkage(self):
         """
@@ -535,7 +532,7 @@ class BaseEntity:
         """
         if link is None:
             self._linkage = None
-            return
+            return self
 
         if isinstance(link, str):
             if not _topology:
@@ -545,6 +542,7 @@ class BaseEntity:
             self._linkage = link
         else:
             raise ValueError(f"Unknown linkage type {type(link)}")
+        return self
 
     def save(self, filename: str):
         """
@@ -702,7 +700,7 @@ class BaseEntity:
         """
         return self._attach_residue
 
-    def set_attach_residue(self, residue: Union[int, bio.Residue.Residue] = None):
+    def set_attach_residue(self, residue: Union[int, base_classes.Residue] = None):
         """
         Set the residue that is used for attaching other molecules to this one.
 
@@ -1028,7 +1026,7 @@ class BaseEntity:
 
     def get_residues(
         self,
-        *residues: Union[int, str, tuple, bio.Residue.Residue],
+        *residues: Union[int, str, tuple, base_classes.Residue],
         by: str = None,
         chain=None,
     ):
@@ -1062,7 +1060,7 @@ class BaseEntity:
 
         _residues = []
         for residue in residues:
-            if isinstance(residue, bio.Residue.Residue):
+            if isinstance(residue, base_classes.Residue):
                 if residue in self.residues:
                     _residues.append(residue)
                     continue
@@ -1098,7 +1096,7 @@ class BaseEntity:
                 ]
             else:
                 raise ValueError(
-                    "Unknown search parameter, must be either 'name', 'seqid' or 'full_id'"
+                    f"Unknown search parameter '{by}', must be either 'name', 'seqid' or 'full_id'"
                 )
             if chain is not None:
                 chain = self.get_chain(chain)
@@ -1149,11 +1147,16 @@ class BaseEntity:
         It is a safer option to use the full_id or serial number to retrieve a specific atom.
         If no search parameters are provided, the underlying iterator of the structure is returned.
 
+        Note
+        ----
+        This does not support mixed queries. I.e. you cannot query for an atom with id 'C1' and serial number 1 at the same time.
+        Each call can only query for one type of parameter.
+
         Parameters
         ----------
         atoms
-            The atom id, serial number or full_id tuple,
-            this supports multiple atoms to search for. However,
+            The atom id, serial number, full_id tuple, or element string symbol.
+            This supports multiple atoms to search for. However,
             only one type of parameter is supported per call. If left empty, the underlying generator is returned.
 
         by : str
@@ -1189,9 +1192,12 @@ class BaseEntity:
             atoms = [i for i in self._model.get_atoms() if i.serial_number in atoms]
         elif by == "full_id":
             atoms = [i for i in self._model.get_atoms() if i.full_id in atoms]
+        elif by == "element":
+            atoms = [i.upper() for i in atoms]
+            atoms = [i for i in self._model.get_atoms() if i.element in atoms]
         else:
             raise ValueError(
-                "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element'"
             )
 
         return atoms
@@ -1200,7 +1206,7 @@ class BaseEntity:
         self,
         atom: Union[int, str, tuple],
         by: str = None,
-        residue: Union[int, bio.Residue.Residue] = None,
+        residue: Union[int, base_classes.Residue] = None,
     ):
         """
         Get an atom from the structure either based on its
@@ -1211,13 +1217,14 @@ class BaseEntity:
         Parameters
         ----------
         atom
-            The atom id, serial number or full_id tuple
+            The atom id, serial number, full_id tuple, or element symbol.
         by : str
-            The type of parameter to search for. Can be either 'id', 'serial' or 'full_id'
+            The type of parameter to search for. Can be either 'id', 'serial', 'full_id', or 'element'.
             Because this looks for one specific atom, this parameter can be inferred from the datatype
             of the atom parameter. If it is an integer, it is assumed to be the serial number,
             if it is a string, it is assumed to be the atom id and if it is a tuple, it is assumed
             to be the full_id.
+
         residue: int or Residue
             A specific residue to search in. If None, the entire structure is searched.
 
@@ -1256,9 +1263,11 @@ class BaseEntity:
             _atom = (i for i in atom_gen() if i.serial_number == atom)
         elif by == "full_id":
             _atom = (i for i in atom_gen() if i.full_id == atom)
+        elif by == "element":
+            _atom = (i for i in atom_gen() if i.element == atom.upper())
         else:
             raise ValueError(
-                "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element'"
             )
 
         return next(_atom, None)
@@ -1289,7 +1298,7 @@ class BaseEntity:
 
     def get_bonds(
         self,
-        atom1: Union[int, str, tuple, base_classes.Atom, bio.Residue.Residue] = None,
+        atom1: Union[int, str, tuple, base_classes.Atom, base_classes.Residue] = None,
         atom2: Union[int, str, tuple, base_classes.Atom] = None,
         either_way: bool = True,
         residue_internal: bool = True,
@@ -1321,7 +1330,7 @@ class BaseEntity:
         if atom1 is None and atom2 is None:
             return self.bonds
 
-        if isinstance(atom1, bio.Residue.Residue):
+        if isinstance(atom1, base_classes.Residue):
             if residue_internal:
                 return [
                     i
@@ -1344,7 +1353,7 @@ class BaseEntity:
 
     def get_residue(
         self,
-        residue: Union[int, str, tuple, bio.Residue.Residue],
+        residue: Union[int, str, tuple, base_classes.Residue],
         by: str = None,
         chain=None,
     ):
@@ -1368,10 +1377,10 @@ class BaseEntity:
 
         Returns
         -------
-        residue : bio.Residue.Residue
+        residue : base_classes.Residue
             The residue
         """
-        if isinstance(residue, bio.Residue.Residue):
+        if isinstance(residue, base_classes.Residue):
             if residue in self.residues:
                 return residue
             else:
@@ -1417,19 +1426,52 @@ class BaseEntity:
             The chain id
         Returns
         -------
-        chain : bio.Chain.Chain
+        chain : base_classes.Chain
             The chain
         """
-        if isinstance(chain, bio.Chain.Chain):
+        if isinstance(chain, base_classes.Chain):
             if chain in self.chains:
                 return chain
             else:
                 return self.get_chain(chain.id)
         return next((i for i in self.chains if i.id == chain), None)
 
+    def add_chains(
+        self,
+        *chains: base_classes.Chain,
+        adjust_seqid: bool = True,
+        _copy: bool = False,
+    ):
+        """
+        Add chains to the structure
+
+        Parameters
+        ----------
+        chains : base_classes.Chain
+            The chains to add
+
+        adjust_seqid : bool
+            If True, the seqid of the chains is adjusted to
+            match the current number of chains in the structure
+            (i.e. a new chain can be given seqid A, and it will be adjusted
+            to the correct value of C if there are already two other chains in the molecule).
+
+        _copy : bool
+            If True, the chains are copied before adding them to the molecule.
+            This is useful if you want to add the same chain to multiple molecules, while leaving
+            them and their original parent structures intakt.
+        """
+        for chain in chains:
+            if _copy:
+                chain = chain.copy()
+            if adjust_seqid:
+                chain._id = aux.chain_id_maker(len(self.chains) + 1)
+            self._model.add(chain)
+        return self
+
     def add_residues(
         self,
-        *residues: bio.Residue.Residue,
+        *residues: base_classes.Residue,
         adjust_seqid: bool = True,
         _copy: bool = False,
     ):
@@ -1438,7 +1480,7 @@ class BaseEntity:
 
         Parameters
         ----------
-        residues : bio.Residue.Residue
+        residues : base_classes.Residue
             The residues to add
         adjust_seqid : bool
             If True, the seqid of the residues is adjusted to
@@ -1476,14 +1518,15 @@ class BaseEntity:
                     adx += 1
                     atom.set_serial_number(adx)
                 self._AtomGraph.add_node(atom)
+        return self
 
-    def remove_residues(self, *residues: Union[int, bio.Residue.Residue]) -> list:
+    def remove_residues(self, *residues: Union[int, base_classes.Residue]) -> list:
         """
         Remove residues from the structure
 
         Parameters
         ----------
-        residues : int or bio.Residue.Residue
+        residues : int or base_classes.Residue
             The residues to remove, either the object itself or its seqid
 
         Returns
@@ -1508,13 +1551,29 @@ class BaseEntity:
             _residues.append(residue)
         return _residues
 
-    def rename_residue(self, residue: Union[int, bio.Residue.Residue], name: str):
+    def rename_chain(self, chain: Union[str, base_classes.Chain], name: str):
+        """
+        Rename a chain
+
+        Parameters
+        ----------
+        chain : str or Chain
+            The chain to rename, either the object itself or its id
+        name : str
+            The new name
+        """
+        if isinstance(chain, str):
+            chain = next(i for i in self._model.get_chains() if i.id == chain)
+        chain._id = name
+        return self
+
+    def rename_residue(self, residue: Union[int, base_classes.Residue], name: str):
         """
         Rename a residue
 
         Parameters
         ----------
-        residue : int or bio.Residue.Residue
+        residue : int or Residue
             The residue to rename, either the object itself or its seqid
         name : str
             The new name
@@ -1522,12 +1581,13 @@ class BaseEntity:
         if isinstance(residue, int):
             residue = self._chain.child_list[residue - 1]
         residue.resname = name
+        return self
 
     def rename_atom(
         self,
         atom: Union[int, base_classes.Atom],
         name: str,
-        residue: Union[int, bio.Residue.Residue] = None,
+        residue: Union[int, base_classes.Residue] = None,
     ):
         """
         Rename an atom
@@ -1538,7 +1598,7 @@ class BaseEntity:
             The atom to rename, either the object itself or its serial number
         name : str
             The new name (id)
-        residue : int or bio.Residue.Residue
+        residue : int or base_classes.Residue
             The residue to which the atom belongs, either the object itself or its seqid.
             Useful when giving a possibly redundant id as identifier in multi-residue molecules.
         """
@@ -1550,6 +1610,7 @@ class BaseEntity:
         # if p:
         #     p.child_dict.pop(_old)
         #     p.child_dict[name] = atom
+        return self
 
     def add_atoms(self, *atoms: base_classes.Atom, residue=None, _copy: bool = False):
         """
@@ -1588,6 +1649,7 @@ class BaseEntity:
             atom.set_serial_number(_max_serial)
             target.add(atom)
             self._AtomGraph.add_node(atom)
+        return self
 
     def remove_atoms(self, *atoms: Union[int, str, tuple, base_classes.Atom]) -> list:
         """
@@ -1854,7 +1916,7 @@ class BaseEntity:
 
         Parameters
         ----------
-        residue_a, residue_b : Union[int, str, tuple, bio.Residue.Residue]
+        residue_a, residue_b : Union[int, str, tuple, base_classes.Residue]
             The residues to consider. If None, all residues are considered.
             Otherwise, only between the specified residues are considered.
         triplet : bool
@@ -2027,6 +2089,7 @@ class BaseEntity:
         It is advisable to check the labels after using this method.
         """
         self = structural.autolabel(self)
+        return self
 
     def relabel_hydrogens(self):
         """
@@ -2035,6 +2098,7 @@ class BaseEntity:
         PDB file that may have used a different labelling scheme for atoms.
         """
         structural.relabel_hydrogens(self)
+        return self
 
     def get_quartets(self):
         """
@@ -2159,6 +2223,7 @@ class BaseEntity:
         self._AtomGraph.clear()
         self._AtomGraph.add_nodes_from(self.get_atoms())
         self._AtomGraph.add_edges_from(self._bonds)
+        return self
 
     def make_residue_graph(self, detailed: bool = False, locked: bool = True):
         """
@@ -2610,7 +2675,11 @@ if __name__ == "__main__":
     # e.get_residue_connections()
     # pass
 
-    BaseEntity.from_json("man.json").show()
+    import biobuild as bb
+
+    bb.load_amino_acids()
+    # ser = molecule("SER")
+    bb.Molecule.from_compound("SER")
 
     # import biobuild as bb
 
