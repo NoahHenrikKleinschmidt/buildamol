@@ -623,7 +623,7 @@ def query_pubchem(query: str, by: str = "name") -> "Molecule":
         return None
 
 
-def molecule(mol) -> "Molecule":
+def molecule(mol=None) -> "Molecule":
     """
     Generate a molecule from an input. If the input is a string, the string can be a PDB id, some filename, SMILES or InChI string, IUPAC name or abbreviation.
     This function will try its best to automatically generate the molecule with minimal user effort. However, using a dedicated classmethod is
@@ -632,7 +632,8 @@ def molecule(mol) -> "Molecule":
     Parameters
     ----------
     mol : str or structure-like object
-        An input string or structure-like object such as a BioPython Structure or OpenBabel Molecule.
+        An input string or structure-like object such as a BioPython Structure or RDKit Molecule, etc.
+        If nothing is provided, a new empty molecule is generated.
 
     Returns
     -------
@@ -646,6 +647,9 @@ def molecule(mol) -> "Molecule":
     >>> mol = molecule("GLC.pdb")
     >>> mol = molecule("alpha-d-glucose")
     """
+    if mol is None:
+        return Molecule.empty()
+
     if isinstance(mol, bio.Structure.Structure) or isinstance(
         mol, entity.base_classes.Structure
     ):
@@ -797,7 +801,7 @@ def connect(
 def phosphorylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
-    delete: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -811,6 +815,7 @@ def phosphorylate(
         The atom to phosphorylate. If an integer is provided, the atom seqid must be used, starting at 1.
     delete : int or str or Atom
         The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        If not provided, any Hydrogen atom attached to the phosphorylated atom will be deleted.
     inplace : bool
         Whether to phosphorylate the molecule in place or return a new molecule
 
@@ -826,7 +831,8 @@ def phosphorylate(
 
     l = Linkage.Linkage("PHOS", "a custom phosphorylation")
     l.add_bond(at_atom.id, "P")
-    l.add_delete(delete.id, "target")
+    if delete:
+        l.add_delete(delete.id, "target")
     l.add_delete("O2", "source")
 
     if not inplace:
@@ -839,7 +845,7 @@ def phosphorylate(
 def methylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
-    delete: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -854,6 +860,7 @@ def methylate(
     delete : int or str or Atom
         The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
         This atom needs to be in the same residue as the atom to methylate.
+        If not provided, any Hydrogen atom attached to the methylated atom will be deleted.
     inplace : bool
         Whether to methylate the molecule in place or return a new molecule
     """
@@ -865,7 +872,8 @@ def methylate(
     l = Linkage.Linkage("METHYLATE")
     l.add_bond(at_atom.id, "C")
     l.add_delete("HC1", "source")
-    l.add_delete(delete.id, "target")
+    if delete:
+        l.add_delete(delete.id, "target")
 
     mol.attach(methyl, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1361,7 +1369,7 @@ class Molecule(entity.BaseEntity):
         at_residue : int or Residue
             The residue to attach the other molecule to. If None, the `attach_residue` is used. Only used if a recipe is provided and the atoms
         """
-        if not recipe and not remove_atoms:
+        if not recipe and remove_atoms is None:
             if not self._linkage:
                 raise AttributeError(
                     "No recipe was set for this molecule and no manual instructions were found. Either set a default recipe, provide a recipe when stitching, or provide the information about removed and bonded atoms directly."
@@ -1419,7 +1427,7 @@ class Molecule(entity.BaseEntity):
 
     def optimize(
         self,
-        residue_graph: bool = True,
+        residue_graph: bool = None,
         algorithm: str = None,
         rotatron: str = None,
         rotatron_kws: dict = None,
@@ -1434,7 +1442,8 @@ class Molecule(entity.BaseEntity):
         ----------
         residue_graph : bool
             Whether to use the residue graph or the full atom graph for optimization.
-            The residue graph is faster but less accurate.
+            The residue graph is faster but less accurate. If the molecule is larger than 100 atoms,
+            the residue graph is used by default.
         algorithm : str
             The optimization algorithm to use. If not provided, an algorithm is determined based on the molecule's size.
             This can be one of the following:
@@ -1459,6 +1468,9 @@ class Molecule(entity.BaseEntity):
         molecule
             The optimized molecule (either the original object or a copy)
         """
+        if residue_graph is None:
+            residue_graph = self.count_atoms() > 100
+
         if not algorithm_kws:
             algorithm_kws = {}
 
