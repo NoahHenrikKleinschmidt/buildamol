@@ -283,6 +283,9 @@ class PlotlyViewer3D:
         return self.__atom_colors__.get(atom.element.title(), "black")
 
     def add(self, fig):
+        """
+        Add a plotly figure to the viewer.
+        """
         data = getattr(fig, "data", fig)
         self.figure.add_traces(data)
 
@@ -598,6 +601,9 @@ class MoleculeViewer3D(PlotlyViewer3D):
         self.figure = self._setup_fig(self._atom_df, self._bond_df)
 
     def rainbow(self):
+        """
+        Colorize the residues in rainbow colors
+        """
         self.highlight_residues(
             *self._src.get_residues(),
             bond_colors=[self._get_color() for i in self._src.get_residues()],
