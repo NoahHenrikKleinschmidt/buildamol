@@ -164,8 +164,8 @@ def patch(
 def recipe(
     atom1,
     atom2,
-    delete_in_target,
-    delete_in_source,
+    delete_in_target=None,
+    delete_in_source=None,
     id: str = None,
     description: str = None,
 ) -> "Linkage":
@@ -182,8 +182,10 @@ def recipe(
         The atom in the second (source) molecule to connect.
     delete_in_target : str or tuple of str
         The atom(s) in the first molecule to delete.
+        If not provided, any Hydrogen atom bound to atom1 will be deleted.
     delete_in_source : str or tuple of str
         The atom(s) in the second molecule to delete.
+        If not provided, any Hydrogen atom bound to atom2 will be deleted.
     id : str, optional
         The id of the linkage.
     description : str, optional
@@ -207,8 +209,8 @@ def recipe(
 def linkage(
     atom1,
     atom2,
-    delete_in_target,
-    delete_in_source,
+    delete_in_target=None,
+    delete_in_source=None,
     internal_coordinates: dict = None,
     id: str = None,
     description: str = None,
@@ -224,8 +226,10 @@ def linkage(
         The atom in the second (source) molecule to connect.
     delete_in_target : str or tuple of str, optional
         The atom(s) in the first molecule to delete.
+        If not provided, any Hydrogen atom bound to atom1 will be deleted.
     delete_in_source : str or tuple of str, optional
         The atom(s) in the second molecule to delete.
+        If not provided, any Hydrogen atom bound to atom2 will be deleted.
     internal_coordinates : dict, optional
         The internal coordinates of the atoms in the immediate vicinity of the newly formed bond.
         If provided, the link can be applied purely geometrically and will not require numeric optimization.
@@ -309,6 +313,28 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         self.description = description
 
     @property
+    def atom1(self) -> str:
+        """
+        The atom ID of the first atom in the bond.
+        """
+        return self.bond[0]
+
+    @atom1.setter
+    def atom1(self, value: str) -> None:
+        self.bond = (value, self.bond[1])
+
+    @property
+    def atom2(self) -> str:
+        """
+        The atom ID of the second atom in the bond.
+        """
+        return self.bond[1]
+
+    @atom2.setter
+    def atom2(self, value: str) -> None:
+        self.bond = (self.bond[0], value)
+
+    @property
     def bond(self) -> tuple:
         """
         The bond to form between the two molecules.
@@ -316,6 +342,10 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         if len(self.bonds) == 0:
             return None
         return self.bonds[0]
+
+    @bond.setter
+    def bond(self, value: tuple) -> None:
+        self.bonds = [value]
 
     @property
     def _ref_atoms(self) -> tuple:
