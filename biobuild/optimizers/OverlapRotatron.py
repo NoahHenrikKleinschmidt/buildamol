@@ -1,11 +1,17 @@
+"""
+The OverlapRotatron is a environment that approximates molecular graphs using multi-variat Gaussian distributions. The overlap between the distributions is used as the evaluation function for the environment.
+Hence, this environment tries to minimize the overlap between distributions in order to find favorable conformations.
+
+As measure for the overlap between two distributions, the Jensen-Shannon divergence is used by default. Custom overlap functions can be passed to the environment.
+"""
 import gym
 
 import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.stats import multivariate_normal
 
-from sklearn.mixture import GaussianMixture
-from scipy.stats import entropy
+# from sklearn.mixture import GaussianMixture
+# from scipy.stats import entropy
 
 
 import biobuild.optimizers.Rotatron as Rotatron

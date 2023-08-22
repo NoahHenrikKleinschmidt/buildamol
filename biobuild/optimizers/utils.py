@@ -134,9 +134,9 @@ def auto_algorithm(mol):
     """
     Decide which algorithm to use for a quick-optimize based on the molecule size.
     """
-    if mol.count_atoms() < 500:
-        if aux.HAS_RDKIT:
-            return "rdkit"
+    # if mol.count_atoms() < 500:
+    #     if aux.HAS_RDKIT:
+    #         return "rdkit"
     return "swarm"
 
 

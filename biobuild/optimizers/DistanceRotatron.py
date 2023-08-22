@@ -1,3 +1,16 @@
+"""
+The DistanceRotatron environment evaulates conformations based on the pairwise distances between nodes in the optimized graph.
+
+It uses two forces, a global "unfolding" force to maximize spacial separation between nodes, and a local "pushback" force to maximize distances between the closest nodes.
+
+The evaluation is computed as:
+
+.. math::
+
+    e_i = \\sum_{j \\neq i} d_{ij}^{unfold} + pushback \\cdot \\sum_{k=1}^N \\text{sorted}(d)_{ik}
+
+There are multiple variations of this basic formulation available (see the functions below). 
+"""
 import gym
 
 import numpy as np
@@ -7,6 +20,51 @@ import biobuild.optimizers.Rotatron as Rotatron
 import biobuild.graphs.BaseGraph as BaseGraph
 
 # Rotatron = Rotatron.Rotatron
+
+
+def simple_concatenation_function(self, x):
+    """
+    A simple concatentation function that computes the evaluation as:
+
+    Mean distance + pushback * mean of n smallest distances
+    """
+    smallest = np.sort(x)[: self.n_smallest]
+    e = np.power(np.mean(x), self.unfold) + self.pushback * np.mean(smallest)
+    return e
+
+
+def concatenation_function_with_penalty(self, x):
+    """
+    A concatentation function that computes the evaluation as:
+
+    (Mean distance + pushback * mean of n smallest distances) / clash penalty
+    """
+    smallest = np.sort(x)[: self.n_smallest]
+    penalty = np.sum(x < 1.5 * self.clash_distance)
+    e = np.power(np.mean(x), self.unfold) + self.pushback * np.mean(smallest)
+    e /= 1 + penalty
+    return e
+
+
+def concatenation_function_no_pushback(self, x):
+    """
+    A concatentation function that computes the evaluation as:
+
+    Mean distance
+    """
+    e = np.power(np.mean(x), self.unfold)
+    return e
+
+
+def concatenation_function_no_unfold(self, x):
+    """
+    A concatentation function that computes the evaluation as:
+
+    Mean distance + pushback * mean of n smallest distances
+    """
+    smallest = np.sort(x)[: self.n_smallest]
+    e = self.pushback * np.mean(smallest)
+    return e
 
 
 class DistanceRotatron(Rotatron):
@@ -25,6 +83,9 @@ class DistanceRotatron(Rotatron):
         Set to -1 to disable.
     pushback : float
         Short distances between atoms are given higher weight in the evaluation using this factor.
+    unfold : float
+        The exponent to use when computing the mean distance to others for
+        each node. Higher values give higher values to global unfolding of the graph.
     clash_distance : float
         The distance at which atoms are considered to be clashing.
     crop_nodes_further_than : float
@@ -46,26 +107,26 @@ class DistanceRotatron(Rotatron):
         rotatable_edges: list = None,
         radius: float = 20,
         pushback: float = 2,
+        unfold: float = 1,
         clash_distance: float = 0.9,
         crop_nodes_further_than: float = -1,
-        n_smallest: int = 5,
+        n_smallest: int = 10,
         concatenation_function: callable = None,
         bounds: tuple = (-np.pi, np.pi),
+        **kwargs
     ):
+        self.kwargs = kwargs
         self.radius = radius
         self.crop_radius = crop_nodes_further_than * radius if radius > 0 else -1
         self.clash_distance = clash_distance
         self.pushback = pushback
+        self.unfold = unfold
         self.n_smallest = n_smallest
 
         if concatenation_function is None:
-
-            def concatenation_function(self, x):
-                smallest = np.sum(np.sort(x)[: self.n_smallest])
-                return np.mean(x) + self.pushback * smallest
+            concatenation_function = simple_concatenation_function
 
         self._concatenation_function = concatenation_function
-
         self._bounds_tuple = bounds
 
         # =====================================
@@ -166,7 +227,8 @@ class DistanceRotatron(Rotatron):
             self._best_eval = self._last_eval
             self._best_state *= 0
             self._best_state += new_state
-            self._best_action += self._action_history
+            self._best_action *= 0
+            self._best_action += action
             self._best_clashes = clashes
 
         return new_state, self._last_eval, done, {}
@@ -176,6 +238,15 @@ class DistanceRotatron(Rotatron):
 
     def count_clashes(self):
         return np.sum(self._state_dists < self.clash_distance)
+
+
+__all__ = [
+    "DistanceRotatron",
+    "simple_concatenation_function",
+    "concatenation_function_with_penalty",
+    "concatenation_function_no_pushback",
+    "concatenation_function_no_unfold",
+]
 
 
 if __name__ == "__main__":

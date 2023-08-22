@@ -1,3 +1,7 @@
+"""
+This is the basic Rotatron environment. It provides the basic functionality for preprocessing a graph into numpy arrays, masking rotatable edges, and evaluating a possible solution.
+All other Rotatron environments inherit from this class.
+"""
 import gym
 import numpy as np
 

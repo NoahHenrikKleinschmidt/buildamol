@@ -67,6 +67,7 @@ def genetic_optimize(
     children: Union[int, float] = 0.3,
     mutants: Union[int, float] = 0.3,
     newcomers: Union[int, float] = 0.15,
+    variation_cooldown: float = 1,
     n_best: int = 1,
 ):
     """
@@ -97,6 +98,8 @@ def genetic_optimize(
         generating abarrent clones.
     newcomers: int or float, optional
         Newcomers are entirely new solution candidates.
+    variation_cooldown : float, optional
+        The rate at which the variation is reduced. The variation is reduced by this factor every generation. E.g. 0.95 will reduce the variation by 5% every generation.
     n_best : int, optional
         The number of best solutions to return at the end of the optimization.
 
@@ -137,6 +140,11 @@ def genetic_optimize(
     n_newcomers = newcomers
 
     blank = env.blank()
+    if hasattr(env, "_bounds_tuple"):
+        min_angle, max_angle = env._bounds_tuple
+    else:
+        min_angle, max_angle = -np.pi, np.pi
+
     population = np.stack([blank] * population_size)
     evals = np.zeros(population_size)
 
@@ -162,14 +170,14 @@ def genetic_optimize(
         for i in children_range:
             p1, p2 = np.random.choice(parents_range, size=2, replace=False)
             p1, p2 = parents[int(p1)], parents[int(p2)]
-            children[i] = (p1 + p2) / 2 + np.random.normal(
-                0, variation / 2, size=blank.shape
+            children[i] = (p1 + p2) / 2 + np.random.uniform(
+                -variation / 3, variation / 3, size=blank.shape
             )
 
         mutations = np.stack([blank] * n_mutants)
         for i in mutations_range:
-            mutations[i] = parents[np.random.randint(0, n_parents)] + np.random.normal(
-                0, variation, size=blank.shape
+            mutations[i] = parents[np.random.randint(0, n_parents)] + np.random.uniform(
+                -variation, variation, size=blank.shape
             )
 
         newcomers = np.stack([blank] * n_newcomers)
@@ -177,6 +185,8 @@ def genetic_optimize(
             newcomers[i] = env.action_space.sample()
 
         population = np.concatenate([parents, children, mutations, newcomers])
+        population = np.clip(population, min_angle, max_angle)
+
         evals = np.zeros(population_size)
 
         for i in pop_range:
@@ -204,6 +214,7 @@ def genetic_optimize(
             break
         # -------------------------------------------------------------------------------------
 
+        variation *= variation_cooldown
         steps += 1
 
     best = np.argsort(evals)[:n_best]
@@ -248,9 +259,12 @@ class _Particle:
         )
 
     def random_scatter(self) -> np.ndarray:
-        return self.position + np.random.uniform(
+        new = self.position + np.random.uniform(
             -self.variance, self.variance, size=self.position.shape
         )
+        if self.bounds:
+            new = np.clip(new, self.bounds[0], self.bounds[1])
+        return new
 
 
 def swarm_optimize(
@@ -274,8 +288,7 @@ def swarm_optimize(
     n_particles : int, optional
         The number of particles to use.
         Set this to None in order to compute the number of particles
-        based on the number of rotatable edges in the environment,
-        where one particle is used per two rotatable edges.
+        based on the number of rotatable edges in the environment.
     max_steps : int, optional
         The maximum number of steps to take.
     stop_if_done : bool, optional
@@ -299,7 +312,7 @@ def swarm_optimize(
         The solution and evaluation for the solution
     """
     if n_particles is None:
-        n_particles = max(3, len(env.rotatable_edges) // 2)
+        n_particles = max(10, len(env.rotatable_edges) // 3)
     _Particle.bounds = env._bounds_tuple or None
     population = [_Particle(env.action_space.shape[0]) for _ in range(n_particles)]
     best_particle = population[0]
@@ -323,8 +336,9 @@ def swarm_optimize(
             particle.update_velocity(w, c1, c2, best_particle)
             particle.update_position()
 
-        if stop_if_done and np.var([p.best_fitness for p in population]) < threshold:
-            break
+        if stop_if_done:
+            if np.var([p.best_fitness for p in population]) < threshold:
+                break
 
         steps += 1
 
@@ -581,8 +595,9 @@ def anneal_optimize(
         _Particle.variance *= cooldown_rate * 0.95
         steps += 1
 
-        if stop_if_done and np.var([p.best_fitness for p in particles]) < threshold:
-            break
+        if stop_if_done:
+            if np.var([p.best_fitness for p in particles]) < threshold:
+                break
 
     if n_best == 1:
         return best_solution, best_fitness
@@ -609,11 +624,12 @@ def rdkit_optimize(mol, steps=1000):
     Molecule
         The optimized molecule
     """
+    cls = mol.__class__
     if not aux.HAS_RDKIT:
         raise ImportError("RDKit is not installed")
     rdmol = mol.to_rdkit()
     aux.AllChem.MMFFOptimizeMolecule(rdmol, maxIters=steps)
-    return Molecule.Molecule.from_rdkit(rdmol)
+    return cls.from_rdkit(rdmol)
 
 
 __all__ = [
@@ -633,7 +649,7 @@ if __name__ == "__main__":
 
     for i in range(10):
         t1 = time.time()
-        sol, eval = swarm_optimize(env, n_particles=20)
+        sol, eval = genetic_optimize(env, variation_cooldown=0.98, variation=0.1)
         out = bb.optimizers.apply_solution(sol, env, mol.copy())
         print(time.time() - t1, out.count_clashes())
     out.show()
