@@ -9,7 +9,12 @@
 project = "biobuild"
 copyright = "2023, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "3.9.0"
+release = "3.9.33"
+
+
+import plotly.io as pio
+
+pio.renderers.default = "sphinx_gallery"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -22,10 +27,20 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx.ext.autodoc",
     "sphinx_design",
+    "nbsphinx",
+    # "sphinx_gallery.gen_gallery",
 ]
+
+sphinx_gallery_conf = {
+    "examples_dirs": "../examples",  # path to your example scripts
+    "gallery_dirs": "./examples",  # path to where to save gallery generated output
+}
+
 napoleon_numpy_docstring = True
 napoleon_use_param = True
 napoleon_use_admonition_for_notes = True
+nbsphinx_allow_errors = True
+
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 

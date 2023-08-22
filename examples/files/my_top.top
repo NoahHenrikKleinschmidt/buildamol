@@ -1,0 +1,100 @@
+
+RESI GLC           0.000  ! 4C1 alpha-D-glucose
+                           !
+GROU                       !
+ATOM C1   CC3162    0.340  !                  O6-HO6
+ATOM H1   HCA1      0.090  !                  |
+ATOM O1   OC311    -0.650  !              H61-C6-H62
+ATOM HO1  HCP1      0.420  !                  |
+ATOM C5   CC3163    0.110  !               H5-C5---O5
+ATOM H5   HCA1      0.090  !            H4   /       \    H1
+ATOM O5   OC3C61   -0.400  !              \ / HO3     \  /
+GROU                       !               C4 |        C1
+ATOM C2   CC3161    0.140  !              / \ O3   H2 /  \
+ATOM H2   HCA1      0.090  !        HO4-O4   \|    | /    O1-HO1
+ATOM O2   OC311    -0.650  !                  C3---C2
+ATOM HO2  HCP1      0.420  !                  |    |
+GROU                       !                  H3   O2-HO2
+ATOM C3   CC3161    0.140  !
+ATOM H3   HCA1      0.090  !
+ATOM O3   OC311    -0.650  !
+ATOM HO3  HCP1      0.420  !
+GROU
+ATOM C4   CC3161    0.140
+ATOM H4   HCA1      0.090
+ATOM O4   OC311    -0.650
+ATOM HO4  HCP1      0.420
+GROU
+ATOM C6   CC321     0.050
+ATOM H61  HCA2      0.090
+ATOM H62  HCA2      0.090
+ATOM O6   OC311    -0.650
+ATOM HO6  HCP1      0.420
+!
+BOND C1   O1        C1   H1        O1   HO1       C1   O5        C1   C2
+BOND C2   H2        C2   O2        O2   HO2       C2   C3        C3   H3
+BOND C3   O3        O3   HO3       C3   C4        C4   H4        C4   O4
+BOND O4   HO4       C4   C5        C5   H5        C5   C6        C6   H61
+BOND C6   H62       C6   O6        O6   HO6       C5   O5
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   O1   C2  *C1   H1     1.4077  108.33 -123.34  103.67   1.1200
+IC   O1   O5  *C1   C2     1.4077  108.39 -119.83  112.62   1.5516
+IC   O2   C3  *C2   H2     1.4293  114.98 -108.39  100.80   1.0662
+IC   O2   C1  *C2   C3     1.4293  117.26 -138.07  113.63   1.4880
+IC   O3   C4  *C3   H3     1.4122  110.86  120.36  107.49   1.1219
+IC   O3   C2  *C3   C4     1.4122  109.00  121.20  109.13   1.5315
+IC   O4   C5  *C4   H4     1.4206  109.25 -124.20  109.65   1.1311
+IC   O4   C3  *C4   C5     1.4206  103.58 -118.81  114.40   1.5087
+IC   C6   O5  *C5   H5     1.4718  112.19  113.05  108.36   1.1212
+IC   C6   C4  *C5   O5     1.4718  112.04  128.71  113.93   1.4175
+IC   O6  H62  *C6  H61     1.3851  111.30 -112.76  100.96   1.1590
+IC   O6   C5  *C6  H62     1.3851  110.28 -128.49  116.95   1.1067
+IC   O5   C1   C2   C3     1.4351  112.62   51.83  113.63   1.4880
+IC   C1   C2   C3   C4     1.5516  113.63  -48.48  109.13   1.5315
+IC   C2   C3   C4   C5     1.4880  109.13   47.85  114.40   1.5087
+IC   C3   C4   C5   O5     1.5315  114.40  -49.84  113.93   1.4175
+IC   C4   C5   O5   C1     1.5087  113.93   51.43  114.13   1.4351
+IC   C5   O5   C1   C2     1.4175  114.13  -51.82  112.62   1.5516
+IC   C4   C5   C6   O6     1.5087  112.04 -173.06  110.28   1.3851
+IC   O5   C1   O1  HO1     1.4351  108.39   47.62  101.41   0.9789
+IC   C1   C2   O2  HO2     1.5516  117.26  -50.05  114.32   0.9181
+IC   C2   C3   O3  HO3     1.4880  109.00  -28.48  103.99   0.9971
+IC   C3   C4   O4  HO4     1.5315  103.58   55.55  110.36   0.9685
+IC   C5   C6   O6  HO6     1.4718  110.28 -101.06  108.67   0.9667
+PATC FIRS NONE LAST NONE
+
+! equatorial-equatorial 1->4 linkage
+! LACTOS03, EYOCUQ01, CELLOB01
+PRES my_14bb           0.02 ! (i)1->4(i-1) equatorial at C1 and equatorial at C4
+dele atom 1HO4
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C4  CC3161    0.09 !
+ATOM 1O4  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O4  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C3  1C4  1O4  2C1    1.5009  110.76   81.86  121.00   1.3902  ! psi
+IC   1C4  1O4  2C1  2O5    1.4560  121.00 -130.97  108.63   1.4470  ! phi
+IC   2O5  1O4 *2C1  2C2    1.4470  108.63 -122.09  110.89   1.5316
+IC   2O5  1O4 *2C1  2H1    1.4470  108.63  121.92  111.32   1.0837
+
+! axial-equatorial 1->6 linkage
+! MELBM01
+! galactose and glucose
+! alpha,beta mellibiose hydrate
+PRES my_16ab          -0.07 ! (i)1->6(i-1) axial at C1 and equatorial at C6
+dele atom 1HO6
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C6   CC321    0.00 !
+ATOM 1O6   OC301   -0.36 !
+ATOM 2C1   CC3162   0.29 !
+BOND 1O6 2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C5  1C6  1O6  2C1    1.5266  104.41  178.98  111.56   1.4036 ! PSI
+IC   1C6  1O6  2C1  2O5    1.4492  111.56   71.24  109.48   1.4270 ! PHI
+IC   2O5  1O6 *2C1  2C2    1.4270  109.48  124.57  110.72   1.5065
+IC   2O5  1O6 *2C1  2H1    1.4270  109.48 -116.57  107.58   1.1054
+!IC   1O6  2C1  2O5  2C5    1.4036  109.48   66.50  112.10   1.4061
+!IC   1O6  2C1  2C2  2C3    1.4036  110.72  -67.90  109.19   1.5200

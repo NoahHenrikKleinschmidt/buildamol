@@ -12,6 +12,7 @@ API Documentation
    biobuild.core
    biobuild.resources
    biobuild.optimizers
+   biobuild.visuals
    biobuild.graphs
    biobuild.structural
    biobuild.utils
