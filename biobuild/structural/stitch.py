@@ -42,13 +42,13 @@ class Stitcher(base.Connector):
         self,
         target: "Molecule.Molecule",
         source: "Molecule.Molecule",
-        target_removals: tuple,
-        source_removals: tuple,
+        target_removals: tuple = None,
+        source_removals: tuple = None,
         target_atom: Union[int, "base_classes.Atom"] = None,
         source_atom: Union[int, "base_classes.Atom"] = None,
         target_residue: Union[int, "base_classes.Residue"] = None,
         source_residue: Union[int, "base_classes.Residue"] = None,
-        optimization_steps: int = 1e4,
+        optimization_steps: int = 30,
         **kwargs,
     ) -> "Molecule.Molecule":
         """
@@ -63,9 +63,11 @@ class Stitcher(base.Connector):
         target_removals : tuple
             A tuple of atoms to be removed from the target molecule. These must be the atom's ids within the attaching residue.
             All atoms must be part fo the same residue as the attaching `target_atom`.
+            If not provided, just any Hydrogen atom next to the `target_atom` will be used.
         source_removals : tuple
             A tuple of atoms to be removed from the source molecule. These must be the atom's ids within the attaching residue.
             All atoms must be part fo the same residue as the attaching `source_atom`.
+            If not provided, just any Hydrogen atom next to the `source_atom` will be used.
         target_atom : int or Atom
             The atom on the target molecule to which the source molecule will be attached. This may either be the atom object directly or its serial number.
             If none is provided, the molecule's "root atom" is used (if defined).
@@ -77,7 +79,7 @@ class Stitcher(base.Connector):
         source_residue : int or Residue
             The residue hosting the source atom. This is only required if the source atom is not given directly or specified by name.
         optimization_steps : int, optional
-            The number of steps to take in the optimization process, by default 1e4
+            The number of steps to take in the optimization process.
         **kwargs
             Additional keyword arguments to pass to the optimizer. See the documentation for `biobuild.optimizers.agents.optimize` for more details.
 
@@ -87,6 +89,10 @@ class Stitcher(base.Connector):
             The target and source molecules after stitching. At this point, the source molecule is aligned
             to the target molecules but not yet integrated into it. Use the `merge` method to do this.
         """
+        if not target_removals:
+            target_removals = []
+        if not source_removals:
+            source_removals = []
 
         if self.copy_target:
             target = target.copy()
@@ -151,7 +157,6 @@ class Stitcher(base.Connector):
         # compute translation vector
         old_centroid = _old_coords.mean(axis=0)
         new_centroid = _new_coords.mean(axis=0)
-        
 
         _relative_old_coords = _old_coords - old_centroid
         _relative_new_coords = _new_coords - new_centroid
@@ -162,9 +167,7 @@ class Stitcher(base.Connector):
 
         # self._v.draw_edges(self.source.bonds, color="black", opacity=0.5)
         atom_coords = np.array([atom.coord for atom in self.source.get_atoms()])
-        atom_coords = (
-            (R @ (atom_coords - old_centroid).T).T + new_centroid
-        )
+        atom_coords = (R @ (atom_coords - old_centroid).T).T + new_centroid
         for coord, atom in zip(atom_coords, self.source.get_atoms()):
             atom.set_coord(coord)
 
@@ -181,14 +184,32 @@ class Stitcher(base.Connector):
         Find the atoms to remove from the target and source molecules
         while stitching them together
         """
-        _target_removals = [
-            self.target.get_atom(atom, residue=self._target_residue)
-            for atom in target_removals
-        ]
-        _source_removals = [
-            self.source.get_atom(atom, residue=self._source_residue)
-            for atom in source_removals
-        ]
+        if len(target_removals) == 0:
+            _target_removals = [
+                next(
+                    i
+                    for i in self.target.get_neighbors(self._anchors[0])
+                    if i.element == "H"
+                )
+            ]
+        else:
+            _target_removals = [
+                self.target.get_atom(atom, residue=self._target_residue)
+                for atom in target_removals
+            ]
+        if len(source_removals) == 0:
+            _source_removals = [
+                next(
+                    i
+                    for i in self.source.get_neighbors(self._anchors[1])
+                    if i.element == "H"
+                )
+            ]
+        else:
+            _source_removals = [
+                self.source.get_atom(atom, residue=self._source_residue)
+                for atom in source_removals
+            ]
         return (set(_target_removals), set(_source_removals))
 
     def _remove_atoms(self):
@@ -228,7 +249,7 @@ class Stitcher(base.Connector):
                 atom.set_serial_number(adx)
                 adx += 1
 
-    def _optimize(self, steps: int = 1e3, **kwargs):
+    def _optimize(self, steps: int = 30, **kwargs):
         """
         Optimize the geometry of the source molecule
 
@@ -299,7 +320,7 @@ class Stitcher(base.Connector):
         edges = sorted(tmp.get_residue_connections())
         env = optimizers.DistanceRotatron(graph, edges)
 
-        best, _ = optimizers.scipy_optimize(env, int(steps), **kwargs)
+        best, _ = optimizers.swarm_optimize(env, int(steps), **kwargs)
         self._policy = edges, best
 
         self._target_residue.parent = target_residue_parent
@@ -556,12 +577,12 @@ if __name__ == "__main__":
     s.apply(
         glc,
         glc.copy(),
-        ["O1", "HO1"],
-        [
-            "HO4",
-        ],
-        "C1",
-        "O4",
+        # ["O1", "HO1"],
+        # [
+        #     "HO4",
+        # ],
+        target_atom="C1",
+        source_atom="O4",
     )
     s.merge().show()
 
