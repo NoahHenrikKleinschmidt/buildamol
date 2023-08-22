@@ -25,8 +25,6 @@ class ResidueGraph(BaseGraph):
         self._atomic_bonds_list = []
 
         self._residues = {i.id: i for i in self.nodes}
-        for r in self.nodes:
-            r.coord = r.center_of_mass()
 
     @classmethod
     def from_molecule(cls, mol, detailed: bool = False, locked: bool = True):
@@ -186,7 +184,7 @@ class ResidueGraph(BaseGraph):
         include_clashes: bool = True,
         n_samples: Union[int, float] = 0.5,
         f: float = 1.0,
-        no_hydrogens: bool = True,
+        no_hydrogens: bool = False,
     ) -> "ResidueGraph":
         """
         Use a detailed representation of the residues in the molecule by adding the specific atoms
@@ -264,9 +262,10 @@ class ResidueGraph(BaseGraph):
                 else:
                     atoms = np.array(residue.child_list)
 
-                n = n_samples
                 if n_samples < 1:
-                    n = int(np.ceil(len(atoms) * n_samples))
+                    n = max(1, int(np.floor(len(atoms) * n_samples)))
+                else:
+                    n = n_samples
 
                 samples = struct.sample_atoms_around_reference(
                     residue.center_of_mass(), atoms, num_samples=n
@@ -321,6 +320,15 @@ class ResidueGraph(BaseGraph):
                         _added_nodes.add(atom)
 
         # prune edge triplets of atoms that are part of the same residues
+        self.prune_triplets()
+
+        return self
+
+    def prune_triplets(self):
+        """
+        Prune bond triangles where two nodes from the
+        same residue are connected to each other and the residue...
+        """
         for triplet in nx.cycle_basis(self):
             if len(triplet) == 3:
                 length_12 = np.linalg.norm(triplet[0].coord - triplet[1].coord)
@@ -334,8 +342,6 @@ class ResidueGraph(BaseGraph):
                     self.remove_edge(triplet[1], triplet[2])
                 else:
                     self.remove_edge(triplet[0], triplet[2])
-
-        return self
 
     def draw(self):
         v = vis.ResidueGraphViewer3D()
