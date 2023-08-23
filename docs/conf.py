@@ -9,7 +9,7 @@
 project = "biobuild"
 copyright = "2023, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "3.9.34"
+release = "3.9.36"
 
 
 import plotly.io as pio
@@ -28,13 +28,15 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx_design",
     "nbsphinx",
+    "sphinxmermaid",
+    # "sphinx_panels",
     # "sphinx_gallery.gen_gallery",
 ]
 
-sphinx_gallery_conf = {
-    "examples_dirs": "../examples",  # path to your example scripts
-    "gallery_dirs": "./examples",  # path to where to save gallery generated output
-}
+# sphinx_gallery_conf = {
+#     "examples_dirs": "../examples",  # path to your example scripts
+#     "gallery_dirs": "./examples",  # path to where to save gallery generated output
+# }
 
 napoleon_numpy_docstring = True
 napoleon_use_param = True
