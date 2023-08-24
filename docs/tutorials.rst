@@ -32,18 +32,25 @@ On this page you will find some tutorials on how to use Biobuild. Feel free to b
    This tutorial covers the different syntax flavors that Biobuild supports.
 
 
-.. card:: Converting Formats
-   :link: example_converting_formats
-   :link-type: ref
-
-   This tutorial covers how to convert between different file formats and how to use other libraries with Biobuild.
-
-
 .. card:: Visualizing Molecules
    :link: example_visualizing_molecules
    :link-type: ref
 
    This tutorial covers how to visualize molecules using Biobuild.
+
+
+.. card:: Optimizing Molecules
+   :link: example_optimization
+   :link-type: ref
+
+   This tutorial covers how to optimize molecular conformations in Biobuild.
+
+
+.. card:: Converting Formats
+   :link: example_converting_formats
+   :link-type: ref
+
+   This tutorial covers how to convert between different file formats and how to use other libraries with Biobuild.
 
 .. card:: Built-in Resources
    :link: example_built_in_resources
@@ -57,9 +64,19 @@ On this page you will find some tutorials on how to use Biobuild. Feel free to b
 
    This tutorial covers how to add your own resources to Biobuild so they are available to all your projects.
 
-.. card:: Optimizing Molecules
-   :link: example_optimization
+---
+
+More applied tutorials
+----------------------
+
+.. card:: Building circular Molecules
+   :link: example_building_circular
    :link-type: ref
 
-   This tutorial covers how to optimize molecular conformations in Biobuild.
+   This tutorial covers how to build circular molecules in Biobuild together with RDKit.
 
+.. card:: Building Polyphenylene
+   :link: example_building_polyphenylene
+   :link-type: ref
+
+   In this tutorial we will build a polyphenylene dendrimer using some automization.
