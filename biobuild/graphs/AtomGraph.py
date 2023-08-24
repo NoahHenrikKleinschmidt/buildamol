@@ -110,8 +110,10 @@ class AtomGraph(BaseGraph):
         """
         self._locked_edges.update(other._locked_edges)
         bond_orders = nx.get_edge_attributes(other, "bond_order")
+        bond_objs = nx.get_edge_attributes(other, "bond_obj")
         self.add_edges_from(other.edges)
         nx.set_edge_attributes(self, bond_orders, "bond_order")
+        nx.set_edge_attributes(self, bond_objs, "bond_obj")
 
     def get_neighbors(self, atom: "base_classes.Atom", n: int = 1, mode="upto"):
         """

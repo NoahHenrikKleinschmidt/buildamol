@@ -79,7 +79,7 @@ class ResidueGraph(BaseGraph):
             new.make_detailed()
             if locked:
                 new._locked_edges.update(
-                    (i for i in mol._AtomGraph._locked_edges if i in new.edges)
+                    (i for i in mol._AtomGraph._locked_edges if tuple(i) in new.edges)
                 )
         return new
 
@@ -373,7 +373,7 @@ class ResidueGraph(BaseGraph):
         list
             The residues in the molecule
         """
-        return list(self._residues.values())
+        return list(sorted(self._residues.values()))
 
     @property
     def atomic_bonds(self):
