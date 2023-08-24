@@ -224,10 +224,10 @@ def set_default_topology(obj, overwrite: bool = False):
         current = _defaults.__default_instances__.get("Topology", None)
         if current:
             if not os.path.exists(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"):
-                current.to_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
+                current.save(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
     _defaults.__default_instances__["Topology"] = obj
     if overwrite:
-        obj.to_json(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE)
+        obj.save(_defaults.DEFAULT_CHARMM_TOPOLOGY_FILE)
 
 
 def get_default_topology() -> "CHARMMTopology":
@@ -251,7 +251,7 @@ def restore_default_topology(overwrite: bool = True):
     overwrite : bool
         If set to `True`, the backup is permanently set as the default again.
     """
-    _defaults.__default_instances__["Topology"] = CHARMMTopology.from_json(
+    _defaults.__default_instances__["Topology"] = CHARMMTopology.load(
         _defaults.DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"
     )
     if overwrite:
