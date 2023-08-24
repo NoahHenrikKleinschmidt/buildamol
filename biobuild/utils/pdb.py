@@ -90,7 +90,7 @@ def parse_connect_lines(filename):
     """
     with open(filename, "r") as f:
         lines = f.readlines()
-    bonds = []
+    bonds = {}
     known_bonds = set()
     for line in lines:
         if line.startswith("CONECT"):
@@ -108,9 +108,10 @@ def parse_connect_lines(filename):
                 # make sure we don't add the same bond twice
                 if b[::-1] in known_bonds:
                     continue
-                bonds.append(b)
+                bonds.setdefault(b, 0)
+                bonds[b] += 1
                 known_bonds.add(b)
-    return bonds
+    return [(*k, v) for k, v in bonds.items()]
 
 
 def make_connect_table(mol, symmetric=True):
@@ -132,19 +133,19 @@ def make_connect_table(mol, symmetric=True):
         The lines to add to the PDB file.
     """
     connectivity = {}
-    for atom_a, atom_b in mol.bonds:
-        a = atom_a.serial_number
-        b = atom_b.serial_number
+    for bond in mol.get_bonds():
+        a = bond.atom1.serial_number
+        b = bond.atom2.serial_number
         if a not in connectivity:
-            connectivity[a] = [b]
+            connectivity[a] = [b] * bond.order
         else:
-            connectivity[a].append(b)
+            connectivity[a].extend([b] * bond.order)
 
         if symmetric:
             if b not in connectivity:
-                connectivity[b] = [a]
+                connectivity[b] = [a] * bond.order
             else:
-                connectivity[b].append(a)
+                connectivity[b].extend([a] * bond.order)
 
     lines = []
     for atom in connectivity:

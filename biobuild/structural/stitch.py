@@ -100,7 +100,7 @@ class Stitcher(base.Connector):
                 if not isinstance(target_residue, int):
                     target_residue = target_residue.id[1]
                 target_residue = target.get_residue(target_residue, by="seqid")
-            target_atom = target.get_atom(target_atom, residue=target_residue)
+                target_atom = target.get_atom(target_atom, residue=target_residue)
         if self.copy_source:
             source = source.copy()
             if source_residue:
@@ -227,7 +227,6 @@ class Stitcher(base.Connector):
             obj = mapping[i]
 
             for atom in removals:
-                obj._AtomGraph.remove_node(atom)
                 bonds = (
                     i
                     for i in obj._bonds
@@ -237,6 +236,7 @@ class Stitcher(base.Connector):
                 for bond in bonds:
                     # obj._bonds.remove(bond)
                     obj._remove_bond(*bond)
+                obj._AtomGraph.remove_node(atom)
                 p = atom.get_parent()
                 if p:
                     p.detach_child(atom.get_id())
@@ -317,10 +317,15 @@ class Stitcher(base.Connector):
         graph = tmp.make_residue_graph()
         graph.make_detailed(n_samples=0.5)
 
-        edges = sorted(tmp.get_residue_connections())
+        edges = tmp.get_residue_connections()
         env = optimizers.DistanceRotatron(graph, edges)
 
-        best, _ = optimizers.swarm_optimize(env, int(steps), **kwargs)
+        best, _ = optimizers.swarm_optimize(
+            env,
+            n_particles=kwargs.pop("n_particles", 5),
+            max_steps=int(steps),
+            **kwargs,
+        )
         self._policy = edges, best
 
         self._target_residue.parent = target_residue_parent

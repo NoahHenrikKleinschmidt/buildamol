@@ -1,4 +1,5 @@
 import biobuild.utils as utils
+import biobuild.utils.visual as visual
 import biobuild.resources as resources
 import biobuild.graphs as graphs
 import biobuild.optimizers as optimizers

@@ -728,11 +728,10 @@ def apply_reference_bonds(structure, _compounds=None):
     ----------
     structure
         The structure to apply the bonds to. This can be any of the following objects which hosts Atoms:
-        - `Bio.PDB.Structure`
-        - `Bio.PDB.Model`
-        - `Bio.PDB.Chain`
-        - `Bio.PDB.Residue`
-        - `Bio.PDB.Atom`
+        - `biobuild.Structure`
+        - `biobuild.Model`
+        - `biobuild.Chain`
+        - `biobuild.Residue`
 
     _compounds : PDBECompounds
         The reference compounds to use for bond inference. If not provided, the default compounds are used.
@@ -755,13 +754,16 @@ def apply_reference_bonds(structure, _compounds=None):
             return []
 
         ref = _compounds.get(residue.resname)
-        bonds = ((a.id, b.id) for a, b in ref.get_bonds())
         bonds = (
-            (_atom_from_residue(a, residue) and _atom_from_residue(b, residue))
-            for a, b in bonds
+            (
+                _atom_from_residue(bond.atom1.id, residue),
+                _atom_from_residue(bond.atom2.id, residue),
+                bond.order,
+            )
+            for bond in ref.get_bonds()
         )
         bonds = [
-            bond for bond in bonds if bond[0] and bond[1]
+            bond for bond in bonds if bond[1] is not None and bond[0] is not None
         ]  # make sure to have no None entries...
         return bonds
 
@@ -1060,7 +1062,14 @@ def _H_id_match(H, non_H):
 if __name__ == "__main__":
     import biobuild as bb
 
-    mol = bb.Molecule.from_pubchem("1-ethyl-4-methyltriazole")
+    bb.load_sugars()
+
+    mol = bb.Molecule.from_compound("GLC")
+    mol.bonds = []
+    bonds = apply_reference_bonds(mol.structure)
+    mol._add_bonds(*bonds)
+    mol.show()
+
     x = find_clashes(mol)
 
     # mol = bb.Molecule.from_pubchem("GlcNAc")
