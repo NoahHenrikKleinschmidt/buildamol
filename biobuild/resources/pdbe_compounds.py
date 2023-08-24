@@ -418,10 +418,10 @@ def set_default_compounds(obj, overwrite: bool = False):
             if not os.path.exists(
                 defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak"
             ):
-                current.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
+                current.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
     defaults.__default_instances__["PDBECompounds"] = obj
     if overwrite:
-        obj.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
+        obj.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
 
 
 def save_as_default_compounds(obj):
@@ -438,8 +438,8 @@ def save_as_default_compounds(obj):
         raise TypeError("The object must be a PDBECompounds instance.")
     current = defaults.get_default_instance("PDBECompounds")
     if current:
-        current.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
-    obj.to_json(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
+        current.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
+    obj.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
 
 
 def restore_default_compounds(overwrite: bool = True):
@@ -923,8 +923,10 @@ class PDBECompounds:
         elif return_type == "structure":
             return self._make_structure(_dict)
         elif return_type == "residue":
-            res = self._make_residue(_dict)
-            self._fill_residue(res, _dict)
+            chain = base_classes.Chain("A")
+            res = next(self._make_residues(_dict))
+            chain.add(res)
+            self._fill_residues(chain, _dict)
             return res
         else:
             raise ValueError(f"Invalid return_type '{return_type}'.")
@@ -1264,8 +1266,11 @@ class PDBECompounds:
             res_a, res_b = pdb["bonds"]["parents"][bdx]
             a = mol.get_atom(a, residue=res_a)
             b = mol.get_atom(b, residue=res_b)
-            for _ in range(_bond_order_rev_map.get(pdb["bonds"]["orders"][bdx])):
-                mol.add_bond(a, b)
+            order = pdb["bonds"]["orders"][bdx]
+            order = _bond_order_rev_map.get(order)
+            mol.add_bond(a, b, order)
+            # for _ in range(_bond_order_rev_map.get(pdb["bonds"]["orders"][bdx])):
+            #     mol.add_bond(a, b)
 
         return mol
 
@@ -1378,9 +1383,7 @@ def _molecule_to_pdbx_dict(mol):
     """
     Make a pdbx dictionary from a molecule.
     """
-    _bond_dict = {}
-    for bond in mol.get_bonds():
-        _bond_dict[bond] = _bond_dict.get(bond, 0) + 1
+    _bond_dict = {bond: bond.order for bond in mol.get_bonds()}
 
     pdb = {
         "atoms": {

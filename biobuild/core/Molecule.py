@@ -1091,7 +1091,7 @@ class Molecule(entity.BaseEntity):
         _compound_2d, _compound_3d = resources.pubchem.query(query, by=by, idx=idx)
         new = _molecule_from_pubchem(_compound_2d.iupac_name, _compound_3d)
         _new = cls(new.structure)
-        _new.add_bonds(*new._bonds)
+        _new.add_bonds(*(i.to_tuple() for i in new._bonds))
         new = _new
         new.id = _compound_2d.iupac_name
         new.set_root(root_atom)
@@ -1720,7 +1720,7 @@ def _molecule_from_pubchem(id, comp):
         element_counts[element] = element_counts.get(element, 0) + 1
 
         id = f"{element}{element_counts[element]}"
-        _atom = bio.Atom.Atom(
+        _atom = entity.base_classes.Atom(
             id,
             coord=np.array((atom.x, atom.y, atom.z)),
             serial_number=adx,
@@ -1735,7 +1735,7 @@ def _molecule_from_pubchem(id, comp):
         adx += 1
 
     for bond in bonds:
-        mol.add_bond(bond.aid1, bond.aid2)
+        mol.add_bond(bond.aid1, bond.aid2, bond.order)
 
     return mol
 

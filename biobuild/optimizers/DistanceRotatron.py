@@ -130,11 +130,8 @@ class DistanceRotatron(Rotatron):
         self._bounds_tuple = bounds
 
         # =====================================
-
-        rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)
-
-        # =====================================
         if self.crop_radius > 0:
+            rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)
             edge_coords = np.array(
                 [(a.coord + b.coord) / 2 for a, b in rotatable_edges]
             )

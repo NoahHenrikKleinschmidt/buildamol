@@ -276,6 +276,7 @@ def swarm_optimize(
     w: float = 0.9,
     c1: float = 0.5,
     c2: float = 0.3,
+    cooldown_rate: float = 0.99,
     n_best: int = 1,
 ):
     """
@@ -303,6 +304,8 @@ def swarm_optimize(
         The cognitive parameter for the particle swarm optimization.
     c2 : float, optional
         The social parameter for the particle swarm optimization.
+    cooldown_rate : float, optional
+        The rate at which the inertia parameter is reduced. The inertia parameter is reduced by this factor every generation. E.g. 0.95 will reduce the inertia parameter by 5% every generation.
     n_best : int, optional
         The number of best solutions to return at the end of the optimization.
 
@@ -340,6 +343,7 @@ def swarm_optimize(
             if np.var([p.best_fitness for p in population]) < threshold:
                 break
 
+        w *= cooldown_rate
         steps += 1
 
     if n_best == 1:
@@ -524,7 +528,7 @@ def anneal_optimize(
     stop_if_done: bool = True,
     threshold: float = 1e-6,
     variance: float = 0.3,
-    cooldown_rate: float = 0.97,
+    cooldown_rate: float = 0.98,
     n_best: int = 1,
 ):
     """

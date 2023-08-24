@@ -8,32 +8,56 @@ from openbabel import pybel
 import Bio.PDB as bio
 
 import biobuild as bb
-import base
+import tests.base as bas
 
 
-def test_class():
-    converter = bb.utils.convert.PybelBioPythonConverter()
-    assert converter is not None
+def test_biopython():
+    mol = bb.read_smiles("C1=CC=CC=C1")
+    assert mol is not None
+
+    _biopython = mol.to_biopython()
+    assert _biopython is not None
+
+    assert sum(1 for i in _biopython.get_atoms()) == mol.count_atoms()
+
+    reverse = bb.Molecule(_biopython)
+    assert reverse is not None
+
+    assert reverse.count_atoms() == 12
+    assert reverse.count_bonds() == 0
 
 
-def test_convert_molecule():
-    _pybel = pybel.readfile("pdb", base.MANNOSE)
-    _pybel = next(_pybel)
+def test_openbabel():
+    mol = bb.read_smiles("C=CC=CC=C")
+    assert mol is not None
 
-    _biopython = bio.PDBParser().get_structure("MAN", base.MANNOSE)
+    _pybel = mol.to_pybel()
+    assert _pybel is not None
 
-    converter = bb.utils.convert.PybelBioPythonConverter()
-    _converted = converter.convert(_pybel)
-    assert _converted is not None
+    assert _pybel.OBMol.NumAtoms() == mol.count_atoms()
+    assert _pybel.OBMol.NumBonds() == mol.count_bonds()
 
-    assert len(list(_converted.get_atoms())) == len(list(_biopython.get_atoms()))
+    reverse = bb.Molecule.from_pybel(_pybel)
+    assert reverse is not None
 
-    _ref_atoms = [(i.get_parent().id[1], i.coord) for i in _biopython.get_atoms()]
-    for residue in _converted.get_residues():
-        for atom in residue.get_atoms():
-            for r in _ref_atoms:
-                if r[0] == residue.id[1]:
-                    if np.abs(np.sum((atom.coord + r[1]) - 2 * atom.coord)) < 0.01:
-                        break
-            else:
-                raise AssertionError("Atom not found")
+    assert reverse.count_atoms() == 14
+    assert reverse.count_bonds() == 13
+    assert sum(1 for bond in reverse.get_bonds() if bond.order == 2) == 3
+
+
+def test_rdkit():
+    mol = bb.read_smiles("C1=CC=CC=C1")
+    assert mol is not None
+
+    rdmol = mol.to_rdkit()
+    assert rdmol is not None
+
+    assert rdmol.GetNumAtoms() == mol.count_atoms()
+    assert rdmol.GetNumBonds() == mol.count_bonds()
+
+    reverse = bb.Molecule.from_rdkit(rdmol)
+    assert reverse is not None
+
+    assert reverse.count_atoms() == 12
+    assert reverse.count_bonds() == 12
+    assert sum(1 for bond in reverse.get_bonds() if bond.order == 2) == 3

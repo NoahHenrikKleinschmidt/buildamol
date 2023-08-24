@@ -8,7 +8,7 @@ import numpy as np
 import biobuild as bb
 import Bio.PDB as bio
 
-import base
+import tests.base as bas
 
 
 def test_molecule():

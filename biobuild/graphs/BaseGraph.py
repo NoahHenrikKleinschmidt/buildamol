@@ -275,11 +275,13 @@ class BaseGraph(nx.Graph):
         if not max_ancestors:
             max_ancestors = np.inf
 
-        circulars = self.nodes_in_cycles
+        circulars = [set(i) for i in nx.cycle_basis(self)]
         rotatable_edges = [
             i
             for i in self.edges
-            if not self.is_locked(*i) and not (i[0] in circulars and i[1] in circulars)
+            if not self.is_locked(*i)
+            and self[i[0]][i[1]]["bond_order"] == 1
+            and not self.in_same_cycle(*i, circulars)
         ]
         if root_node is not None:
             _directed = nx.dfs_tree(self, root_node)
@@ -297,6 +299,22 @@ class BaseGraph(nx.Graph):
         ]
 
         return rotatable_edges
+
+    def in_same_cycle(self, node_1, node_2, cycles=None) -> bool:
+        """
+        Check if two nodes are in the same cycle
+
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes to check
+        """
+        if not cycles:
+            cycles = nx.cycle_basis(self)
+        for cycle in cycles:
+            if node_1 in cycle and node_2 in cycle:
+                return True
+        return False
 
     def direct_edges(self, root_node=None, edges: list = None) -> list:
         """
@@ -519,33 +537,35 @@ if __name__ == "__main__":
     )
     v = mol.draw()
     g = BaseGraph(None, mol.bonds)
-    ref_atom_graph = mol.get_atom_graph()
+    nx.set_edge_attributes(g, 1, "bond_order")
+    g.find_rotatable_edges()
+    #  ref_atom_graph = mol.get_atom_graph()
 
-    a, b = mol.get_atoms(68, 65)
+    # a, b = mol.get_atoms(68, 65)
 
-    x = g.get_descendants(a, b)
-    for i in x:
-        v.draw_atom(i, color="purple")
+    # x = g.get_descendants(a, b)
+    # for i in x:
+    #     v.draw_atom(i, color="purple")
 
-    measure_performance = True
-    repeats = 500
-    number = 800
-    if measure_performance:
-        test_old = lambda: BaseGraph.get_descendants_old(ref_atom_graph, a, b)
-        test_new = lambda: g.get_descendants(a, b)
-        # test_2 = lambda: g.get_descendants_2(a, b)
+    # measure_performance = True
+    # repeats = 500
+    # number = 800
+    # if measure_performance:
+    #     test_old = lambda: BaseGraph.get_descendants_old(ref_atom_graph, a, b)
+    #     test_new = lambda: g.get_descendants(a, b)
+    #     # test_2 = lambda: g.get_descendants_2(a, b)
 
-        times_old = [timeit(test_old, number=number) for _ in range(repeats)]
-        times_new = [timeit(test_new, number=number) for _ in range(repeats)]
-        # times_2 = [timeit(test_2, number=number) for _ in range(repeats)]
+    #     times_old = [timeit(test_old, number=number) for _ in range(repeats)]
+    #     times_new = [timeit(test_new, number=number) for _ in range(repeats)]
+    #     # times_2 = [timeit(test_2, number=number) for _ in range(repeats)]
 
-        sns.distplot(times_old, label="old", kde=True, bins=20)
-        sns.distplot(times_new, label="new", kde=True, bins=20)
-        # sns.distplot(times_2, label="2", kde=True, bins=20)
-        plt.legend()
-        plt.show()
+    #     sns.distplot(times_old, label="old", kde=True, bins=20)
+    #     sns.distplot(times_new, label="new", kde=True, bins=20)
+    #     # sns.distplot(times_2, label="2", kde=True, bins=20)
+    #     plt.legend()
+    #     plt.show()
 
-    pass
+    # pass
 
 # v.draw_edges((a, b), color="limegreen", linewidth=4, elongate=1.1)
 # ref_decendants = ref_atom_graph.get_descendants(a, b)

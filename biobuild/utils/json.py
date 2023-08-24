@@ -230,13 +230,16 @@ def encode_molecule(
     ]
     # ----------------------------------------------------------------------------------------
 
-    bonds = {}
-    for a, b in mol.get_bonds():
-        bond = (a.serial_number, b.serial_number)
-        if bond in bonds:
-            bonds[bond] += 1
-        else:
-            bonds[bond] = 1
+    bonds = {
+        (bond[0].serial_number, bond[1].serial_number): bond.order
+        for bond in mol.get_bonds()
+    }
+    # for a, b in mol.get_bonds():
+    #     bond = (a.serial_number, b.serial_number)
+    #     if bond in bonds:
+    #         bonds[bond] += 1
+    #     else:
+    #         bonds[bond] = 1
 
     _dict["structure"]["bonds"]["serial"] = list(bonds.keys())
     _dict["structure"]["bonds"]["order"] = list(bonds.values())

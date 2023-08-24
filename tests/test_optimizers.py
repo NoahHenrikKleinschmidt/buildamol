@@ -2,7 +2,7 @@
 Tests for the optimizers
 """
 
-import base
+import tests.base as bas
 import numpy as np
 import biobuild as bb
 import biobuild.optimizers as opt

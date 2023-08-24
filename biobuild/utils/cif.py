@@ -112,19 +112,19 @@ def make_bond_lines(mol):
     lines : list
         A list of lines that describe the connectivity of the molecule.
     """
-    bond_counts = {}
-    for bond in mol.bonds:
-        if bond not in bond_counts:
-            bond_counts[bond] = 1
-        else:
-            bond_counts[bond] += 1
+    # bond_counts = {}
+    # for bond in mol.bonds:
+    #     if bond not in bond_counts:
+    #         bond_counts[bond] = 1
+    #     else:
+    #         bond_counts[bond] += 1
 
     lines = []
     comp_id = mol.id
-    for bdx, bond in enumerate(bond_counts):
+    for bdx, bond in enumerate(mol.get_bonds()):
         atom_a = bond[0]
         atom_b = bond[1]
-        order = _bond_order_map[bond_counts[bond]]
+        order = _bond_order_map[bond.order]
         lines.append(
             (
                 comp_id,
@@ -143,7 +143,7 @@ def parse_bond_table(filename, fmt_header: str = "_bond"):
     """
     Parse the bond table from a biobuild generated CIF file.
     """
-    bonds = []
+    bonds = {}
     at_bonds_table = False
     starter = fmt_header + "." + _categories[-1]  # the last header line
     with open(filename, "r") as f:
@@ -160,9 +160,10 @@ def parse_bond_table(filename, fmt_header: str = "_bond"):
                 break
             a, b, order = int(line[1]), int(line[2]), line[-2]
             order = _rev_bond_order_map[order]
-            for i in range(order):
-                bonds.append((a, b))
-    return bonds
+            bonds.setdefault((a, b), 0)
+            bonds[(a, b)] += order
+
+    return [(a, b, order) for (a, b), order in bonds.items()]
 
 
 if __name__ == "__main__":
