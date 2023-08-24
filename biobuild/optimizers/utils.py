@@ -41,14 +41,14 @@ def apply_solution(
 
     for i, bond in enumerate(bonds):
         angle = sol[i]
-        bond = mol.get_bonds(bond[0].full_id, bond[1].full_id)
-        if len(bond) == 0:
+        a, b = mol.get_atom(bond[0].full_id), mol.get_atom(bond[1].full_id)
+        if a is None or b is None:
             raise ValueError(
                 f"Object and environment do not match (bond mismatch): {bond}"
             )
-        bond = bond[0]
+
         mol.rotate_around_bond(
-            *bond, angle, descendants_only=True, angle_is_degrees=False
+            a, b, angle, descendants_only=True, angle_is_degrees=False
         )
 
     return mol
@@ -124,7 +124,12 @@ def optimize(
     # in case of the genetic algorithm, the solution is a list of solutions
     # so we need to take the first one
     if sol.shape[0] != env.n_edges:
-        sol = sol[0]
+        if sol[0].shape[0] != env.n_edges:
+            raise ValueError(
+                f"Solution and environment do not match (size mismatch): {sol.shape[0]} != {env.n_edges}"
+            )
+        final = [apply_solution(s, env, mol.copy()) for s in sol]
+        return final
 
     final = apply_solution(sol, env, mol)
     return final
