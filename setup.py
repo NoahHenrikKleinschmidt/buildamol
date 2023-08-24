@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="biobuild",
-    version="3.9.34",
+    version="3.9.62",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A python package for building organic molecules",
