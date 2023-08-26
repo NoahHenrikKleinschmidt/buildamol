@@ -3,3 +3,4 @@ nbsphinx
 sphinx-mermaid
 pydata-sphinx-theme
 sphinx-gallery
+plotly
