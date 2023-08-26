@@ -21,8 +21,53 @@ to _pubchem_, and the _PDBE component library_ as well as the _CHARMM force fiel
 - generate molecules _for_ the user - the user needs to know what they want to build...
 
 
-Example
--------
+Example - building a dendrimer
+------------------------------
+
+Let's build a polyphenylene dendrimer
+
+```python
+import biobuild as bb
+
+bb.load_small_molecules()
+
+benzene = bb.molecule("benzene")
+
+# -----------------------------
+#     make the periphery
+# -----------------------------
+periphery = benzene.copy()
+
+# set up the linkage instructions
+# always shifting the carbon at which to attach
+link = bb.linkage("C1", "C1")
+for carbon in range(1, 6):
+    link.atom1 = f"C{carbon}"
+    periphery.attach(benzene, link, at_residue=1)
+
+# -----------------------------
+#     assemble the molecule
+# -----------------------------
+mol = benzene.copy()
+
+link2 = bb.linkage("C1", "C4")
+
+# and attach the periphery to the core
+for carbon in mol.get_atoms("C", by="element"):
+    link2.atom1 = carbon
+    mol.attach(periphery, link2, at_residue=1, other_residue=2)
+
+# -----------------------------
+#   optimize the conformation
+# -----------------------------
+mol.optimize()
+mol.to_pdb("polyphenylene.pdb")
+```
+
+![](support/graphics/polyphenylene.gif)
+
+Example - building a glycan
+---------------------------
 
 Generating a glycan structure is as simple as:
 
@@ -62,4 +107,4 @@ glycan.show()
 glycan.to_pdb("my_glycan.pdb")
 ```
 
-![](docs/_build/html/_images/glycan_example.gif)
+![](support/graphics/glycan_example.gif)
