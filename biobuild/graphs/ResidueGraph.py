@@ -232,7 +232,11 @@ class ResidueGraph(BaseGraph):
         for edge in self._atomic_bonds_list:
             if not edge[0] in self.nodes:
                 self.add_edge(edge[0], edge[0].get_parent())
-            if self.has_edge(edge[1], edge[1].parent):
+            if not edge[1] in self.nodes:
+                self.add_edge(edge[1], edge[1].get_parent())
+            if edge[1].parent is edge[0].parent and self.has_edge(
+                edge[1], edge[1].parent
+            ):
                 self.remove_edge(edge[1], edge[1].parent)
             if self.has_edge(edge[0].parent, edge[1].parent):
                 self.remove_edge(edge[0].parent, edge[1].parent)

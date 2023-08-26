@@ -107,7 +107,7 @@ class DistanceRotatron(Rotatron):
         rotatable_edges: list = None,
         radius: float = 20,
         pushback: float = 2,
-        unfold: float = 1,
+        unfold: float = 2,
         clash_distance: float = 0.9,
         crop_nodes_further_than: float = -1,
         n_smallest: int = 10,

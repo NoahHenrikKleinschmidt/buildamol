@@ -36,7 +36,7 @@ class Stitcher(base.Connector):
         super().__init__(copy_target, copy_source)
         self._removals = (None, None)
         self._policy = None, None
-        self._optimize_bystander_radius = 5
+        self._optimize_bystander_radius = 8
 
     def apply(
         self,
@@ -289,6 +289,7 @@ class Stitcher(base.Connector):
 
         # we could also add all close-by atoms
         bystanders = base_classes.Residue("bystanders", 3, "")
+        include_bystanders = False
         tmp.add_residues(bystanders, _copy=False)
         r = self._optimize_bystander_radius
         for atom in self.target.get_atoms():
@@ -300,6 +301,7 @@ class Stitcher(base.Connector):
 
                 bystanders.add(atom)
                 tmp._AtomGraph.add_node(atom)
+                include_bystanders = True
 
         for atom in self.source.get_atoms():
             if structural_base.compute_distance(atom, self._anchors[1]) < r:
@@ -310,14 +312,17 @@ class Stitcher(base.Connector):
 
                 bystanders.add(atom)
                 tmp._AtomGraph.add_node(atom)
+                include_bystanders = True
 
         tmp._add_bonds(*bonds)
         tmp._add_bond(self._anchors[0], self._anchors[1])
 
-        graph = tmp.make_residue_graph()
+        graph = tmp.make_residue_graph(False)
         graph.make_detailed(n_samples=0.5)
+        if include_bystanders:
+            graph.add_nodes_from(bystanders.get_atoms())
 
-        edges = tmp.get_residue_connections()
+        edges = graph.find_rotatable_edges()
         env = optimizers.DistanceRotatron(graph, edges)
 
         best, _ = optimizers.swarm_optimize(

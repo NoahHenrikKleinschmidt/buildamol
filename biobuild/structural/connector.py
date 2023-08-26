@@ -87,11 +87,11 @@ class Connector:
 
         if target_residue:
             target_residue = self.target.get_residue(target_residue)
-            ref_atom_1 = [i for i in ref_atom_1 if i.get_parent() == target_residue]
+            ref_atom_1 = [i for i in ref_atom_1 if i.parent == target_residue]
 
         if source_residue:
             source_residue = self.source.get_residue(source_residue)
-            ref_atom_2 = [i for i in ref_atom_2 if i.get_parent() == source_residue]
+            ref_atom_2 = [i for i in ref_atom_2 if i.parent == source_residue]
 
         if len(ref_atom_1) == 0:
             raise ValueError("No anchor atom found in target molecule")
@@ -102,6 +102,6 @@ class Connector:
         ref_atom_2 = ref_atom_2[0]
 
         self._anchors = (ref_atom_1, ref_atom_2)
-        self._target_residue = ref_atom_1.get_parent()
-        self._source_residue = ref_atom_2.get_parent()
+        self._target_residue = ref_atom_1.parent
+        self._source_residue = ref_atom_2.parent
         return ref_atom_1, ref_atom_2

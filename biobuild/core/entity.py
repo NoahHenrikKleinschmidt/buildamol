@@ -654,7 +654,7 @@ class BaseEntity:
 
     def count_clashes(self, clash_threshold: float = 0.9) -> int:
         """
-        Count all clashes in the molecule.
+        Count all clashes in the molecule.¨
 
         Parameters
         ----------
@@ -1294,7 +1294,7 @@ class BaseEntity:
         atom1: Union[int, str, tuple, base_classes.Atom],
         atom2: Union[int, str, tuple, base_classes.Atom],
         add_if_not_present: bool = True,
-    ) -> tuple:
+    ) -> base_classes.Bond:
         """
         Get/make a bond between two atoms.
 
@@ -1309,9 +1309,10 @@ class BaseEntity:
         """
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
-        if add_if_not_present and (atom1, atom2) not in self.bonds:
+
+        if add_if_not_present and not self._AtomGraph.has_edge(atom1, atom2):
             self.add_bond(atom1, atom2)
-        return (atom1, atom2)
+        return self._AtomGraph.edges[atom1, atom2]["bond_obj"]
 
     def get_bonds(
         self,
@@ -1740,6 +1741,8 @@ class BaseEntity:
             or by providing the serial number, the full_id or the id of the atoms.
         """
         for bond in bonds:
+            if isinstance(bond, base_classes.Bond):
+                bond = bond.to_tuple()
             self.add_bond(*bond)
 
     def _add_bonds(self, *bonds):
@@ -1747,6 +1750,8 @@ class BaseEntity:
         Add multiple bonds at once. This requires that the tuple objects are indeed Atoms in the structure!
         """
         for bond in bonds:
+            if isinstance(bond, base_classes.Bond):
+                bond = bond.to_tuple()
             self._add_bond(*bond)
 
     def remove_bond(
@@ -1920,12 +1925,15 @@ class BaseEntity:
         bonds = structural.infer_bonds(
             self._base_struct, max_bond_length, restrict_residues
         )
-        self._AtomGraph.add_edges_from(bonds, bond_order=1)
-        self._bonds.extend(base_classes.Bond(*b) for b in bonds if b not in self._bonds)
+        self._add_bonds(*bonds)
         return bonds
 
     def get_residue_connections(
-        self, residue_a=None, residue_b=None, triplet: bool = True
+        self,
+        residue_a=None,
+        residue_b=None,
+        triplet: bool = True,
+        rotatable_only: bool = False,
     ):
         """
         Get bonds between atoms that connect different residues in the structure
@@ -1945,6 +1953,9 @@ class BaseEntity:
             because the additionally returned bonds are already present in the structure
             from inference or standard-bond applying and therefore do not actually add any
             particular information to the Molecule object itself.
+        rotatable_only : bool
+            Whether to only return bonds that are rotatable. This is useful if you want to
+            use the returned bonds for optimization.
 
         Returns
         -------
@@ -1979,7 +1990,13 @@ class BaseEntity:
             )
         if triplet:
             bonds = self._make_bond_triplets(bonds)
-        return list(bonds)
+        
+        if rotatable_only:
+            bonds = [
+                bond for bond in bonds if
+                bond not in self._locked_bonds and bond.is_rotatable()
+            ]
+        return bonds
 
     def _make_bond_triplets(self, bonds) -> set:
         """

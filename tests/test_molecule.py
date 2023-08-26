@@ -523,6 +523,34 @@ def test_attach_with_patch():
     assert len(glc2.residues) == _current_residues
 
 
+def test_infer_bonds():
+    mol = bb.molecule("GLC")
+    assert mol.count_bonds() == 24
+    mol.bonds = None
+    assert mol.count_bonds() == 0
+
+    mol.infer_bonds()
+    assert mol.count_bonds() == 24
+
+    b = mol.bonds[0]
+    b = mol._AtomGraph[b.atom1][b.atom2]
+    assert b.get("bond_order") == 1
+    assert b.get("bond_obj", None) is not None
+
+
+def test_find_clashes():
+    mol = bb.molecule("GLC")
+    mol = mol.repeat(10, "14bb")
+    edges = mol.get_residue_connections()
+    for edge in edges:
+        mol.rotate_around_bond(
+            *edge, np.random.uniform(-180, 180), descendants_only=True
+        )
+
+    clashes = mol.find_clashes()
+    assert len(clashes) != 0
+
+
 def test_attach_with_recipe():
     recipe = bb.Linkage()
     recipe.add_delete("O1", "target")
@@ -1288,3 +1316,44 @@ def test_peptide_link_multiple():
     peptide = bb.connect(peptide, his, peptide_link)
     peptide = bb.connect(peptide, ser, peptide_link)
     peptide.show()
+
+
+def test_per2_linker():
+    per2 = bb.molecule("/Users/noahhk/GIT/biobuild/__figure_makery/per2.json")
+    linker = bb.molecule("/Users/noahhk/GIT/biobuild/__figure_makery/linker.json")
+
+    link6 = bb.linkage("P1", "N2", ["CL3"])
+    per3 = per2.attach(linker, link6, at_residue=4, inplace=False)
+    per3.show()
+
+
+def test_ferrocynyl():
+    bb.load_small_molecules()
+    core = bb.read_smiles("[H]P1([H])=NP([H])([H])=NP([H])([H])=N1")
+    core.rename_residue(1, "CRE")
+
+    phenol = bb.molecule("phenol")
+    phenol.autolabel().rename_residue(1, "PHE")
+
+    linker = bb.read_smiles("C=NNC")
+    linker.autolabel().rename_residue(1, "LNK")
+
+    phos = bb.read_smiles("[P](=S)([Cl])([Cl])[Cl]")
+    phos.rename_residue(1, "PHO")
+
+    link2 = bb.linkage("N2", "P1", None, ["CL1"])
+    link3 = bb.linkage("C4", "C1")
+
+    per1 = phenol % link3 + (linker % link2 + phos) @ 1
+
+    link4 = bb.linkage("O1", "P1", None, ["CL1"])
+
+    per2 = per1 % link4 + phos
+
+    link5 = bb.linkage("P1", "O1", ["CL2"], None)
+
+    per2 = per2 % link5 + per1
+
+    link6 = bb.linkage("P1", "N2", ["CL3"])
+    per3 = per2.attach(linker, link6, at_residue=4, inplace=False)
+    per3.show()

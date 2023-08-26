@@ -321,6 +321,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
 
     @atom1.setter
     def atom1(self, value: str) -> None:
+        if hasattr(value, "id"):
+            value = value.id
         self.bond = (value, self.bond[1])
 
     @property
@@ -332,6 +334,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
 
     @atom2.setter
     def atom2(self, value: str) -> None:
+        if hasattr(value, "id"):
+            value = value.id
         self.bond = (self.bond[0], value)
 
     @property

@@ -280,7 +280,7 @@ class BaseGraph(nx.Graph):
             i
             for i in self.edges
             if not self.is_locked(*i)
-            and self[i[0]][i[1]]["bond_order"] == 1
+            and self[i[0]][i[1]].get("bond_order", 1) == 1
             and not self.in_same_cycle(*i, circulars)
         ]
         if root_node is not None:
