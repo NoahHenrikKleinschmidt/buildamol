@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="biobuild",
-    version="3.9.64",
+    version="3.9.65",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A fragment-based molecular assembly toolkit for python.",
@@ -40,7 +40,7 @@ setuptools.setup(
         "pubchempy",
         "tabulate",
         "scikit-learn",
-        "ipywidgets<8.0.1...",
+        "ipywidgets<8.0.1",
     ],
     optional_requires={
         "visual": ["py3Dmol", "nglview"],
