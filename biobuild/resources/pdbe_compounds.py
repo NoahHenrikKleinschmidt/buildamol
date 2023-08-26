@@ -1,46 +1,51 @@
 """
 This module defines a Parser to extract information from the PDBE compound library.
 
-Toplevel functions
-==================
-
-For convenience, the module provides a number of toplevel functions to parse the PDBE compound library such as:
-
-.. code-block:: python
-
-    from biobuild.resources import pdbe_compounds as pdbe
-
-    # check if a compound is in the default loaded library
-    pdbe.has_compound("GLC")
-
-    # get a compound Molecule by its PDB ID
-    glc = pdbe.get_compound("GLC")
-
-
 Reading the PDBE Compound Library
 =================================
 
 The PDBE Compound Library is a database of small molecules that are found in PDB structures. It can be downloaded as an mmCIF file. 
 `biobuild` provides a parser to extract information from the mmCIF file.
 
-To parse a PDBE Compound Library file, use the `PDBECompounds` class:
+To parse a PDBE Compound Library file, we can use the toplevel function `read_compounds` or use the `PDBECompounds` class directly
 
 .. code-block:: python
 
+    import biobuild
     from biobuild.resources import PDBECompounds
 
+    compounds = bb.read_compounds("path/to/pdbe-compounds.cif")
+    # or 
     compounds = PDBECompounds.from_file("path/to/pdbe-compounds.cif")
 
+Saving and loading PDBECompounds
+================================
+
 Because parsing may be an intensive operation, the `PDBECompounds` class implements a `save` method to save the parsed data to a pickle file.
-For future sessions the pre-parsed object can be directly loaded using the `load` method:
+For future sessions the pre-parsed object can be directly loaded using the `load` method. Naturally, both operations also have a functional equivalent.
 
 .. code-block:: python
 
     # save an existing PDBECompounds object
     compounds.save("path/to/pdbe-compounds.pkl")
+    # or 
+    bb.save_compounds("path/to/pdbe-compounds.pkl", compounds)
     
     # load a pre-parsed PDBECompounds object
     compounds = PDBECompounds.load("path/to/pdbe-compounds.pkl")
+    # or (read_compounds also supports loading)
+    compounds = bb.read_compounds("path/to/pdbe-compounds.pkl")
+
+In order to export data from the PDBE compounds library, the `PDBECompounds` class also implements a `to_json` method to export the data as a JSON file.
+The JSON file can be loaded again using the `from_json` class method (or using `read_compounds` function). This is useful for sharing compound data with others
+who may use different versions of `biobuild` and thus may have issues with pickeled objects, or for sharing data with other programs.
+
+.. code-block:: python
+
+    # save an existing PDBECompounds object
+    compounds.to_json("path/to/pdbe-compounds.json")
+    # or
+    bb.export_compounds("path/to/pdbe-compounds.json", compounds)
 
     
 Working with PDBECompounds
@@ -75,7 +80,7 @@ If multiple compounds match a query, they are returned as a list (unless `return
 
 .. code-block:: python
 
-    # get a compound as a `biopython.Structure` object
+    # get a compound as a `biobuild.Structure` object
     glc = compounds.get("GLC", return_type="structure")
 
     # get a compound as a `dict`
@@ -86,7 +91,7 @@ If multiple compounds match a query, they are returned as a list (unless `return
 Setting default PDBECompounds
 =============================
 
-_biobuild_  loads a default PDBECompounds object for convenience. The default instance can be accessed using the `get_default_compounds` function. A custom instance can be set as the default using the `set_default_compounds` function.
+_biobuild_ loads a default PDBECompounds object for convenience. The default instance can be accessed using the `get_default_compounds` function. A custom instance can be set as the default using the `set_default_compounds` function.
 
 .. code-block:: python
 
@@ -105,6 +110,22 @@ _biobuild_  loads a default PDBECompounds object for convenience. The default in
     The `set_default_compounds` has an additional keyword argument `overwrite` which is set to `False` by default. If set to `True` the default instance
     is permanently overwritten by the new one and will be used automatically by all future sessions. This is not recommended as it may lead to unexpected behaviour.
     
+
+If the user is only interested in working with the default instance rather than a specific `PDBECompounds` instance, there are a number of toplevel functions available to short-cut the process.
+
+For instance, in order to get the compound glucose from the default instance, we can do
+
+.. code-block:: python
+
+    # instead of doing
+    compounds = bb.get_default_compounds()
+    glc = compounds.get("GLC", return_type="dict")
+
+    # we can do
+    glc = bb.get_compound("GLC", return_type="dict")
+
+Other toplevel functions indlude `has_compound` and `add_compound`.
+
 """
 
 import os
@@ -116,9 +137,19 @@ import pickle
 import Bio.PDB as bio
 from Bio import SVDSuperimposer
 
+import biobuild.utils.json as json
 import biobuild.utils.defaults as defaults
 import biobuild.utils.auxiliary as aux
+import biobuild.core.base_classes as base_classes
 import biobuild.core.Molecule as Molecule
+
+__loaded_compounds__ = {
+    "sugars": False,
+    "lipids": False,
+    "small_molecules": False,
+    "amino_acids": False,
+    "nucleotides": False,
+}
 
 __to_float__ = {
     "_chem_comp": set(
@@ -180,15 +211,24 @@ _bond_order_rev_map = {
 Reverse map of bond order names to numbers.
 """
 
+_bond_order_map = {
+    1: "SING",
+    2: "DOUB",
+    3: "TRIP",
+}
+"""
+Map of bond order numbers to names.
+"""
+
 
 def read_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
     """
-    Reads a PDBECompounds object from a CIF file.
+    Reads a PDBECompounds object from a CIF, JSON, or pickle file.
 
     Parameters
     ----------
     filename : str
-        The path to the CIF file to read.
+        The path to the file to read.
     set_default : bool, optional
         Whether to set the read PDBECompounds object as the default.
         Defaults to True.
@@ -196,32 +236,18 @@ def read_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
     Returns
     -------
     PDBECompounds
-        The PDBECompounds object parsed from the CIF file.
+        The PDBECompounds object parsed from the file.
     """
-    compounds = PDBECompounds.from_file(filename)
-    if set_default:
-        set_default_compounds(compounds)
-    return compounds
-
-
-def load_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
-    """
-    Loads a PDBECompounds object from a pickle file.
-
-    Parameters
-    ----------
-    filename : str
-        The path to the pickle file to load.
-    set_default : bool, optional
-        Whether to set the loaded PDBECompounds object as the default.
-        Defaults to True.
-
-    Returns
-    -------
-    PDBECompounds
-        The PDBECompounds object loaded from the pickle file.
-    """
-    compounds = PDBECompounds.load(filename)
+    if filename.endswith(".cif"):
+        compounds = PDBECompounds.from_file(filename)
+    elif filename.endswith(".json"):
+        compounds = PDBECompounds.from_json(filename)
+    elif filename.endswith(".pkl") or filename.endswith(".pickle"):
+        compounds = PDBECompounds.load(filename)
+    else:
+        raise ValueError(
+            "Unsupported file format. Only CIF, JSON and pickle (.pkl or .pickle) files are supported."
+        )
     if set_default:
         set_default_compounds(compounds)
     return compounds
@@ -243,6 +269,24 @@ def save_compounds(filename: str, compounds: "PDBECompounds" = None):
     if compounds is None:
         compounds = get_default_compounds()
     compounds.save(filename)
+
+
+def export_compounds(filename: str, compounds: "PDBECompounds" = None):
+    """
+    Export the PDBECompounds object to a JSON file.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the JSON file to save to.
+
+    compounds : PDBECompounds, optional
+        The PDBECompounds object to save. If not provided, the default
+        PDBECompounds object is used.
+    """
+    if compounds is None:
+        compounds = get_default_compounds()
+    compounds.to_json(filename)
 
 
 def has_compound(compound: str, search_by: str = None) -> bool:
@@ -268,9 +312,7 @@ def has_compound(compound: str, search_by: str = None) -> bool:
     return False
 
 
-def get_compound(
-    compound: str, search_by: str = None, return_type: str = "molecule"
-) -> Molecule:
+def get_compound(compound: str, search_by: str = None, return_type: str = "molecule"):
     """
     Get a compound from the currently loaded default PDBECompounds instance.
 
@@ -284,13 +326,14 @@ def get_compound(
         By default, all search types are used.
 
     return_type : str, optional
-        The type of object to return. One of `molecule` (a biobuild Molecule), `structure` (a biopython structure only, does not include connectivity), `dict` (the compound data and coordinate dictionaries).
+        The type of object to return. One of `molecule` (a biobuild Molecule), `structure` (a biobuild structure only, does not include connectivity), `dict` (the compound data and coordinate dictionaries).
         Defaults to `molecule`.
 
     Returns
     -------
-    Molecule
-        The molecule object.
+    object or list
+        The molecule object, structure, or tuple of dictionaries.
+        If multiple compounds are found matching, they are returned as a list.
     """
     if not has_compound(compound, search_by=search_by):
         raise ValueError(
@@ -301,8 +344,45 @@ def get_compound(
         if comps.has_residue(compound, by=by):
             comp = comps.get(compound, by=by, return_type=return_type)
             if return_type == "dict":
-                comp = comp, comps._pdb[comp["id"]]
+                if isinstance(comp, list):
+                    comp = [(c, comps._pdb[c["id"]]) for c in comp]
+                else:
+                    comp = comp, comps._pdb[comp["id"]]
             return comp
+
+
+def add_compound(
+    mol: "Molecule",
+    type: str = None,
+    names: list = None,
+    identifiers: list = None,
+    formula: str = None,
+    overwrite: bool = False,
+):
+    """
+    Add a compound to the currently loaded default PDBECompounds instance.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to add.
+    type : str, optional
+        The type of compound. For instance `protein`, `dna`, `rna`, `ligand`, `water`, `ion`, `other`.
+    names : list, optional
+        A list of names for the compound.
+    identifiers : list, optional
+        A list of identifiers for the compound.
+    formula : str, optional
+        The chemical formula of the compound.
+    overwrite : bool, optional
+        Whether to hardcode overwrite the current default PDBECompounds instance.
+        This will make the compound available for all future sessions.
+    """
+    get_default_compounds().add(
+        mol, type=type, names=names, identifiers=identifiers, formula=formula
+    )
+    if overwrite:
+        set_default_compounds(get_default_compounds(), overwrite=True)
 
 
 def get_default_compounds() -> "PDBECompounds":
@@ -333,22 +413,253 @@ def set_default_compounds(obj, overwrite: bool = False):
     if not obj.__class__.__name__ == "PDBECompounds":
         raise TypeError("The object must be a PDBECompounds instance.")
     if overwrite:
-        current = defaults.__default_instances__.get("PDBECompounds", None)
+        current = defaults.get_default_instance("PDBECompounds")
         if current:
-            current.save(defaults.DEFAULT_PDBE_COMPOUNDS_FILE + ".bak")
+            if not os.path.exists(
+                defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak"
+            ):
+                current.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
     defaults.__default_instances__["PDBECompounds"] = obj
     if overwrite:
-        obj.save(defaults.DEFAULT_PDBE_COMPOUNDS_FILE)
+        obj.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
 
 
-def restore_default_compounds():
+def save_as_default_compounds(obj):
+    """
+    Save a PDBECompounds object as the new default. This will leave the currently active default object unchanged, but will
+    overwrite the default file for any future sessions.
+
+    Parameters
+    ----------
+    obj : PDBECompounds
+        The PDBECompounds object to set as the new default
+    """
+    if not obj.__class__.__name__ == "PDBECompounds":
+        raise TypeError("The object must be a PDBECompounds instance.")
+    current = defaults.get_default_instance("PDBECompounds")
+    if current:
+        current.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak")
+    obj.save(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"])
+
+
+def restore_default_compounds(overwrite: bool = True):
     """
     Restore the default PDBECompounds object from the backup file
+
+    Parameters
+    ----------
+    overwrite : bool
+        If set to `True`, the backup file will be permanently saved as the default again.
     """
-    defaults.__default_instances__["PDBECompounds"] = pickle.load(
-        open(defaults.DEFAULT_PDBE_COMPOUNDS_FILE + ".bak", "rb")
+    if not os.path.isfile(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak"):
+        raise FileNotFoundError(
+            "No backup file found. The default PDBECompounds object has not been modified."
+        )
+    defaults.__default_instances__["PDBECompounds"] = PDBECompounds.from_json(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak"
     )
-    os.remove(defaults.DEFAULT_PDBE_COMPOUNDS_FILE + ".bak")
+    if overwrite:
+        os.rename(
+            defaults.DEFAULT_PDBE_COMPONENT_FILES["base"] + ".bak",
+            defaults.DEFAULT_PDBE_COMPONENT_FILES["base"],
+        )
+
+
+def unload_by_types(*t: str):
+    """
+    Unload all loaded compounds from the default PDBECompounds instance of a given types.
+
+    Parameters
+    ----------
+    t: str
+        The types to unload.
+    """
+
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] in t]
+    for i in ids:
+        comps.remove(i)
+
+
+def subset_compounds_by_types(*t: str) -> "PDBECompounds":
+    """
+    Get a new PDBECompounds object containing only compounds from the currently loaded default compounds of the given types.
+
+    Parameters
+    ----------
+    t: str
+        The types to include.
+
+    Returns
+    -------
+    PDBECompounds
+        A new PDBECompounds object containing only compounds of the given types.
+    """
+    new = PDBECompounds()
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] in t]
+    for i in ids:
+        new._compounds[i] = comps._compounds[i].copy()
+        new._pdb[i] = comps._pdb[i].copy()
+    return new
+
+
+def load_amino_acids():
+    """
+    Load amino acid components into the default PDBECompounds instance.
+    """
+    if __loaded_compounds__["amino_acids"]:
+        return
+    comps = get_default_compounds()
+    amino_acids = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["amino_acids"], set_default=False
+    )
+    comps.merge(amino_acids)
+    __loaded_compounds__["amino_acids"] = True
+
+
+def unload_amino_acids():
+    """
+    Unload amino acid components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["amino_acids"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "AMINO-ACID"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["amino_acids"] = False
+
+
+def load_lipids():
+    """
+    Load lipid components into the default PDBECompounds instance.
+    """
+    if __loaded_compounds__["lipids"]:
+        return
+    comps = get_default_compounds()
+    lipids = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["lipids"], set_default=False
+    )
+    comps.merge(lipids)
+    __loaded_compounds__["lipids"] = True
+
+
+def unload_lipids():
+    """
+    Unload lipid components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["lipids"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "LIPID"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["lipids"] = False
+
+
+def load_sugars():
+    """
+    Load sugar components into the default PDBECompounds instance.
+    """
+    if __loaded_compounds__["sugars"]:
+        return
+    comps = get_default_compounds()
+    sugars = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["sugars"], set_default=False
+    )
+    comps.merge(sugars)
+    __loaded_compounds__["sugars"] = True
+
+
+def unload_sugars():
+    """
+    Unload sugar components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["sugars"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "SACCHARIDE"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["sugars"] = False
+
+
+def load_nucleotides():
+    """
+    Load nucleotide components into the default PDBECompounds instance.
+    """
+    if __loaded_compounds__["nucleotides"]:
+        return
+
+    comps = get_default_compounds()
+    nucleotides = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["nucleotides"], set_default=False
+    )
+    comps.merge(nucleotides)
+    __loaded_compounds__["nucleotides"] = True
+
+
+def unload_nucleotides():
+    """
+    Unload nucleotide components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["nucleotides"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "NUCLEIC-ACID"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["nucleotides"] = False
+
+
+def load_small_molecules():
+    """
+    Load small molecule components into the default PDBECompounds instance.
+    """
+    if __loaded_compounds__["small_molecules"]:
+        return
+    comps = get_default_compounds()
+    small_molecules = read_compounds(
+        defaults.DEFAULT_PDBE_COMPONENT_FILES["small_molecules"], set_default=False
+    )
+    comps.merge(small_molecules)
+    __loaded_compounds__["small_molecules"] = True
+
+
+def unload_small_molecules():
+    """
+    Unload small molecule components from the default PDBECompounds instance.
+    """
+    if not __loaded_compounds__["small_molecules"]:
+        return
+    comps = get_default_compounds()
+    ids = [i for i in comps.ids if comps._compounds[i]["type"] == "SMALL-MOLECULE"]
+    for i in ids:
+        comps.remove(i)
+    __loaded_compounds__["small_molecules"] = False
+
+
+def load_all_compounds():
+    """
+    Load all available components into the default PDBECompounds instance.
+    """
+    load_amino_acids()
+    load_lipids()
+    load_sugars()
+    load_nucleotides()
+    load_small_molecules()
+
+
+def unload_all_compounds():
+    """
+    Unload all available components from the default PDBECompounds instance.
+    """
+    unload_amino_acids()
+    unload_lipids()
+    unload_sugars()
+    unload_nucleotides()
+    unload_small_molecules()
 
 
 class PDBECompounds:
@@ -360,9 +671,14 @@ class PDBECompounds:
     ----------
     compounds : dict
         A dictionary of PDBE compounds.
+    id : str, optional
+        The ID of the PDBECompounds object. Defaults to None.
     """
 
-    def __init__(self, compounds: dict) -> None:
+    def __init__(self, compounds: dict = None, id=None) -> None:
+        self.id = id
+        if not compounds:
+            compounds = {}
         self._compounds = {k: None for k in compounds.keys()}
         self._pdb = dict(self._compounds)
         self._setup_dictionaries(compounds)
@@ -420,6 +736,61 @@ class PDBECompounds:
         with open(filename, "rb") as f:
             return pickle.load(f)
 
+    @classmethod
+    def from_json(cls, filename: str) -> "PDBeCompounds":
+        """
+        Make a PDBECompounds object from a previously exported `json` file.
+
+        Parameters
+        ----------
+        filename : str
+            The path to the file.
+
+        Returns
+        -------
+        PDBECompounds
+            The PDBECompounds object.
+        """
+        _dict = json.read(filename)
+        new = cls._from_dict(_dict)
+        new._filename = filename
+        return new
+
+    @classmethod
+    def _from_dict(cls, _dict: dict) -> "PDBECompounds":
+        """
+        Make a PDBECompounds object from a dictionary.
+
+        Parameters
+        ----------
+        _dict : dict
+            The dictionary to use.
+
+        Returns
+        -------
+        PDBECompounds
+            The PDBECompounds object.
+        """
+        new = cls({}, id=_dict["id"])
+        for compound in _dict["compounds"]:
+            comp_dict = {
+                "id": compound["id"],
+                "name": compound["names"][0],
+                "type": compound["type"],
+                "formula": compound["formula"],
+                "one_letter_code": compound["one_letter_code"],
+                "three_letter_code": compound["three_letter_code"],
+                "names": compound["names"],
+                "descriptors": compound["identifiers"],
+            }
+            mol = Molecule._from_dict(compound)
+            pdb_dict = _molecule_to_pdbx_dict(mol)
+
+            new._compounds[compound["id"]] = comp_dict
+            new._pdb[compound["id"]] = pdb_dict
+
+        return new
+
     @property
     def ids(self) -> list:
         """
@@ -467,6 +838,43 @@ class PDBECompounds:
         with open(filename, "wb") as f:
             pickle.dump(self, f)
 
+    def to_json(self, filename: str = None) -> None:
+        """
+        Export the PDBECompounds object to a `json` file.
+
+        Parameters
+        ----------
+        filename : str
+            The path to the file. By default the same file used to load the object is used.
+            If no file is available, a `ValueError` is raised.
+        """
+        if filename is None:
+            if self._filename is None:
+                raise ValueError("No filename specified.")
+            filename = self._filename
+
+        if not filename.endswith(".json"):
+            filename = aux.change_suffix(filename, ".json")
+
+        json.write_pdbe_compounds(self, filename)
+
+    def merge(self, other: "PDBECompounds") -> None:
+        """
+        Merge another compounds dictionary into this one.
+
+        Parameters
+        ----------
+        other : PDBECompounds
+            The other object.
+        """
+        for key in other._compounds.keys():
+            if key in self._compounds:
+                warnings.warn(
+                    f"Compound '{key}' already present. It will be overwritten."
+                )
+            self._compounds[key] = other._compounds[key]
+            self._pdb[key] = other._pdb[key]
+
     def get(
         self,
         query: str,
@@ -498,11 +906,12 @@ class PDBECompounds:
         Returns
         -------
         object
-            The object that matches the given criteria.
+            The object that matches the given criteria, or None if no match was found.
+            If multiple matches are found, a list of objects is returned.
         """
         _dict = self._get(query, by)
         if len(_dict.keys()) == 0:
-            raise ValueError(f"No compound found for query '{query}'.")
+            return None
         elif len(_dict.keys()) > 1:
             return [self.get(i, "id", return_type) for i in _dict.keys()]
 
@@ -514,11 +923,62 @@ class PDBECompounds:
         elif return_type == "structure":
             return self._make_structure(_dict)
         elif return_type == "residue":
-            res = self._make_residue(_dict)
-            self._fill_residue(res, _dict)
+            chain = base_classes.Chain("A")
+            res = next(self._make_residues(_dict))
+            chain.add(res)
+            self._fill_residues(chain, _dict)
             return res
         else:
             raise ValueError(f"Invalid return_type '{return_type}'.")
+
+    def add(
+        self,
+        mol: Molecule,
+        type: str = None,
+        names: list = None,
+        identifiers: list = None,
+        formula: str = None,
+        one_letter_code: str = None,
+        three_letter_code: str = None,
+    ):
+        """
+        Add a compound to the dictionary.
+
+        Parameters
+        ----------
+        mol : Molecule
+            The compound to add.
+        type : str, optional
+            The type of compound, e.g. "ligand", "cofactor", etc.
+        names : list, optional
+            A list of names for the compound.
+        identifiers : list, optional
+            A list of identifiers such as SMILES or InChI for the compound.
+        formula : str, optional
+            The formula of the compound. If not given, it will be calculated from the molecule.
+        """
+        if names is None:
+            names = []
+        if identifiers is None:
+            identifiers = []
+        if formula is None:
+            formula = aux.make_formula(mol.get_atoms())
+
+        # get the residue
+        comp = {
+            "id": mol.id,
+            "names": set(i.lower() for i in names),
+            "formula": formula,
+            "descriptors": identifiers,
+            "type": type,
+            "one_letter_code": one_letter_code,
+            "three_letter_code": three_letter_code,
+        }
+        comp["names"].add(mol.id.lower())
+        self._compounds[mol.id] = comp
+
+        pdb = _molecule_to_pdbx_dict(mol)
+        self._pdb[mol.id] = pdb
 
     def remove(self, id: str) -> None:
         """
@@ -574,7 +1034,7 @@ class PDBECompounds:
         new = []
         for i in ids:
             i = self.get(i, "id", "dict")
-            i = i.get("one_letter_code")
+            i = i.get("one_letter_code", None)
             if i is None:
                 i = "X"
             new.append(i)
@@ -598,7 +1058,7 @@ class PDBECompounds:
         new = []
         for i in ids:
             i = self.get(i, "id", "dict")
-            i = i.get("three_letter_code")
+            i = i.get("three_letter_code", None)
             if i is None:
                 i = "XXX"
             new.append(i)
@@ -697,7 +1157,8 @@ class PDBECompounds:
                 if k in comp:
                     comp.pop(k)
             for k in __to_float__["_chem_comp"]:
-                comp[k] = float(comp[k])
+                if k in comp:
+                    comp[k] = float(comp[k])
             for k in comp:
                 if comp[k] == "?":
                     comp[k] = None
@@ -705,12 +1166,19 @@ class PDBECompounds:
             comp["descriptors"] = value["_pdbx_chem_comp_descriptor"]["descriptor"]
 
             comp["names"] = [comp["name"]]
+
             synonyms = value.get("_pdbx_chem_comp_synonyms", None)
             if synonyms:
+                if not isinstance(synonyms["name"], list):
+                    synonyms["name"] = [synonyms["name"]]
                 comp["names"].extend(synonyms["name"])
+
             identifiers = value.get("_pdbx_chem_comp_identifier", None)
             if identifiers:
+                if not isinstance(identifiers["identifier"], list):
+                    identifiers["identifier"] = [identifiers["identifier"]]
                 comp["names"].extend(identifiers["identifier"])
+
             comp["names"] = set(i.lower() for i in comp["names"])
 
             if comp["formula"] is not None:
@@ -751,14 +1219,26 @@ class PDBECompounds:
                     ),
                     "elements": atoms["type_symbol"],
                     "charges": np.array(atoms["charge"], dtype=float),
-                    "residue": atoms["pdbx_component_comp_id"],
+                    # ---------------------- FUTURE UPDATE ----------------------
+                    # support multi-residue molecules
+                    # we need a proper parsing way to extract the residue information
+                    # from the pdbx mmcif files...
+                    # ---------------------- FUTURE UPDATE ----------------------
+                    "residue": [
+                        1 for i in atoms["type_symbol"]
+                    ],  # atoms["pdbx_component_comp_id"],
                 },
                 "bonds": {
                     "bonds": [
                         (a.replace(",", "'"), b.replace(",", "'"))
                         for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
                     ],
+                    "parents": [(1, 1) for i in bonds["atom_id_1"]],
                     "orders": np.array(bonds["value_order"]),
+                },
+                "residues": {
+                    "serials": [1],
+                    "names": [atoms["pdbx_component_comp_id"][0]],
                 },
             }
             self._pdb[key] = pdb
@@ -777,13 +1257,20 @@ class PDBECompounds:
         Molecule
             A biobuild Molecule.
         """
+        pdb = self._pdb[compound["id"]]
+
         struct = self._make_structure(compound)
         mol = Molecule(struct)
-        pdb = self._pdb[compound["id"]]
         for bdx in range(len(pdb["bonds"]["bonds"])):
-            bond = pdb["bonds"]["bonds"][bdx]
-            for _ in range(_bond_order_rev_map.get(pdb["bonds"]["orders"][bdx])):
-                mol.add_bond(*bond)
+            a, b = pdb["bonds"]["bonds"][bdx]
+            res_a, res_b = pdb["bonds"]["parents"][bdx]
+            a = mol.get_atom(a, residue=res_a)
+            b = mol.get_atom(b, residue=res_b)
+            order = pdb["bonds"]["orders"][bdx]
+            order = _bond_order_rev_map.get(order)
+            mol.add_bond(a, b, order)
+            # for _ in range(_bond_order_rev_map.get(pdb["bonds"]["orders"][bdx])):
+            #     mol.add_bond(a, b)
 
         return mol
 
@@ -798,31 +1285,31 @@ class PDBECompounds:
 
         Returns
         -------
-        bio.PDB.Structure
+        biobuild.Structure
             A structure.
         """
         if len(compound) == 0:
             return None
 
-        struct = bio.Structure.Structure(compound["id"])
-        model = bio.Model.Model(0)
+        struct = base_classes.Structure(compound["id"])
+        model = base_classes.Model(0)
         struct.add(model)
-        chain = bio.Chain.Chain("A")
+        chain = base_classes.Chain("A")
         model.add(chain)
-        res = self._make_residue(compound)
-        chain.add(res)
+        for res in self._make_residues(compound):
+            chain.add(res)
         # add atoms to residue (at the end to ensure that the residue's full id is propagated)
-        self._fill_residue(res, compound)
+        self._fill_residues(chain, compound)
         return struct
 
-    def _fill_residue(self, residue, compound: dict):
+    def _fill_residues(self, chain, compound: dict):
         """
         Fill a residue with atoms from a compound.
 
         Parameters
         ----------
-        residue : bio.PDB.Residue
-            A residue.
+        chain : biobuild.Chain
+            A biobuild Chain with the residues to fill.
         compound : dict
             A dictionary of a compound.
         """
@@ -832,18 +1319,21 @@ class PDBECompounds:
 
         atoms = pdb["atoms"]
         for i in range(len(atoms["ids"])):
-            atom = self._make_atom(
-                # SWITCHED FULL_ID AND ID<
+            res = atoms["residue"][i]
+            res = _residue_from_chain(res, chain)
+            if res is None:
+                res = chain.child_list[0]
+            atom = base_classes.Atom(
                 atoms["full_ids"][i],
-                atoms["serials"][i],
                 atoms["coords"][i],
-                atoms["elements"][i],
-                atoms["ids"][i],
-                atoms["charges"][i],
+                atoms["serials"][i],
+                fullname=atoms["ids"][i],
+                element=atoms["elements"][i],
+                pqr_charge=atoms["charges"][i],
             )
-            residue.add(atom)
+            res.add(atom)
 
-    def _make_residue(self, compound: dict) -> "bio.PDB.Residue":
+    def _make_residues(self, compound: dict) -> "Residue":
         """
         Make a residue from a compound.
 
@@ -852,59 +1342,18 @@ class PDBECompounds:
         compound : dict
             A dictionary of a compound.
 
-        Returns
+        Yields
         -------
-        bio.PDB.Residue
+        Residue
             A residue.
         """
         if len(compound) == 0:
             return None
-
-        res = bio.Residue.Residue(("H_" + compound["id"], 1, " "), compound["id"], " ")
-
-        return res
-
-    def _make_atom(
-        self,
-        id: str,
-        serial: int,
-        coords: np.ndarray,
-        element: str,
-        full_id: str,
-        charge: float,
-    ) -> "bio.PDB.Atom":
-        """
-        Make an atom.
-
-        Parameters
-        ----------
-        id : str
-            The atom id.
-        serial : int
-            The atom serial.
-        coords : np.ndarray
-            The atom coordinates.
-        element : str
-            The atom element.
-        full_id : str
-            The atom full id.
-        Returns
-        -------
-        bio.PDB.Atom
-            An atom.
-        """
-        atom = bio.Atom.Atom(
-            id,
-            coord=coords,
-            serial_number=serial,
-            bfactor=0.0,
-            occupancy=0.0,
-            element=element,
-            fullname=full_id,
-            altloc=" ",
-            pqr_charge=charge,
-        )
-        return atom
+        pdb = self._pdb[compound["id"]]
+        residues = pdb["residues"]
+        for serial, name in zip(residues["serials"], residues["names"]):
+            res = base_classes.Residue(name, " ", serial)
+            yield res
 
     def __getitem__(self, key):
         return self._compounds[key], self._pdb[key]
@@ -919,8 +1368,60 @@ class PDBECompounds:
 
 defaults.set_default_instance(
     "PDBECompounds",
-    PDBECompounds.load(defaults.DEFAULT_PDBE_COMPOUNDS_FILE),
+    read_compounds(defaults.DEFAULT_PDBE_COMPONENT_FILES["base"], set_default=False),
 )
+
+
+def _residue_from_chain(idx, chain):
+    """
+    Get a residue from a chain
+    """
+    return next((i for i in chain.child_list if i.id[1] == idx), None)
+
+
+def _molecule_to_pdbx_dict(mol):
+    """
+    Make a pdbx dictionary from a molecule.
+    """
+    _bond_dict = {bond: bond.order for bond in mol.get_bonds()}
+
+    pdb = {
+        "atoms": {
+            "full_ids": [i.id.replace(",", "'") for i in mol.get_atoms()],
+            "ids": [i.id.replace(",", "'") for i in mol.get_atoms()],
+            "serials": [i.serial_number for i in mol.get_atoms()],
+            "coords": np.array(
+                [
+                    (float(i), float(j), float(k))
+                    for i, j, k in zip(
+                        (i.coord[0] for i in mol.get_atoms()),
+                        (i.coord[1] for i in mol.get_atoms()),
+                        (i.coord[2] for i in mol.get_atoms()),
+                    )
+                ]
+            ),
+            "elements": [i.element.title() for i in mol.get_atoms()],
+            "charges": [i.pqr_charge for i in mol.get_atoms()],
+            "residue": [i.parent.id[1] for i in mol.get_atoms()],
+        },
+        "bonds": {
+            "bonds": [
+                (a.id.replace(",", "'"), b.id.replace(",", "'"))
+                for a, b in _bond_dict.keys()
+            ],
+            "parents": [
+                (a.get_parent().id[1], b.get_parent().id[1])
+                for a, b in _bond_dict.keys()
+            ],
+            "orders": [_bond_order_map.get(i) for i in _bond_dict.values()],
+        },
+        "residues": {
+            "serials": [i.id[1] for i in mol.get_residues()],
+            "names": [i.resname for i in mol.get_residues()],
+        },
+    }
+    return pdb
+
 
 __all__ = [
     "PDBECompounds",
@@ -929,32 +1430,51 @@ __all__ = [
     "restore_default_compounds",
     "get_compound",
     "has_compound",
+    "add_compound",
     "read_compounds",
-    "load_compounds",
+    "export_compounds",
     "save_compounds",
+    "load_amino_acids",
+    "load_nucleotides",
+    "load_sugars",
+    "load_lipids",
+    "load_small_molecules",
+    "load_all_compounds",
+    "unload_amino_acids",
+    "unload_nucleotides",
+    "unload_sugars",
+    "unload_lipids",
+    "unload_small_molecules",
+    "unload_all_compounds",
+    "save_as_default_compounds",
+    "unload_by_types",
+    "subset_compounds_by_types",
+    "_molecule_to_pdbx_dict",
 ]
 
 
 if __name__ == "__main__":
     f = "support/pdbe_compounds/test.cif"
     compounds = PDBECompounds.from_file(f)
+    compounds.to_json("comps.json")
+    c2 = PDBECompounds.from_json("comps.json")
+    pass
+    # from biobuild.core import Molecule
 
-    from biobuild.core import Molecule
+    # real = Molecule.from_compound("GLC")
 
-    real = Molecule.from_compound("GLC")
+    # scrambled = Molecule.from_compound("GLC")
 
-    scrambled = Molecule.from_compound("GLC")
+    # counts = {"C": 0, "H": 0, "O": 0, "N": 0, "S": 0, "P": 0}
+    # for atom in scrambled.atoms:
+    #     counts[atom.element] += 1
+    #     atom.id = atom.element + str(counts[atom.element])
 
-    counts = {"C": 0, "H": 0, "O": 0, "N": 0, "S": 0, "P": 0}
-    for atom in scrambled.atoms:
-        counts[atom.element] += 1
-        atom.id = atom.element + str(counts[atom.element])
+    # print(scrambled.atoms)
+    # compounds.relabel_atoms(scrambled)
+    # print(scrambled.atoms)
 
-    print(scrambled.atoms)
-    compounds.relabel_atoms(scrambled)
-    print(scrambled.atoms)
+    # from biobuild.utils.visual import MoleculeViewer3D
 
-    from biobuild.utils.visual import MoleculeViewer3D
-
-    v = MoleculeViewer3D(scrambled)
-    v.show()
+    # v = MoleculeViewer3D(scrambled)
+    # v.show()

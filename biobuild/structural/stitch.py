@@ -8,9 +8,11 @@ import numpy as np
 
 import Bio.PDB as bio
 
+import biobuild.core.base_classes as base_classes
 import biobuild.core.Molecule as Molecule
 import biobuild.core.Linkage as Linkage
 import biobuild.structural.connector as base
+import biobuild.structural.base as structural_base
 import biobuild.optimizers as optimizers
 
 
@@ -34,18 +36,19 @@ class Stitcher(base.Connector):
         super().__init__(copy_target, copy_source)
         self._removals = (None, None)
         self._policy = None, None
+        self._optimize_bystander_radius = 8
 
     def apply(
         self,
         target: "Molecule.Molecule",
         source: "Molecule.Molecule",
-        target_removals: tuple,
-        source_removals: tuple,
-        target_atom: Union[int, bio.Atom.Atom] = None,
-        source_atom: Union[int, bio.Atom.Atom] = None,
-        target_residue: Union[int, bio.Residue.Residue] = None,
-        source_residue: Union[int, bio.Residue.Residue] = None,
-        optimization_steps: int = 1e4,
+        target_removals: tuple = None,
+        source_removals: tuple = None,
+        target_atom: Union[int, "base_classes.Atom"] = None,
+        source_atom: Union[int, "base_classes.Atom"] = None,
+        target_residue: Union[int, "base_classes.Residue"] = None,
+        source_residue: Union[int, "base_classes.Residue"] = None,
+        optimization_steps: int = 30,
         **kwargs,
     ) -> "Molecule.Molecule":
         """
@@ -60,13 +63,15 @@ class Stitcher(base.Connector):
         target_removals : tuple
             A tuple of atoms to be removed from the target molecule. These must be the atom's ids within the attaching residue.
             All atoms must be part fo the same residue as the attaching `target_atom`.
+            If not provided, just any Hydrogen atom next to the `target_atom` will be used.
         source_removals : tuple
             A tuple of atoms to be removed from the source molecule. These must be the atom's ids within the attaching residue.
             All atoms must be part fo the same residue as the attaching `source_atom`.
-        target_atom : int or bio.Atom.Atom
+            If not provided, just any Hydrogen atom next to the `source_atom` will be used.
+        target_atom : int or Atom
             The atom on the target molecule to which the source molecule will be attached. This may either be the atom object directly or its serial number.
             If none is provided, the molecule's "root atom" is used (if defined).
-        source_atom : int or bio.Atom.Atom
+        source_atom : int or Atom
             The atom on the source molecule to which the target molecule will be attached. This may either be the atom object directly or its serial number.
             If none is provided, the molecule's "root atom" is used (if defined).
         target_residue : int or Residue
@@ -74,7 +79,7 @@ class Stitcher(base.Connector):
         source_residue : int or Residue
             The residue hosting the source atom. This is only required if the source atom is not given directly or specified by name.
         optimization_steps : int, optional
-            The number of steps to take in the optimization process, by default 1e4
+            The number of steps to take in the optimization process.
         **kwargs
             Additional keyword arguments to pass to the optimizer. See the documentation for `biobuild.optimizers.agents.optimize` for more details.
 
@@ -84,6 +89,10 @@ class Stitcher(base.Connector):
             The target and source molecules after stitching. At this point, the source molecule is aligned
             to the target molecules but not yet integrated into it. Use the `merge` method to do this.
         """
+        if not target_removals:
+            target_removals = []
+        if not source_removals:
+            source_removals = []
 
         if self.copy_target:
             target = target.copy()
@@ -91,7 +100,7 @@ class Stitcher(base.Connector):
                 if not isinstance(target_residue, int):
                     target_residue = target_residue.id[1]
                 target_residue = target.get_residue(target_residue, by="seqid")
-            target_atom = target.get_atom(target_atom, residue=target_residue)
+                target_atom = target.get_atom(target_atom, residue=target_residue)
         if self.copy_source:
             source = source.copy()
             if source_residue:
@@ -148,7 +157,6 @@ class Stitcher(base.Connector):
         # compute translation vector
         old_centroid = _old_coords.mean(axis=0)
         new_centroid = _new_coords.mean(axis=0)
-        translation_vector = new_centroid - old_centroid
 
         _relative_old_coords = _old_coords - old_centroid
         _relative_new_coords = _new_coords - new_centroid
@@ -159,9 +167,7 @@ class Stitcher(base.Connector):
 
         # self._v.draw_edges(self.source.bonds, color="black", opacity=0.5)
         atom_coords = np.array([atom.coord for atom in self.source.get_atoms()])
-        atom_coords = (
-            (R @ (atom_coords - old_centroid).T).T + old_centroid + translation_vector
-        )
+        atom_coords = (R @ (atom_coords - old_centroid).T).T + new_centroid
         for coord, atom in zip(atom_coords, self.source.get_atoms()):
             atom.set_coord(coord)
 
@@ -178,14 +184,32 @@ class Stitcher(base.Connector):
         Find the atoms to remove from the target and source molecules
         while stitching them together
         """
-        _target_removals = [
-            self.target.get_atom(atom, residue=self._target_residue)
-            for atom in target_removals
-        ]
-        _source_removals = [
-            self.source.get_atom(atom, residue=self._source_residue)
-            for atom in source_removals
-        ]
+        if len(target_removals) == 0:
+            _target_removals = [
+                next(
+                    i
+                    for i in self.target.get_neighbors(self._anchors[0])
+                    if i.element == "H"
+                )
+            ]
+        else:
+            _target_removals = [
+                self.target.get_atom(atom, residue=self._target_residue)
+                for atom in target_removals
+            ]
+        if len(source_removals) == 0:
+            _source_removals = [
+                next(
+                    i
+                    for i in self.source.get_neighbors(self._anchors[1])
+                    if i.element == "H"
+                )
+            ]
+        else:
+            _source_removals = [
+                self.source.get_atom(atom, residue=self._source_residue)
+                for atom in source_removals
+            ]
         return (set(_target_removals), set(_source_removals))
 
     def _remove_atoms(self):
@@ -203,15 +227,16 @@ class Stitcher(base.Connector):
             obj = mapping[i]
 
             for atom in removals:
-                obj._AtomGraph.remove_node(atom)
                 bonds = (
                     i
                     for i in obj._bonds
-                    if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
+                    if atom in i
+                    # if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
                 )
                 for bond in bonds:
                     # obj._bonds.remove(bond)
                     obj._remove_bond(*bond)
+                obj._AtomGraph.remove_node(atom)
                 p = atom.get_parent()
                 if p:
                     p.detach_child(atom.get_id())
@@ -224,7 +249,7 @@ class Stitcher(base.Connector):
                 atom.set_serial_number(adx)
                 adx += 1
 
-    def _optimize(self, steps: int = 1e4, **kwargs):
+    def _optimize(self, steps: int = 30, **kwargs):
         """
         Optimize the geometry of the source molecule
 
@@ -234,46 +259,148 @@ class Stitcher(base.Connector):
             The number of optimization steps to perform
         """
 
+        self.target.adjust_indexing(self.source)
         bonds = self.target.get_bonds(self._target_residue)
         bonds.extend(self.source.get_bonds(self._source_residue))
 
-        tmp = Molecule.Molecule.empty(self.target.id)
-        self.target.adjust_indexing(self.source)
+        # the double Molecule seems necessary when the file is not direclty run...
+        tmp = Molecule.Molecule.empty("tmp")
+
+        orig_coords_target = {
+            atom: (atom.coord[0], atom.coord[1], atom.coord[2])
+            for atom in self._target_residue.child_list
+        }
+        orig_coords_source = {
+            atom: (atom.coord[0], atom.coord[1], atom.coord[2])
+            for atom in self._source_residue.child_list
+        }
+        target_residue_parent = self._target_residue.get_parent()
+        source_residue_parent = self._source_residue.get_parent()
+
+        orig_parents_target = {}
+        orig_parents_source = {}
 
         tmp.add_residues(
             self._target_residue,
             self._source_residue,
             adjust_seqid=False,
-            _copy=True,
+            _copy=False,
         )
 
-        # we could also add all neighbors of the anchor atom
-        # ...
-        neighs = (
-            n.copy()
-            for n in self.target.get_neighbors(self._anchors[0], n=3)
-            if not any(i is n for i in tmp.get_atoms())
+        # we could also add all close-by atoms
+        bystanders = base_classes.Residue("bystanders", 3, "")
+        include_bystanders = False
+        tmp.add_residues(bystanders, _copy=False)
+        r = self._optimize_bystander_radius
+        for atom in self.target.get_atoms():
+            if structural_base.compute_distance(atom, self._anchors[0]) < r:
+                if atom in tmp.get_atoms():
+                    continue
+                orig_coords_target[atom] = (atom.coord[0], atom.coord[1], atom.coord[2])
+                orig_parents_target[atom] = atom.parent
+
+                bystanders.add(atom)
+                tmp._AtomGraph.add_node(atom)
+                include_bystanders = True
+
+        for atom in self.source.get_atoms():
+            if structural_base.compute_distance(atom, self._anchors[1]) < r:
+                if atom in tmp.get_atoms():
+                    continue
+                orig_coords_source[atom] = (atom.coord[0], atom.coord[1], atom.coord[2])
+                orig_parents_source[atom] = atom.parent
+
+                bystanders.add(atom)
+                tmp._AtomGraph.add_node(atom)
+                include_bystanders = True
+
+        tmp._add_bonds(*bonds)
+        tmp._add_bond(self._anchors[0], self._anchors[1])
+
+        graph = tmp.make_residue_graph(False)
+        graph.make_detailed(n_samples=0.5)
+        if include_bystanders:
+            graph.add_nodes_from(bystanders.get_atoms())
+
+        edges = graph.find_rotatable_edges()
+        env = optimizers.DistanceRotatron(graph, edges)
+
+        best, _ = optimizers.swarm_optimize(
+            env,
+            n_particles=kwargs.pop("n_particles", 5),
+            max_steps=int(steps),
+            **kwargs,
         )
-        idx = 0
-        for n in neighs:
-            n.id = "neigh{}".format(idx)
-            idx += 1
-            tmp.add_atoms(n, residue=tmp.residues[0])
-            tmp.add_bond(self._anchors[0].serial_number, n.serial_number)
-
-        for b in bonds:
-            b = (b[0].serial_number, b[1].serial_number)
-            tmp.add_bond(*b)
-        tmp.add_bond(self._anchors[0].serial_number, self._anchors[1].serial_number)
-
-        graph = tmp.make_residue_graph()
-        graph.make_detailed(include_outliers=True, include_heteroatoms=True, f=1.2)
-
-        edges = sorted(tmp.get_residue_connections())
-        env = optimizers.MultiBondRotatron(graph, edges)
-
-        best, _ = optimizers.scipy_optimize(env, int(steps), **kwargs)
         self._policy = edges, best
+
+        self._target_residue.parent = target_residue_parent
+        self._source_residue.parent = source_residue_parent
+
+        for atom in self._target_residue.child_list:
+            atom.parent = self._target_residue
+            orig_coords = orig_coords_target[atom]
+            atom.coord[0] = orig_coords[0]
+            atom.coord[1] = orig_coords[1]
+            atom.coord[2] = orig_coords[2]
+
+        for atom in self._source_residue.child_list:
+            atom.parent = self._source_residue
+            orig_coords = orig_coords_source[atom]
+            atom.coord[0] = orig_coords[0]
+            atom.coord[1] = orig_coords[1]
+            atom.coord[2] = orig_coords[2]
+
+        for atom in orig_parents_source:
+            atom.parent = orig_parents_source[atom]
+            orig_coords = orig_coords_source[atom]
+            atom.coord[0] = orig_coords[0]
+            atom.coord[1] = orig_coords[1]
+            atom.coord[2] = orig_coords[2]
+
+        for atom in orig_parents_target:
+            atom.parent = orig_parents_target[atom]
+            orig_coords = orig_coords_target[atom]
+            atom.coord[0] = orig_coords[0]
+            atom.coord[1] = orig_coords[1]
+            atom.coord[2] = orig_coords[2]
+
+        # ===============================================================
+        # This works really well, but is slow because of the copying
+        # ===============================================================
+        # tmp.add_residues(
+        #     self._target_residue,
+        #     self._source_residue,
+        #     adjust_seqid=False,
+        #     _copy=True,
+        # )
+
+        # # we could also add all close-by atoms
+        # r = self._optimize_bystander_radius
+        # for atom in self.target.get_atoms():
+        #     if atom - self._anchors[0] < r or atom - self._anchors[1] < r:
+        #         if atom in tmp.get_atoms():
+        #             continue
+        #         tmp.add_atoms(atom, _copy=True)
+        # for atom in self.source.get_atoms():
+        #     if atom - self._anchors[0] < r or atom - self._anchors[1] < r:
+        #         if atom in tmp.get_atoms():
+        #             continue
+        #         tmp.add_atoms(atom, _copy=True)
+
+        # for b in bonds:
+        #     b = (b[0].serial_number, b[1].serial_number)
+        #     tmp.add_bond(*b)
+        # tmp.add_bond(self._anchors[0].serial_number, self._anchors[1].serial_number)
+
+        # graph = tmp.make_residue_graph()
+        # graph.make_detailed(include_outliers=True, include_heteroatoms=True, f=1.2)
+
+        # edges = sorted(tmp.get_residue_connections())
+        # env = optimizers.MultiBondRotatron(graph, edges, mask_same_residues=False)
+
+        # best, _ = optimizers.scipy_optimize(env, int(steps), **kwargs)
+        # self._policy = edges, best
+        # ================================================================================
 
         # self.best.append(best)
         # f, reward, *_ = env.step(best)
@@ -297,11 +424,11 @@ class Stitcher(base.Connector):
             edges, angles = self._policy
 
             for bond, angle in zip(edges, angles):
-                bond = (bond[0].full_id, bond[1].full_id)
-                if len(self.target.get_bonds(*bond, either_way=False)) == 0:
-                    self.target.add_bond(*bond)
-
-                bond = self.target.get_bonds(*bond, either_way=False)[0]
+                # we used to use full_id which worked overall good. I think we used to have
+                # also a version with serial for a while. Let's do this again...
+                # UPDATE: By now there should be no issues with the atom's being in there
+                # so we don't actually need to use the full_id anymore
+                _bond = bond
 
                 # v.draw_vector(
                 #     "rotation",
@@ -311,7 +438,7 @@ class Stitcher(base.Connector):
                 # )
 
                 self.target.rotate_around_bond(
-                    *bond, np.degrees(angle), descendants_only=True
+                    *_bond, angle, descendants_only=True, angle_is_degrees=False
                 )
 
             self._policy = None, None
@@ -326,27 +453,27 @@ __default_keep_keep_stitcher__ = Stitcher(False, False)
 Default stitcher for the case that both molecules are kept
 """
 
-__default_keep_copy_stitcher__ = Stitcher(False, True)
-"""
-Default stitcher for the case that the target molecule is kept and the source molecule is copied
-"""
+# __default_keep_copy_stitcher__ = Stitcher(False, True)
+# """
+# Default stitcher for the case that the target molecule is kept and the source molecule is copied
+# """
 
-__default_copy_copy_stitcher__ = Stitcher(True, True)
-"""
-Default stitcher for the case that both molecules are copied
-"""
+# __default_copy_copy_stitcher__ = Stitcher(True, True)
+# """
+# Default stitcher for the case that both molecules are copied
+# """
 
 
 def stitch(
     target: "Molecule.Molecule",
     source: "Molecule.Molecule",
-    recipe: "Linkage" = None,
+    recipe: "Linkage.Linkage" = None,
     target_removals: tuple = None,
     source_removals: tuple = None,
-    target_atom: Union[int, bio.Atom.Atom] = None,
-    source_atom: Union[int, bio.Atom.Atom] = None,
-    target_residue: Union[int, bio.Residue.Residue] = None,
-    source_residue: Union[int, bio.Residue.Residue] = None,
+    target_atom: Union[int, "base_classes.Atom"] = None,
+    source_atom: Union[int, "base_classes.Atom"] = None,
+    target_residue: Union[int, "base_classes.Residue"] = None,
+    source_residue: Union[int, "base_classes.Residue"] = None,
     optimization_steps: int = 1e4,
     copy_target: bool = False,
     copy_source: bool = False,
@@ -372,11 +499,11 @@ def stitch(
         This parameter is only used if no recipe is provided.
         A tuple of atoms to be removed from the source molecule. These must be the atom's ids within the attaching residue.
         All atoms must be part fo the same residue as the attaching `source_atom`.
-    target_atom : int or bio.Atom.Atom
+    target_atom : int or Atom
         This parameter is only used if no recipe is provided.
         The atom on the target molecule to which the source molecule will be attached. This may either be the atom object directly or its serial number.
         If none is provided, the molecule's "root atom" is used (if defined).
-    source_atom : int or bio.Atom.Atom
+    source_atom : int or Atom
         This parameter is only used if no recipe is provided.
         The atom on the source molecule to which the target molecule will be attached. This may either be the atom object directly or its serial number.
         If none is provided, the molecule's "root atom" is used (if defined).
@@ -453,17 +580,33 @@ def stitch(
 if __name__ == "__main__":
     import biobuild as bb
 
-    ser = bb.Molecule.from_pubchem("SER")
-    ser.autolabel()
+    bb.load_sugars()
+    glc = bb.Molecule.from_compound("GLC")
 
-    mol3 = bb.Molecule.from_pubchem("tert-butyl acetate")
-    # mol3.autolabel()
+    s = Stitcher(False, False)
+    s.apply(
+        glc,
+        glc.copy(),
+        # ["O1", "HO1"],
+        # [
+        #     "HO4",
+        # ],
+        target_atom="C1",
+        source_atom="O4",
+    )
+    s.merge().show()
 
-    # attach the red bit to the serine
-    l1 = bb.linkage("C6", "O3", ["H12"], ["HO3"])
+    # ser = bb.Molecule.from_pubchem("SER")
+    # ser.autolabel()
 
-    out = stitch(mol3, ser, l1)
-    out.show()
+    # mol3 = bb.Molecule.from_pubchem("tert-butyl acetate")
+    # # mol3.autolabel()
+
+    # # attach the red bit to the serine
+    # l1 = bb.linkage("C6", "O3", ["H12"], ["HO3"])
+
+    # out = stitch(mol3, ser, l1)
+    # out.show()
     # import biobuild as bb
 
     # glc = bb.Molecule.from_compound("GLC")

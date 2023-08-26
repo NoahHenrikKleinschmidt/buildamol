@@ -1,0 +1,47 @@
+data_GLC
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.auth_seq_id
+_atom_site.auth_asym_id
+_atom_site.pdbx_PDB_model_num
+HETATM 1  C C1  . GLC A ? . ? -0.567 1.572  -0.245 1.0 0.0 1 A 1 
+HETATM 2  C C2  . GLC A ? . ? -1.578 0.465  -0.554 1.0 0.0 1 A 1 
+HETATM 3  C C3  . GLC A ? . ? -1.179 -0.806 0.203  1.0 0.0 1 A 1 
+HETATM 4  C C4  . GLC A ? . ? 0.249  -1.195 -0.192 1.0 0.0 1 A 1 
+HETATM 5  C C5  . GLC A ? . ? 1.189  -0.024 0.102  1.0 0.0 1 A 1 
+HETATM 6  C C6  . GLC A ? . ? 2.607  -0.383 -0.345 1.0 0.0 1 A 1 
+HETATM 7  O O1  . GLC A ? . ? -0.600 1.871  1.151  1.0 0.0 1 A 1 
+HETATM 8  O O2  . GLC A ? . ? -2.881 0.879  -0.139 1.0 0.0 1 A 1 
+HETATM 9  O O3  . GLC A ? . ? -2.075 -1.866 -0.137 1.0 0.0 1 A 1 
+HETATM 10 O O4  . GLC A ? . ? 0.658  -2.338 0.562  1.0 0.0 1 A 1 
+HETATM 11 O O5  . GLC A ? . ? 0.744  1.133  -0.608 1.0 0.0 1 A 1 
+HETATM 12 O O6  . GLC A ? . ? 3.506  0.661  0.035  1.0 0.0 1 A 1 
+HETATM 13 H H1  . GLC A ? . ? -0.822 2.466  -0.815 1.0 0.0 1 A 1 
+HETATM 14 H H2  . GLC A ? . ? -1.583 0.264  -1.626 1.0 0.0 1 A 1 
+HETATM 15 H H3  . GLC A ? . ? -1.223 -0.619 1.276  1.0 0.0 1 A 1 
+HETATM 16 H H4  . GLC A ? . ? 0.281  -1.429 -1.257 1.0 0.0 1 A 1 
+HETATM 17 H H5  . GLC A ? . ? 1.187  0.184  1.173  1.0 0.0 1 A 1 
+HETATM 18 H H61 . GLC A ? . ? 2.913  -1.315 0.129  1.0 0.0 1 A 1 
+HETATM 19 H H62 . GLC A ? . ? 2.627  -0.503 -1.428 1.0 0.0 1 A 1 
+HETATM 20 H HO1 . GLC A ? . ? 0.017  2.566  1.420  1.0 0.0 1 A 1 
+HETATM 21 H HO2 . GLC A ? . ? -3.197 1.682  -0.576 1.0 0.0 1 A 1 
+HETATM 22 H HO3 . GLC A ? . ? -3.000 -1.684 0.080  1.0 0.0 1 A 1 
+HETATM 23 H HO4 . GLC A ? . ? 0.102  -3.118 0.427  1.0 0.0 1 A 1 
+HETATM 24 H HO6 . GLC A ? . ? 4.425  0.501  -0.218 1.0 0.0 1 A 1 
+#
+

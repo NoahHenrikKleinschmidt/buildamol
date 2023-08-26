@@ -4,6 +4,33 @@ Auxiliary tools for PDB files.
 
 from tabulate import tabulate
 
+__amino_acids = set(
+    (
+        "ALA",
+        "ARG",
+        "ASN",
+        "ASP",
+        "CYS",
+        "GLN",
+        "GLU",
+        "GLY",
+        "HIS",
+        "ILE",
+        "LEU",
+        "LYS",
+        "MET",
+        "PHE",
+        "PRO",
+        "SER",
+        "THR",
+        "TRP",
+        "TYR",
+        "VAL",
+        "CSE",  # selenocysteines
+        "SEC",
+    )
+)
+
 
 def write_pdb(mol, filename, symmetric: bool = True):
     """
@@ -63,20 +90,28 @@ def parse_connect_lines(filename):
     """
     with open(filename, "r") as f:
         lines = f.readlines()
-    bonds = []
+    bonds = {}
     known_bonds = set()
     for line in lines:
         if line.startswith("CONECT"):
-            tokens = line.split()[1:]
+            # split the line into tokens of length 5
+            line = line[6:]
+            tokens = [
+                line[i : i + 5].strip()
+                for i in range(0, len(line), 5)
+                if len(line[i : i + 5].strip()) > 0
+            ]
+
             atom_a = int(tokens[0])
             for token in tokens[1:]:
                 b = (atom_a, int(token))
                 # make sure we don't add the same bond twice
                 if b[::-1] in known_bonds:
                     continue
-                bonds.append(b)
+                bonds.setdefault(b, 0)
+                bonds[b] += 1
                 known_bonds.add(b)
-    return bonds
+    return [(*k, v) for k, v in bonds.items()]
 
 
 def make_connect_table(mol, symmetric=True):
@@ -98,29 +133,38 @@ def make_connect_table(mol, symmetric=True):
         The lines to add to the PDB file.
     """
     connectivity = {}
-    for atom_a, atom_b in mol.bonds:
-        a = atom_a.serial_number
-        b = atom_b.serial_number
+    for bond in mol.get_bonds():
+        a = bond.atom1.serial_number
+        b = bond.atom2.serial_number
         if a not in connectivity:
-            connectivity[a] = [b]
+            connectivity[a] = [b] * bond.order
         else:
-            connectivity[a].append(b)
+            connectivity[a].extend([b] * bond.order)
 
         if symmetric:
             if b not in connectivity:
-                connectivity[b] = [a]
+                connectivity[b] = [a] * bond.order
             else:
-                connectivity[b].append(a)
+                connectivity[b].extend([a] * bond.order)
 
     lines = []
     for atom in connectivity:
-        lines.append(("CONECT", atom, *connectivity[atom]))
-    table = tabulate(lines, tablefmt="plain")
+        line = "CONECT" + left_adjust(str(atom), 5)
+        for c in connectivity[atom]:
+            line += left_adjust(str(c), 5)
+            if len(line) > 70:
+                lines.append(line)
+                line = "CONECT" + left_adjust(str(atom), 5)
+        lines.append(line)
+    return "\n".join(lines)
+    #     lines.append(("CONECT", atom, *connectivity[atom]))
+    # table = tabulate(lines, tablefmt="plain")
     # table = table.replace("  ", "   ")
     return table
 
 
-atom_line = "HETATM{serial}{neg_adj}{element}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
+# atom_line = "{prefix}{serial}{neg_adj}{element}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
+atom_line = "{prefix}{serial}{neg_adj}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
 
 
 def make_atoms_table(mol):
@@ -139,25 +183,36 @@ def make_atoms_table(mol):
     """
     lines = []
     for atom in mol.get_atoms():
-        if len(atom.id) > 3:
-            neg_adj = ""
-        else:
-            neg_adj = " "
+        neg_adj = " "
+        # if len(atom.id) > 3:
+        #     neg_adj = ""
+        #     altloc_len = 2
+        # else:
+        #     neg_adj = " "
+        # altloc_len = 1
         if atom.pqr_charge is None:
             charge = ""
         else:
             charge = str(int(atom.pqr_charge)) + ("-" if atom.pqr_charge < 0 else "+")
+
+        if atom.get_parent().resname in __amino_acids:
+            prefix = "ATOM  "
+        else:
+            prefix = "HETATM"
+
         lines.append(
             atom_line.format(
+                prefix=prefix,
                 serial=left_adjust(str(atom.serial_number), 5),
                 neg_adj=neg_adj,
-                id=right_adjust(
-                    atom.id.replace(atom.element.upper(), "").replace(
-                        atom.element.title(), ""
-                    ),
-                    2,
-                ),
-                altloc=atom.altloc,
+                id=right_adjust(atom.id.upper(), 4),
+                # id=right_adjust(
+                #     atom.id.replace(atom.element.upper(), "").replace(
+                #         atom.element.title(), ""
+                #     ),
+                #     2,
+                # ),
+                altloc=right_adjust(atom.altloc, 1),
                 residue=left_adjust(atom.get_parent().resname, 3),
                 chain=atom.get_parent().get_parent().id,
                 # resseq=left_adjust(" ", 3),
@@ -166,7 +221,9 @@ def make_atoms_table(mol):
                 x=left_adjust(f"{atom.coord[0]:.3f}", 8),
                 y=left_adjust(f"{atom.coord[1]:.3f}", 8),
                 z=left_adjust(f"{atom.coord[2]:.3f}", 8),
+                # occ=left_adjust("1.00", 6),
                 occ=left_adjust(f"{atom.occupancy:.2f}", 6),
+                # temp=left_adjust("0.00", 6),
                 temp=left_adjust(f"{atom.bfactor:.2f}", 6),
                 seg=right_adjust("", 3),
                 element=left_adjust(atom.element.upper(), 2),
@@ -314,8 +371,8 @@ def left_adjust(s, n):
 if __name__ == "__main__":
     import biobuild as bb
 
-    glc = bb.molecule(
-        "/Users/noahhk/GIT/biobuild/docs/_tutorials/large.pkl"
+    parse_connect_lines(
+        "/Users/noahhk/GIT/glycosylator/final_scaffold_superduper.2023-07-26 20:51:40.416918.pdb"
     )  # ("/Users/noahhk/GIT/iupac_labeller/data/myglc3.pdb")
     glc.autolabel()
     b = write_pdb(glc, "ser.pdb")

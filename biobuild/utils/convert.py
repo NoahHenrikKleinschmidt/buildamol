@@ -11,14 +11,155 @@ import numpy as np
 from periodictable import elements
 
 import Bio.PDB as bio
-from openbabel import pybel
-from rdkit import Chem
-
 import biobuild.utils.auxiliary as aux
 import biobuild.utils.defaults as defaults
 
+has_pybel = aux.HAS_PYBEL
+has_rdkit = aux.HAS_RDKIT
+has_openmm = aux.HAS_OPENMM
 
-class PybelBioPythonConverter:
+
+class PDBIO:
+    """
+    The base class for intermediary PDB file-based conversions
+    """
+
+    def __init__(self):
+        self.__fileio__ = tempfile.mktemp(suffix=".pdb")
+
+    def biopython_to_pdbio(self, obj):
+        """
+        Store a biopython object in a PDB file
+        """
+        if not is_biopython(obj):
+            raise ValueError(f"Cannot convert object of type {type(obj)}")
+        io = bio.PDBIO()
+        io.set_structure(obj)
+        io.save(self.__fileio__)
+
+    def molecule_to_pdbio(self, obj):
+        """
+        Store a biobuild Molecule in a PDB file
+        """
+        obj.to_pdb(self.__fileio__, symmetric=False)
+
+    def pdbio_to_biopython(self, id: str = "temp") -> "bio.Structure.Structure":
+        """
+        Convert the internal FileIO to a biopython structure object
+        """
+        return defaults.__bioPDBParser__.get_structure(id, self.__fileio__)
+
+    def cleanup(self):
+        """
+        Remove the temporary PDB file
+        """
+        os.remove(self.__fileio__)
+
+
+class OpenMMBioPythonConverter(PDBIO):
+    """
+    Convert OpenMM data structures to Biopython
+    """
+
+    def biopython_to_openmm(self, obj):
+        """
+        Convert a biopython object to an OpenMM object
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if not is_biopython(obj):
+            raise ValueError(f"Cannot convert object of type {type(obj)}")
+        self.biopython_to_pdbio(obj)
+        new = self._pdbio_to_openmm()
+        self.cleanup()
+        return new
+
+    def biobuild_to_openmm(self, obj):
+        """
+        Convert a biobuild Molecule to an OpenMM object
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        self.molecule_to_pdbio(obj)
+        new = self._pdbio_to_openmm()
+        self.cleanup()
+        return new
+
+    def openmm_to_biopython(self, topology, positions):
+        """
+        Convert an OpenMM object to a biopython object
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if not has_openmm:
+            raise ImportError("Could not import OpenMM")
+        self._openmm_to_pdbio(topology, positions)
+        new = self.pdbio_to_biopython()
+        self.cleanup()
+        return new
+
+    def _pdbio_to_openmm(self):
+        """
+        Convert the internal FileIO to an OpenMM object
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if not has_openmm:
+            raise ImportError("Could not import OpenMM")
+        pdb = aux.openmm.app.PDBFile(self.__fileio__)
+        return pdb
+
+    def _openmm_to_pdbio(self, topology, positions):
+        """
+        Convert an OpenMM object to a PDB file
+
+        Parameters
+        ----------
+        topology : object
+            The topology to convert
+        positions : object
+            The positions to convert
+
+        Returns
+        -------
+        str
+            The PDB file
+        """
+        if not has_openmm:
+            raise ImportError("Could not import OpenMM")
+        aux.openmm.app.PDBFile.writeFile(
+            topology, positions, open(self.__fileio__, "w")
+        )
+
+
+class PybelBioPythonConverter(PDBIO):
     """
     Convert Pybel (openbabel) data structures to Biopython
     """
@@ -49,10 +190,10 @@ class PybelBioPythonConverter:
         object
             The converted object
         """
-        if isinstance(obj, pybel.Molecule):
+        if isinstance(obj, aux.pybel.Molecule):
             return self.pybel_molecule_to_biopython(obj)
 
-        elif isinstance(obj, pybel.Residue):
+        elif isinstance(obj, aux.pybel.Residue):
             residue = self.pybel_residue_to_biopython(obj)
             if full_structure:
                 struct = self._new_biopython_structure()
@@ -63,7 +204,7 @@ class PybelBioPythonConverter:
                 return struct
             return residue
 
-        elif isinstance(obj, pybel.Atom):
+        elif isinstance(obj, aux.pybel.Atom):
             atom = self.pybel_atom_to_biopython(obj)
             if full_structure:
                 struct = self._new_biopython_structure()
@@ -195,15 +336,46 @@ class PybelBioPythonConverter:
 
         return new
 
+    def biobuild_to_pybel(self, obj):
+        """
+        Convert a biobuild object to a pybel object
 
-class RDKITBiopythonConverter:
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if not has_pybel:
+            raise ImportError("Could not import pybel")
+
+        if type(obj).__name__ == "Molecule":
+            obj.to_pdb(self.__fileio__)
+        elif type(obj).__name__ == "Structure":
+            io = bio.PDBIO()
+            io.set_structure(obj.to_biopython())
+            io.save(self.__fileio__)
+        else:
+            while not type(obj).__name__ in ["Molecule", "Structure"]:
+                obj = obj.get_parent()
+            return self.biobuild_to_pybel(obj)
+
+        # read the file back in with pybel
+        pybel_obj = next(aux.pybel.readfile("pdb", self.__fileio__), None)
+        if not pybel_obj:
+            raise ValueError("Could not convert to pybel object")
+        return pybel_obj
+
+
+class RDKITBiopythonConverter(PDBIO):
     """
     A class to convert between RDKit and biopython objects
     This is done simply by using a temporary PDB pseudo-file
     """
-
-    def __init__(self):
-        self.__fileio__ = tempfile.mktemp(suffix=".pdb")
 
     def rdkit_to_biopython(self, obj):
         """
@@ -219,11 +391,14 @@ class RDKITBiopythonConverter:
         object
             The converted object
         """
+        if not has_rdkit:
+            raise ImportError("Could not import RDKit")
+
         if not is_rdkit(obj):
             raise ValueError(f"Cannot convert object of type {type(obj)}")
-        mol = self.rdkit_to_pdbio(obj)
+        mol = self._rdkit_to_pdbio(obj)
         new = self.pdbio_to_biopython(mol)
-        os.remove(self.__fileio__)
+        self.cleanup()
         return new
 
     def biopython_to_rdkit(self, obj):
@@ -243,11 +418,11 @@ class RDKITBiopythonConverter:
         if not is_biopython(obj):
             raise ValueError(f"Cannot convert object of type {type(obj)}")
         self.biopython_to_pdbio(obj)
-        new = self.pdbio_to_rdkit()
-        os.remove(self.__fileio__)
+        new = self._pdbio_to_rdkit()
+        self.cleanup()
         return new
 
-    def rdkit_to_pdbio(self, obj):
+    def _rdkit_to_pdbio(self, obj):
         """
         Convert an RDKit object to a PDB file
 
@@ -263,9 +438,9 @@ class RDKITBiopythonConverter:
         """
         if not is_rdkit(obj):
             raise ValueError(f"Cannot convert object of type {type(obj)}")
-        Chem.MolToPDBFile(obj, self.__fileio__)
+        aux.Chem.MolToPDBFile(obj, self.__fileio__)
 
-    def pdbio_to_rdkit(self) -> "Chem.rdchem.Mol":
+    def _pdbio_to_rdkit(self) -> "Chem.rdchem.Mol":
         """
         Convert the internal FileIO to an RDKit Mol object
 
@@ -274,62 +449,18 @@ class RDKITBiopythonConverter:
         Mol
             The converted object
         """
-        mol = Chem.MolFromPDBFile(self.__fileio__)
+        try:
+            mol = aux.Chem.MolFromPDBFile(
+                self.__fileio__, proximityBonding=False, removeHs=False
+            )
+        except:
+            mol = aux.Chem.MolFromPDBFile(
+                self.__fileio__, proximityBonding=False, removeHs=True
+            )
+
         if mol is None:
             raise ValueError("Could not convert PDB file to RDKit Mol")
         return mol
-
-    def biopython_to_pdbio(self, obj):
-        """
-        Convert a biopython object to a PDB file
-
-        Parameters
-        ----------
-        obj : object
-            The object to convert
-
-        Returns
-        -------
-        str
-            The PDB file
-        """
-        if not is_biopython(obj):
-            raise ValueError(f"Cannot convert object of type {type(obj)}")
-        io = bio.PDBIO()
-        io.set_structure(obj)
-        io.save(self.__fileio__)
-
-    def pdbio_to_biopython(self, id: str = "temp") -> "bio.Structure.Structure":
-        """
-        Convert the internal FileIO to a biopython structure object
-
-        Parameters
-        ----------
-        id : str, optional
-            The ID of the biopython object, by default "temp"
-
-        Returns
-        -------
-        Structure
-            The converted object
-        """
-        return defaults.__bioPDBParser__.get_structure(id, self.__fileio__)
-
-    def molecule_to_pdbio(self, mol):
-        """
-        Convert an biobuild molecule to a PDB file
-
-        Parameters
-        ----------
-        mol : object
-            The molecule to convert
-
-        Returns
-        -------
-        str
-            The PDB file
-        """
-        mol.to_pdb(self.__fileio__, symmetric=False)
 
 
 def is_biopython(obj):
@@ -371,9 +502,9 @@ def is_pybel(obj):
         `True` if the object is a pybel object, `False` otherwise
     """
     _valids = {
-        pybel.Molecule,
-        pybel.Residue,
-        pybel.Atom,
+        aux.pybel.Molecule,
+        aux.pybel.Residue,
+        aux.pybel.Atom,
     }
     return any([isinstance(obj, _valid) for _valid in _valids])
 
@@ -393,8 +524,8 @@ def is_rdkit(obj):
         `True` if the object is an rdkit object, `False` otherwise
     """
     _valids = {
-        Chem.rdchem.Mol,
-        Chem.rdchem.Atom,
+        aux.Chem.rdchem.Mol,
+        aux.Chem.rdchem.Atom,
     }
     return any([isinstance(obj, _valid) for _valid in _valids])
 
@@ -418,7 +549,7 @@ if __name__ == "__main__":
     # print(_biopython)
 
     rdkitconv = RDKITBiopythonConverter()
-    mol = Chem.MolFromPDBFile("/Users/noahhk/GIT/biobuild/support/examples/GAL.pdb")
+    mol = aux.Chem.MolFromPDBFile("/Users/noahhk/GIT/biobuild/support/examples/GAL.pdb")
     bp = rdkitconv.rdkit_to_biopython(mol)
     mo2 = rdkitconv.biopython_to_rdkit(bp)
 

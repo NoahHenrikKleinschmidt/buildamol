@@ -5,14 +5,14 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="biobuild",
-    version="3.0.1",
+    version="3.10.0",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
-    description="A python package for building organic molecules",
+    description="A fragment-based molecular assembly toolkit for python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={
-        "biobuild.resources": ["*.pkl", "*.cif"],
+        "biobuild.resources": ["*.pkl", "*.json", "*.cif"],
     },
     url="TBA",
     packages=[
@@ -36,22 +36,25 @@ setuptools.setup(
         "periodictable",
         "plotly",
         "alive_progress",
-        "pyswarms",
         "gym",
         "pubchempy",
         "tabulate",
         "scikit-learn",
-        "ipywidgets<8.0",
+        "ipywidgets<8.0.1",
     ],
     optional_requires={
+        "visual": ["py3Dmol", "nglview"],
         "openbabel": ["openbabel"],
-        "nglview": ["nglview"],
+        "rdkit": ["rdkit"],
+        "openmm": ["openmm"],
+        "full": ["rdkit", "openbabel", "openmm", "py3Dmol", "nglview"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "Topic :: Scientific/Engineering :: Chemistry",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
 )

@@ -3,6 +3,8 @@ import Bio.PDB as bio
 
 import biobuild.structural as struct
 from biobuild.graphs.BaseGraph import BaseGraph
+import biobuild.core.base_classes as base_classes
+import biobuild.utils.visual as vis
 
 
 class AtomGraph(BaseGraph):
@@ -12,7 +14,6 @@ class AtomGraph(BaseGraph):
 
     def __init__(self, id, bonds: list):
         super().__init__(id, bonds)
-        nx.set_node_attributes(self, {i: i.coord for i in self.nodes}, "coord")
 
     @classmethod
     def from_biopython(
@@ -90,7 +91,13 @@ class AtomGraph(BaseGraph):
         new = cls(mol.id, mol.bonds)
         if locked:
             new._locked_edges.update(mol.locked_bonds)
+        new._molecule = mol
         return new
+
+    def draw(self):
+        v = vis.AtomGraphViewer3D()
+        v.link(self)
+        return v
 
     def migrate_bonds(self, other):
         """
@@ -103,16 +110,18 @@ class AtomGraph(BaseGraph):
         """
         self._locked_edges.update(other._locked_edges)
         bond_orders = nx.get_edge_attributes(other, "bond_order")
+        bond_objs = nx.get_edge_attributes(other, "bond_obj")
         self.add_edges_from(other.edges)
         nx.set_edge_attributes(self, bond_orders, "bond_order")
+        nx.set_edge_attributes(self, bond_objs, "bond_obj")
 
-    def get_neighbors(self, atom: bio.Atom.Atom, n: int = 1, mode="upto"):
+    def get_neighbors(self, atom: "base_classes.Atom", n: int = 1, mode="upto"):
         """
         Get the neighbors of a node
 
         Parameters
         ----------
-        atom : bio.Atom.Atom
+        atom : Atom
             The atom
         n : int, optional
             The number of bonds to separate the atom from its neighbors.
@@ -130,41 +139,6 @@ class AtomGraph(BaseGraph):
         if not self._neighborhood:
             self._neighborhood = struct.AtomNeighborhood(self)
         return self._neighborhood.get_neighbors(atom, n, mode)
-
-    def direct_edges(self, root_node, edges=None):
-        """
-        Sort the edges such that the first atom in each edge
-        is the one with the lower serial number.
-
-        Parameters
-        ----------
-        root_node
-            The root node to use for sorting the edges
-        edges : list, optional
-            The edges to sort, by default None, in which case
-            all edges are sorted.
-
-        Returns
-        -------
-        list
-            The sorted edges
-        """
-        if edges is None:
-            edges = list(self.edges)
-
-        if root_node not in self.nodes:
-            raise ValueError(f"Root node {root_node} not in graph")
-
-        _directed = []
-        for node1, node2 in edges:
-            d1 = nx.shortest_path_length(self, source=root_node, target=node1)
-            d2 = nx.shortest_path_length(self, source=root_node, target=node2)
-            if d1 > d2:
-                edge = (node2, node1)
-            else:
-                edge = (node1, node2)
-            _directed.append(edge)
-        return _directed
 
     @staticmethod
     def _make_bonds(
@@ -190,7 +164,7 @@ class AtomGraph(BaseGraph):
             )
 
         if apply_standard_bonds:
-            bonds.extend(struct.apply_standard_bonds(structure, _topology))
+            bonds.extend(struct.apply_reference_bonds(structure, _topology))
 
         if infer_residue_connections:
             bonds.extend(struct.infer_residue_connections(structure, max_bond_length))

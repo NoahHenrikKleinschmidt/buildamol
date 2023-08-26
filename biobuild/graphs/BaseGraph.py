@@ -9,7 +9,6 @@ import Bio.PDB as bio
 import networkx as nx
 import numpy as np
 from scipy.spatial.transform import Rotation
-import biobuild.utils.visual as vis
 
 
 class BaseGraph(nx.Graph):
@@ -21,6 +20,7 @@ class BaseGraph(nx.Graph):
         super().__init__(bonds)
         self.id = id
         self._structure = None
+        self._molecule = None
         self._neighborhood = None
         self._locked_edges = set()
         self._structure_was_searched = False
@@ -63,6 +63,28 @@ class BaseGraph(nx.Graph):
         return list(self.structure.get_atoms())
 
     @property
+    def central_node(self):
+        """
+        Returns the central most node of the graph.
+        This is computed based on the mean of all node coordinates.
+        """
+        # get the central node
+        center = np.mean([i.coord for i in self.nodes])
+        # get the node closest to the center
+        root_node = min(self.nodes, key=lambda x: np.linalg.norm(x.coord - center))
+        return root_node
+
+    @property
+    def nodes_in_cycles(self) -> set:
+        """
+        Returns the nodes in cycles
+        """
+        cycles = nx.cycle_basis(self)
+        if len(cycles) == 0:
+            return set()
+        return set.union(*[set(i) for i in cycles])
+
+    @property
     def bonds(self):
         """
         Returns the bonds in the molecule
@@ -81,10 +103,10 @@ class BaseGraph(nx.Graph):
 
         Returns
         -------
-        MoleculeViewer3D
-            The 3D viewer
+        PlotlyViewer3D
+            A 3D viewer
         """
-        return vis.MoleculeViewer3D(self)
+        raise NotImplementedError
 
     @abstractmethod
     def get_neighbors(self, node, n: int = 1, mode="upto"):
@@ -127,11 +149,20 @@ class BaseGraph(nx.Graph):
         Returns
         -------
         set
-            The descendants of the node
+            The descendant nodes
 
         Examples
         --------
-        In case of this graph
+        In case of this graph:
+        
+        .. code-block::
+
+            A---B---C---D---E
+                \\
+                F---H
+                |
+                G
+        
         ```
         A---B---C---D---E
              \\
@@ -139,6 +170,7 @@ class BaseGraph(nx.Graph):
               |
               G
         ```
+        
         >>> graph.get_descendants("B", "C")
         {"D", "E"}
         >>> graph.get_descendants("B", "F")
@@ -146,40 +178,176 @@ class BaseGraph(nx.Graph):
         >>> graph.get_descendants("B", "A")
         set() # because in this direction there are no other nodes
         """
-        # if node_1 == node_2:
-        if node_1 is node_2:
-            raise ValueError(
-                "Cannot get descendants if only one node is given (no direction)!"
-            )
-
-        neighbors = self.get_neighbors(node_2)
-        neighbors.remove(node_1)
-        if len(neighbors) == 0:
-            return neighbors
-
-        _new_neighbors = neighbors.copy()
+        neighs = set(self.adj[node_2])
+        neighs.remove(node_1)
         _seen = set((node_1, node_2))
-
-        while len(_new_neighbors) > 0:
-            neighbor = _new_neighbors.pop()
-            descendants = self.get_neighbors(neighbor)
-
+        _new_neighs = set(neighs)
+        while len(_new_neighs) > 0:
+            neigh = _new_neighs.pop()
+            descendants = set(self.adj[neigh])
             descendants -= _seen
-            _seen.add(neighbor)
-            neighbors.add(neighbor)
-
+            _seen.add(neigh)
+            neighs.add(neigh)
             if len(descendants) == 0:
                 continue
-            _new_neighbors.update(descendants)
+            _new_neighs.update(descendants)
+        return neighs
 
-        return neighbors
+    def get_ancestors(self, node_1, node_2):
+        """
+        Get all ancestor nodes that come before a specific edge
+        defined in the direction from node1 to node2 (i.e. get all
+        nodes that comebefore node1). This method is directed
+        in contrast to the `get_neighbors()` method, which will get all neighboring
+        nodes of an anchor node irrespective of direction.
 
-    def direct_edges(self):
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes that define the edge
+
+        Returns
+        -------
+        set
+            The ancestor nodes
+
+        Examples
+        --------
+        In case of this graph:
+        
+        .. code-block::
+
+            A---B---C---D---E
+                \\
+                F---H
+                |
+                G
+        
+        ```
+        A---B---C---D---E
+             \\
+              F---H
+              |
+              G
+        ```
+        
+        >>> graph.get_ancestors("B", "C")
+        {"A", "F", "G", "H"}
+        >>> graph.get_ancestors("F", "B")
+        {"H", "G"}
+        >>> graph.get_ancestors("A", "B")
+        set() # because in this direction there are no other nodes
         """
-        Sort all edges such that the first node is always earlier
-        in the sequence than the second node.
+        return self.get_descendants(node_2, node_1)
+
+    def find_rotatable_edges(
+        self,
+        root_node=None,
+        min_descendants: int = 1,
+        min_ancestors: int = 1,
+        max_descendants: int = None,
+        max_ancestors: int = None,
+    ):
         """
-        raise NotImplementedError
+        Find all edges in the graph that are rotatable (i.e. not locked and not in a circular constellation).
+        You can also filter and direct the edges.
+
+        Parameters
+        ----------
+        root_node
+            A root node by which to direct the edges (closer to further).
+        min_descendants: int, optional
+            The minimum number of descendants that an edge must have to be considered rotatable.
+        min_ancestors: int, optional
+            The minimum number of ancestors that an edge must have to be considered rotatable.
+        max_descendants: int, optional
+            The maximum number of descendants that an edge must have to be considered rotatable.
+        max_ancestors: int, optional
+            The maximum number of ancestors that an edge must have to be considered rotatable.
+
+        Returns
+        -------
+        list
+            A list of rotatable edges
+        """
+        if not max_descendants:
+            max_descendants = np.inf
+        if not max_ancestors:
+            max_ancestors = np.inf
+
+        circulars = [set(i) for i in nx.cycle_basis(self)]
+        rotatable_edges = [
+            i
+            for i in self.edges
+            if not self.is_locked(*i)
+            and self[i[0]][i[1]].get("bond_order", 1) == 1
+            and not self.in_same_cycle(*i, circulars)
+        ]
+        if root_node is not None:
+            _directed = nx.dfs_tree(self, root_node)
+            rotatable_edges = [
+                i
+                for i in _directed.edges
+                if i in rotatable_edges or i[::-1] in rotatable_edges
+            ]
+
+        rotatable_edges = [
+            i
+            for i in rotatable_edges
+            if min_descendants < len(self.get_descendants(*i)) < max_descendants
+            and min_ancestors < len(self.get_ancestors(*i)) < max_ancestors
+        ]
+
+        return rotatable_edges
+
+    def in_same_cycle(self, node_1, node_2, cycles=None) -> bool:
+        """
+        Check if two nodes are in the same cycle
+
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes to check
+        """
+        if not cycles:
+            cycles = nx.cycle_basis(self)
+        for cycle in cycles:
+            if node_1 in cycle and node_2 in cycle:
+                return True
+        return False
+
+    def direct_edges(self, root_node=None, edges: list = None) -> list:
+        """
+        Sort the edges such that the first node in each edge
+        is the one closer to the root node. If no root node is provided,
+        the central node is used.
+
+        Parameters
+        ----------
+        root_node
+            The root node to use for sorting the edges. If not provided, the central node is used.
+        edges : list, optional
+            The edges to sort, by default None, in which case
+            all edges are sorted.
+
+        Returns
+        -------
+        list
+            The sorted edges
+        """
+        if not root_node:
+            root_node = self.central_node
+
+        if edges is None:
+            edges = list(self.edges)
+
+        if root_node not in self.nodes:
+            raise ValueError(f"Root node {root_node} not in graph")
+
+        _directed = nx.dfs_tree(self, source=root_node).edges
+        _directed = [i for i in _directed if i in edges or i[::-1] in edges]
+
+        return _directed
 
     def lock_edge(self, node_1, node_2):
         """
@@ -255,7 +423,12 @@ class BaseGraph(nx.Graph):
         self._locked_edges = set()
 
     def rotate_around_edge(
-        self, node_1, node_2, angle: float, descendants_only: bool = False
+        self,
+        node_1,
+        node_2,
+        angle: float,
+        descendants_only: bool = False,
+        update_coords: bool = True,
     ):
         """
         Rotate descending nodes around a specific edge by a given angle.
@@ -269,23 +442,30 @@ class BaseGraph(nx.Graph):
         descendants_only: bool, optional
             Whether to only rotate the descending nodes, by default False, in which case the entire graph
             will be rotated.
+        update_coords: bool, optional
+            Whether to update the coordinates of the nodes after rotation, by default True.
+
+        Returns
+        -------
+        new_coords: dict
+            The new coordinates of the nodes after rotation.
         """
-
-        # get the node coordinates as a dictionary
-        # # we do this in order to update the node attributes later...
-        # node_dict = nx.get_node_attributes(self, 'coord')
-
-        if node_1 not in self.nodes or node_2 not in self.nodes:
-            raise ValueError("One or more nodes not in graph!")
-        elif node_1 == node_2:
+        # ---------- sanity checks ----------
+        # We can skip these here for a little performance boost
+        # since we should assume that these methods are only ever
+        # called from their wrappers in the entity classes...
+        # ---------- sanity checks ----------
+        # if node_1 not in self.nodes or node_2 not in self.nodes:
+        #     raise ValueError("One or more nodes not in graph!")
+        if node_1 is node_2:
             raise ValueError("Cannot rotate around an edge with only one node!")
         elif self.is_locked(node_1, node_2):
             raise ValueError("Cannot rotate around a locked edge!")
 
         # we need to get a reference node index to normalise the rotated
         # coordinates to the original coordinate system
-        indices = list(self.nodes)
-        idx_1 = indices.index(node_1)
+        # indices = list(self.nodes)
+        idx_1 = next(idx for idx, i in enumerate(self.nodes) if i is node_1)
 
         # define the axis of rotation as the cross product of the edge's vectors
         edge_vector = node_2.coord - node_1.coord
@@ -303,24 +483,27 @@ class BaseGraph(nx.Graph):
 
         node_coords = np.array(tuple(nodes.values()))
 
-        indices = list(nodes.keys())
-        idx_2 = indices.index(node_2)
+        # indices = list(nodes.keys())
+        # idx_2 = indices.index(node_2)
+        idx_2 = next(idx for idx, i in enumerate(nodes.keys()) if i is node_2)
 
         # apply the rotation matrix to the node coordinates
         node_coords_rotated = r.apply(node_coords)
 
-        # now adjust for the translational shift around the axis
+        # now adjust for the translatisonal shift around the axis
         _diff = node_coords_rotated[idx_2] - node_coords[idx_2]
         node_coords_rotated -= _diff
 
         # update the node coordinates in the graph
-        for i, node in enumerate(nodes):
-            node.coord = node_coords_rotated[i]
+        new_coords = {i: node_coords_rotated[idx] for idx, i in enumerate(nodes.keys())}
 
-        new_coords = {i: i.coord for i in self.nodes}
+        if update_coords:
+            for node, coord in new_coords.items():
+                node.coord = coord
 
-        # set the node attributes in the graph
-        nx.set_node_attributes(self, new_coords, "coord")
+        _new_coords = {i: i.coord for i in self.nodes}
+        _new_coords.update(new_coords)
+        return _new_coords
 
     def _get_structure(self):
         """
@@ -336,3 +519,62 @@ class BaseGraph(nx.Graph):
         while not isinstance(structure, bio.Structure.Structure):
             structure = structure.get_parent()
         return structure
+
+    def __str__(self):
+        lines = "\n".join(nx.generate_network_text(self))
+        return lines
+
+
+if __name__ == "__main__":
+    import biobuild as bb
+    from timeit import timeit
+
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    mol = bb.molecule(
+        "/Users/noahhk/GIT/biobuild/biobuild/optimizers/_testing/files/EX7.json"
+    )
+    v = mol.draw()
+    g = BaseGraph(None, mol.bonds)
+    nx.set_edge_attributes(g, 1, "bond_order")
+    g.find_rotatable_edges()
+    #  ref_atom_graph = mol.get_atom_graph()
+
+    # a, b = mol.get_atoms(68, 65)
+
+    # x = g.get_descendants(a, b)
+    # for i in x:
+    #     v.draw_atom(i, color="purple")
+
+    # measure_performance = True
+    # repeats = 500
+    # number = 800
+    # if measure_performance:
+    #     test_old = lambda: BaseGraph.get_descendants_old(ref_atom_graph, a, b)
+    #     test_new = lambda: g.get_descendants(a, b)
+    #     # test_2 = lambda: g.get_descendants_2(a, b)
+
+    #     times_old = [timeit(test_old, number=number) for _ in range(repeats)]
+    #     times_new = [timeit(test_new, number=number) for _ in range(repeats)]
+    #     # times_2 = [timeit(test_2, number=number) for _ in range(repeats)]
+
+    #     sns.distplot(times_old, label="old", kde=True, bins=20)
+    #     sns.distplot(times_new, label="new", kde=True, bins=20)
+    #     # sns.distplot(times_2, label="2", kde=True, bins=20)
+    #     plt.legend()
+    #     plt.show()
+
+    # pass
+
+# v.draw_edges((a, b), color="limegreen", linewidth=4, elongate=1.1)
+# ref_decendants = ref_atom_graph.get_descendants(a, b)
+
+# descendants = g.get_descendants_2(a, b)
+
+# for i in descendants:
+#     v.draw_atom(i, color="purple")
+# for i in ref_decendants:
+#     v.draw_atom(i, color="orange")
+# v.show()
+# pass

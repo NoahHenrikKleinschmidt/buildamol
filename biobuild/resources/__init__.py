@@ -33,3 +33,4 @@ import biobuild.resources.charmm as charmm
 
 from biobuild.resources.pdbe_compounds import *
 from biobuild.resources.charmm import *
+from biobuild.resources.defaults import *

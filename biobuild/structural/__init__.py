@@ -13,15 +13,13 @@ from biobuild.structural.base import *
 from biobuild.structural.patch import (
     Patcher,
     patch,
-    __default_copy_copy_patcher__,
-    __default_keep_copy_patcher__,
+    __default_keep_keep_patcher__,
 )
 
 from biobuild.structural.stitch import (
     Stitcher,
     stitch,
-    __default_copy_copy_stitcher__,
-    __default_keep_copy_stitcher__,
+    __default_keep_keep_stitcher__,
 )
 
 from biobuild.structural.neighbors import (

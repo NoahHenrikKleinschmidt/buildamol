@@ -2,13 +2,16 @@
 Tests to check the behaviour of the bb.AtomGraph and bb.ResidueGraph object
 """
 
+import pytest
+
 from copy import deepcopy
 import random
 import numpy as np
 import biobuild as bb
-import base
+import tests.base as base
 import timeit
 
+bb.load_sugars()
 
 # =================================================================
 # AtomGraph Tests
@@ -119,12 +122,7 @@ def test_atom_graph_get_descendants():
 
     # if there is only one atom, then no directionality is available and no descendants
     # can be found!
-    try:
-        _received = mol.get_descendants(o3, o3)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected a ValueError to be raised")
+    pytest.raises(KeyError, mol.get_descendants, o3, o3)
 
     c6 = next(i for i in mol.structure.get_atoms() if i.id == "C6")
     c5 = next(i for i in mol.structure.get_atoms() if i.id == "C5")
@@ -190,17 +188,6 @@ def test_atom_graph_rotate_all():
     assert np.allclose(current_ref, new_ref), "Reference atoms have moved"
 
 
-def test_atom_graph_copy_neighbors():
-    mol = bb.Molecule.from_pdb(base.MANNOSE9)
-    mol.infer_bonds(restrict_residues=False)
-
-    _mol = deepcopy(mol)
-
-    _mol.remove_atoms(1, 2)
-
-    _mol.get_neighbors(2)
-
-
 # =================================================================
 # ResidueGraph tests
 # =================================================================
@@ -215,12 +202,13 @@ def test_residue_graph_from_molecule():
     graph_simple = bb.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
     v = mol.draw()
-    for edge in mol.get_residue_connections(True):
+    for edge in mol.get_residue_connections():
         v.draw_vector(
             f"""{edge[0].full_id[3:]} ---> {edge[1].full_id[3:]}""",
             edge[0].coord,
-            1.2 * (edge[1].coord - edge[0].coord),
+            edge[1].coord,
             color="magenta",
+            elongate=1.2,
         )
     v.show()
 
@@ -235,13 +223,14 @@ def test_residue_graph_from_molecule():
     v = graph_simple.draw()
     v.show()
 
-    graph_detailed = bb.graphs.ResidueGraph.from_molecule(mol, detailed=True)
+    graph_detailed = bb.graphs.ResidueGraph.from_molecule(mol, detailed=False)
+    graph_detailed.make_detailed(False)
     assert graph_detailed is not None, "No molecule is made"
 
     graph_detailed.lock_centers()
     v = graph_detailed.draw()
-    v.draw_edges(graph_detailed.get_locked_edges(), color="magenta")
-    v.draw_edges(graph_detailed.get_unlocked_edges(), color="limegreen")
+    v.draw_edges(*graph_detailed.get_locked_edges(), color="magenta")
+    v.draw_edges(*graph_detailed.get_unlocked_edges(), color="limegreen")
     v.show()
 
     _received = len(list(graph_detailed.bonds))
@@ -253,15 +242,11 @@ def test_residue_graph_multi_residue_get_neighbors():
     mol = bb.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
 
-    graph = bb.graphs.ResidueGraph.from_molecule(mol, detailed=True)
+    graph = bb.graphs.ResidueGraph.from_molecule(mol, detailed=False)
+    graph.make_detailed(False)
     graph.show()
 
-    try:
-        neigs = graph.get_neighbors("C1")
-    except Exception as e:
-        pass
-    else:
-        raise AssertionError("Expected an exception, got none")
+    pytest.raises(KeyError, graph.get_neighbors, "C1")
 
     # get the C1 of the BMA residue (seqid=4)
     neigs = graph.get_neighbors(mol.get_atom("C1", residue=4))
@@ -271,12 +256,7 @@ def test_residue_graph_multi_residue_get_neighbors():
     _expected = 2
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    try:
-        neigs = graph.get_neighbors("MAN")
-    except Exception as e:
-        pass
-    else:
-        raise AssertionError("Expected an exception, got none")
+    pytest.raises(KeyError, graph.get_neighbors, "MAN")
 
     neigs = graph.get_neighbors(mol.get_residues("MAN", by="name"))
     assert isinstance(neigs, list), f"Expected a list but received {type(neigs)}"
@@ -327,9 +307,15 @@ def test_residue_graph_residue_order():
 
     for i in range(10):
         rdx = random.randint(0, len(mol.residues) - 1)
-        assert mol.residues[rdx] == mol2.residues[rdx], "Residue order is not preserved"
-        assert mol.residues[rdx] == mol3.residues[rdx], "Residue order is not preserved"
-        assert mol.residues[rdx] == mol4.residues[rdx], "Residue order is not preserved"
+        assert (
+            mol.residues[rdx].serial_number == mol2.residues[rdx].serial_number
+        ), "Residue order is not preserved"
+        assert (
+            mol.residues[rdx].serial_number == mol3.residues[rdx].serial_number
+        ), "Residue order is not preserved"
+        assert (
+            mol.residues[rdx].serial_number == mol4.residues[rdx].serial_number
+        ), "Residue order is not preserved"
 
 
 def test_residue_graph_get_descendants():
@@ -337,7 +323,7 @@ def test_residue_graph_get_descendants():
     mol.infer_bonds(restrict_residues=False)
     graph = bb.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
-    v = bb.utils.visual.MoleculeViewer3D(graph)
+    v = graph.draw()
 
     nag2 = mol.residues[0]
     nag3 = mol.residues[1]
@@ -374,7 +360,7 @@ def test_residue_graph_rotate_descendants_only():
     mol.infer_bonds(restrict_residues=False)
     graph = bb.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
-    v = bb.utils.visual.MoleculeViewer3D(graph)
+    v = graph.draw()
 
     nag3 = mol.residues[1]
     bma = mol.residues[2]
@@ -390,7 +376,7 @@ def test_residue_graph_rotate_descendants_only():
 
     for i in range(5):
         graph.rotate_around_edge(nag3, bma, np.radians(10), descendants_only=True)
-        v.draw_edges(graph.edges, color="magenta")
+        v.draw_edges(*graph.edges, color="magenta")
 
     new_descendants = np.array([i.coord for i in descendants])
     new_others = np.array([i.coord for i in others])
@@ -408,7 +394,7 @@ def test_residue_graph_rotate_descendants_only_detailed():
     mol.infer_bonds(restrict_residues=False)
     graph = bb.graphs.ResidueGraph.from_molecule(mol, detailed=True)
 
-    v = bb.utils.visual.MoleculeViewer3D(graph)
+    v = graph.draw()
 
     t1 = timeit.timeit()
     cons = mol.get_residue_connections()
@@ -428,7 +414,7 @@ def test_residue_graph_rotate_descendants_only_detailed():
             graph.rotate_around_edge(
                 atom1, atom2, np.radians(10), descendants_only=True
             )
-            v.draw_edges(graph.edges, color="magenta")
+            v.draw_edges(*graph.edges, color="magenta")
 
         new_descendants = np.array([i.coord for i in descendants])
         new_others = np.array([i.coord for i in others])
@@ -481,7 +467,7 @@ def test_residue_graph_detailed():
     assert len(mol.nodes) == 11, "Wrong number of nodes"
     assert len(mol.bonds) == 10, "Wrong number of bonds"
 
-    mol.make_detailed()
+    mol.make_detailed(False)
 
     assert len(mol.edges) == 40, "Wrong number of edges"
     assert len(mol.nodes) == 41, "Wrong number of nodes"
@@ -491,21 +477,18 @@ def test_residue_graph_detailed_get_neighbors():
     mol = bb.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     graph = bb.graphs.ResidueGraph.from_molecule(mol, detailed=False)
-    graph.make_detailed()
+    graph.make_detailed(False)
 
-    v = bb.utils.visual.MoleculeViewer3D(mol)
-    v.show()
-
-    nag = mol.get_residue(3)
-    neigs = graph.get_neighbors(nag)
+    bma = mol.get_residue(3)
+    neigs = graph.get_neighbors(bma)
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
     _received = len(neigs)
-    _expected = 2
+    _expected = 3
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
     ids = [i.id for i in neigs]
-    assert "C4" in ids, "Wrong neighbor"
-    assert "C1" in ids, "Wrong neighbor"
+    assert "C6" in ids, "Wrong neighbors: " + str(ids)
+    assert "C1" in ids, "Wrong neighbors: " + str(ids)
 
     has_residues = False
     has_atoms = False
@@ -535,19 +518,16 @@ def test_atom_graph_lock():
     glc.lock_bond(4, 5)
     assert len(set(g._locked_edges)) == len(set(glc.locked_bonds)) == 1
 
-    glc.lock_bond(4, 5, both_ways=True)
-    assert len(set(g._locked_edges)) == len(set(glc.locked_bonds)) == 2
-
     old = len(glc.bonds)
     old_edges = len(g.edges)
 
     glc.add_bond(5, 12)
     assert len(glc.bonds) == old + 1
     assert len(g.edges) == old_edges + 1
-    assert len(set(g._locked_edges)) == len(set(glc.locked_bonds)) == 2
+    assert len(set(g._locked_edges)) == len(set(glc.locked_bonds)) == 1
 
     glc.lock_bond(5, 12)
-    assert len(set(g._locked_edges)) == len(set(glc.locked_bonds)) == 3
+    assert len(set(g._locked_edges)) == len(set(glc.locked_bonds)) == 2
 
     glc.remove_bond(5, 12)
     assert len(glc.bonds) == old

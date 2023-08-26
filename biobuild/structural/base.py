@@ -48,6 +48,10 @@ def model_make_full_id(self):
     return (self.id,)
 
 
+# --------------------------- POSSIBLE DELETE ---------------------------
+# the whole set_full_id and whatever can probably be deleted since
+# we are using our own wrapper around the biopython structure anyway
+# --------------------------- POSSIBLE DELETE ---------------------------
 def set_full_id(self, value):
     pass
 
@@ -56,6 +60,8 @@ bio.Atom.Atom.full_id = property(atom_make_full_id, set_full_id)
 bio.Residue.Residue.full_id = property(residue_make_full_id, set_full_id)
 bio.Chain.Chain.full_id = property(chain_make_full_id, set_full_id)
 bio.Model.Model.full_id = property(model_make_full_id, set_full_id)
+
+# --------------------------- POSSIBLE DELETE ---------------------------
 
 
 def make_empty_structure(id: str = "empty"):
@@ -315,6 +321,25 @@ def compute_torsional(atom1, atom2, atom3, atom4):
     x = np.dot(v, w)
     y = np.dot(np.cross(bc, v), w)
     return np.degrees(np.arctan2(y, x))
+
+
+def distance_between(coord1, coord2):
+    """
+    Compute the distance between two 3d coordinates.
+
+    Parameters
+    ----------
+    coord1 : numpy.ndarray
+        The first coordinate
+    coord2 : numpy.ndarray
+        The second coordinate
+
+    Returns
+    -------
+    distance : float
+        The euclidean distance between the two coordinates
+    """
+    return np.linalg.norm(coord1 - coord2)
 
 
 def compute_distance(atom1, atom2):

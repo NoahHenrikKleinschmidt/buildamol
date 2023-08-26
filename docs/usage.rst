@@ -71,6 +71,9 @@ in the method-based API.
 
    import biobuild as bb
 
+   # load sugar data repository
+   bb.load_sugars()
+
    # make a molecule from a 
    # defined chemical compound
    glc = bb.molecule("alpha-d-glucose")
@@ -94,6 +97,7 @@ allow to expand the structure by adding new parts to it.
 .. code-block:: python
 
    import biobuild as bb
+   bb.load_sugars()
 
    # make a molecule from a 
    # defined chemical compound
@@ -126,6 +130,7 @@ condensed way to write `biobuild` code - sometimes at the expense of readability
 .. code-block:: python
 
    import biobuild as bb
+   bb.load_sugars()
 
    glc = bb.Molecule.from_compound("alpha-d-glucose")
 
@@ -165,6 +170,7 @@ how we can create a larger structure from single monosaccharides using `biobuild
 .. code-block:: python
 
    import biobuild as bb
+   bb.load_sugars()
 
    # get the monosaccharides
    # (using their PDBE identifiers)

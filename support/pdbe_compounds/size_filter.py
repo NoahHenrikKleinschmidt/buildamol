@@ -23,7 +23,7 @@ def setup():
 def main(args):
     if args.input == args.output:
         args.output += ".tmp"
-    c = bb.load_compounds(args.input, False)
+    c = bb.read_compounds(args.input, False)
     ids = list(c.ids)
     for i in ids:
         pdb = c._pdb[i]
@@ -37,14 +37,14 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # main(setup())
-    class Args:
-        input = (
-            "/Users/noahhk/GIT/biobuild/support/pdbe_compounds/components.cif.comp.pkl"
-        )
-        output = (
-            "/Users/noahhk/GIT/biobuild/support/pdbe_compounds/components.max40.pkl"
-        )
-        max_size = 40
+    main(setup())
+    # class Args:
+    #     input = (
+    #         "/Users/noahhk/GIT/biobuild/support/pdbe_compounds/components.cif.comp.pkl"
+    #     )
+    #     output = (
+    #         "/Users/noahhk/GIT/biobuild/support/pdbe_compounds/components.max40.pkl"
+    #     )
+    #     max_size = 40
 
-    main(Args())
+    # main(Args())

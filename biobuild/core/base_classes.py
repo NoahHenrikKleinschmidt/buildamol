@@ -42,14 +42,26 @@ then all atoms, residues, chains and models will be converted to their biobuild 
     
 """
 from copy import deepcopy
-from uuid import uuid4
+
+# from uuid import uuid4
 import Bio.PDB as bio
 import periodictable as pt
 
 
+__all__ = ["Atom", "Residue", "Chain", "Model", "Structure", "Bond"]
+
+
 class ID:
+    """
+    The base class for Biobuild's internal object identification.
+    All classes that inheret from this class will be recorded as unique objects.
+    """
+
+    __global_idx__ = 0
+
     def __init__(self):
-        self.__id = str(uuid4())
+        self.__id = ID.__global_idx__ + 1
+        ID.__global_idx__ += 1
 
     def copy(self):
         new = deepcopy(self)
@@ -63,19 +75,77 @@ class ID:
         return id in self.child_dict
 
     def _new_id(self):
-        self.__id = str(uuid4())
+        self.__id = ID.__global_idx__ + 1
+        ID.__global_idx__ += 1
+
+    def _adopt_id(self, id):
+        self.__id = id
 
     def __hash__(self):
-        return hash(self.__id)
+        return self.__id
 
     def __eq__(self, other):
+        if not isinstance(other, ID):
+            return False
         return self.__id == other.__id
 
     def __ne__(self, other):
+        if not isinstance(other, ID):
+            return True
         return self.__id != other.__id
 
 
 class Atom(ID, bio.Atom.Atom):
+    """
+    An Atom object that inherits from Biopython's Atom class.
+
+    Parameters
+    ----------
+    id : str
+        The atom identifier
+    coord : ndarray
+        The atom coordinates
+    serial_number : int, optional
+        The atom serial number. The default is 1.
+    bfactor : float, optional
+        The atom bfactor. The default is 0.0.
+    occupancy : float, optional
+        The atom occupancy. The default is 1.0.
+    fullname : str, optional
+        The atom fullname. The default is None, in which case the id is used again.
+    element : str, optional
+        The atom element. The default is None, in which case it is inferred based on the id.
+    altloc : str, optional
+        The atom altloc. The default is " ".
+    pqr_charge : float, optional
+        The atom pqr_charge. The default is None.
+    radius : float, optional
+        The atom radius. The default is None.
+    """
+
+    __slots__ = (
+        "id",
+        "parent",
+        "name",
+        "fullname",
+        "coord",
+        "mass",
+        "serial_number",
+        "bfactor",
+        "occupancy",
+        "altloc",
+        "element",
+        "pqr_charge",
+        "radius",
+        "level",
+        "disordered_flag",
+        "anisou_array",
+        "siguij_array",
+        "sigatm_array",
+        "xtra",
+        "_sorting_keys",
+    )
+
     def __init__(
         self,
         id: str,
@@ -92,6 +162,8 @@ class Atom(ID, bio.Atom.Atom):
         if not fullname:
             fullname = id
         ID.__init__(self)
+        if element:
+            element = element.upper()
         bio.Atom.Atom.__init__(
             self,
             id,
@@ -164,7 +236,7 @@ class Atom(ID, bio.Atom.Atom):
             self.altloc,
             self.fullname,
             self.serial_number,
-            self.element,
+            self.element.upper(),
             self.pqr_charge,
             self.radius,
         )
@@ -213,6 +285,34 @@ class Atom(ID, bio.Atom.Atom):
 
 
 class Residue(ID, bio.Residue.Residue):
+    """
+    A Residue object that inherits from Biopython's Residue class.
+
+    Parameters
+    ----------
+    resname : str
+        The residue name
+    segid : str
+        The residue segid.
+    icode : int
+        The residue icode.
+        This is the residue serial number.
+    """
+
+    __slots__ = (
+        "level",
+        "disordered",
+        "resname",
+        "segid",
+        "internal_coord",
+        "_id",
+        "parent",
+        "child_list",
+        "child_dict",
+        "xtra",
+        "_coord",
+    )
+
     def __init__(self, resname, segid, icode):
         ID.__init__(self)
         bio.Residue.Residue.__init__(
@@ -220,6 +320,7 @@ class Residue(ID, bio.Residue.Residue):
         )
         self.level = "R"
         self.serial_number = icode
+        self._coord = None
 
     @property
     def id(self):
@@ -245,6 +346,17 @@ class Residue(ID, bio.Residue.Residue):
     @full_id.setter
     def full_id(self, value):
         pass
+
+    @property
+    def coord(self):
+        if self._coord is None:
+            return self.center_of_mass()
+        else:
+            return self._coord
+
+    @coord.setter
+    def coord(self, value):
+        self._coord = value
 
     # def add(self, atom):
     #     if atom.get_id() not in self.child_dict:
@@ -273,7 +385,7 @@ class Residue(ID, bio.Residue.Residue):
         Residue
             The converted residue
         """
-        new = cls(residue.id, residue.segid, residue.icode)
+        new = cls(residue.id[0], residue.id[1], residue.id[-1])
         for atom in residue.get_atoms():
             new.add(Atom.from_biopython(atom))
         return new
@@ -298,7 +410,7 @@ class Residue(ID, bio.Residue.Residue):
         bio.Residue.Residue.add(self, atom)
 
     def __repr__(self):
-        return f"Residue({self.resname}, {self.serial_number}, chain={self.parent.id if self.parent else None})"
+        return f"Residue({self.resname}, {self.serial_number})"
 
     def __lt__(self, other):
         return self.serial_number < other.serial_number
@@ -328,6 +440,25 @@ class Residue(ID, bio.Residue.Residue):
 
 
 class Chain(ID, bio.Chain.Chain):
+    """
+    A Chain object that inherits from Biopython's Chain class.
+
+    Parameters
+    ----------
+    id : str
+        The chain identifier
+    """
+
+    __slots__ = (
+        "level",
+        "internal_coord",
+        "_id",
+        "parent",
+        "child_list",
+        "child_dict",
+        "xtra",
+    )
+
     def __init__(self, id):
         ID.__init__(self)
         super(bio.Chain.Chain, self).__init__(id)
@@ -412,6 +543,25 @@ class Chain(ID, bio.Chain.Chain):
 
 
 class Model(bio.Model.Model, ID):
+    """
+    A Model object that inherits from Biopython's Model class.
+
+    Parameters
+    ----------
+    id : int or str
+        The model identifier
+    """
+
+    __slots__ = (
+        "level",
+        # "serial_num",
+        "_id",
+        "parent",
+        "child_list",
+        "child_dict",
+        "xtra",
+    )
+
     def __init__(self, id):
         ID.__init__(self)
         super(bio.Model.Model, self).__init__(id)
@@ -504,6 +654,24 @@ class Model(bio.Model.Model, ID):
 
 
 class Structure(ID, bio.Structure.Structure):
+    """
+    A Structure object that inherits from Biopython's Structure class.
+
+    Parameters
+    ----------
+    id : str
+        The structure identifier
+    """
+
+    __slots__ = (
+        "level",
+        "_id",
+        "parent",
+        "child_list",
+        "child_dict",
+        "xtra",
+    )
+
     def __init__(self, id):
         ID.__init__(self)
         super(bio.Structure.Structure, self).__init__(id)
@@ -540,7 +708,19 @@ class Structure(ID, bio.Structure.Structure):
             for chain in model.get_chains():
                 c = Chain(chain.id)
                 for residue in chain.get_residues():
-                    r = Residue(residue.resname, residue.segid, rdx)
+                    # ------------------------ NOTE -------------------------
+                    # This is a little weird bugfix where I found
+                    # that sometimes the segid was "     " instead of " ".
+                    # This is a little hacky, but it works.
+                    # It could be that there is a problem with the pdb module
+                    # but that one has already seen enough modification so
+                    # I don't want to tinker with it again...
+                    # -------------------------------------------------------
+                    segid = residue.segid
+                    if len(segid) > 1:
+                        segid = segid[0]
+                    # -------------------------------------------------------
+                    r = Residue(residue.resname, segid, rdx)
                     rdx += 1
                     for atom in residue.get_atoms():
                         a = Atom(
@@ -614,6 +794,151 @@ class Structure(ID, bio.Structure.Structure):
 
     def __ge__(self, other):
         return self.id >= other.id
+
+
+class Bond:
+    """
+    A class representing a bond between two atoms.
+
+    Attributes
+    ----------
+    atom1 : Atom
+        The first atom in the bond.
+    atom2 : Atom
+        The second atom in the bond.
+    """
+
+    __linkers = {0: "<none>", 1: "--", 2: "==", 3: "#"}
+
+    __slots__ = ("atom1", "atom2", "order")
+
+    def __init__(self, *atoms) -> None:
+        if len(atoms) == 1:
+            self = Bond(*atoms[0])
+        elif len(atoms) == 2:
+            self.atom1 = atoms[0]
+            self.atom2 = atoms[1]
+            self.order = 1
+        elif len(atoms) == 3:
+            self.atom1 = atoms[0]
+            self.atom2 = atoms[1]
+            self.order = atoms[2]
+        else:
+            raise ValueError("Bond must be initialized with one tuple or two atoms")
+
+    def invert(self):
+        """
+        Invert the bond, i.e. swap the two atoms.
+        """
+        self.atom1, self.atom2 = self.atom2, self.atom1
+
+    def single(self):
+        """
+        Make the bond a single bond.
+        """
+        self.order = 1
+
+    def double(self):
+        """
+        Make the bond a double bond.
+        """
+        self.order = 2
+
+    def triple(self):
+        """
+        Make the bond a triple bond.
+        """
+        self.order = 3
+
+    def is_single(self) -> bool:
+        """
+        Check if the bond is a single bond.
+
+        Returns
+        -------
+        bool
+            True if the bond is a single bond, False otherwise.
+        """
+        return self.order == 1
+
+    def is_double(self) -> bool:
+        """
+        Check if the bond is a double bond.
+
+        Returns
+        -------
+        bool
+            True if the bond is a double bond, False otherwise.
+        """
+        return self.order == 2
+
+    def is_triple(self) -> bool:
+        """
+        Check if the bond is a triple bond.
+
+        Returns
+        -------
+        bool
+            True if the bond is a triple bond, False otherwise.
+        """
+        return self.order == 3
+
+    def compute_length(self) -> float:
+        """
+        Compute the bond length.
+
+        Returns
+        -------
+        float
+            The bond length.
+        """
+        return self.atom1 - self.atom2
+
+    def to_tuple(self) -> tuple:
+        """
+        Convert the bond to a tuple.
+
+        Returns
+        -------
+        tuple
+            The bond as a tuple.
+        """
+        return (self.atom1, self.atom2, self.order)
+
+    def __iter__(self):
+        yield self.atom1
+        yield self.atom2
+
+    def __getitem__(self, idx):
+        if idx == 0:
+            return self.atom1
+        elif idx == 1:
+            return self.atom2
+        else:
+            raise IndexError("Bond only has two atoms")
+
+    def __repr__(self) -> str:
+        return f"Bond({self.atom1}, {self.atom2})"
+
+    def __str__(self) -> str:
+        return f"({self.atom1} {self.__linkers.get(self.order, '?') } {self.atom2})"
+
+    def __eq__(self, other):
+        a = self.atom1 == other[0] and self.atom2 == other[1]
+        b = self.atom1 == other[1] and self.atom2 == other[0]
+        return a or b
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(self.atom1) + hash(self.atom2)
+
+    def __len__(self):
+        return 2
+
+    def __contains__(self, item):
+        return item == self.atom1 or item == self.atom2
 
 
 if __name__ == "__main__":
