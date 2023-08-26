@@ -104,8 +104,8 @@ glycan.attach(man, "13ab")
 # at the second-to-last residue (BMA)
 glycan.attach(man, "16ab", at_residue=-2)
 
-# add one final alpha-mannose
-glycan = bb.connect(glycan, man, "16ab")
+# add one final alpha-mannose (using shorter syntax)
+glycan = glycan % "16ab" + man 
 
 # now visualise the structure
 glycan.show()
