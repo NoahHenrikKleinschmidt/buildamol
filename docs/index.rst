@@ -9,7 +9,7 @@
    :align: center
    :alt: biobuild
 
-
+===================================
 Welcome to Biobuild's documentation
 ===================================
 
@@ -19,12 +19,14 @@ that may not be immediatelly imputable from SMILES alone and for which no 3D ref
 from databases. `Biobuild` is based on `biopython <http://biopython.org/wiki/Main_Page>`_ and accessible as a `python package`
 offering a simple API to generate, manipulate, visualize, and export 3D structures of molecules.
 
-.. image:: _resources/large.gif
-   :width: 80%
-   :align: center
-   :alt: dendrimer
+.. admonition:: Example
+      
+   .. image:: _resources/large.gif
+      :width: 80%
+      :align: center
+      :alt: dendrimer
 
-This dendrimer was chemically described by `Pedro-Hernandez et al. (2022) <http://benthamscience.com/article/119156>`_ and generated with `Biobuild`.
+   This dendrimer was chemically described by `Pedro-Hernandez et al. (2022) <http://benthamscience.com/article/119156>`_ and generated with `Biobuild`.
 
 
 .. toctree::
