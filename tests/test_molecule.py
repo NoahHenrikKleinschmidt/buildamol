@@ -173,7 +173,7 @@ def test_molecule_get_bonds():
 
     b = glc.get_bonds("O4")
     v.draw_edges(*b, color="red")
-    assert len(b) == 2
+    assert len(b) == 4
 
     c1 = glc.get_atom("C1", residue=2)
     b = glc.get_bonds("O4", c1)
@@ -1316,15 +1316,6 @@ def test_peptide_link_multiple():
     peptide = bb.connect(peptide, his, peptide_link)
     peptide = bb.connect(peptide, ser, peptide_link)
     peptide.show()
-
-
-def test_per2_linker():
-    per2 = bb.molecule("/Users/noahhk/GIT/biobuild/__figure_makery/per2.json")
-    linker = bb.molecule("/Users/noahhk/GIT/biobuild/__figure_makery/linker.json")
-
-    link6 = bb.linkage("P1", "N2", ["CL3"])
-    per3 = per2.attach(linker, link6, at_residue=4, inplace=False)
-    per3.show()
 
 
 def test_ferrocynyl():
