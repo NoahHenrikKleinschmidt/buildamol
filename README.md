@@ -1,7 +1,12 @@
 
 ![](docs/_resources/logo_large.png)
 
-`biobuild` is a molecular building suite designed to facilitate the creation of large biomolecules such as glycans. 
+[![Documentation Status](https://readthedocs.org/projects/biobuild/badge/?version=latest)](https://biobuild.readthedocs.io/en/latest/?badge=latest)
+
+[![CodeFactor](https://www.codefactor.io/repository/github/noahhenrikkleinschmidt/biobuild/badge/main)](https://www.codefactor.io/repository/github/noahhenrikkleinschmidt/biobuild/overview/main)
+
+
+Biobuild is a molecular building suite designed to facilitate the creation of large biomolecules such as glycans. 
 It allows for an easy molecule creation process in a jupyter-notebook environment. `biobuild` offers direct integrations
 to _pubchem_, and the _PDBE component library_ as well as the _CHARMM force field_ for pre-defined component structures and linkage types.
 

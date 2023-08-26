@@ -25,10 +25,7 @@ offering a simple API to generate, manipulate, visualize, and export 3D structur
    :alt: dendrimer
 
 This dendrimer was chemically described by `Pedro-Hernandez et al. (2022) <http://benthamscience.com/article/119156>`_ and generated with `Biobuild`.
-.. .. image:: _resources/simple_sugar_to_glycan.png
-..    :width: 80%
-..    :align: center
-..    :alt: from sugars to glycans
+
 
 .. toctree::
    :maxdepth: 2
