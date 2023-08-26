@@ -9,7 +9,7 @@
 project = "biobuild"
 copyright = "2023, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "3.9.62"
+release = "3.10.0"
 
 
 import plotly.io as pio
