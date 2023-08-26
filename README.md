@@ -73,11 +73,14 @@ mol.to_pdb("polyphenylene.pdb")
 Example - building a glycan
 ---------------------------
 
-Generating a glycan structure is as simple as:
+Because Biobuild has data on glycosyidic linkages from CHARMM, we can build glycan structures from scratch by referencing the linkages from CHARMM. 
 
 ```python
 
 import biobuild as bb
+
+# load the sugar dataset from PDBE
+bb.load_sugars()
 
 # get the monosaccharides
 # (using their PDBE identifiers)
