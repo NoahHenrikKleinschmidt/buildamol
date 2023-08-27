@@ -323,7 +323,11 @@ class Stitcher(base.Connector):
             graph.add_nodes_from(bystanders.get_atoms())
 
         edges = graph.find_rotatable_edges()
-        env = optimizers.DistanceRotatron(graph, edges)
+        env = optimizers.DistanceRotatron(
+            graph,
+            edges,
+            concatenation_function=optimizers.concatenation_function_linear,
+        )
 
         best, _ = optimizers.swarm_optimize(
             env,

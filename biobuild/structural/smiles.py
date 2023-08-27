@@ -53,7 +53,8 @@ elif use_rdkit:
         if add_hydrogens:
             mol = Chem.AddHs(mol)
 
-        AllChem.EmbedMolecule(mol)
+        # some molecules fail to embed, this may fix it
+        AllChem.EmbedMolecule(mol, useRandomCoords=True)
         AllChem.UFFOptimizeMolecule(mol)
 
         return mol

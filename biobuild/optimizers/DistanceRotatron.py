@@ -67,6 +67,19 @@ def concatenation_function_no_unfold(self, x):
     return e
 
 
+def concatenation_function_linear(self, x):
+    """
+    A concatentation function that computes the evaluation as:
+
+    Mean distance * unfold + (mean of n smallest distances) * pushback
+    """
+    smallest = np.sort(x)[: self.n_smallest]
+    e = np.multiply(np.mean(x), self.unfold) + np.multiply(
+        np.mean(smallest), self.pushback
+    )
+    return e
+
+
 class DistanceRotatron(Rotatron):
     """
     A distance-based Rotatron environment.
@@ -124,7 +137,7 @@ class DistanceRotatron(Rotatron):
         self.n_smallest = n_smallest
 
         if concatenation_function is None:
-            concatenation_function = simple_concatenation_function
+            concatenation_function = concatenation_function_with_penalty
 
         self._concatenation_function = concatenation_function
         self._bounds_tuple = bounds
@@ -243,6 +256,7 @@ __all__ = [
     "concatenation_function_with_penalty",
     "concatenation_function_no_pushback",
     "concatenation_function_no_unfold",
+    "concatenation_function_linear",
 ]
 
 
