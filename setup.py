@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="biobuild",
-    version="3.10.6",
+    version="3.10.7",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A fragment-based molecular assembly toolkit for python.",
@@ -14,7 +14,7 @@ setuptools.setup(
     package_data={
         "biobuild.resources": ["*.pkl", "*.json", "*.cif"],
     },
-    url="TBA",
+    url="https://github.com/NoahHenrikKleinschmidt/biobuild",
     packages=[
         "biobuild",
         "biobuild.core",

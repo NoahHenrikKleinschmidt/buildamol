@@ -19,10 +19,10 @@ that may not be immediatelly imputable from SMILES alone and for which no 3D ref
 from databases. `Biobuild` is based on `biopython <http://biopython.org/wiki/Main_Page>`_ and accessible as a `python package`
 offering a simple API to generate, manipulate, visualize, and export 3D structures of molecules.
 
-.. admonition:: Example
+.. admonition:: Polyphenylene Dendrimer
       
    .. image:: _resources/large.gif
-      :width: 80%
+      :width: 90%
       :align: center
       :alt: dendrimer
 
