@@ -1996,7 +1996,8 @@ class BaseEntity:
                 bond for bond in bonds if
                 bond not in self._locked_bonds and bond.is_rotatable()
             ]
-        return bonds
+            return bonds
+        return [b for b in bonds]
 
     def _make_bond_triplets(self, bonds) -> set:
         """
