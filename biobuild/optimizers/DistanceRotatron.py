@@ -124,7 +124,7 @@ class DistanceRotatron(Rotatron):
         self.n_smallest = n_smallest
 
         if concatenation_function is None:
-            concatenation_function = simple_concatenation_function
+            concatenation_function = concatenation_function_with_penalty
 
         self._concatenation_function = concatenation_function
         self._bounds_tuple = bounds
