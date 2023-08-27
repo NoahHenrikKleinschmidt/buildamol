@@ -29,7 +29,7 @@ def simple_concatenation_function(self, x):
     Mean distance + pushback * mean of n smallest distances
     """
     smallest = np.sort(x)[: self.n_smallest]
-    e = np.power(np.mean(x), self.unfold) + self.pushback * np.mean(smallest)
+    e = np.power(np.mean(x), self.unfold) + np.power(np.mean(smallest), self.pushback)
     return e
 
 
@@ -41,8 +41,8 @@ def concatenation_function_with_penalty(self, x):
     """
     smallest = np.sort(x)[: self.n_smallest]
     penalty = np.sum(x < 1.5 * self.clash_distance)
-    e = np.power(np.mean(x), self.unfold) + self.pushback * np.mean(smallest)
-    e /= 1 + penalty
+    e = np.power(np.mean(x), self.unfold) + np.power(np.mean(smallest), self.pushback)
+    e /= (1 + penalty) ** 2
     return e
 
 
@@ -106,14 +106,14 @@ class DistanceRotatron(Rotatron):
         graph: "BaseGraph.BaseGraph",
         rotatable_edges: list = None,
         radius: float = 20,
-        pushback: float = 2,
+        pushback: float = 3,
         unfold: float = 2,
         clash_distance: float = 0.9,
         crop_nodes_further_than: float = -1,
         n_smallest: int = 10,
         concatenation_function: callable = None,
         bounds: tuple = (-np.pi, np.pi),
-        **kwargs
+        **kwargs,
     ):
         self.kwargs = kwargs
         self.radius = radius
@@ -251,14 +251,22 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    mol = bb.molecule(
-        "/Users/noahhk/GIT/biobuild/biobuild/optimizers/_testing/files/EX6.json"
+    mol = bb.molecule("/Users/noahhk/GIT/biobuild/_tutorials copy/ext8_opt.pdb")
+
+    graph = mol.get_residue_graph(True)
+    edges = graph.find_rotatable_edges(min_descendants=3)
+
+    d = DistanceRotatron(
+        graph,
+        edges,
+        pushback=3,
+        concatenation_function=concatenation_function_with_penalty,
     )
+    opt = bb.optimizers.optimize(mol, d, "swarm")
 
-    graph = mol.get_atom_graph()
-    edges = graph.find_rotatable_edges(min_descendants=10)
+    print(opt.count_clashes())
+    opt.to_pdb(f"opt9_pow_pushback_{d.pushback}.pdb")
 
-    d = DistanceRotatron(graph, edges, radius=-1, bounds=(0, 0.5))
     # import stable_baselines3 as sb3
 
     # model = sb3.PPO("MlpPolicy", d, verbose=1)

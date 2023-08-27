@@ -1,9 +1,13 @@
 
-![](docs/_resources/logo_large.png)
+![](docs/_resources/biobuild_docs_header.png)
 
-`biobuild` is a molecular building suite designed to facilitate the creation of large biomolecules such as glycans. 
-It allows for an easy molecule creation process in a jupyter-notebook environment. `biobuild` offers direct integrations
-to _pubchem_, and the _PDBE component library_ as well as the _CHARMM force field_ for pre-defined component structures and linkage types.
+[![Documentation Status](https://readthedocs.org/projects/biobuild/badge/?version=latest)](https://biobuild.readthedocs.io/en/latest/?badge=latest)
+[![CodeFactor](https://www.codefactor.io/repository/github/noahhenrikkleinschmidt/biobuild/badge/main)](https://www.codefactor.io/repository/github/noahhenrikkleinschmidt/biobuild/overview/main)
+
+
+Biobuild is a molecular building suite designed to facilitate the creation of large biomolecules such as glycans. 
+It allows for an easy molecule creation process in a jupyter-notebook environment. Biobuild offers direct integrations
+to [PubChem](https://pubchem.ncbi.nlm.nih.gov), and the [PDBE component library](https://www.google.com/search?client=safari&rls=en&q=pdbe+component+library&ie=UTF-8&oe=UTF-8) as well as the [CHARMM project](http://charmm-gui.org) for pre-defined component structures and linkage types.
 
 `biobuild` allows users to:
 ---------------------------
@@ -69,11 +73,14 @@ mol.to_pdb("polyphenylene.pdb")
 Example - building a glycan
 ---------------------------
 
-Generating a glycan structure is as simple as:
+Because Biobuild has data on glycosyidic linkages from CHARMM, we can build glycan structures from scratch by referencing the linkages from CHARMM. 
 
 ```python
 
 import biobuild as bb
+
+# load the sugar dataset from PDBE
+bb.load_sugars()
 
 # get the monosaccharides
 # (using their PDBE identifiers)
@@ -97,8 +104,8 @@ glycan.attach(man, "13ab")
 # at the second-to-last residue (BMA)
 glycan.attach(man, "16ab", at_residue=-2)
 
-# add one final alpha-mannose
-glycan = bb.connect(glycan, man, "16ab")
+# add one final alpha-mannose (using shorter syntax)
+glycan = glycan % "16ab" + man 
 
 # now visualise the structure
 glycan.show()
