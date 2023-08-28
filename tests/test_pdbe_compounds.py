@@ -12,6 +12,7 @@ bb.load_sugars()
 
 
 def test_from_cif():
+    bb.load_sugars()
     comps = pdbe_compounds.PDBECompounds.from_file(base.PDBE_TEST_FILE)
 
     assert comps is not None, "Could not load the PDBe compounds from a CIF file."
@@ -19,6 +20,7 @@ def test_from_cif():
     assert (
         len(bb.get_default_compounds()) == 1068
     ), "The number of compounds is not correct."
+    bb.unload_sugars()
 
 
 def test_getting_compounds():
@@ -93,6 +95,7 @@ def test_compound_getting_types():
 
 
 def test_relabel():
+    bb.load_sugars()
     scrambled = bb.Molecule.from_compound("MAN")
 
     # randomly rotate the molecule
@@ -129,11 +132,19 @@ def test_relabel():
     assert np.allclose(old_scrambled_coords, new_scrambled_coords)
 
     # v = bb.utils.visual.MoleculeViewer3D(scrambled)
-    scrambled.show()
+    # scrambled.show()
+    bb.unload_sugars()
 
 
 def test_relabel_2():
     comps = bb.resources.get_default_compounds()
+    assert (
+        len(comps) == 0
+    ), f"The number of compounds is not correct: {len(comps)} should be empty"
+    bb.load_sugars()
+    assert (
+        len(comps) == 1068
+    ), f"The number of compounds is not correct: {len(comps)} should be filled with 1068 sugar compounds"
 
     for i in ("MAN", "GLC", "BMA", "FUC"):
         scrambled = bb.Molecule.from_compound(i)
@@ -171,8 +182,9 @@ def test_relabel_2():
         assert old_scrambled.difference(new_scrambled) != set()
         assert np.allclose(old_scrambled_coords, new_scrambled_coords)
 
-        # v = bb.utils.visual.MoleculeViewer3D(scrambled)
-        # v.show()
+    bb.unload_sugars()
+    # v = bb.utils.visual.MoleculeViewer3D(scrambled)
+    # v.show()
 
 
 def test_get_2FJ():
