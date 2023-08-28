@@ -1213,7 +1213,7 @@ def test_autolabel():
 
 
 def test_autolabel2():
-    bb.load_small_molecules()
+    assert len(bb.get_default_compounds()) == 3180  # small + sugars
     assert bb.has_compound("CH3") == True, "CH3 is not a compound!"
     mol = bb.molecule("CH3")
     assert mol is not None
