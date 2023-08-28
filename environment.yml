@@ -3,37 +3,37 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - bzip2=1.0.8=h1de35cc_0
-  - ca-certificates=2023.7.22=h8857fd0_0
-  - cairo=1.16.0=h3ce6f7e_5
-  - expat=2.5.0=hf0c8a7f_1
-  - fontconfig=2.14.2=h5bb23bf_0
-  - freetype=2.12.1=h3f81eb7_1
-  - gettext=0.21.1=h8a4c099_0
-  - glib=2.69.1=hfff2838_2
-  - icu=73.2=hf5e326d_0
-  - libcxx=14.0.6=h9765a3e_0
-  - libexpat=2.5.0=hf0c8a7f_1
-  - libffi=3.4.4=hecd8cb5_0
-  - libiconv=1.17=hac89ed1_0
-  - libpng=1.6.39=ha978bb4_0
-  - libxml2=2.11.5=h3346baf_1
-  - libzlib=1.2.13=h8a1eda9_5
-  - ncurses=6.4=hcec6c5f_0
-  - openbabel=3.1.1=py311hb239859_7
-  - openssl=3.1.2=h8a1eda9_0
-  - pcre=8.45=h23ab428_0
-  - pip=23.2.1=py311hecd8cb5_0
-  - pixman=0.40.0=hbcb3906_0
-  - python=3.11.4=hf27a42d_0
-  - python_abi=3.11=2_cp311
-  - readline=8.2=hca72f7f_0
-  - setuptools=68.0.0=py311hecd8cb5_0
-  - sqlite=3.41.2=h6c40b1e_0
-  - tk=8.6.12=h5d9f67b_0
-  - wheel=0.38.4=py311hecd8cb5_0
-  - xz=5.4.2=h6c40b1e_0
-  - zlib=1.2.13=h8a1eda9_5
+  - bzip2=1.0.8
+  - ca-certificates=2023.7.22
+  - cairo=1.16.0
+  - expat=2.5.0
+  - fontconfig=2.14.2
+  - freetype=2.12.1
+  - gettext=0.21.1
+  - glib=2.69.1
+  - icu=73.2
+  - libcxx=14.0.6
+  - libexpat=2.5.0
+  - libffi=3.4.4
+  - libiconv=1.17
+  - libpng=1.6.39
+  - libxml2=2.11.5
+  - libzlib=1.2.13
+  - ncurses=6.4
+  - openbabel=3.1.1
+  - openssl=3.1.2
+  - pcre=8.45
+  - pip=23.2.1
+  - pixman=0.40.0
+  - python=3.11.4
+  - python_abi=3.11
+  - readline=8.2
+  - setuptools=68.0.0
+  - sqlite=3.41.2
+  - tk=8.6.12
+  - wheel=0.38.4
+  - xz=5.4.2
+  - zlib=1.2.13
   - pip:
       - about-time==4.2.1
       - alive-progress==3.1.4
