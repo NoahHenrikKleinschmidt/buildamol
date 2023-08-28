@@ -339,7 +339,7 @@ if __name__ == "__main__":
     times = np.zeros((3, n))
     with alive_bar(n * 3) as bar:
         for i, func in enumerate(
-            [likelihood_overlap, bhattacharyya_overlap, jensen_shannon_overlap]
+            [jensen_shannon_overlap],  # likelihood_overlap, bhattacharyya_overlap
         ):
             env = OverlapRotatron(
                 graph,

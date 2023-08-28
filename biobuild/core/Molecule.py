@@ -1786,7 +1786,7 @@ def _molecule_from_pubchem(id, comp):
     #     for i in range(order):
     #         new.add_bond(a, b)
 
-    return new
+    # return new
 
 
 if __name__ == "__main__":
