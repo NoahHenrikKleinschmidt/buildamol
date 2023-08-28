@@ -12,15 +12,14 @@ bb.load_sugars()
 
 
 def test_from_cif():
-    bb.load_sugars()
+    current = len(bb.get_default_compounds())
     comps = pdbe_compounds.PDBECompounds.from_file(base.PDBE_TEST_FILE)
 
     assert comps is not None, "Could not load the PDBe compounds from a CIF file."
     assert len(comps.ids) != 0, "The number of compounds is not correct."
     assert (
-        len(bb.get_default_compounds()) == 1068
-    ), "The number of compounds is not correct."
-    bb.unload_sugars()
+        len(bb.get_default_compounds()) == current
+    ), "The compounds were added to the default compounds!"
 
 
 def test_getting_compounds():
@@ -137,6 +136,7 @@ def test_relabel():
 
 
 def test_relabel_2():
+    bb.unload_all_compounds()
     comps = bb.resources.get_default_compounds()
     assert (
         len(comps) == 0
@@ -207,6 +207,7 @@ def test_get_2FJ():
 
 
 def test_get_all_molecule():
+    bb.unload_all_compounds()
     bb.load_sugars()
     comps = bb.get_default_compounds()
     assert len(comps) != 0, "No compounds were loaded!"
@@ -223,3 +224,4 @@ def test_get_all_molecule():
         except StopIteration as e:
             w = Warning(f"Failed for {comp}: {e}")
             print(w)
+    bb.unload_all_compounds()
