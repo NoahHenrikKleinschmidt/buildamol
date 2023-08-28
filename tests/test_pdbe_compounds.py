@@ -16,6 +16,9 @@ def test_from_cif():
 
     assert comps is not None, "Could not load the PDBe compounds from a CIF file."
     assert len(comps.ids) != 0, "The number of compounds is not correct."
+    assert (
+        len(bb.get_default_compounds()) == 1068
+    ), "The number of compounds is not correct."
 
 
 def test_getting_compounds():
@@ -172,18 +175,30 @@ def test_relabel_2():
         # v.show()
 
 
-def test_get_3BU():
-    comps = bb.read_compounds(base.PDBE_TEST_FILE)
-    _dict = comps.get("3BU", return_type="dict")
+def test_get_2FJ():
+    assert bb.has_compound("2FJ") == False, "The compound was already added!"
+
+    comps = bb.read_compounds(base.PDBE_TEST_FILE, set_default=False)
+    _dict = comps.get("2FJ", return_type="dict")
     assert isinstance(_dict, dict)
-    mol = comps.get("3BU", return_type="molecule")
+    mol = comps.get("2FJ", return_type="molecule")
     assert isinstance(mol, bb.Molecule)
+    assert (
+        comps.has_residue("2FJ") == True
+    ), "The compound was not added to the compounds!"
+    assert (
+        bb.has_compound("2FJ") == False
+    ), "The compound was added to the default compounds!"
+    assert (
+        bb.get_default_compounds().has_residue("2FJ") == False
+    ), "The compound was added to the default compounds!"
 
 
 def test_get_all_molecule():
     bb.load_sugars()
     comps = bb.get_default_compounds()
     assert len(comps) != 0, "No compounds were loaded!"
+    assert len(comps) == 1068, "The number of compounds is not correct!"
     for comp, d_data, d_pdb in comps:
         try:
             assert isinstance(comp, str)
