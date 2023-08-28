@@ -1377,12 +1377,13 @@ class Molecule(entity.BaseEntity):
             recipe = self._linkage
 
         if recipe:
+            target_atom, source_atom = recipe._stitch_ref_atoms
             return self.stitch_attach(
                 other,
                 remove_atoms=recipe.deletes[0],
                 other_remove_atoms=recipe.deletes[1],
-                at_atom=recipe.bonds[0][0],
-                other_at_atom=recipe.bonds[0][1],
+                at_atom=target_atom,
+                other_at_atom=source_atom,
                 at_residue=at_residue,
                 other_residue=other_residue,
             )

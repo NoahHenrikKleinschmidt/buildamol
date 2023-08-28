@@ -547,13 +547,14 @@ def stitch(
             else:
                 source_residue = source.attach_residue
 
+        target_atom, source_atom = recipe._stitch_ref_atoms
         return stitch(
             target=target,
             source=source,
             target_removals=recipe.deletes[0],
             source_removals=recipe.deletes[1],
-            target_atom=recipe.bonds[0][0],
-            source_atom=recipe.bonds[0][1],
+            target_atom=target_atom,
+            source_atom=source_atom,
             target_residue=target_residue,
             source_residue=source_residue,
             optimization_steps=optimization_steps,
