@@ -18,7 +18,15 @@ def test_make_charmm_topology():
     top = bb.resources.charmm.CHARMMTopology.from_file(base.CHARMM_TOPOLOGY_FILE)
     assert top is not None, "No topology is made"
 
-    assert len(top.patches) == 12
+    assert len(top.patches) == 38
+    assert top.has_patch("14bb")
+
+    bb14 = top.get_patch("14bb")
+    assert bb14 is not None
+
+    assert bb14.bond[0] == "1O4"
+    assert bb14.bond[1] == "2C1"
+    assert bb14.has_IC, "No internal coordinates found!"
 
 
 # def test_residue():

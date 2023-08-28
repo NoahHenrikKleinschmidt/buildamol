@@ -1214,5 +1214,6 @@ def test_autolabel():
 def test_autolabel2():
     bb.load_small_molecules()
     mol = bb.Molecule.from_compound("CH3")
+    assert mol is not None
     mol.autolabel()
     assert set(i.id for i in mol.get_atoms()) == set(("C1", "H11", "H12", "H13", "H14"))

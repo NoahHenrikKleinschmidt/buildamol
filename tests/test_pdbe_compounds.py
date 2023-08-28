@@ -190,7 +190,7 @@ def test_get_all_molecule():
             mol = comps.get(comp)
             assert isinstance(mol, bb.Molecule)
             assert sum(1 for i in mol.get_atoms()) == len(d_pdb["atoms"]["ids"])
-            assert sum(1 for i in mol.get_bonds()) == len(d_pdb["bonds"])
+            assert sum(1 for i in mol.get_bonds()) == len(d_pdb["bonds"]["bonds"])
         except StopIteration as e:
             w = Warning(f"Failed for {comp}: {e}")
             print(w)
