@@ -1056,8 +1056,7 @@ def test_make_mannose8_with_recipe():
     man_branch @ 1 % "13ab"
     man_branch += man
 
-    man_branch % "12aa" @ None
-    man_branch += man
+    man_branch.attach(man, "12aa", at_residue=-1, use_patch=False)
 
     man8 @ -2
     man_branch @ 1
