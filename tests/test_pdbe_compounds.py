@@ -181,7 +181,9 @@ def test_get_3BU():
 
 
 def test_get_all_molecule():
+    bb.load_sugars()
     comps = bb.get_default_compounds()
+    assert len(comps) != 0, "No compounds were loaded!"
     for comp, d_data, d_pdb in comps:
         try:
             assert isinstance(comp, str)

@@ -12,6 +12,7 @@ import re
 
 MARGIN = 1.5 * 1e-2
 MANNOSE = bio.PDBParser().get_structure("MAN", base.MANNOSE)
+bb.load_small_molecules()
 bb.load_sugars()
 
 
@@ -1212,8 +1213,10 @@ def test_autolabel():
 
 
 def test_autolabel2():
-    bb.load_small_molecules()
-    mol = bb.Molecule.from_compound("CH3")
+    assert bb.has_compound("CH3")
+    mol = bb.molecule("CH3")
     assert mol is not None
+    mol = bb.Molecule.from_compound("CH4", by="formula")
+    assert isinstance(mol, bb.Molecule)
     mol.autolabel()
     assert set(i.id for i in mol.get_atoms()) == set(("C1", "H11", "H12", "H13", "H14"))
