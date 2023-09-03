@@ -6,17 +6,17 @@
 Installation
 ------------
 
-.. note:: 
+.. .. note:: 
 
-   Biobuild is not yet released officially on PyPI. You can currently install it from the github repository.
-   A release is coming shortly, so stay tuned!
+..    Biobuild is not yet released officially on PyPI. You can currently install it from the github repository.
+..    A release is coming shortly, so stay tuned!
 
 
-.. `Biobuild` can be directly installed via `pip` from the python package index:
+`Biobuild` can be directly installed via `pip` from the python package index:
 
-.. .. code-block:: bash
+.. code-block:: bash
 
-..    pip install biobuild
+   pip install biobuild
 
 If you want to install Biobuild from source, you can clone the repository and install it using the following command:
 
