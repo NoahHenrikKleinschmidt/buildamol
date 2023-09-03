@@ -9,21 +9,30 @@ Biobuild is a molecular building suite designed to facilitate the creation of la
 It allows for an easy molecule creation process in a jupyter-notebook environment. Biobuild offers direct integrations
 to [PubChem](https://pubchem.ncbi.nlm.nih.gov), and the [PDBE component library](https://www.google.com/search?client=safari&rls=en&q=pdbe+component+library&ie=UTF-8&oe=UTF-8) as well as the [CHARMM project](http://charmm-gui.org) for pre-defined component structures and linkage types.
 
-`biobuild` allows users to:
----------------------------
+Biobuild allows users to:
+-------------------------
 - build any larger molecular structure they like
 - improve the conformation of an existing structure
 - convert data formats
 - visualize the structures as they build them
 - quickly obtain molecular structures for chemical compounds
 
-`biobuild` cannot:
-------------------
+Biobuild cannot:
+----------------
 - generate circular structures (users need to choose suitable templates with rings already present)
 - imitate real-life chemical reaction mechanisms
 - perform molecular dynamics or quantum chemistry computations
 - generate molecules _for_ the user - the user needs to know what they want to build...
 
+
+Installing Biobuild
+-------------------
+
+Biobuild can be installed via pip using:
+
+```bash
+pip install biobuild
+```
 
 Example - building a dendrimer
 ------------------------------
