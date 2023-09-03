@@ -12,10 +12,14 @@ bb.load_sugars()
 
 
 def test_from_cif():
+    current = len(bb.get_default_compounds())
     comps = pdbe_compounds.PDBECompounds.from_file(base.PDBE_TEST_FILE)
 
     assert comps is not None, "Could not load the PDBe compounds from a CIF file."
     assert len(comps.ids) != 0, "The number of compounds is not correct."
+    assert (
+        len(bb.get_default_compounds()) == current
+    ), "The compounds were added to the default compounds!"
 
 
 def test_getting_compounds():
@@ -90,6 +94,7 @@ def test_compound_getting_types():
 
 
 def test_relabel():
+    bb.load_sugars()
     scrambled = bb.Molecule.from_compound("MAN")
 
     # randomly rotate the molecule
@@ -126,11 +131,20 @@ def test_relabel():
     assert np.allclose(old_scrambled_coords, new_scrambled_coords)
 
     # v = bb.utils.visual.MoleculeViewer3D(scrambled)
-    scrambled.show()
+    # scrambled.show()
+    bb.unload_sugars()
 
 
 def test_relabel_2():
+    bb.unload_all_compounds()
     comps = bb.resources.get_default_compounds()
+    assert (
+        len(comps) == 0
+    ), f"The number of compounds is not correct: {len(comps)} should be empty"
+    bb.load_sugars()
+    assert (
+        len(comps) == 1068
+    ), f"The number of compounds is not correct: {len(comps)} should be filled with 1068 sugar compounds"
 
     for i in ("MAN", "GLC", "BMA", "FUC"):
         scrambled = bb.Molecule.from_compound(i)
@@ -168,20 +182,36 @@ def test_relabel_2():
         assert old_scrambled.difference(new_scrambled) != set()
         assert np.allclose(old_scrambled_coords, new_scrambled_coords)
 
-        # v = bb.utils.visual.MoleculeViewer3D(scrambled)
-        # v.show()
+    bb.unload_sugars()
+    # v = bb.utils.visual.MoleculeViewer3D(scrambled)
+    # v.show()
 
 
-def test_get_3BU():
-    comps = bb.read_compounds(base.PDBE_TEST_FILE)
-    _dict = comps.get("3BU", return_type="dict")
+def test_get_2FJ():
+    assert bb.has_compound("2FJ") == False, "The compound was already added!"
+
+    comps = bb.read_compounds(base.PDBE_TEST_FILE, set_default=False)
+    _dict = comps.get("2FJ", return_type="dict")
     assert isinstance(_dict, dict)
-    mol = comps.get("3BU", return_type="molecule")
+    mol = comps.get("2FJ", return_type="molecule")
     assert isinstance(mol, bb.Molecule)
+    assert (
+        comps.has_residue("2FJ") == True
+    ), "The compound was not added to the compounds!"
+    assert (
+        bb.has_compound("2FJ") == False
+    ), "The compound was added to the default compounds!"
+    assert (
+        bb.get_default_compounds().has_residue("2FJ") == False
+    ), "The compound was added to the default compounds!"
 
 
 def test_get_all_molecule():
+    bb.unload_all_compounds()
+    bb.load_sugars()
     comps = bb.get_default_compounds()
+    assert len(comps) != 0, "No compounds were loaded!"
+    assert len(comps) == 1068, "The number of compounds is not correct!"
     for comp, d_data, d_pdb in comps:
         try:
             assert isinstance(comp, str)
@@ -190,7 +220,8 @@ def test_get_all_molecule():
             mol = comps.get(comp)
             assert isinstance(mol, bb.Molecule)
             assert sum(1 for i in mol.get_atoms()) == len(d_pdb["atoms"]["ids"])
-            assert sum(1 for i in mol.get_bonds()) == len(d_pdb["bonds"])
+            assert sum(1 for i in mol.get_bonds()) == len(d_pdb["bonds"]["bonds"])
         except StopIteration as e:
             w = Warning(f"Failed for {comp}: {e}")
             print(w)
+    bb.unload_all_compounds()

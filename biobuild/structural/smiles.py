@@ -1,16 +1,14 @@
 """
 Functions for handling SMILES strings
 """
-
-try:
-    from openbabel import pybel
-
-    use_openbabel = True
-except ImportError:
-    use_openbabel = False
-
 import biobuild.utils.convert as convert
 import biobuild.utils.auxiliary as aux
+
+if aux.HAS_PYBEL:
+    pybel = aux.pybel
+    use_openbabel = True
+else:
+    use_openbabel = False
 
 if aux.HAS_RDKIT:
     Chem = aux.Chem

@@ -12,6 +12,7 @@ import re
 
 MARGIN = 1.5 * 1e-2
 MANNOSE = bio.PDBParser().get_structure("MAN", base.MANNOSE)
+bb.load_small_molecules()
 bb.load_sugars()
 
 
@@ -230,6 +231,8 @@ bb.load_sugars()
 
 
 def test_apply_standard_bonds():
+    bb.load_sugars()
+
     bonds = bb.structural.apply_reference_bonds(MANNOSE)
 
     _recieved = len(bonds)
@@ -312,9 +315,11 @@ def test_apply_standard_bonds():
     assert (
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    bb.unload_sugars()
 
 
 def test_apply_standard_bonds_one_atom():
+    bb.load_sugars()
     atom = {i.id: i for i in MANNOSE.get_atoms()}
     atom = atom.get("C1")
 
@@ -351,6 +356,7 @@ def test_apply_standard_bonds_one_atom():
     assert (
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    bb.unload_sugars()
 
 
 def test_infer_bonds():
@@ -786,6 +792,7 @@ def test_patcher_anchors():
 
 
 def test_patcher_anchors_2():
+    bb.load_sugars()
     glc = bb.Molecule.from_compound("GLC")
 
     top = bb.get_default_topology()
@@ -800,6 +807,7 @@ def test_patcher_anchors_2():
     assert len(anchors) == 2
     assert anchors[0].id == "O4"
     assert anchors[1].id == "C1"
+    bb.unload_sugars()
 
 
 def test_patcher_two_man():
@@ -869,6 +877,8 @@ def test_patcher_two_man():
 
 
 def test_patcher_multiple_man():
+    bb.load_sugars()
+
     man1 = bb.Molecule.from_compound("MAN")
     man1.lock_all()
 
@@ -930,6 +940,8 @@ def test_patcher_multiple_man():
 
 
 def test_keep_copy_patcher():
+    bb.load_sugars()
+
     glc = bb.Molecule.from_compound("GLC")
 
     patcher = bb.structural.Patcher(copy_target=True, copy_source=True)
@@ -944,6 +956,8 @@ def test_keep_copy_patcher():
 
 
 def test_stitcher_two_glucose():
+    bb.load_sugars()
+
     glc = bb.Molecule.from_compound("GLC")
     glc2 = bb.Molecule.from_compound("GLC")
 
@@ -1011,6 +1025,8 @@ def test_stitcher_two_glucose():
 
 
 def test_stitcher_three_glucose():
+    bb.load_sugars()
+
     glc = bb.Molecule.from_compound("GLC")
     glc2 = bb.Molecule.from_compound("GLC")
 
@@ -1140,6 +1156,8 @@ def test_stitcher_three_glucose():
 
 
 def test_patch_and_stich():
+    bb.load_sugars()
+
     glc = bb.Molecule.from_compound("GLC")
     man = bb.Molecule.from_compound("MAN")
 
@@ -1187,6 +1205,8 @@ def test_patch_and_stich():
 
 
 def test_relabel_Hydrogens():
+    bb.load_sugars()
+
     ref = bb.Molecule.from_compound("GLC")
     mol = bb.Molecule.from_pubchem("D-glucose")
 
@@ -1200,6 +1220,8 @@ def test_relabel_Hydrogens():
 
 
 def test_autolabel():
+    bb.load_sugars()
+
     ref = bb.Molecule.from_compound("GLC")
     mol = bb.Molecule.from_pubchem("GLC")
     mol.autolabel()
@@ -1212,7 +1234,14 @@ def test_autolabel():
 
 
 def test_autolabel2():
+    bb.unload_all_compounds()
     bb.load_small_molecules()
-    mol = bb.Molecule.from_compound("CH3")
+    bb.load_sugars()
+    assert len(bb.get_default_compounds()) == 3180  # small + sugars
+    assert bb.has_compound("CH3") == True, "CH3 is not a compound!"
+    mol = bb.molecule("CH3")
+    assert mol is not None
+    mol = bb.Molecule.from_compound("CH4", by="formula")
+    assert isinstance(mol, bb.Molecule)
     mol.autolabel()
     assert set(i.id for i in mol.get_atoms()) == set(("C1", "H11", "H12", "H13", "H14"))

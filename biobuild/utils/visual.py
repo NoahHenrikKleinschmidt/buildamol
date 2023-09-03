@@ -20,12 +20,8 @@ try:
 except:
     py3Dmol = None
 
-try:
-    from rdkit.Chem import Draw
 
-except:
-    Draw = None
-
+Draw = aux.Draw
 Chem = aux.Chem
 
 default_plotly_opacity = 1.0

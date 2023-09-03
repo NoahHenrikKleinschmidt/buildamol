@@ -362,6 +362,17 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         b = f"2{self.bond[1]}" if not self.bond[1].startswith("2") else self.bond[1]
         return a, b
 
+    @property
+    def _stitch_ref_atoms(self) -> tuple:
+        """
+        Reference atoms without 1,2 prefix for the stitcher
+        """
+        if not self.bond:
+            return None, None
+        a = f"{self.bond[0][1:]}" if self.bond[0].startswith("1") else self.bond[0]
+        b = f"{self.bond[1][1:]}" if self.bond[1].startswith("2") else self.bond[1]
+        return a, b
+
     @classmethod
     def from_json(cls, filename: str):
         """
