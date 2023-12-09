@@ -1004,11 +1004,14 @@ class Molecule(entity.BaseEntity):
             The id or the serial number of the root atom (optional)
         """
         mol = resources.get_default_compounds().get(compound, by=by)
-        if isinstance(mol, list):
+        if mol is None:
+            raise ValueError(f"Could not find compound '{compound}' using '{by}'")
+        elif isinstance(mol, list):
             raise ValueError(
                 f"Multiple compounds found using '{by}={compound}', choose any of these ids specifically {[i.id for i in mol]}"
             )
-        mol.set_root(root_atom)
+        if root_atom:
+            mol.set_root(root_atom)
         return mol
 
     @classmethod
@@ -1044,7 +1047,8 @@ class Molecule(entity.BaseEntity):
         elif structural.smiles.use_openbabel:
             obj.title = id
             new = cls.from_pybel(obj)
-        new.set_root(root_atom)
+        if root_atom:
+            new.set_root(root_atom)
         return new
 
     @classmethod
@@ -1094,7 +1098,8 @@ class Molecule(entity.BaseEntity):
         _new.add_bonds(*(i.to_tuple() for i in new._bonds))
         new = _new
         new.id = _compound_2d.iupac_name
-        new.set_root(root_atom)
+        if root_atom:
+            new.set_root(root_atom)
         return new
 
     def to_smiles(self, isomeric: bool = True, write_hydrogens: bool = False) -> str:
@@ -1146,7 +1151,7 @@ class Molecule(entity.BaseEntity):
             The attribute to sort by. Can be either "serial", "resid" or "root".
             In the case of "serial", the bonds are sorted by the serial number of the first atom.
             In the case of "resid", the bonds are sorted by the residue id of the first atom.
-            In the case of "root", the bonds are sorted by the root atom of the first atom.
+            In the case of "root", the bonds are sorted so that the first atom is graph-closer to the root than the second atom.
             Set to None to not sort the bonds.
 
         Returns
