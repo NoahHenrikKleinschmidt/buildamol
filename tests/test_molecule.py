@@ -1347,3 +1347,28 @@ def test_ferrocynyl():
     link6 = bb.linkage("P1", "N2", ["CL3"])
     per3 = per2.attach(linker, link6, at_residue=4, inplace=False)
     per3.show()
+
+
+def test_keeps_pdb_enumeration():
+    glc3 = bb.molecule("GLC") % "14bb" * 3
+
+    glc3.reindex(start_chainid=3, start_atomid=8)
+
+    glc3.get_residue(1).serial_number = 99
+    glc3.get_residue(2).serial_number = 120
+    glc3.get_residue(3).serial_number = 150
+
+    glc3.atoms[10].serial_number = 999
+
+    glc3.to_pdb("test.pdb")
+
+    _new = bb.Molecule.from_pdb("test.pdb")
+
+    assert _new.residues[0].serial_number == 99
+    assert _new.residues[1].serial_number == 120
+    assert _new.residues[2].serial_number == 150
+
+    assert min(i.serial_number for i in _new.atoms) == 8
+    assert max(i.serial_number for i in _new.atoms) == 999
+
+    os.remove("test.pdb")

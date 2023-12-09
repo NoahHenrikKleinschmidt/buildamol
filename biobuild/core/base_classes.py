@@ -701,8 +701,6 @@ class Structure(ID, bio.Structure.Structure):
             The converted structure.
         """
         s = cls(structure.id)
-        rdx = 1
-        adx = 1
         for model in structure.get_models():
             m = Model(model.id)
             for chain in model.get_chains():
@@ -720,8 +718,7 @@ class Structure(ID, bio.Structure.Structure):
                     if len(segid) > 1:
                         segid = segid[0]
                     # -------------------------------------------------------
-                    r = Residue(residue.resname, segid, rdx)
-                    rdx += 1
+                    r = Residue(residue.resname, segid, residue.id[1])
                     for atom in residue.get_atoms():
                         a = Atom(
                             atom.id,
@@ -831,24 +828,28 @@ class Bond:
         Invert the bond, i.e. swap the two atoms.
         """
         self.atom1, self.atom2 = self.atom2, self.atom1
+        return self
 
     def single(self):
         """
         Make the bond a single bond.
         """
         self.order = 1
+        return self
 
     def double(self):
         """
         Make the bond a double bond.
         """
         self.order = 2
+        return self
 
     def triple(self):
         """
         Make the bond a triple bond.
         """
         self.order = 3
+        return self
 
     def is_single(self) -> bool:
         """
@@ -896,7 +897,8 @@ class Bond:
 
     def to_tuple(self) -> tuple:
         """
-        Convert the bond to a tuple.
+        Convert the bond to a tuple of
+        atom1, atom2, bond_order.
 
         Returns
         -------
