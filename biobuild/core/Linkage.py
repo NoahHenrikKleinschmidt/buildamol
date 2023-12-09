@@ -97,7 +97,7 @@ to the ``Molecule``'s ``attach`` method or any other function that requires a li
     
 
 """
-
+import biobuild.core.base_classes as base_classes
 import biobuild.utils as utils
 import biobuild.structural.neighbors as neighbors
 
@@ -312,6 +312,27 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         self._delete_ids = []
         self.description = description
 
+    @classmethod
+    def from_bond(
+        cls, bond: base_classes.Bond, id: str = None, description: str = None
+    ) -> "Linkage":
+        """
+        Make a new `Linkage` instance from a bond.
+
+        Parameters
+        ----------
+        bond : Bond
+            The bond to form between the two atoms.
+        id : str, optional
+            The ID of the linkage.
+        description : str, optional
+            An additional description of the linkage.
+        """
+        new = cls(id=id, description=description)
+        new.atom1 = bond.atom1
+        new.atom2 = bond.atom2
+        return new
+
     @property
     def atom1(self) -> str:
         """
@@ -344,7 +365,7 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         The bond to form between the two molecules.
         """
         if len(self.bonds) == 0:
-            return None
+            return (None, None)
         return self.bonds[0]
 
     @bond.setter
