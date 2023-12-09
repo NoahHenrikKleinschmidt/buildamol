@@ -212,7 +212,7 @@ def make_atoms_table(mol):
                 residue=left_adjust(atom.get_parent().resname, 3),
                 chain=atom.get_parent().get_parent().id,
                 # resseq=left_adjust(" ", 3),
-                res_serial=left_adjust(str(atom.get_parent().id[1]), 3),
+                res_serial=left_adjust(str(atom.get_parent().serial_number), 3),
                 icode=" ",  # atom.get_parent().id[2],
                 x=left_adjust(f"{atom.coord[0]:.3f}", 8),
                 y=left_adjust(f"{atom.coord[1]:.3f}", 8),
