@@ -1990,11 +1990,12 @@ class BaseEntity:
             )
         if triplet:
             bonds = self._make_bond_triplets(bonds)
-        
+
         if rotatable_only:
             bonds = [
-                bond for bond in bonds if
-                bond not in self._locked_bonds and bond.is_rotatable()
+                bond
+                for bond in bonds
+                if bond not in self._locked_bonds and bond.is_rotatable()
             ]
             return bonds
         return [b for b in bonds]
@@ -2611,6 +2612,9 @@ class BaseEntity:
         list
             A list of tuples of atom pairs that are bonded and connect different residues
         """
+        # FUTURE TODO: This currently still works with tuples of atoms instead of the new Bond objects.
+        # This should be changed to use the Bond objects instead, which can be inverted and do not need to be
+        # pre-processed into new lists of tuples.
         if by == "serial":
             directed = [
                 bond if bond[0].serial_number < bond[1].serial_number else bond[::-1]
