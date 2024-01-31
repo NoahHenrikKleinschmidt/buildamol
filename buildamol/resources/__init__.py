@@ -27,10 +27,10 @@ CHARMM is a molecular simulation software that is widely used in the field of co
 It is developed and maintained by the `CHARMM Development Project <http://www.charmm.org/>`_.
 `biobuild` integrates the CHARMM force field for pre-defined molecular linkages.
 """
-import biobuild.resources.pdbe_compounds as pdbe_compounds
-import biobuild.resources.pubchem as pubchem
-import biobuild.resources.charmm as charmm
+import buildamol.resources.pdbe_compounds as pdbe_compounds
+import buildamol.resources.pubchem as pubchem
+import buildamol.resources.charmm as charmm
 
-from biobuild.resources.pdbe_compounds import *
-from biobuild.resources.charmm import *
-from biobuild.resources.defaults import *
+from buildamol.resources.pdbe_compounds import *
+from buildamol.resources.charmm import *
+from buildamol.resources.defaults import *

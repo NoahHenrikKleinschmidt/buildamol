@@ -1,5 +1,5 @@
-import biobuild.resources.charmm as charmm
-import biobuild.resources.pdbe_compounds as pdbe_compounds
+import buildamol.resources.charmm as charmm
+import buildamol.resources.pdbe_compounds as pdbe_compounds
 
 
 def export_custom_resources(directory_name: str):
