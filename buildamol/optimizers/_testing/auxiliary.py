@@ -1,7 +1,7 @@
 """
 Auxiliary functions
 """
-import biobuild.structural as structural
+import buildamol.structural as structural
 import pandas as pd
 import numpy as np
 from scipy.spatial.distance import cdist

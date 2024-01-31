@@ -1,8 +1,8 @@
 """
 Functions for handling SMILES strings
 """
-import biobuild.utils.convert as convert
-import biobuild.utils.auxiliary as aux
+import buildamol.utils.convert as convert
+import buildamol.utils.auxiliary as aux
 
 if aux.HAS_PYBEL:
     pybel = aux.pybel

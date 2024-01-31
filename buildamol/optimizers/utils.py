@@ -4,12 +4,12 @@ This module contains utility functions for the optimizers.
 
 from typing import Union
 import numpy as np
-import biobuild.optimizers.Rotatron as Rotatron
-import biobuild.optimizers.DistanceRotatron as DistanceRotatron
+import buildamol.optimizers.Rotatron as Rotatron
+import buildamol.optimizers.DistanceRotatron as DistanceRotatron
 
-import biobuild.core.Molecule as Molecule
-import biobuild.optimizers.algorithms as agents
-import biobuild.utils.auxiliary as aux
+import buildamol.core.Molecule as Molecule
+import buildamol.optimizers.algorithms as agents
+import buildamol.utils.auxiliary as aux
 
 
 def apply_solution(

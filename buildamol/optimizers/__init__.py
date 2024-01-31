@@ -1,9 +1,9 @@
 """
 Conformational optimizers for _biobuild_. 
 """
-from biobuild.optimizers.Rotatron import Rotatron
-from biobuild.optimizers.DistanceRotatron import *
-from biobuild.optimizers.OverlapRotatron import *
-from biobuild.optimizers.ForceFieldRotatron import ForceFieldRotatron
-from biobuild.optimizers.algorithms import *
-from biobuild.optimizers.utils import *
+from buildamol.optimizers.Rotatron import Rotatron
+from buildamol.optimizers.DistanceRotatron import *
+from buildamol.optimizers.OverlapRotatron import *
+from buildamol.optimizers.ForceFieldRotatron import ForceFieldRotatron
+from buildamol.optimizers.algorithms import *
+from buildamol.optimizers.utils import *

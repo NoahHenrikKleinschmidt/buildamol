@@ -2,6 +2,6 @@
 The core classes and functions of biobuild
 """
 
-from biobuild.core.Molecule import *
-from biobuild.core.Linkage import *
-from biobuild.core.base_classes import *
+from buildamol.core.Molecule import *
+from buildamol.core.Linkage import *
+from buildamol.core.base_classes import *

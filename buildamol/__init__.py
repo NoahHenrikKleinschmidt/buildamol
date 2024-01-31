@@ -1,11 +1,11 @@
-import biobuild.utils as utils
-import biobuild.utils.visual as visual
-import biobuild.resources as resources
-import biobuild.graphs as graphs
-import biobuild.optimizers as optimizers
-import biobuild.structural as structural
+import buildamol.utils as utils
+import buildamol.utils.visual as visual
+import buildamol.resources as resources
+import buildamol.graphs as graphs
+import buildamol.optimizers as optimizers
+import buildamol.structural as structural
 
-from biobuild.core import *
-from biobuild.resources import *
+from buildamol.core import *
+from buildamol.resources import *
 
-from biobuild.utils.info import __version__, __author__
+from buildamol.utils.info import __version__, __author__

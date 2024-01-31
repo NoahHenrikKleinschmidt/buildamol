@@ -11,8 +11,8 @@ import numpy as np
 from periodictable import elements
 
 import Bio.PDB as bio
-import biobuild.utils.auxiliary as aux
-import biobuild.utils.defaults as defaults
+import buildamol.utils.auxiliary as aux
+import buildamol.utils.defaults as defaults
 
 has_pybel = aux.HAS_PYBEL
 has_rdkit = aux.HAS_RDKIT

@@ -7,22 +7,22 @@ through methods of the `Molecule` and `Scaffold` classes - so it is usually not 
 use this module directly. However there are some useful features that are not directly integrated
 into the API, and in some cases users may want to use this module directly to access them.
 """
-from biobuild.structural.infer import *
-from biobuild.structural.smiles import *
-from biobuild.structural.base import *
-from biobuild.structural.patch import (
+from buildamol.structural.infer import *
+from buildamol.structural.smiles import *
+from buildamol.structural.base import *
+from buildamol.structural.patch import (
     Patcher,
     patch,
     __default_keep_keep_patcher__,
 )
 
-from biobuild.structural.stitch import (
+from buildamol.structural.stitch import (
     Stitcher,
     stitch,
     __default_keep_keep_stitcher__,
 )
 
-from biobuild.structural.neighbors import (
+from buildamol.structural.neighbors import (
     AtomNeighborhood,
     ResidueNeighborhood,
     compute_quartets,

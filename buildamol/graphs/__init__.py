@@ -1,4 +1,4 @@
-from biobuild.graphs.AtomGraph import AtomGraph
-from biobuild.graphs.ResidueGraph import ResidueGraph
+from buildamol.graphs.AtomGraph import AtomGraph
+from buildamol.graphs.ResidueGraph import ResidueGraph
 
 __all__ = ["AtomGraph", "ResidueGraph"]

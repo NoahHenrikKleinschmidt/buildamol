@@ -1,7 +1,7 @@
 import os
 import Bio.PDB as bio
 
-import biobuild.utils.constants as constants
+import buildamol.utils.constants as constants
 
 # =================================================================
 # Default settings of values

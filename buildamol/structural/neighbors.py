@@ -4,7 +4,7 @@ Classes to handle the atom and residue neighborhoods of a structure
 
 import numpy as np
 
-import biobuild.structural.base as base
+import buildamol.structural.base as base
 
 
 class Neighborhood:
