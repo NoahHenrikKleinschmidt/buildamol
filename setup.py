@@ -4,7 +4,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setuptools.setup(
-    name="biobuild",
+    name="buildamol",
     version="3.10.16",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
@@ -12,17 +12,17 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={
-        "biobuild.resources": ["*.pkl", "*.json", "*.cif"],
+        "buildamol.resources": ["*.pkl", "*.json", "*.cif"],
     },
     url="https://github.com/NoahHenrikKleinschmidt/biobuild",
     packages=[
-        "biobuild",
-        "biobuild.core",
-        "biobuild.resources",
-        "biobuild.utils",
-        "biobuild.structural",
-        "biobuild.graphs",
-        "biobuild.optimizers",
+        "buildamol",
+        "buildamol.core",
+        "buildamol.resources",
+        "buildamol.utils",
+        "buildamol.structural",
+        "buildamol.graphs",
+        "buildamol.optimizers",
     ],
     install_requires=[
         "numpy",

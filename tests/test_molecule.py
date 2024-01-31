@@ -1,46 +1,46 @@
 """
-Tests to check the behaviour of the bb.Molecule object
+Tests to check the behaviour of the bam.Molecule object
 """
 
 import os
 from copy import deepcopy
 import numpy as np
-import biobuild as bb
+import buildamol as bam
 import Bio.PDB as bio
 
-bb.load_sugars()
-bb.load_amino_acids()
+bam.load_sugars()
+bam.load_amino_acids()
 
 import tests.base as base
 
 
 def test_molecule_basic():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     assert mol is not None
 
     assert len(mol.atoms) == 24
     assert len(mol.bonds) == 0
 
-    _mol = bb.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
-    mol = bb.Molecule(_mol)
+    _mol = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
+    mol = bam.Molecule(_mol)
     assert mol is not None
 
     assert len(mol.atoms) == 24
     assert len(mol.bonds) == 0
 
-    mol = bb.Molecule.from_smiles("OCC1OC(O)C(C(C1O)O)O", add_hydrogens=False)
+    mol = bam.Molecule.from_smiles("OCC1OC(O)C(C(C1O)O)O", add_hydrogens=False)
     assert mol is not None
 
     assert len(mol.atoms) == 12
     assert len(mol.bonds) == 12
 
-    mol = bb.Molecule.from_smiles("OCC1OC(O)C(C(C1O)O)O")
+    mol = bam.Molecule.from_smiles("OCC1OC(O)C(C(C1O)O)O")
     assert mol is not None
 
     assert len(mol.atoms) == 24
     assert len(mol.bonds) == 24
 
-    mol = bb.Molecule(_mol)
+    mol = bam.Molecule(_mol)
 
     a = mol.get_atom(1)
     assert a is not None
@@ -64,7 +64,7 @@ def test_molecule_basic():
 def test_can_write_pdb():
     import os
 
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     assert glc is not None
 
     try:
@@ -81,7 +81,7 @@ def test_can_write_pdb():
 def test_can_write_cif():
     import os
 
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     assert glc is not None
 
     try:
@@ -96,7 +96,7 @@ def test_can_write_cif():
 
 
 def test_molecule_from_compound():
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     assert glc is not None
     assert len(glc.atoms) == 24
     assert len(glc.bonds) == 24
@@ -110,8 +110,8 @@ def test_molecule_from_compound():
 
 
 def test_atomgraph_sync():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
-    mol2 = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol2 = bam.Molecule.from_pdb(base.MANNOSE)
 
     mol.apply_standard_bonds()
     mol2.apply_standard_bonds()
@@ -149,7 +149,7 @@ def test_atomgraph_sync():
 
 
 def test_molecule_bonds():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
 
     assert len(mol.bonds) == 0
 
@@ -164,7 +164,7 @@ def test_molecule_bonds():
 
 
 def test_molecule_get_bonds():
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     glc.repeat(2, "14bb")
 
     v = glc.draw()
@@ -183,10 +183,10 @@ def test_molecule_get_bonds():
 
 
 def test_angles():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
-    # top = bb.resources.get_default_topology()
+    # top = bam.resources.get_default_topology()
     # abstract = top.get_residue("MAN")
 
     for triplet, angle in mol.compute_angles().items():
@@ -207,10 +207,10 @@ def test_angles():
 
 
 def test_dihedrals():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
-    # top = bb.resources.get_default_topology()
+    # top = bam.resources.get_default_topology()
     # abstract = top.get_residue("MAN")
 
     for quartet, dihedral in mol.compute_dihedrals().items():
@@ -230,12 +230,12 @@ def test_dihedrals():
 
 
 def test_add_atoms():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
     pre = len(mol.atoms)
 
-    new = bb.Atom("C99", np.array((0.5, 1.23, -0.5)))
+    new = bam.Atom("C99", np.array((0.5, 1.23, -0.5)))
     mol.add_atoms(new)
 
     assert len(mol.atoms) == pre + 1
@@ -251,22 +251,22 @@ def test_add_atoms():
 
 
 def test_remove_atoms():
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     glc.remove_atoms("C1", "O4")
     assert len(glc.atoms) == 22
     assert len(glc.bonds) == 18
 
 
 def test_add_residues():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
-    other = bb.Molecule.from_compound("GLC")
+    other = bam.Molecule.from_compound("GLC")
 
     residues_pre = len(mol.residues)
     atoms_pre = len(mol.atoms)
 
-    new = bb.Residue("NEW", " ", 2)
+    new = bam.Residue("NEW", " ", 2)
     mol.add_residues(new)
 
     assert len(mol.residues) == residues_pre + 1
@@ -295,14 +295,14 @@ def test_add_residues():
     assert len(mol.residues) == residues_pre
     assert len(mol.atoms) == atoms_pre
 
-    new = bb.Molecule.from_compound("GLC")
+    new = bam.Molecule.from_compound("GLC")
     new = new.residues[0]
     mol.add_residues(new)
     assert mol.residues[-1].resname == "GLC"
 
 
 def test_get_descendants():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
     descendants = mol.get_descendants("C5", "C6")
@@ -321,7 +321,7 @@ def test_get_descendants():
 
 
 def test_rotate_all():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
     first = mol.get_atom("O3")
@@ -352,7 +352,7 @@ def test_rotate_all():
 
 
 def test_rotate_some():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
     v = mol.draw()
@@ -402,7 +402,7 @@ def test_rotate_some():
 
 
 def test_rotate_some_inverse():
-    mol = bb.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
     first = mol.get_atom("O3")
@@ -432,7 +432,7 @@ def test_rotate_some_inverse():
 
 
 def test_adjust_indexing():
-    mol = bb.Molecule.from_compound("MAN")
+    mol = bam.Molecule.from_compound("MAN")
     other = mol.copy()
 
     mol.adjust_indexing(other)
@@ -450,7 +450,7 @@ def test_adjust_indexing():
 
 
 def test_adjust_indexing_with_add_residues():
-    mol = bb.Molecule.from_compound("MAN")
+    mol = bam.Molecule.from_compound("MAN")
     other = mol.copy()
 
     mol.adjust_indexing(other)
@@ -470,7 +470,7 @@ def test_adjust_indexing_with_add_residues():
 
 
 def test_set_linkage():
-    mol = bb.Molecule.from_compound("GLC")
+    mol = bam.Molecule.from_compound("GLC")
     mol.set_linkage("14bb")
 
     assert mol._linkage is not None
@@ -496,7 +496,7 @@ def test_set_linkage():
 
 
 def test_attach_with_patch():
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     glc.set_linkage("14bb")
 
     glc2 = deepcopy(glc)
@@ -524,7 +524,7 @@ def test_attach_with_patch():
 
 
 def test_infer_bonds():
-    mol = bb.molecule("GLC")
+    mol = bam.molecule("GLC")
     assert mol.count_bonds() == 24
     mol.bonds = None
     assert mol.count_bonds() == 0
@@ -539,7 +539,7 @@ def test_infer_bonds():
 
 
 def test_find_clashes():
-    mol = bb.molecule("GLC")
+    mol = bam.molecule("GLC")
     mol = mol.repeat(10, "14bb")
     edges = mol.get_residue_connections()
     for edge in edges:
@@ -552,13 +552,13 @@ def test_find_clashes():
 
 
 def test_attach_with_recipe():
-    recipe = bb.Linkage()
+    recipe = bam.Linkage()
     recipe.add_delete("O1", "target")
     recipe.add_delete("HO1", "target")
     recipe.add_delete("HO4", "source")
     recipe.add_bond(("C1", "O4"))
 
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     glc.set_linkage(recipe)
 
     glc2 = deepcopy(glc)
@@ -586,7 +586,7 @@ def test_attach_with_recipe():
 
 
 def test_multiply_with_patch():
-    man = bb.Molecule.from_compound("GLC")
+    man = bam.Molecule.from_compound("GLC")
     man.lock_all()
 
     pre_residues = len(man.residues)
@@ -620,7 +620,7 @@ def test_multiply_with_patch():
 
 
 def test_multiply_with_recipe():
-    man = bb.Molecule.from_compound("GLC")
+    man = bam.Molecule.from_compound("GLC")
     man.lock_all()
 
     pre_residues = len(man.residues)
@@ -629,7 +629,7 @@ def test_multiply_with_recipe():
     pre_locked = len(man.locked_bonds)
 
     # make recipe for 14bb
-    recipe = bb.Linkage()
+    recipe = bam.Linkage()
     recipe.add_delete("O1", "target")
     recipe.add_delete("HO1", "target")
     recipe.add_delete("HO4", "source")
@@ -663,7 +663,7 @@ def test_multiply_with_recipe():
 
 
 def test_repeat():
-    man = bb.Molecule.from_compound("GLC")
+    man = bam.Molecule.from_compound("GLC")
     man.lock_all()
 
     pre_residues = len(man.residues)
@@ -696,11 +696,11 @@ def test_repeat():
 
 
 def test_repeat_with_recipe():
-    man = bb.Molecule.from_compound("GLC")
+    man = bam.Molecule.from_compound("GLC")
     man.lock_all()
 
     # make recipe for 14bb
-    recipe = bb.Linkage()
+    recipe = bam.Linkage()
     recipe.add_delete("O1", "target")
     recipe.add_delete("HO1", "target")
     recipe.add_delete("HO4", "source")
@@ -757,9 +757,9 @@ def test_make_mannose8():
                                MAN
 
     """
-    bma = bb.Molecule.from_compound("BMA")
-    nag = bb.Molecule.from_compound("NAG")
-    man = bb.Molecule.from_compound("MAN")
+    bma = bam.Molecule.from_compound("BMA")
+    nag = bam.Molecule.from_compound("NAG")
+    man = bam.Molecule.from_compound("MAN")
 
     # make the NAG-NAG--BMA (we can always use the 14bb patch)
     nag % "14bb"
@@ -866,9 +866,9 @@ def test_make_mannose8_2():
 
     """
 
-    bma = bb.Molecule.from_compound("BMA")
-    nag = bb.Molecule.from_compound("NAG")
-    man = bb.Molecule.from_compound("MAN")
+    bma = bam.Molecule.from_compound("BMA")
+    nag = bam.Molecule.from_compound("NAG")
+    man = bam.Molecule.from_compound("MAN")
 
     # make the NAG-NAG--BMA (we can always use the 14bb patch)
     man8 = nag % "14bb" * 2 + bma
@@ -940,9 +940,9 @@ def test_make_mannose8_3():
     ```
     """
 
-    bma = bb.Molecule.from_compound("BMA")
-    nag = bb.Molecule.from_compound("NAG")
-    man = bb.Molecule.from_compound("MAN")
+    bma = bam.Molecule.from_compound("BMA")
+    nag = bam.Molecule.from_compound("NAG")
+    man = bam.Molecule.from_compound("MAN")
 
     # make the NAG-NAG--BMA (we can always use the 14bb patch)
     nag.set_linkage("14bb")
@@ -1033,11 +1033,11 @@ def test_make_mannose8_with_recipe():
                                MAN
 
     """
-    bb.load_sugars()
+    bam.load_sugars()
 
-    bma = bb.Molecule.from_compound("BMA")
-    nag = bb.Molecule.from_compound("NAG")
-    man = bb.Molecule.from_compound("MAN")
+    bma = bam.Molecule.from_compound("BMA")
+    nag = bam.Molecule.from_compound("NAG")
+    man = bam.Molecule.from_compound("MAN")
 
     # make the NAG-NAG--BMA (we can always use the 14bb patch)
     nag % "14bb"
@@ -1061,7 +1061,7 @@ def test_make_mannose8_with_recipe():
     man8 @ -2
     man_branch @ 1
 
-    recipe_16ab = bb.Linkage("16ab")
+    recipe_16ab = bam.Linkage("16ab")
     recipe_16ab.add_bond(("O6", "C1"))
     recipe_16ab.add_delete("HO6", "target")
     recipe_16ab.add_delete("HO1", "source")
@@ -1107,7 +1107,7 @@ def test_make_mannose8_with_recipe():
 
 
 def test_relabel():
-    scrambled = bb.Molecule.from_compound("BMA")
+    scrambled = bam.Molecule.from_compound("BMA")
 
     # relabel to elementwise order without specific connectivity
     counts = {"C": 0, "H": 0, "O": 0, "N": 0, "S": 0, "P": 0}
@@ -1146,7 +1146,7 @@ def test_relabel():
 
 
 def test_rotate_descendants_2():
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     glc.lock_all()
     glc.repeat(4, "14bb")
     connections = glc.get_residue_connections()
@@ -1225,7 +1225,7 @@ def test_from_rdkit():
     rdkit_mol = Chem.MolFromPDBFile(base.GLUCOSE, removeHs=False)
     assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
 
-    mol = bb.Molecule.from_rdkit(rdkit_mol, "myman")
+    mol = bam.Molecule.from_rdkit(rdkit_mol, "myman")
     assert len(mol.atoms) == 24
     assert len(mol.bonds) == 24
     assert len(mol.residues) == 1
@@ -1236,18 +1236,18 @@ def test_from_rdkit():
 
 
 def test_to_rdkit():
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
     rdkit_mol = glc.to_rdkit()
     assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
     assert sum(1 for i in rdkit_mol.GetBonds()) == 24
 
 
 def test_work_with_pubchem():
-    phprop = bb.Molecule.from_pubchem("2-[4-(2-methylpropyl)phenyl]propanal")
+    phprop = bam.Molecule.from_pubchem("2-[4-(2-methylpropyl)phenyl]propanal")
     phprop.autolabel()
     phprop.residues[0].resname = "PRO"
 
-    l = bb.linkage(
+    l = bam.linkage(
         "C8",
         "C8",
         ["H8"],
@@ -1259,14 +1259,14 @@ def test_work_with_pubchem():
 
 
 def test_chlorine():
-    benz = bb.Molecule.from_pubchem("1,2,4-trichloro-5-methylbenzene")
+    benz = bam.Molecule.from_pubchem("1,2,4-trichloro-5-methylbenzene")
     benz.autolabel()
     benz.residues[0].resname = "CBZ"
     benz.show()
 
 
 # def test_infer_missing():
-#     man = bb.molecule("MAN")
+#     man = bam.molecule("MAN")
 #     to_delete = ("HO4", "O4", "HO3")
 #     man.remove_atoms(*to_delete)
 
@@ -1275,7 +1275,7 @@ def test_chlorine():
 #     for i in to_delete:
 #         assert man.get_atom(i) is None
 
-#     assert bb.has_residue("MAN")
+#     assert bam.has_residue("MAN")
 
 #     man.infer_missing_atoms()
 
@@ -1287,16 +1287,16 @@ def test_chlorine():
 
 
 def test_peptide_link():
-    bb.load_amino_acids()
-    his = bb.Molecule.from_compound("HIS")
-    ser = bb.Molecule.from_compound("SER")
+    bam.load_amino_acids()
+    his = bam.Molecule.from_compound("HIS")
+    ser = bam.Molecule.from_compound("SER")
 
     # we use a patch to make the peptide link
-    # top = bb.read_topology(
+    # top = bam.read_topology(
     #     "/Users/noahhk/GIT/biobuild/docs/_tutorials/peptide_link.rtf"
     # )
     # peptide_link = top.get_patch("LINK")
-    peptide_link = bb.linkage("C", "N", ["OXT", "HXT"], ["H"])
+    peptide_link = bam.linkage("C", "N", ["OXT", "HXT"], ["H"])
     his % peptide_link
     peptide = his.attach(ser, inplace=False)
     peptide.attach(his)
@@ -1304,53 +1304,53 @@ def test_peptide_link():
 
 
 def test_peptide_link_multiple():
-    bb.load_amino_acids()
-    met = bb.Molecule.from_compound("MET")
-    his = bb.Molecule.from_compound("HIS")
-    ser = bb.Molecule.from_compound("SER")
+    bam.load_amino_acids()
+    met = bam.Molecule.from_compound("MET")
+    his = bam.Molecule.from_compound("HIS")
+    ser = bam.Molecule.from_compound("SER")
 
-    peptide_link = bb.linkage("C", "N", ["OXT", "HXT"], ["H"])
-    peptide = bb.connect(met, his, peptide_link)
-    peptide = bb.connect(peptide, ser, peptide_link)
-    peptide = bb.connect(peptide, his, peptide_link)
-    peptide = bb.connect(peptide, ser, peptide_link)
+    peptide_link = bam.linkage("C", "N", ["OXT", "HXT"], ["H"])
+    peptide = bam.connect(met, his, peptide_link)
+    peptide = bam.connect(peptide, ser, peptide_link)
+    peptide = bam.connect(peptide, his, peptide_link)
+    peptide = bam.connect(peptide, ser, peptide_link)
     peptide.show()
 
 
 def test_ferrocynyl():
-    bb.load_small_molecules()
-    core = bb.read_smiles("[H]P1([H])=NP([H])([H])=NP([H])([H])=N1")
+    bam.load_small_molecules()
+    core = bam.read_smiles("[H]P1([H])=NP([H])([H])=NP([H])([H])=N1")
     core.rename_residue(1, "CRE")
 
-    phenol = bb.molecule("phenol")
+    phenol = bam.molecule("phenol")
     phenol.autolabel().rename_residue(1, "PHE")
 
-    linker = bb.read_smiles("C=NNC")
+    linker = bam.read_smiles("C=NNC")
     linker.autolabel().rename_residue(1, "LNK")
 
-    phos = bb.read_smiles("[P](=S)([Cl])([Cl])[Cl]")
+    phos = bam.read_smiles("[P](=S)([Cl])([Cl])[Cl]")
     phos.rename_residue(1, "PHO")
 
-    link2 = bb.linkage("N2", "P1", None, ["CL1"])
-    link3 = bb.linkage("C4", "C1")
+    link2 = bam.linkage("N2", "P1", None, ["CL1"])
+    link3 = bam.linkage("C4", "C1")
 
     per1 = phenol % link3 + (linker % link2 + phos) @ 1
 
-    link4 = bb.linkage("O1", "P1", None, ["CL1"])
+    link4 = bam.linkage("O1", "P1", None, ["CL1"])
 
     per2 = per1 % link4 + phos
 
-    link5 = bb.linkage("P1", "O1", ["CL2"], None)
+    link5 = bam.linkage("P1", "O1", ["CL2"], None)
 
     per2 = per2 % link5 + per1
 
-    link6 = bb.linkage("P1", "N2", ["CL3"])
+    link6 = bam.linkage("P1", "N2", ["CL3"])
     per3 = per2.attach(linker, link6, at_residue=4, inplace=False)
     per3.show()
 
 
 def test_keeps_pdb_enumeration():
-    glc3 = bb.molecule("GLC") % "14bb" * 3
+    glc3 = bam.molecule("GLC") % "14bb" * 3
 
     glc3.reindex(start_chainid=3, start_atomid=8)
 
@@ -1362,7 +1362,7 @@ def test_keeps_pdb_enumeration():
 
     glc3.to_pdb("test.pdb")
 
-    _new = bb.Molecule.from_pdb("test.pdb")
+    _new = bam.Molecule.from_pdb("test.pdb")
 
     assert _new.residues[0].serial_number == 99
     assert _new.residues[1].serial_number == 120

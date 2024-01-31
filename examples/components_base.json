@@ -1,9 +1,9 @@
 {
-    "biobuild_version": "3.9.35",
+    "version": "3.9.35",
     "id": null,
     "compounds": [
         {
-            "biobuild_version": "3.9.35",
+            "version": "3.9.35",
             "id": "my_sugar",
             "type": "CUSTOM-MOLECULES",
             "names": [

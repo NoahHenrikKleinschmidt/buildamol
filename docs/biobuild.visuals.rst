@@ -2,7 +2,7 @@ The visual module
 =================
 
 Biobuild can generate a variety of visualizations for molecules using multiple backends.
-The `visual` module is technically part of the `biobuild.utils` package but is documented
+The `visual` module is technically part of the `buildamol.utils` package but is documented
 separately here.
 
 Visualizing from the `Molecule` class
@@ -21,14 +21,14 @@ Biobuild uses Plotly's 3D scatter plots to visualize molecules and their graph r
 
 .. dropdown:: PlotlyViewer3D
 
-   .. autoclass:: biobuild.utils.visual.PlotlyViewer3D
+   .. autoclass:: buildamol.utils.visual.PlotlyViewer3D
       :members:
       :undoc-members:
       :show-inheritance:
    
 .. dropdown:: MoleculeViewer3D
 
-   .. autoclass:: biobuild.utils.visual.MoleculeViewer3D
+   .. autoclass:: buildamol.utils.visual.MoleculeViewer3D
       :members:
       :undoc-members:
       :show-inheritance:
@@ -36,7 +36,7 @@ Biobuild uses Plotly's 3D scatter plots to visualize molecules and their graph r
 
 .. dropdown:: AtomGraphViewer3D
 
-   .. autoclass:: biobuild.utils.visual.AtomGraphViewer3D
+   .. autoclass:: buildamol.utils.visual.AtomGraphViewer3D
       :members:
       :undoc-members:
       :show-inheritance:
@@ -44,7 +44,7 @@ Biobuild uses Plotly's 3D scatter plots to visualize molecules and their graph r
 
 .. dropdown:: ResidueGraphViewer3D
 
-   .. autoclass:: biobuild.utils.visual.ResidueGraphViewer3D
+   .. autoclass:: buildamol.utils.visual.ResidueGraphViewer3D
       :members:
       :undoc-members:
       :show-inheritance:
@@ -59,7 +59,7 @@ If it is installed, Biobuild can use it to visualize molecules (but not their gr
 
 .. dropdown:: NglViewer3D
 
-   .. autoclass:: biobuild.utils.visual.NglViewer
+   .. autoclass:: buildamol.utils.visual.NglViewer
       :members:
       :undoc-members:
       :show-inheritance:
@@ -73,7 +73,7 @@ It has a python wrapper `py3Dmol` that Biobuild can use (if installed) to visual
 
 .. dropdown:: Py3DmolViewer
 
-   .. autoclass:: biobuild.utils.visual.Py3DmolViewer
+   .. autoclass:: buildamol.utils.visual.Py3DmolViewer
       :members:
       :undoc-members:
       :show-inheritance:
@@ -87,7 +87,7 @@ RDKit is a cheminformatics package that can be used to generate high quality 2D 
 
 .. dropdown:: Chem2DViewer
 
-   .. autoclass:: biobuild.utils.visual.Chem2DViewer
+   .. autoclass:: buildamol.utils.visual.Chem2DViewer
       :members:
       :undoc-members:
       :show-inheritance:

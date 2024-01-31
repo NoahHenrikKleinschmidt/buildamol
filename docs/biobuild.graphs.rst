@@ -17,7 +17,7 @@ The `BaseGraph` is at the basis of both the `AtomGraph` and `ResidueGraph`.
 
 .. dropdown:: The `BaseGraph` class
 
-   .. autoclass:: biobuild.graphs.BaseGraph.BaseGraph
+   .. autoclass:: buildamol.graphs.BaseGraph.BaseGraph
       :members:
       :undoc-members:
       :show-inheritance:
@@ -32,7 +32,7 @@ It provides the bulk of connectivity related methods such as `get_neighbors`.
 
 .. dropdown:: The `AtomGraph` class
 
-   .. autoclass:: biobuild.graphs.AtomGraph
+   .. autoclass:: buildamol.graphs.AtomGraph
       :members:
       :undoc-members:
       :show-inheritance:
@@ -43,11 +43,11 @@ The ResidueGraph module
 The `ResidueGraph` handles the residue connectivity within `Molecule` objects.
 It is an abstraction of the `AtomGraph` and provides the many of the same methods.
 `ResidueGraph` objects serve as primary input for structural optimization algorithms in the `optimizers`
-package of biobuild. 
+package of buildamol. 
 
 .. dropdown:: The `ResidueGraph` class
 
-   .. autoclass:: biobuild.graphs.ResidueGraph
+   .. autoclass:: buildamol.graphs.ResidueGraph
       :members:
       :undoc-members:
       :show-inheritance:

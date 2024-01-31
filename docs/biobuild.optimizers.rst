@@ -1,11 +1,11 @@
 The optimizers package
 ======================
 
-These are the optimizers of Biobuild. Whenever you want to improve a molecule's conformation or generate new conformers for a molecule, you will want to use the optimizers.
+These are the optimizers of buildamol. Whenever you want to improve a molecule's conformation or generate new conformers for a molecule, you will want to use the optimizers.
 
 
 
-.. .. automodule:: biobuild.optimizers
+.. .. automodule:: buildamol.optimizers
 ..    :members:
 ..    :undoc-members:
 ..    :show-inheritance:
@@ -24,28 +24,28 @@ that can be used for optimization heads-on. These are:
 
    .. tab-item:: The DistanceRotatron
 
-      .. automodule:: biobuild.optimizers.DistanceRotatron
+      .. automodule:: buildamol.optimizers.DistanceRotatron
          :members:
          :undoc-members:
          :show-inheritance:
 
    .. tab-item:: The OverlapRotatron
 
-      .. automodule:: biobuild.optimizers.OverlapRotatron
+      .. automodule:: buildamol.optimizers.OverlapRotatron
          :members:
          :undoc-members:
          :show-inheritance:
    
    .. tab-item:: The ForceFieldRotatron
 
-      .. automodule:: biobuild.optimizers.ForceFieldRotatron
+      .. automodule:: buildamol.optimizers.ForceFieldRotatron
          :members:
          :undoc-members:
          :show-inheritance:
 
    .. tab-item:: The Base Rotatron
          
-         .. automodule:: biobuild.optimizers.Rotatron
+         .. automodule:: buildamol.optimizers.Rotatron
             :members:
             :undoc-members:
             :show-inheritance:
@@ -65,7 +65,7 @@ that are tailored to work with the Rotatron environments. These are:
 
    The algorithm performs well with both small and large inputs, both with AtomGraphs and ResidueGraphs. It is also often the fastest to compute, so it is the `default algorithm` .
 
-   .. autofunction:: biobuild.optimizers.algorithms.swarm_optimize
+   .. autofunction:: buildamol.optimizers.algorithms.swarm_optimize
 
 .. dropdown:: Genetic Algorithm
 
@@ -75,7 +75,7 @@ that are tailored to work with the Rotatron environments. These are:
 
    The algorithm performs well on any scale but gets exceedingly slower the larger the molecules become. Also, it works slightly better with AtomGraphs than with ResidueGraphs.
 
-   .. autofunction:: biobuild.optimizers.algorithms.genetic_optimize
+   .. autofunction:: buildamol.optimizers.algorithms.genetic_optimize
 
 .. dropdown:: Simulated Annealing
 
@@ -85,7 +85,7 @@ that are tailored to work with the Rotatron environments. These are:
 
    The algorithm performs well with better with smaller inputs but is suitable for larger ones using both AtomGraphs and ResidueGraphs.
 
-   .. autofunction:: biobuild.optimizers.algorithms.anneal_optimize
+   .. autofunction:: buildamol.optimizers.algorithms.anneal_optimize
 
 .. dropdown:: Gradient-based algorithms
 
@@ -94,10 +94,10 @@ that are tailored to work with the Rotatron environments. These are:
 
    Any algorithm implemented by `scipy.optimize.minimize` can be used. The default is the `L-BFGS-B` algorithm. For a complete list of available algorithms checkout the `scipy documentation <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html>`_.
 
-   .. autofunction:: biobuild.optimizers.algorithms.scipy_optimize
+   .. autofunction:: buildamol.optimizers.algorithms.scipy_optimize
 
 
-.. .. automodule:: biobuild.optimizers.algorithms
+.. .. automodule:: buildamol.optimizers.algorithms
 ..    :members:
 ..    :undoc-members:
 ..    :show-inheritance:
@@ -107,7 +107,7 @@ Optimization utilities
 
 Biobuild also implements a number of utilities that can be used to make the optimization a little easier for the user by automizing certain steps.
 
-.. automodule:: biobuild.optimizers.utils
+.. automodule:: buildamol.optimizers.utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -115,7 +115,7 @@ Biobuild also implements a number of utilities that can be used to make the opti
 .. Module contents
 .. ---------------
 
-.. .. automodule:: biobuild.optimizers
+.. .. automodule:: buildamol.optimizers
 ..    :members:
 ..    :undoc-members:
 ..    :show-inheritance:

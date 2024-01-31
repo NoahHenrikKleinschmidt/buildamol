@@ -7,7 +7,7 @@
 Tutorials
 =========
 
-On this page you will find some tutorials on how to use Biobuild. Feel free to browse through them to learn more.
+On this page you will find some tutorials on how to use buildamol. Feel free to browse through them to learn more.
 
 .. _cards-clickable::
 
@@ -15,7 +15,7 @@ On this page you will find some tutorials on how to use Biobuild. Feel free to b
    :link: example_getting_started
    :link-type: ref
 
-   This tutorial covers the fundamentals of Biobuild. It is slightly more detailed than the "Basic Usage" page, however, and covers topics that the other tutorials elaborate on.
+   This tutorial covers the fundamentals of buildamol. It is slightly more detailed than the "Basic Usage" page, however, and covers topics that the other tutorials elaborate on.
 
 
 .. card:: A typical workflow
@@ -36,27 +36,27 @@ On this page you will find some tutorials on how to use Biobuild. Feel free to b
    :link: example_visualizing_molecules
    :link-type: ref
 
-   This tutorial covers how to visualize molecules using Biobuild.
+   This tutorial covers how to visualize molecules using buildamol.
 
 
 .. card:: Optimizing Molecules
    :link: example_optimization
    :link-type: ref
 
-   This tutorial covers how to optimize molecular conformations in Biobuild.
+   This tutorial covers how to optimize molecular conformations in buildamol.
 
 
 .. card:: Converting Formats
    :link: example_converting_formats
    :link-type: ref
 
-   This tutorial covers how to convert between different file formats and how to use other libraries with Biobuild.
+   This tutorial covers how to convert between different file formats and how to use other libraries with buildamol.
 
 .. card:: Built-in Resources
    :link: example_built_in_resources
    :link-type: ref
 
-   This tutorial covers how to use the built-in resources of Biobuild.
+   This tutorial covers how to use the built-in resources of buildamol.
 
 .. card:: Adding Resources
    :link: example_defaults

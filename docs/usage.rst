@@ -32,10 +32,10 @@ The `Molecule` class is the main class of `biobuild` and is used to create, modi
 
 .. code-block:: python
 
-   import biobuild as bb
+   import buildamol as bam
 
    # make a molecule from a PDB file
-   mol = bb.molecule("my_structure.pdb")
+   mol = bam.molecule("my_structure.pdb")
 
    # rotate part of the molecule 
    # around the bond between atoms C4 and C5 by 45°
@@ -69,21 +69,21 @@ in the method-based API.
 
 .. code-block:: python
 
-   import biobuild as bb
+   import buildamol as bam
 
    # load sugar data repository
-   bb.load_sugars()
+   bam.load_sugars()
 
    # make a molecule from a 
    # defined chemical compound
-   glc = bb.molecule("alpha-d-glucose")
+   glc = bam.molecule("alpha-d-glucose")
 
    # polymerize the glucose molecule
    # to make cellulose
-   cellulose = bb.polymerize(glc, 100, linkage="14bb")
+   cellulose = bam.polymerize(glc, 100, linkage="14bb")
 
    # write the cellulose to a PDB file
-   bb.write_pdb(cellulose, "cellulose.pdb")
+   bam.write_pdb(cellulose, "cellulose.pdb")
 
 
 Method-based API
@@ -96,12 +96,12 @@ allow to expand the structure by adding new parts to it.
 
 .. code-block:: python
 
-   import biobuild as bb
-   bb.load_sugars()
+   import buildamol as bam
+   bam.load_sugars()
 
    # make a molecule from a 
    # defined chemical compound
-   glc = bb.Molecule.from_compound("alpha-d-glucose")
+   glc = bam.Molecule.from_compound("alpha-d-glucose")
 
    # polymerize the glucose molecule
    # to make cellulose
@@ -129,10 +129,10 @@ condensed way to write `biobuild` code - sometimes at the expense of readability
 
 .. code-block:: python
 
-   import biobuild as bb
-   bb.load_sugars()
+   import buildamol as bam
+   bam.load_sugars()
 
-   glc = bb.Molecule.from_compound("alpha-d-glucose")
+   glc = bam.Molecule.from_compound("alpha-d-glucose")
 
    # polymerize the glucose molecule into cellulose
    cellulose = glc % "14bb" * 100
@@ -152,8 +152,8 @@ references of molecular connections. You may have noticed that in the above exam
 This is because the CHARMM force field has the geometric data stored under this identifier. 
 Finally, `biobuild` integrates `pubchempy` for the direct retrieval of molecules from PubChem (requires internet connection).
 
-Toplevel functions exist to access these resources, e.g. ``biobuild.available_linkages()`` to get a list of pre-defined linkages,
-or ``biobuild.has_compound("alpha-mannose")`` to check if a particular compound is available in the loaded PDBE component library. Also,
+Toplevel functions exist to access these resources, e.g. ``buildamol.available_linkages()`` to get a list of pre-defined linkages,
+or ``buildamol.has_compound("alpha-mannose")`` to check if a particular compound is available in the loaded PDBE component library. Also,
 in order to make `biobuild` more useful to the respective user, it is possible to add custom data to the standard resources and set new default settings 
 using functions such as ``set_default_topology`` or ``add_linkage``. 
 
@@ -169,14 +169,14 @@ how we can create a larger structure from single monosaccharides using `biobuild
 
 .. code-block:: python
 
-   import biobuild as bb
-   bb.load_sugars()
+   import buildamol as bam
+   bam.load_sugars()
 
    # get the monosaccharides
    # (using their PDBE identifiers)
-   nag = bb.molecule("NAG") # N-acetylglucosamine, a.k.a. GlcNAc
-   bma = bb.molecule("BMA") # beta-mannose
-   man = bb.molecule("MAN") # alpha-mannose
+   nag = bam.molecule("NAG") # N-acetylglucosamine, a.k.a. GlcNAc
+   bma = bam.molecule("BMA") # beta-mannose
+   man = bam.molecule("MAN") # alpha-mannose
 
    # start by connecting two NAGs together
    # 'beta 1->4' glycosydic linkage is pre-defined
@@ -195,7 +195,7 @@ how we can create a larger structure from single monosaccharides using `biobuild
    glycan.attach(man, "16ab", at_residue=-2)
 
    # add one final alpha-mannose
-   glycan = bb.connect(glycan, man, "16ab")
+   glycan = bam.connect(glycan, man, "16ab")
 
    # now visualise the structure
    glycan.show()

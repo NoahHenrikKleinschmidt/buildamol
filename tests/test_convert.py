@@ -7,12 +7,12 @@ import numpy as np
 from openbabel import pybel
 import Bio.PDB as bio
 
-import biobuild as bb
+import buildamol as bam
 import tests.base as bas
 
 
 def test_biopython():
-    mol = bb.read_smiles("C1=CC=CC=C1")
+    mol = bam.read_smiles("C1=CC=CC=C1")
     assert mol is not None
 
     _biopython = mol.to_biopython()
@@ -20,7 +20,7 @@ def test_biopython():
 
     assert sum(1 for i in _biopython.get_atoms()) == mol.count_atoms()
 
-    reverse = bb.Molecule(_biopython)
+    reverse = bam.Molecule(_biopython)
     assert reverse is not None
 
     assert reverse.count_atoms() == 12
@@ -28,7 +28,7 @@ def test_biopython():
 
 
 def test_openbabel():
-    mol = bb.read_smiles("C=CC=CC=C")
+    mol = bam.read_smiles("C=CC=CC=C")
     assert mol is not None
 
     _pybel = mol.to_pybel()
@@ -37,7 +37,7 @@ def test_openbabel():
     assert _pybel.OBMol.NumAtoms() == mol.count_atoms()
     assert _pybel.OBMol.NumBonds() == mol.count_bonds()
 
-    reverse = bb.Molecule.from_pybel(_pybel)
+    reverse = bam.Molecule.from_pybel(_pybel)
     assert reverse is not None
 
     assert reverse.count_atoms() == 14
@@ -46,7 +46,7 @@ def test_openbabel():
 
 
 def test_rdkit():
-    mol = bb.read_smiles("C1=CC=CC=C1")
+    mol = bam.read_smiles("C1=CC=CC=C1")
     assert mol is not None
 
     rdmol = mol.to_rdkit()
@@ -55,7 +55,7 @@ def test_rdkit():
     assert rdmol.GetNumAtoms() == mol.count_atoms()
     assert rdmol.GetNumBonds() == mol.count_bonds()
 
-    reverse = bb.Molecule.from_rdkit(rdmol)
+    reverse = bam.Molecule.from_rdkit(rdmol)
     assert reverse is not None
 
     assert reverse.count_atoms() == 12

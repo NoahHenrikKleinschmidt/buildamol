@@ -58,9 +58,9 @@ Instead, you can export the data as a JSON file using the `to_json` method of th
 
 .. code-block:: python
 
-   import biobuild as bb
+   import buildamol as bam
 
-   bb.export_custom_resources('my_settings')
+   bam.export_custom_resources('my_settings')
    # after updating biobuild
-   bb.import_custom_resources('my_settings')
+   bam.import_custom_resources('my_settings')
 

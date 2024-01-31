@@ -3,7 +3,7 @@
 biobuild Molecule
 -----------------
 
-.. automodule:: biobuild.core.Molecule
+.. automodule:: buildamol.core.Molecule
    :members:
    :undoc-members:
    :show-inheritance:

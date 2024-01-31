@@ -1,9 +1,9 @@
 {
-    "biobuild_version": "3.9.36",
+    "version": "3.9.36",
     "id": "topology.pkl",
     "patches": [
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "SCK0",
             "description": "patch to link lysine with retinal to form a",
             "bond": {
@@ -22,7 +22,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CD",
                         "1CE",
@@ -38,7 +38,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CE",
                         "1NZ",
@@ -54,7 +54,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1NZ",
                         "2C15",
@@ -70,7 +70,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C14",
                         "1NZ",
@@ -86,7 +86,7 @@
                     "bond_length_13": 0.0
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C5",
                         "2C6",
@@ -104,7 +104,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "SCK1",
             "description": "patch to link lysine with retinal to form a",
             "bond": {
@@ -122,7 +122,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CD",
                         "1CE",
@@ -138,7 +138,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CE",
                         "1NZ",
@@ -154,7 +154,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1NZ",
                         "2C15",
@@ -170,7 +170,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C15",
                         "1CE",
@@ -186,7 +186,7 @@
                     "bond_length_13": 0.0
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C14",
                         "1NZ",
@@ -202,7 +202,7 @@
                     "bond_length_13": 0.0
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C5",
                         "2C6",
@@ -220,7 +220,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "LLLO",
             "description": "linkage for dol-P-P and sugar",
             "bond": {
@@ -238,7 +238,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1C2",
@@ -254,7 +254,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1H1",
@@ -270,7 +270,7 @@
                     "bond_length_13": 1.5323
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1C1",
@@ -286,7 +286,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O22",
@@ -302,7 +302,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O22",
                         "2O12",
@@ -318,7 +318,7 @@
                     "bond_length_13": 1.5968
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O22",
                         "2O12",
@@ -336,7 +336,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "CERA",
             "description": "og axial patch of ceramide to C1 [based on patch OCTA]",
             "bond": {
@@ -354,7 +354,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -370,7 +370,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -386,7 +386,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C1S",
@@ -402,7 +402,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C2S",
                         "1O1",
@@ -418,7 +418,7 @@
                     "bond_length_13": 1.5661
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C2S",
                         "1O1",
@@ -436,7 +436,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "CERB",
             "description": "og equatorial patch of ceramide to C1 [based on patch OCTB]",
             "bond": {
@@ -454,7 +454,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -470,7 +470,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -486,7 +486,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C1S",
@@ -502,7 +502,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C2S",
                         "1O1",
@@ -518,7 +518,7 @@
                     "bond_length_13": 1.5661
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C2S",
                         "1O1",
@@ -536,7 +536,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "DAGA",
             "description": "diacylglycerol at axial C1",
             "bond": {
@@ -558,7 +558,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -574,7 +574,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -590,7 +590,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C2",
                         "1O1",
@@ -606,7 +606,7 @@
                     "bond_length_13": 1.5515
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2HA",
                         "1O1",
@@ -622,7 +622,7 @@
                     "bond_length_13": 1.1162
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -640,7 +640,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "DAGB",
             "description": "diacylglycerol at equatorial C1",
             "bond": {
@@ -662,7 +662,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -678,7 +678,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -694,7 +694,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C2",
                         "1O1",
@@ -710,7 +710,7 @@
                     "bond_length_13": 1.5515
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2HA",
                         "1O1",
@@ -726,7 +726,7 @@
                     "bond_length_13": 1.1162
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -744,7 +744,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "INS2A",
             "description": "link alpha-sugar (axial) to phosphorylated inositol 2nd position (axial) [based on 14aa]",
             "bond": {
@@ -762,7 +762,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1O5",
@@ -778,7 +778,7 @@
                     "bond_length_13": 1.48
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "2O2",
@@ -794,7 +794,7 @@
                     "bond_length_13": 1.449
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "2O2",
@@ -810,7 +810,7 @@
                     "bond_length_13": 1.449
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -826,7 +826,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O2",
@@ -842,7 +842,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O2",
@@ -860,7 +860,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "INS2B",
             "description": "link alpha-sugar (equatorial) to phosphorylated inositol 2nd position (axial) [based on 14ba]",
             "bond": {
@@ -878,7 +878,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1O5",
@@ -894,7 +894,7 @@
                     "bond_length_13": 1.48
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "2O2",
@@ -910,7 +910,7 @@
                     "bond_length_13": 1.447
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "2O2",
@@ -926,7 +926,7 @@
                     "bond_length_13": 1.447
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -942,7 +942,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O2",
@@ -958,7 +958,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O2",
@@ -976,7 +976,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "INS6A",
             "description": "link alpha-sugar (axial) to phosphorylated inositol 6th position (equatorial) [based on 14ab]",
             "bond": {
@@ -994,7 +994,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1O5",
@@ -1010,7 +1010,7 @@
                     "bond_length_13": 1.48
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "2O6",
@@ -1026,7 +1026,7 @@
                     "bond_length_13": 1.457
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "2O6",
@@ -1042,7 +1042,7 @@
                     "bond_length_13": 1.457
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1058,7 +1058,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O6",
@@ -1074,7 +1074,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O6",
@@ -1092,7 +1092,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "INS6B",
             "description": "link beta-sugar (equatorial) to phosphorylated inositol 6th position (equatorial) [based on 14bb]",
             "bond": {
@@ -1110,7 +1110,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1O5",
@@ -1126,7 +1126,7 @@
                     "bond_length_13": 1.48
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "2O6",
@@ -1142,7 +1142,7 @@
                     "bond_length_13": 1.447
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "2O6",
@@ -1158,7 +1158,7 @@
                     "bond_length_13": 1.447
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1174,7 +1174,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O6",
@@ -1190,7 +1190,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "2O6",
@@ -1208,7 +1208,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "SGPA",
             "description": "for connecting SER at the alpha position",
             "bond": {
@@ -1226,7 +1226,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CA",
                         "1CB",
@@ -1242,7 +1242,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1OG",
@@ -1258,7 +1258,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1OG",
@@ -1274,7 +1274,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1OG",
                         "2C1",
@@ -1292,7 +1292,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "TGPA",
             "description": "for connecting THR at the alpha position",
             "bond": {
@@ -1310,7 +1310,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CA",
                         "1CB",
@@ -1326,7 +1326,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1OG1",
@@ -1342,7 +1342,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1OG1",
@@ -1358,7 +1358,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1OG1",
                         "2C1",
@@ -1376,7 +1376,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "SGPB",
             "description": "for connecting SER at the beta position",
             "bond": {
@@ -1394,7 +1394,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CA",
                         "1CB",
@@ -1410,7 +1410,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1OG",
@@ -1426,7 +1426,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1OG",
@@ -1442,7 +1442,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1OG",
                         "2C1",
@@ -1460,7 +1460,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "TGPB",
             "description": "for connecting THR at the beta position",
             "bond": {
@@ -1478,7 +1478,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CA",
                         "1CB",
@@ -1494,7 +1494,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1OG1",
@@ -1510,7 +1510,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1OG1",
@@ -1526,7 +1526,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1OG1",
                         "2C1",
@@ -1544,7 +1544,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "NGLA",
             "description": "og make model compound 3 by adding equat",
             "bond": {
@@ -1562,7 +1562,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CB",
                         "1CG",
@@ -1578,7 +1578,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CG",
                         "1ND2",
@@ -1594,7 +1594,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1HD22",
                         "1ND2",
@@ -1610,7 +1610,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C5",
                         "2O5",
@@ -1626,7 +1626,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1ND2",
                         "2C1",
@@ -1644,7 +1644,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "11aa",
             "description": "axial to C1 and axial to C1' 1<->1",
             "bond": {
@@ -1662,7 +1662,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1678,7 +1678,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -1694,7 +1694,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -1710,7 +1710,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O1",
@@ -1728,7 +1728,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "11ab",
             "description": "axial to C1 and equat to C1' 1<->1",
             "bond": {
@@ -1746,7 +1746,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1762,7 +1762,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -1778,7 +1778,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -1794,7 +1794,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O1",
@@ -1812,7 +1812,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "11bb",
             "description": "equat to C1 and equat to C1' 1<->1",
             "bond": {
@@ -1830,7 +1830,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1846,7 +1846,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -1862,7 +1862,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -1878,7 +1878,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O1",
@@ -1896,7 +1896,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "12aa",
             "description": "(i)1->2(i-1) axial at C1 and axial at C2",
             "bond": {
@@ -1914,7 +1914,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1C2",
@@ -1930,7 +1930,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1O2",
@@ -1946,7 +1946,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O2",
                         "2O5",
@@ -1962,7 +1962,7 @@
                     "bond_length_13": 1.404
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O2",
@@ -1980,7 +1980,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "12ab",
             "description": "(i)1->2(i-1) axial at C1 and equatorial at C2",
             "bond": {
@@ -1998,7 +1998,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1C2",
@@ -2014,7 +2014,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1O2",
@@ -2030,7 +2030,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O2",
                         "2O5",
@@ -2046,7 +2046,7 @@
                     "bond_length_13": 1.4042
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O2",
@@ -2064,7 +2064,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "12ba",
             "description": "(i)1->2(i-1) equatorial at C1 and axial at C2",
             "bond": {
@@ -2082,7 +2082,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1C2",
@@ -2098,7 +2098,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1O2",
@@ -2114,7 +2114,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O2",
                         "2O5",
@@ -2130,7 +2130,7 @@
                     "bond_length_13": 1.3903
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O2",
@@ -2148,7 +2148,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "12bb",
             "description": "(i)1->2(i-1) equatorial at C1 and equatorial at C2",
             "bond": {
@@ -2166,7 +2166,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1C2",
@@ -2182,7 +2182,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1O2",
@@ -2198,7 +2198,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O2",
                         "2O5",
@@ -2214,7 +2214,7 @@
                     "bond_length_13": 1.3904
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O2",
@@ -2232,7 +2232,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "13aa",
             "description": "(i)1->3(i-1) axial at C1 and axial at C3",
             "bond": {
@@ -2250,7 +2250,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -2266,7 +2266,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -2282,7 +2282,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O3",
                         "2O5",
@@ -2298,7 +2298,7 @@
                     "bond_length_13": 1.404
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O3",
@@ -2316,7 +2316,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "13ab",
             "description": "(i)1->3(i-1) axial at C1 and equatorial at C3",
             "bond": {
@@ -2334,7 +2334,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -2350,7 +2350,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -2366,7 +2366,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O3",
                         "2O5",
@@ -2382,7 +2382,7 @@
                     "bond_length_13": 1.4039
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O3",
@@ -2400,7 +2400,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "13ba",
             "description": "(i)1->3(i-1) equatorial at C1 and axial at C3",
             "bond": {
@@ -2418,7 +2418,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -2434,7 +2434,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -2450,7 +2450,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O3",
                         "2O5",
@@ -2466,7 +2466,7 @@
                     "bond_length_13": 1.3908
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O3",
@@ -2484,7 +2484,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "13bb",
             "description": "(i)1->3(i-1) equatorial at C1 and equatorial at C3",
             "bond": {
@@ -2502,7 +2502,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -2518,7 +2518,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -2534,7 +2534,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O3",
                         "2O5",
@@ -2550,7 +2550,7 @@
                     "bond_length_13": 1.39
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O3",
@@ -2568,7 +2568,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "14aa",
             "description": "(i)1->4(i-1) axial at C1 and axial at C4",
             "bond": {
@@ -2586,7 +2586,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1C4",
@@ -2602,7 +2602,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C4",
                         "1O4",
@@ -2618,7 +2618,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O4",
                         "2O5",
@@ -2634,7 +2634,7 @@
                     "bond_length_13": 1.4043
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O4",
@@ -2652,7 +2652,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "14ab",
             "description": "(i)1->4(i-1) axial at C1 and equatorial at C4",
             "bond": {
@@ -2670,7 +2670,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1C4",
@@ -2686,7 +2686,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C4",
                         "1O4",
@@ -2702,7 +2702,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O4",
                         "2O5",
@@ -2718,7 +2718,7 @@
                     "bond_length_13": 1.4035
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O4",
@@ -2736,7 +2736,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "14ba",
             "description": "(i)1->4(i-1) equatorial at C1 and axial at C4",
             "bond": {
@@ -2754,7 +2754,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1C4",
@@ -2770,7 +2770,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C4",
                         "1O4",
@@ -2786,7 +2786,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O4",
                         "2O5",
@@ -2802,7 +2802,7 @@
                     "bond_length_13": 1.3906
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O4",
@@ -2820,7 +2820,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "14bb",
             "description": "(i)1->4(i-1) equatorial at C1 and equatorial at C4",
             "bond": {
@@ -2838,7 +2838,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1C4",
@@ -2854,7 +2854,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C4",
                         "1O4",
@@ -2870,7 +2870,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O4",
                         "2O5",
@@ -2886,7 +2886,7 @@
                     "bond_length_13": 1.3896
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O4",
@@ -2904,7 +2904,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "16aa",
             "description": "(i)1->6(i-1) axial at C1 and equatorial at C6",
             "bond": {
@@ -2922,7 +2922,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C5",
                         "1C6",
@@ -2938,7 +2938,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C6",
                         "1O6",
@@ -2954,7 +2954,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O6",
                         "2O5",
@@ -2970,7 +2970,7 @@
                     "bond_length_13": 1.4036
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O6",
@@ -2988,7 +2988,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "16ab",
             "description": "(i)1->6(i-1) equatorial at C1 and equatorial at C6",
             "bond": {
@@ -3006,7 +3006,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C5",
                         "1C6",
@@ -3022,7 +3022,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C6",
                         "1O6",
@@ -3038,7 +3038,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O6",
                         "2O5",
@@ -3054,7 +3054,7 @@
                     "bond_length_13": 1.3896
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O6",
@@ -3072,7 +3072,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "16ba",
             "description": "(i)1->6(i-1) equatorial at C1 and equatorial at C6",
             "bond": {
@@ -3090,7 +3090,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C5",
                         "1C6",
@@ -3106,7 +3106,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C6",
                         "1O6",
@@ -3122,7 +3122,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O6",
                         "2O5",
@@ -3138,7 +3138,7 @@
                     "bond_length_13": 1.3896
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O6",
@@ -3156,7 +3156,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "SUCR",
             "description": "pram; make sucrose, apply to AGLC,BFRU",
             "bond": {
@@ -3174,7 +3174,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -3190,7 +3190,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -3206,7 +3206,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C2",
@@ -3222,7 +3222,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2O5",
                         "1O1",
@@ -3240,7 +3240,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "LCTL",
             "description": "pram; make lactulose, apply to BGAL,BFRU",
             "bond": {
@@ -3258,7 +3258,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -3274,7 +3274,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -3290,7 +3290,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C4",
@@ -3306,7 +3306,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2C5",
                         "1O1",
@@ -3324,7 +3324,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "AB15",
             "description": "pram; make 1->5 arabinose disac without methylation, apply to AARB,AARB",
             "bond": {
@@ -3342,7 +3342,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O4",
                         "1C1",
@@ -3358,7 +3358,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -3374,7 +3374,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C5",
@@ -3390,7 +3390,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C4",
@@ -3406,7 +3406,7 @@
                     "bond_length_13": 1.4384
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O1",
                         "2C4",
@@ -3424,7 +3424,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "SA23AB",
             "description": "og sialic acid alpha 2->3 equatorial",
             "bond": {
@@ -3442,7 +3442,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -3458,7 +3458,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -3474,7 +3474,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O3",
                         "2O6",
@@ -3492,7 +3492,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "LINK",
             "description": "Peptide linkage N- to C-terminal",
             "bond": {
@@ -3510,7 +3510,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O",
                         "1CA",
@@ -3526,7 +3526,7 @@
                     "bond_length_13": 1.2289422499667666
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1N",
                         "1CA",
@@ -3542,7 +3542,7 @@
                     "bond_length_13": 2.435915451051025
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2H",
                         "2CA",
@@ -3558,7 +3558,7 @@
                     "bond_length_13": 1.0102475072850738
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "2H",
                         "1C",
@@ -3574,7 +3574,7 @@
                     "bond_length_13": 1.0102475072850738
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O",
                         "2N",
@@ -3590,7 +3590,7 @@
                     "bond_length_13": 1.2289422499667666
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1O",
                         "1C",
@@ -3606,7 +3606,7 @@
                     "bond_length_13": 2.25393964628731
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1HA",
                         "1CA",
@@ -3622,7 +3622,7 @@
                     "bond_length_13": 2.1438371366301534
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CA",
                         "1O",
@@ -3638,7 +3638,7 @@
                     "bond_length_13": 1.5226388911756754
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1CA",
                         "1C",
@@ -3654,7 +3654,7 @@
                     "bond_length_13": 2.433283064602094
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C",
                         "2H",
@@ -3670,7 +3670,7 @@
                     "bond_length_13": 1.3348749102082436
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C",
                         "2N",
@@ -3686,7 +3686,7 @@
                     "bond_length_13": 2.43404414566433
                 },
                 {
-                    "biobuild_version": "3.9.36",
+                    "version": "3.9.36",
                     "atoms": [
                         "1C",
                         "2N",
@@ -3704,7 +3704,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.36",
+            "version": "3.9.36",
             "id": "my_14_glyco_link",
             "description": null,
             "bond": {

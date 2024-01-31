@@ -1,7 +1,7 @@
 The core package
 ================
 
-.. automodule:: biobuild.core
+.. automodule:: buildamol.core
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +15,7 @@ larger constructs. The `Molecule` is a child of the `BaseEntity` class that prov
 most of the functionality. The `Molecule` module defines additionally a number of toplevel
 functions to easily create new molecules by querying databases or reading files.
 
-.. automodule:: biobuild.core.Molecule
+.. automodule:: buildamol.core.Molecule
    :members:
    :undoc-members:
    :show-inheritance:
@@ -26,7 +26,7 @@ The `Linkage` module
 The `Linkage` module defines the `Linkage` class that is used to connect two molecules
 in a specific way. 
 
-.. automodule:: biobuild.core.Linkage
+.. automodule:: buildamol.core.Linkage
    :members:
    :undoc-members:
    :show-inheritance:
@@ -39,7 +39,7 @@ The `entity` module defines the `BaseEntity` class that is the base class for `M
 
 .. dropdown:: The `BaseEntity` class
 
-   .. autoclass:: biobuild.core.entity.BaseEntity
+   .. autoclass:: buildamol.core.entity.BaseEntity
       :members:
       :undoc-members:
       :show-inheritance:
@@ -50,7 +50,7 @@ in situations where multiple identical molecules are connected to each other. Al
 
 .. dropdown:: The `base_classes` module
 
-   .. automodule:: biobuild.core.base_classes
+   .. automodule:: buildamol.core.base_classes
       :members:
       :undoc-members:
       :show-inheritance:
@@ -60,7 +60,7 @@ in situations where multiple identical molecules are connected to each other. Al
 .. toctree::
    :maxdepth: 2
 
-   biobuild.core.Molecule
-   biobuild.core.Linkage
-   biobuild.core.base
+   buildamol.core.Molecule
+   buildamol.core.Linkage
+   buildamol.core.base
 

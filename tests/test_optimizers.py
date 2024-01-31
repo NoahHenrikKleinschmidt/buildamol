@@ -4,12 +4,12 @@ Tests for the optimizers
 
 import tests.base as base
 import numpy as np
-import biobuild as bb
-import biobuild.optimizers as opt
+import buildamol as bam
+import buildamol.optimizers as opt
 
 
 def test_distance_rotatron():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -22,7 +22,7 @@ def test_distance_rotatron():
 
 
 def test_distance_rotatron_resgraph():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -35,7 +35,7 @@ def test_distance_rotatron_resgraph():
 
 
 def test_overlap_rotatron():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -48,7 +48,7 @@ def test_overlap_rotatron():
 
 
 def test_overlap_rotatron_resgraph():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -61,7 +61,7 @@ def test_overlap_rotatron_resgraph():
 
 
 def test_forcefield_rotatron():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -74,7 +74,7 @@ def test_forcefield_rotatron():
 
 
 def test_forcefield_rotatron_resgraph():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -87,7 +87,7 @@ def test_forcefield_rotatron_resgraph():
 
 
 def test_swarm():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -102,7 +102,7 @@ def test_swarm():
 
 
 def test_genetic():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -117,7 +117,7 @@ def test_genetic():
 
 
 def test_anneal():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -132,7 +132,7 @@ def test_anneal():
 
 
 def test_scipy():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -147,7 +147,7 @@ def test_scipy():
 
 
 def test_apply():
-    mol = bb.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 

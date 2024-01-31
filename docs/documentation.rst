@@ -9,10 +9,10 @@ API Documentation
 .. toctree::
    :maxdepth: 3
 
-   biobuild.core
-   biobuild.resources
-   biobuild.optimizers
-   biobuild.visuals
-   biobuild.graphs
-   biobuild.structural
-   biobuild.utils
+   buildamol.core
+   buildamol.resources
+   buildamol.optimizers
+   buildamol.visuals
+   buildamol.graphs
+   buildamol.structural
+   buildamol.utils

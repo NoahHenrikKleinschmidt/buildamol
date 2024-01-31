@@ -1,7 +1,7 @@
 The resources package
 =====================
 
-.. automodule:: biobuild.resources
+.. automodule:: buildamol.resources
    :members:
    :undoc-members:
    :show-inheritance:
@@ -10,21 +10,21 @@ The resources package
 
    .. tab-item:: The CHARMM module
 
-      .. automodule:: biobuild.resources.charmm
+      .. automodule:: buildamol.resources.charmm
          :members:
          :undoc-members:
          :show-inheritance:
 
    .. tab-item:: The PDBe\_compounds module
 
-      .. automodule:: biobuild.resources.pdbe_compounds
+      .. automodule:: buildamol.resources.pdbe_compounds
          :members:
          :undoc-members:
          :show-inheritance:
    
    .. tab-item:: The PubChem module
 
-      .. automodule:: biobuild.resources.pubchem
+      .. automodule:: buildamol.resources.pubchem
          :members:
          :undoc-members:
          :show-inheritance:
@@ -34,7 +34,7 @@ The resources package
 .. The pdbe\_compounds module
 .. --------------------------
 
-.. .. automodule:: biobuild.resources.pdbe_compounds
+.. .. automodule:: buildamol.resources.pdbe_compounds
 ..    :members:
 ..    :undoc-members:
 ..    :show-inheritance:
@@ -42,7 +42,7 @@ The resources package
 .. The pubchem module
 .. ------------------
 
-.. .. automodule:: biobuild.resources.pubchem
+.. .. automodule:: buildamol.resources.pubchem
 ..    :members:
 ..    :undoc-members:
 ..    :show-inheritance:

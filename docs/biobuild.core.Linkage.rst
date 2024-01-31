@@ -3,7 +3,7 @@
 biobuild Linkage
 ----------------
 
-.. automodule:: biobuild.core.Linkage
+.. automodule:: buildamol.core.Linkage
    :members:
    :undoc-members:
    :show-inheritance:

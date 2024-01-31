@@ -4,7 +4,7 @@ biobuild base
 
 The lowest level of biobuild base classes.
 
-.. automodule:: biobuild.core.entity
+.. automodule:: buildamol.core.entity
    :members:
    :undoc-members:
    :show-inheritance:
@@ -12,7 +12,7 @@ The lowest level of biobuild base classes.
 biobuild base\_classes
 ----------------------
 
-.. automodule:: biobuild.core.base_classes
+.. automodule:: buildamol.core.base_classes
    :members:
    :undoc-members:
    :show-inheritance:

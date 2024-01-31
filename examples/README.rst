@@ -1,4 +1,4 @@
-These are some tutorials on how to use Biobuild. Feel free to browse through them to learn more.
+These are some tutorials on how to use buildamol. Feel free to browse through them to learn more.
 
 
 .. _cards-clickable:

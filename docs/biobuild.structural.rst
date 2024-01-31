@@ -11,7 +11,7 @@ Basic structural operations
 
 The `base` module contains the basic structural operations that are used by the other modules.
 
-.. automodule:: biobuild.structural.base
+.. automodule:: buildamol.structural.base
    :members:
    :undoc-members:
    :show-inheritance:
@@ -22,12 +22,12 @@ Inferring structural properties
 The `infer` module contains methods for inferring structural properties from a molecule's atoms and connectivity.
 Among these are connections, or atom labels.
 
-.. automodule:: biobuild.structural.infer
+.. automodule:: buildamol.structural.infer
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: biobuild.structural.smiles
+.. automodule:: buildamol.structural.smiles
    :members:
    :undoc-members:
    :show-inheritance:
@@ -45,14 +45,14 @@ a `patch` (i.e. a `Linkage` with internal coordinates). The `stitch` module defi
 
    .. tab-item:: patch module
 
-      .. automodule:: biobuild.structural.patch
+      .. automodule:: buildamol.structural.patch
          :members:
          :undoc-members:
          :show-inheritance:
    
    .. tab-item:: stitch module
 
-      .. automodule:: biobuild.structural.stitch
+      .. automodule:: buildamol.structural.stitch
          :members:
          :undoc-members:
          :show-inheritance:
@@ -60,7 +60,7 @@ a `patch` (i.e. a `Linkage` with internal coordinates). The `stitch` module defi
    
    .. tab-item:: connector module
 
-      .. automodule:: biobuild.structural.connector
+      .. automodule:: buildamol.structural.connector
          :members:
          :undoc-members:
          :show-inheritance:
@@ -72,7 +72,7 @@ Graph neighborhood in molecular structures
 In order to infer the neighborhoods from connectivity information in molecules, the `neighbors` module defines a `Neighborhood` class that can be used to infer the neighborhoods of atoms in a molecule.
 
 
-.. automodule:: biobuild.structural.neighbors
+.. automodule:: buildamol.structural.neighbors
    :members:
    :undoc-members:
    :show-inheritance:

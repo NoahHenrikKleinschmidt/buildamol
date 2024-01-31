@@ -5,15 +5,15 @@ Tests for the auxiliary structure module
 from copy import deepcopy
 import numpy as np
 import pytest
-import biobuild as bb
+import buildamol as bam
 import tests.base as base
 import Bio.PDB as bio
 import re
 
 MARGIN = 1.5 * 1e-2
 MANNOSE = bio.PDBParser().get_structure("MAN", base.MANNOSE)
-bb.load_small_molecules()
-bb.load_sugars()
+bam.load_small_molecules()
+bam.load_sugars()
 
 
 # def test_missing_proper_1():
@@ -30,7 +30,7 @@ bb.load_sugars()
 #         _man.detach_child(to_delete)
 #         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-#         bb.structural.fill_missing_atoms(_man)
+#         bam.structural.fill_missing_atoms(_man)
 
 #         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -55,7 +55,7 @@ bb.load_sugars()
 #         _man.detach_child(to_delete)
 #         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-#         bb.structural.fill_missing_atoms(_man)
+#         bam.structural.fill_missing_atoms(_man)
 
 #         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -72,7 +72,7 @@ bb.load_sugars()
 #         _man = MANNOSE.copy()
 #         _man = next(_man.get_residues())
 
-#         top = deepcopy(bb.resources.get_default_topology())
+#         top = deepcopy(bam.resources.get_default_topology())
 #         abstract = top.get_residue(_man.resname)
 #         for idx, i in enumerate(abstract.internal_coordinates):
 #             if i.is_proper:
@@ -86,7 +86,7 @@ bb.load_sugars()
 #         _man.detach_child(to_delete)
 #         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-#         bb.structural.fill_missing_atoms(_man, top)
+#         bam.structural.fill_missing_atoms(_man, top)
 
 #         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -97,14 +97,14 @@ bb.load_sugars()
 
 
 # def test_missing_multi():
-#     man = bb.Molecule.from_compound("MAN")
+#     man = bam.Molecule.from_compound("MAN")
 #     man.repeat(2, "14bb")
 #     to_delete = ("O5", "C3", "O2", "O3")
 #     man.remove_atoms(*to_delete)
 #     for atom in man.get_atoms():
 #         atom.__mol__ = man
 #     for res in man.residues:
-#         bb.structural.fill_missing_atoms(res)
+#         bam.structural.fill_missing_atoms(res)
 
 
 # def test_missing_improper_4():
@@ -113,7 +113,7 @@ bb.load_sugars()
 #     for to_delete in to_deletes:
 #         _man = MANNOSE.copy()
 #         _man = next(_man.get_residues())
-#         top = deepcopy(bb.resources.get_default_topology())
+#         top = deepcopy(bam.resources.get_default_topology())
 #         abstract = top.get_residue(_man.resname)
 #         for idx, i in enumerate(abstract.internal_coordinates):
 #             if i.is_proper:
@@ -127,7 +127,7 @@ bb.load_sugars()
 #         _man.detach_child(to_delete)
 #         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-#         bb.structural.fill_missing_atoms(_man, top)
+#         bam.structural.fill_missing_atoms(_man, top)
 
 #         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -150,7 +150,7 @@ bb.load_sugars()
 
 #     _man.detach_child(to_delete)
 
-#     bb.structural.fill_missing_atoms(_man)
+#     bam.structural.fill_missing_atoms(_man)
 
 #     assert (
 #         _man.child_dict.get(to_delete) is not None
@@ -172,7 +172,7 @@ bb.load_sugars()
 #     for i in to_delete:
 #         _man.detach_child(i)
 
-#     bb.structural.fill_missing_atoms(_man)
+#     bam.structural.fill_missing_atoms(_man)
 
 #     for i in to_delete:
 #         assert _man.child_dict.get(i) is not None, f"Atom {i} was not added again!"
@@ -195,7 +195,7 @@ bb.load_sugars()
 #     for i in to_delete:
 #         _gal.detach_child(i)
 
-#     bb.structural.fill_missing_atoms(_gal)
+#     bam.structural.fill_missing_atoms(_gal)
 
 #     for i in to_delete:
 #         assert _gal.child_dict.get(i) is not None, f"Atom {i} was not added again!"
@@ -219,7 +219,7 @@ bb.load_sugars()
 #         true_coords[idx] = i.coord
 #         parent.detach_child(i.id)
 
-#     bb.structural.fill_missing_atoms(_man)
+#     bam.structural.fill_missing_atoms(_man)
 
 #     for i, true_coord, parent in zip(to_delete, true_coords, parents):
 #         assert parent.child_dict.get(i.id) is not None, f"Atom {i} was not added again!"
@@ -231,9 +231,9 @@ bb.load_sugars()
 
 
 def test_apply_standard_bonds():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    bonds = bb.structural.apply_reference_bonds(MANNOSE)
+    bonds = bam.structural.apply_reference_bonds(MANNOSE)
 
     _recieved = len(bonds)
     _expected = 24
@@ -315,15 +315,15 @@ def test_apply_standard_bonds():
     assert (
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
-    bb.unload_sugars()
+    bam.unload_sugars()
 
 
 def test_apply_standard_bonds_one_atom():
-    bb.load_sugars()
+    bam.load_sugars()
     atom = {i.id: i for i in MANNOSE.get_atoms()}
     atom = atom.get("C1")
 
-    bonds = bb.structural.apply_reference_bonds(atom)
+    bonds = bam.structural.apply_reference_bonds(atom)
     bonds = [set((i.id, j.id)) for i, j, order in bonds]
 
     _recieved = len(bonds)
@@ -356,11 +356,11 @@ def test_apply_standard_bonds_one_atom():
     assert (
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
-    bb.unload_sugars()
+    bam.unload_sugars()
 
 
 def test_infer_bonds():
-    bonds = bb.structural.infer_bonds(MANNOSE)
+    bonds = bam.structural.infer_bonds(MANNOSE)
 
     _recieved = len(bonds)
     _expected = 24
@@ -446,7 +446,7 @@ def test_infer_bonds():
 
 def test_infer_residue_connections():
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
-    bonds = bb.structural.infer_residue_connections(_man9)
+    bonds = bam.structural.infer_residue_connections(_man9)
 
     connections = [
         set((i.get_parent()._id[1], j.get_parent()._id[1])) for i, j in bonds
@@ -500,14 +500,14 @@ def test_infer_residue_connections():
 
 def test_infer_residue_connections_triplet():
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
-    bonds = bb.structural.infer_residue_connections(_man9, triplet=True)
-    _no_triplets = bb.structural.infer_residue_connections(_man9)
+    bonds = bam.structural.infer_residue_connections(_man9, triplet=True)
+    _no_triplets = bam.structural.infer_residue_connections(_man9)
 
     assert len(bonds) == 2 * len(_no_triplets), "Not all triplets are found!"
 
 
 def test_atom_neighborhood_basic():
-    man = bb.molecule(MANNOSE)
+    man = bam.molecule(MANNOSE)
     man.infer_bonds()
     mannose = man._AtomGraph
 
@@ -518,7 +518,7 @@ def test_atom_neighborhood_basic():
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
-    neighborhood = bb.structural.AtomNeighborhood(mannose)
+    neighborhood = bam.structural.AtomNeighborhood(mannose)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     _recieved = len(neighborhood.atoms)
@@ -538,10 +538,10 @@ def test_atom_neighborhood_basic():
 
 
 def test_atom_neighborhood_get():
-    man = bb.molecule(MANNOSE)
+    man = bam.molecule(MANNOSE)
     man.infer_bonds()
     mannose = man._AtomGraph
-    neighborhood = bb.structural.AtomNeighborhood(mannose)
+    neighborhood = bam.structural.AtomNeighborhood(mannose)
 
     c1 = next(atom for atom in man.get_atoms() if atom.id == "C1")
 
@@ -569,11 +569,11 @@ def test_atom_neighborhood_get():
 
 
 def test_residue_neighborhood_basic():
-    mannose = bb.Molecule.from_pdb(base.MANNOSE9)
+    mannose = bam.Molecule.from_pdb(base.MANNOSE9)
     mannose.infer_bonds(restrict_residues=False)
     graph = mannose.make_residue_graph()
 
-    neighborhood = bb.structural.ResidueNeighborhood(graph)
+    neighborhood = bam.structural.ResidueNeighborhood(graph)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     _recieved = len(neighborhood.residues)
@@ -602,11 +602,11 @@ def test_residue_neighborhood_basic():
 
 
 def test_residue_neighborhood_get():
-    mannose = bb.Molecule.from_pdb(base.MANNOSE9)
+    mannose = bam.Molecule.from_pdb(base.MANNOSE9)
     mannose.infer_bonds(restrict_residues=False)
     graph = mannose.make_residue_graph()
 
-    neighborhood = bb.structural.ResidueNeighborhood(graph)
+    neighborhood = bam.structural.ResidueNeighborhood(graph)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     # because the graph is not detailed there should be no
@@ -660,13 +660,13 @@ def test_residue_neighborhood_get():
 
 
 def test_compute_angle():
-    mannose = bb.molecule(MANNOSE)
+    mannose = bam.molecule(MANNOSE)
     mannose.infer_bonds()
 
     for triplet, angle in mannose.compute_angles().items():
         assert 90 < angle < 120, f"Angle {angle} is not in range 90-120°!"
 
-    # top = bb.resources.get_default_topology()
+    # top = bam.resources.get_default_topology()
     # man = top.get_residue("MAN")
 
     # _atom = "O5"  # some ref atom to get ICs for
@@ -679,14 +679,14 @@ def test_compute_angle():
     # assert len(refs) == 4, f"We got weird reference atoms: {refs}"
 
     # _true_angle = ic.bond_angle_123
-    # _recieved = bb.structural.compute_angle(*refs[:-1])
+    # _recieved = bam.structural.compute_angle(*refs[:-1])
     # _what = "° between 1-2-3"
     # assert _recieved == pytest.approx(
     #     _true_angle, 1e-3
     # ), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
 
     # _true_angle = ic.bond_angle_234
-    # _recieved = bb.structural.compute_angle(*refs[1:])
+    # _recieved = bam.structural.compute_angle(*refs[1:])
     # _what = "° between 2-3-4"
     # assert _recieved == pytest.approx(
     #     _true_angle, 1e-3
@@ -694,15 +694,15 @@ def test_compute_angle():
 
 
 def test_compute_dihedral():
-    mannose = bb.molecule(MANNOSE)
+    mannose = bam.molecule(MANNOSE)
 
     for quartet, dihedral in mannose.compute_dihedrals().items():
         assert -120 < dihedral < 120, f"Dihedral {dihedral} is not in range -120-120°!"
 
-    # mannose = bb.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
+    # mannose = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
     # mannose = next(mannose.get_residues())
 
-    # top = bb.resources.get_default_topology()
+    # top = bam.resources.get_default_topology()
     # man = top.get_residue("MAN")
 
     # _atom = "O5"  # some ref atom to get ICs for
@@ -715,7 +715,7 @@ def test_compute_dihedral():
     # assert len(refs) == 4, f"We got weird reference atoms: {refs}"
 
     # _true_dihedral = ic.dihedral
-    # _recieved = bb.structural.compute_dihedral(*refs)
+    # _recieved = bam.structural.compute_dihedral(*refs)
     # _what = "° between 1-2-3-4"
     # assert _recieved == pytest.approx(
     #     _true_dihedral, 1e-3
@@ -724,21 +724,21 @@ def test_compute_dihedral():
 
 def test_compute_triplets():
     bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
-    triplets = bb.structural.compute_triplets(bonds, unique=False)
+    triplets = bam.structural.compute_triplets(bonds, unique=False)
     _expected = set(((2, 1, 3), (3, 1, 2), (1, 2, 4), (4, 2, 1), (1, 3, 5), (5, 3, 1)))
     assert (
         set(triplets) == _expected
     ), f"Expected {len(_expected)} triplets, got {len(triplets)}"
-    triplets = bb.structural.compute_triplets(bonds, unique=True)
+    triplets = bam.structural.compute_triplets(bonds, unique=True)
     assert (
         len(set(triplets).intersection(_expected)) == 3
     ), "Unique triplets are not unique!"
 
 
 def test_quartet_class():
-    a = bb.structural.neighbors.Quartet(1, 2, 3, 4, False)
-    b = bb.structural.neighbors.Quartet(1, 2, 3, 4, False)
-    c = bb.structural.neighbors.Quartet(5, 3, 4, 6, True)
+    a = bam.structural.neighbors.Quartet(1, 2, 3, 4, False)
+    b = bam.structural.neighbors.Quartet(1, 2, 3, 4, False)
+    c = bam.structural.neighbors.Quartet(5, 3, 4, 6, True)
 
     assert a == b, "Quartets are not equal!"
     assert a != c, "Quartets are equal!"
@@ -752,7 +752,7 @@ def test_quartet_class():
 
 def test_compute_quartets():
     bonds = bonds = [(1, 2), (2, 3), (2, 4), (3, 5)]
-    quartets = bb.structural.compute_quartets(bonds)
+    quartets = bam.structural.compute_quartets(bonds)
 
     _received = len(quartets)
     _expected = 3
@@ -761,26 +761,26 @@ def test_compute_quartets():
     assert sum(1 for i in quartets if not i.improper) == 2, "Expected 2 proper quartets"
 
     bonds = [(1, 2), (2, 3), (2, 4), (3, 5), (4, 6), (5, 7)]
-    quartets = bb.structural.compute_quartets(bonds)
+    quartets = bam.structural.compute_quartets(bonds)
 
     _received = len(quartets)
     _expected = 6
     assert _received == _expected, f"Expected {_expected} quartets, got {_received}"
 
-    # Quartet = bb.structural.neighbors.Quartet
+    # Quartet = bam.structural.neighbors.Quartet
     # assert Quartet(1, 2, 4, 6, False) in quartets
     # assert Quartet(1, 4, 2, 3, True) in quartets
 
 
 def test_patcher_anchors():
-    man1 = bb.Molecule.from_pdb(base.MANNOSE)
+    man1 = bam.Molecule.from_pdb(base.MANNOSE)
     man1.infer_bonds()
     man2 = deepcopy(man1)
 
-    top = bb.get_default_topology()
+    top = bam.get_default_topology()
     patch = top.get_patch("12aa")
 
-    p = bb.structural.Patcher()
+    p = bam.structural.Patcher()
     p.target = man1
     p.source = man2
     p.patch = patch
@@ -792,13 +792,13 @@ def test_patcher_anchors():
 
 
 def test_patcher_anchors_2():
-    bb.load_sugars()
-    glc = bb.Molecule.from_compound("GLC")
+    bam.load_sugars()
+    glc = bam.Molecule.from_compound("GLC")
 
-    top = bb.get_default_topology()
+    top = bam.get_default_topology()
     patch = top.get_patch("14bb")
 
-    p = bb.structural.Patcher(True, True)
+    p = bam.structural.Patcher(True, True)
     p.target = glc
     p.source = glc
     p.patch = patch
@@ -807,20 +807,20 @@ def test_patcher_anchors_2():
     assert len(anchors) == 2
     assert anchors[0].id == "O4"
     assert anchors[1].id == "C1"
-    bb.unload_sugars()
+    bam.unload_sugars()
 
 
 def test_patcher_two_man():
-    man1 = bb.Molecule.from_pdb(base.MANNOSE)
+    man1 = bam.Molecule.from_pdb(base.MANNOSE)
     man1.infer_bonds()
     man2 = deepcopy(man1)
 
     man1.lock_all()
     man2.lock_all()
 
-    top = bb.get_default_topology()
+    top = bam.get_default_topology()
     patches = ("12aa", "12ab", "14bb")
-    p = bb.structural.Patcher(copy_target=True, copy_source=True)
+    p = bam.structural.Patcher(copy_target=True, copy_source=True)
     for patch in patches:
         patch = top.get_patch(patch)
 
@@ -877,21 +877,21 @@ def test_patcher_two_man():
 
 
 def test_patcher_multiple_man():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    man1 = bb.Molecule.from_compound("MAN")
+    man1 = bam.Molecule.from_compound("MAN")
     man1.lock_all()
 
     man2 = man1.copy()
     man3 = man1.copy()
     man4 = man1.copy()
 
-    top = bb.get_default_topology()
+    top = bam.get_default_topology()
 
     orig_residues = len(man1.residues)
     orig_atoms = len(man1.atoms)
 
-    p = bb.structural.Patcher(False, False)
+    p = bam.structural.Patcher(False, False)
 
     p.apply(top.get_patch("14bb"), man3, man4)
     man_34 = p.merge()
@@ -940,12 +940,12 @@ def test_patcher_multiple_man():
 
 
 def test_keep_copy_patcher():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
 
-    patcher = bb.structural.Patcher(copy_target=True, copy_source=True)
-    patch = bb.get_default_topology().get_patch("12aa")
+    patcher = bam.structural.Patcher(copy_target=True, copy_source=True)
+    patch = bam.get_default_topology().get_patch("12aa")
 
     patcher.apply(patch, glc, glc)
     new = patcher.merge()
@@ -956,15 +956,15 @@ def test_keep_copy_patcher():
 
 
 def test_stitcher_two_glucose():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    glc = bb.Molecule.from_compound("GLC")
-    glc2 = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
+    glc2 = bam.Molecule.from_compound("GLC")
 
     glc2.rotate_around_bond(6, 5, 68)
     glc2.rotate_around_bond(3, 4, 41)
 
-    s = bb.structural.Stitcher(True, True)
+    s = bam.structural.Stitcher(True, True)
 
     at_glc = "C1"
     at_glc2 = "O4"
@@ -1025,15 +1025,15 @@ def test_stitcher_two_glucose():
 
 
 def test_stitcher_three_glucose():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    glc = bb.Molecule.from_compound("GLC")
-    glc2 = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
+    glc2 = bam.Molecule.from_compound("GLC")
 
     glc2.rotate_around_bond(6, 5, 68)
     glc2.rotate_around_bond(3, 4, 41)
 
-    s = bb.structural.Stitcher(True, True)
+    s = bam.structural.Stitcher(True, True)
 
     at_glc = "C1"
     at_glc2 = "O4"
@@ -1086,13 +1086,13 @@ def test_stitcher_three_glucose():
 
 
 # def test_stitcher_two_glucose_root_atoms():
-#     glc = bb.Molecule.from_compound("GLC")
-#     glc2 = bb.Molecule.from_compound("GLC")
+#     glc = bam.Molecule.from_compound("GLC")
+#     glc2 = bam.Molecule.from_compound("GLC")
 
 #     glc2.rotate_around_bond(6, 5, 68)
 #     glc2.rotate_around_bond(3, 4, 41)
 
-#     s = bb.structural.Stitcher(True, True)
+#     s = bam.structural.Stitcher(True, True)
 
 #     at_glc = "C1"
 #     at_glc2 = "O4"
@@ -1156,10 +1156,10 @@ def test_stitcher_three_glucose():
 
 
 def test_patch_and_stich():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    glc = bb.Molecule.from_compound("GLC")
-    man = bb.Molecule.from_compound("MAN")
+    glc = bam.Molecule.from_compound("GLC")
+    man = bam.Molecule.from_compound("MAN")
 
     # ------------------------------------------
     # using the built-in patcher within molecule
@@ -1173,7 +1173,7 @@ def test_patch_and_stich():
     # ------------------------------------------
     # now stitch them together
     # ------------------------------------------
-    stitcher = bb.structural.Stitcher()
+    stitcher = bam.structural.Stitcher()
     stitcher.apply(
         target=glc,
         source=man,
@@ -1205,12 +1205,12 @@ def test_patch_and_stich():
 
 
 def test_relabel_Hydrogens():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    ref = bb.Molecule.from_compound("GLC")
-    mol = bb.Molecule.from_pubchem("D-glucose")
+    ref = bam.Molecule.from_compound("GLC")
+    mol = bam.Molecule.from_pubchem("D-glucose")
 
-    bb.structural.relabel_hydrogens(mol)
+    bam.structural.relabel_hydrogens(mol)
 
     hydrogens = (a for a in mol.get_atoms() if a.element == "H")
     for h in hydrogens:
@@ -1220,10 +1220,10 @@ def test_relabel_Hydrogens():
 
 
 def test_autolabel():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    ref = bb.Molecule.from_compound("GLC")
-    mol = bb.Molecule.from_pubchem("GLC")
+    ref = bam.Molecule.from_compound("GLC")
+    mol = bam.Molecule.from_pubchem("GLC")
     mol.autolabel()
     refs = set((i.id) for i in ref.get_atoms())
     mols = set((i.id) for i in mol.get_atoms())
@@ -1234,14 +1234,14 @@ def test_autolabel():
 
 
 def test_autolabel2():
-    bb.unload_all_compounds()
-    bb.load_small_molecules()
-    bb.load_sugars()
-    assert len(bb.get_default_compounds()) == 3180  # small + sugars
-    assert bb.has_compound("CH3") == True, "CH3 is not a compound!"
-    mol = bb.molecule("CH3")
+    bam.unload_all_compounds()
+    bam.load_small_molecules()
+    bam.load_sugars()
+    assert len(bam.get_default_compounds()) == 3180  # small + sugars
+    assert bam.has_compound("CH3") == True, "CH3 is not a compound!"
+    mol = bam.molecule("CH3")
     assert mol is not None
-    mol = bb.Molecule.from_compound("CH4", by="formula")
-    assert isinstance(mol, bb.Molecule)
+    mol = bam.Molecule.from_compound("CH4", by="formula")
+    assert isinstance(mol, bam.Molecule)
     mol.autolabel()
     assert set(i.id for i in mol.get_atoms()) == set(("C1", "H11", "H12", "H13", "H14"))
