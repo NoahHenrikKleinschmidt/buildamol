@@ -8,7 +8,7 @@ import subprocess
 
 BASE_DIR = os.path.abspath(__file__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
-CODE_DIR = BASE_DIR + "/biobuild"
+CODE_DIR = BASE_DIR + "/buildamol"
 DOCS_DIR = BASE_DIR + "/docs"
 
 FILES_TO_UPDATE = {
