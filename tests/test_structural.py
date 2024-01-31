@@ -652,7 +652,7 @@ def test_residue_neighborhood_get():
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
     _recieved = set(i.id[1] for i in neighborhood.get_neighbors(bma, 2, "at"))
-    _expected = {1, 7, 5, 10}
+    _expected = {2, 8, 6, 11}
     _what = "as n=2 neighbors of BMA"
     assert (
         _recieved == _expected

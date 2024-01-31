@@ -479,7 +479,7 @@ def test_residue_graph_detailed_get_neighbors():
     graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
     graph.make_detailed(False)
 
-    bma = mol.get_residue(3)
+    bma = mol.get_residue("BMA")
     neigs = graph.get_neighbors(bma)
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
     _received = len(neigs)
