@@ -133,7 +133,7 @@ class OpenMMBioPythonConverter(PDBIO):
         """
         if not has_openmm:
             raise ImportError("Could not import OpenMM")
-        pdb = aux.openmm.app.PDBFile(self.__fileio__)
+        pdb = aux.openmm.PDBFile(self.__fileio__)
         return pdb
 
     def _openmm_to_pdbio(self, topology, positions):
@@ -154,9 +154,7 @@ class OpenMMBioPythonConverter(PDBIO):
         """
         if not has_openmm:
             raise ImportError("Could not import OpenMM")
-        aux.openmm.app.PDBFile.writeFile(
-            topology, positions, open(self.__fileio__, "w")
-        )
+        aux.openmm.PDBFile.writeFile(topology, positions, open(self.__fileio__, "w"))
 
 
 class PybelBioPythonConverter(PDBIO):
