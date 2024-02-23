@@ -399,7 +399,7 @@ def vet_structure(
     return True
 
 
-def find_clashes(molecule, min_dist: float = 0.9):
+def find_clashes(molecule, min_dist: float = 1.0, ignore_hydrogens: bool = False):
     """
     Find all clashing atoms within a molecule.
 
@@ -409,17 +409,25 @@ def find_clashes(molecule, min_dist: float = 0.9):
         A biobuild Molecule
     min_dist : float
         The minimal allowed distance between atoms (in Angstrom).
+    ignore_hydrogens : bool
+        If set to True, hydrogen atoms are ignored.
 
     Yields
     -------
     tuple
         A tuple of clashing atoms.
     """
-    atoms = list(molecule.get_atoms())
+    if ignore_hydrogens:
+        atoms = [a for a in molecule.get_atoms() if a.element != "H"]
+    else:
+        atoms = list(molecule.get_atoms())
+
     atom_coords = np.array([atom.get_coord() for atom in atoms])
     dists = cdist(atom_coords, atom_coords)
     edge_mask = np.zeros(dists.shape, dtype=bool)
     for a, b in molecule.get_bonds():
+        if ignore_hydrogens and (a.element == "H" or b.element == "H"):
+            continue
         i = atoms.index(a)
         j = atoms.index(b)
         edge_mask[i, j] = True

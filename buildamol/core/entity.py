@@ -613,7 +613,7 @@ class BaseEntity:
             return v
 
     def vet(
-        self, clash_range: tuple = (0.6, 1.7), angle_range: tuple = (90, 180)
+        self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
     ) -> bool:
         """
         Vet the structural integrity of a molecule.
@@ -636,7 +636,9 @@ class BaseEntity:
         """
         return structural.vet_structure(self, clash_range, angle_range)
 
-    def find_clashes(self, clash_threshold: float = 0.9) -> list:
+    def find_clashes(
+        self, clash_threshold: float = 1.0, ignore_hydrogens: bool = True
+    ) -> list:
         """
         Find all clashes in the molecule.
 
@@ -644,29 +646,39 @@ class BaseEntity:
         ----------
         clash_threshold : float, optional
             The minimal allowed distance between two atoms (in Angstrom).
+        ignore_hydrogens : bool, optional
+            Whether to ignore clashes with hydrogen atoms (default: True)
 
         Returns
         -------
         list
             A list of tuples of atoms that clash.
         """
-        return [i for i in structural.find_clashes(self, clash_threshold)]
+        return [
+            i for i in structural.find_clashes(self, clash_threshold, ignore_hydrogens)
+        ]
 
-    def count_clashes(self, clash_threshold: float = 0.9) -> int:
+    def count_clashes(
+        self, clash_threshold: float = 1.0, ignore_hydrogens: bool = True
+    ) -> int:
         """
-        Count all clashes in the molecule.¨
+        Count all clashes in the molecule.
 
         Parameters
         ----------
         clash_threshold : float, optional
             The minimal allowed distance between two atoms (in Angstrom).
+        ignore_hydrogens : bool, optional
+            Whether to ignore clashes with hydrogen atoms (default: True)
 
         Returns
         -------
         int
             The number of clashes.
         """
-        return sum(1 for i in structural.find_clashes(self, clash_threshold))
+        return sum(
+            1 for i in structural.find_clashes(self, clash_threshold, ignore_hydrogens)
+        )
 
     def copy(self):
         """
@@ -2379,8 +2391,7 @@ class BaseEntity:
 
         Returns
         -------
-        openmm.app.Topology
-            The OpenMM topology
+        openmm.app.PDBFile
         """
         return utils.convert.OpenMMBioPythonConverter().biobuild_to_openmm(self)
 
