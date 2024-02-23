@@ -46,7 +46,7 @@ On this page you will find some tutorials on how to use buildamol. Feel free to 
    This tutorial covers how to optimize molecular conformations in buildamol.
 
 
-.. card:: Converting Formats
+.. card:: Other Libraries and Formats
    :link: example_converting_formats
    :link-type: ref
 
@@ -80,3 +80,9 @@ More applied tutorials
    :link-type: ref
 
    In this tutorial we will build a polyphenylene dendrimer using some automization.
+
+.. card:: Molecular Dynamics
+   :link: example_md
+   :link-type: ref
+
+   In this tutorial we will build a molecule and run a molecular dynamics simulation on it.

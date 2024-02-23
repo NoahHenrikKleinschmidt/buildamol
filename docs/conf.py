@@ -6,10 +6,10 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "biobuild"
-copyright = "2023, Noah Kleinschmidt"
+project = "buildamol"
+copyright = "2024, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "3.10.16"
+release = "1.0.18"
 
 
 import plotly.io as pio
