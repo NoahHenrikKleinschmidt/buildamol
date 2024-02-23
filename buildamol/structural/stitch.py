@@ -263,7 +263,7 @@ class Stitcher(base.Connector):
         bonds = self.target.get_bonds(self._target_residue)
         bonds.extend(self.source.get_bonds(self._source_residue))
 
-        # the double Molecule seems necessary when the file is not direclty run...
+        # a double Molecule (Molecule.Molecule) seems necessary when the file is not direclty run...
         tmp = Molecule.Molecule.empty("tmp")
 
         orig_coords_target = {
