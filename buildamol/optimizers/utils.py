@@ -11,6 +11,9 @@ import buildamol.core.Molecule as Molecule
 import buildamol.optimizers.algorithms as agents
 import buildamol.utils.auxiliary as aux
 
+from multiprocessing import Pool, cpu_count
+from functools import partial
+
 
 def apply_solution(
     sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule.Molecule"
@@ -145,4 +148,146 @@ def auto_algorithm(mol):
     return "swarm"
 
 
-__all__ = ["apply_solution", "optimize", "auto_algorithm"]
+def split_environment(
+    env: "Rotatron.Rotatron", n: int = None, radius: float = None
+) -> list["Rotatron.Rotatron"]:
+    """
+    Split an environment into n sub-environments which are smaller and thus easier to optimize.
+
+    Parameters
+    ----------
+    env : Rotatron
+        The environment to split
+    n : int
+        The number of sub-environments to create
+
+    Returns
+    -------
+    list
+        A list of sub-environments
+    """
+    _all_edges = np.array(env.rotatable_edges)
+    all_edges = np.array([(*i.coord, *j.coord) for i, j in env.rotatable_edges])
+
+    # cluster the edges into n clusters
+    from sklearn.cluster import KMeans
+
+    kmeans = KMeans(n_clusters=n)
+    kmeans.fit(all_edges)
+    labels = kmeans.predict(all_edges)
+
+    # create the sub-environments
+    sub_envs = []
+    for i in range(n):
+        mask = labels == i
+        edges = _all_edges[mask]
+        sub_env = DistanceRotatron(
+            env.graph,
+            edges,
+            radius=radius or env.radius,
+            n_processes=env.n_processes,
+            setup=False,
+        )
+        sub_env.edge_masks = env.edge_masks[mask]
+        sub_env.edge_lengths = env.edge_lengths[mask]
+        sub_envs.append(sub_env)
+
+    return sub_envs
+
+
+def parlallel_optimize(
+    mol: "Molecule.Molecule",
+    envs: list["Rotatron.Rotatron"],
+    algorithm: Union[str, callable] = None,
+    n_processes: int = None,
+    **kwargs,
+) -> "Molecule.Molecule":
+    """
+    Optimize a molecule using multiple sub-environments in parallel.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to optimize. This molecule will be modified in-place.
+    envs : list
+        The sub-environments to optimize
+    algorithm : str or callable, optional
+        The algorithm to use. If not provided, an algorithm is automatically determined, depending on the molecule size.
+        If provided, this can be:
+        - "genetic": A genetic algorithm
+        - "swarm": A particle swarm optimization algorithm
+        - "anneal": A simulated annealing algorithm
+        - "scipy": A gradient descent algorithm (default scipy implementation, can be changed using a 'method' keyword argument)
+        - or some other callable that takes an environment as its first argument
+    n_processes : int, optional
+        The number of processes to use. If not provided, the number of processes is automatically determined.
+    **kwargs
+        Additional keyword arguments to pass to the algorithm
+
+    Returns
+    -------
+    Molecule
+        The optimized molecule
+    """
+    algorithm = algorithm or auto_algorithm(envs[0])
+    if algorithm == "genetic":
+        agent = partial(agents.genetic_optimize, **kwargs)
+    elif algorithm == "swarm":
+        agent = partial(agents.swarm_optimize, **kwargs)
+    elif algorithm == "scipy":
+        agent = partial(agents.scipy_optimize, **kwargs)
+    elif algorithm == "anneal":
+        agent = partial(agents.anneal_optimize, **kwargs)
+    elif algorithm == "rdkit":
+        raise ValueError("RDKit optimization is not supported in parallel mode")
+    elif not callable(algorithm):
+        raise ValueError(f"Unknown algorithm: {algorithm}")
+
+    if n_processes is None:
+        n_processes = cpu_count()
+
+    n_processes = min(n_processes, len(envs))
+
+    p = Pool(n_processes)
+    results = p.map(agent, envs)
+    p.close()
+    p.join()
+
+    for res, env in zip(results, envs):
+        sol, eval = res
+        if sol.shape[0] != env.n_edges:
+            raise ValueError(
+                f"Solution and environment do not match (size mismatch): {sol.shape[0]} != {env.n_edges}"
+            )
+        mol = apply_solution(sol, env, mol)
+
+    return mol
+
+
+__all__ = [
+    "apply_solution",
+    "optimize",
+    "auto_algorithm",
+    "split_environment",
+    "parlallel_optimize",
+]
+
+if __name__ == "__main__":
+
+    import buildamol as bam
+    import time
+
+    mol = bam.Molecule.from_pdb(
+        "/Users/noahhk/GIT/biobuild/__figure_makery/EX8_new.pdb"
+    )
+
+    print("making first environment")
+
+    rotatron = bam.optimizers.DistanceRotatron(
+        mol.make_residue_graph(True), n_processes=6
+    )
+
+    print("splitting environment")
+    N = 2
+    split = split_environment(rotatron, N)
+    multi_final = parlallel_optimize(mol.copy(), split, n_processes=6)

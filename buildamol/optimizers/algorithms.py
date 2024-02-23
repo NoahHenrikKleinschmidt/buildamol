@@ -5,6 +5,9 @@ from typing import Union
 import buildamol.utils.auxiliary as aux
 from buildamol.core import Molecule
 
+from multiprocessing import Pool, cpu_count
+from copy import deepcopy
+
 
 def scipy_optimize(
     env,
@@ -237,19 +240,24 @@ class _Particle:
         self.best_position = self.position.copy()  # Personal best position
         self.best_fitness = np.inf  # Personal best fitness
         self.fitness = np.inf  # Current fitness
+        self.bounds = _Particle.bounds
 
-        if self.bounds:
-
-            def update_position(self):
-                self.position += self.velocity
-                self.position = np.clip(self.position, self.bounds[0], self.bounds[1])
-
+        if self.bounds is not None:
+            self.update_position = self._bound_update_position
         else:
+            self.update_position = self._nobound_update_position
 
-            def update_position(self):
-                self.position += self.velocity
+    def scatter_copy(self):
+        new = deepcopy(self)
+        new.random_scatter()
+        return new
 
-        self.update_position = update_position.__get__(self)
+    def _nobound_update_position(self):
+        self.position += self.velocity
+
+    def _bound_update_position(self):
+        self.position += self.velocity
+        self.position = np.clip(self.position, self.bounds[0], self.bounds[1])
 
     def update_velocity(self, inertia, cognitive, social, best_particle):
         self.velocity = (
@@ -265,6 +273,168 @@ class _Particle:
         if self.bounds:
             new = np.clip(new, self.bounds[0], self.bounds[1])
         return new
+
+
+def multiprocess_swarm_optimize(
+    env,
+    processes: int = None,
+    n_particles: int = None,
+    max_steps: int = 30,
+    stop_if_done: bool = True,
+    threshold: float = 1e-6,
+    w: float = 0.9,
+    c1: float = 0.5,
+    c2: float = 0.3,
+    cooldown_rate: float = 0.99,
+    n_best: int = 1,
+):
+    """
+    Optimize a rotatron environment through a simple particle swarm optimization.
+
+    Parameters
+    ----------
+    env : buildamol.optimizers.environments.Rotatron
+        The environment to optimize
+    processes : int, optional
+        The number of processes to use.
+        Set this to None in order to compute the number of processes
+        based on the number of rotatable edges in the environment.
+    n_particles : int, optional
+        The number of particles to use.
+        Set this to None in order to compute the number of particles
+        based on the number of rotatable edges in the environment.
+    max_steps : int, optional
+        The maximum number of steps to take.
+    stop_if_done : bool, optional
+        Stop the optimization if the environment signals it is done or the solutions have converged.
+    threshold : float, optional
+        A threshold to use for convergence of the best solution found.
+        The algorithm will stop if the variation of the best solution evaluation history
+        is less than this threshold.
+    w : float, optional
+        The inertia parameter for the particle swarm optimization.
+    c1 : float, optional
+        The cognitive parameter for the particle swarm optimization.
+    c2 : float, optional
+        The social parameter for the particle swarm optimization.
+    cooldown_rate : float, optional
+        The rate at which the inertia parameter is reduced. The inertia parameter is reduced by this factor every generation. E.g. 0.95 will reduce the inertia parameter by 5% every generation.
+    n_best : int, optional
+        The number of best solutions to return at the end of the optimization.
+
+    Returns
+    -------
+    solution, evaluation
+        The solution and evaluation for the solution
+    """
+    if n_particles is None:
+        n_particles = max(30, len(env.rotatable_edges) // 3)
+
+    if processes is None:
+        processes = min(cpu_count(), n_particles // 10)
+
+    _Particle.bounds = env._bounds_tuple or None
+    population = [_Particle(env.action_space.shape[0]) for _ in range(n_particles)]
+    best_particle = population[0]
+    best_fitness = np.inf
+    best_solution = np.zeros(env.action_space.shape[0])
+
+    steps = 0
+    no_improvement_since = 0
+    while steps < max_steps:
+        with Pool(processes) as pool:
+            results = pool.starmap(
+                _multiprocess_one_swarm,
+                [
+                    (
+                        population[(i - 1) * processes : i * processes],
+                        env,
+                        w,
+                        c1,
+                        c2,
+                        best_particle,
+                        best_solution,
+                        threshold,
+                        stop_if_done,
+                        cooldown_rate,
+                        max(10, max_steps // 3),
+                    )
+                    for i in range(1, len(population) // processes + 1)
+                ],
+            )
+
+        got_better = False
+        for best, _env, particle in results:
+            if (
+                particle.best_fitness < best_fitness
+                and abs(particle.best_fitness - best_fitness) > 1e-5
+            ):
+                no_improvement_since = 0
+                got_better = True
+                best_fitness = particle.best_fitness
+                best_particle = particle
+                best_solution[:] = particle.position
+        if not got_better:
+            no_improvement_since += 1
+            if no_improvement_since == max(3, max_steps // 10):
+                break
+
+        env.reset()
+        w *= cooldown_rate
+
+        population = [best_particle.scatter_copy() for _ in range(n_particles // 2)] + [
+            population[p]
+            for p in np.random.choice(np.arange(0, n_particles), n_particles // 2)
+        ]
+        steps += processes
+
+    if n_best == 1:
+        return best_solution, best_fitness
+    else:
+        best = np.argsort([p.best_fitness for p in population])[:n_best]
+        return np.array([population[b].best_position for b in best]), np.array(
+            [population[b].best_fitness for b in best]
+        )
+
+
+def _multiprocess_one_swarm(
+    particles,
+    env,
+    w,
+    c1,
+    c2,
+    best_particle,
+    best_solution,
+    threshold,
+    stop_if_done,
+    cooldown_rate,
+    max_steps,
+):
+    steps = 0
+    while steps < max_steps:
+        for particle in particles:
+            fitness = env.step(particle.position)[1]
+            if fitness < particle.best_fitness:
+                particle.best_fitness = fitness
+                particle.best_position[:] = particle.position
+            if fitness < best_particle.best_fitness:
+                best_fitness = fitness
+                best_particle = particle
+                best_solution[:] = particle.position
+            env.reset()
+
+        for particle in particles:
+            particle.update_velocity(w, c1, c2, best_particle)
+            particle.update_position()
+
+        if stop_if_done:
+            if np.var([p.best_fitness for p in particles]) < threshold:
+                return best_solution, env, best_particle
+
+        w *= cooldown_rate
+        steps += 1
+
+    return best_solution, env, best_particle
 
 
 def swarm_optimize(
@@ -648,13 +818,38 @@ if __name__ == "__main__":
     import buildamol as bam
     import time
 
-    mol = bam.molecule("/Users/noahhk/GIT/biobuild/__figure_makery/MAN8.json")
-    env = bam.optimizers.OverlapRotatron(mol.get_residue_graph(True))
+    mol = bam.molecule("/Users/noahhk/GIT/biobuild/buildamol/optimizers/final_opt2.pdb")
+    env = bam.optimizers.DistanceRotatron(mol.get_residue_graph(True))
+
+    print(len(env.rotatable_edges))
+
+    t1 = time.time()
+    results_single = swarm_optimize(env, n_particles=200, max_steps=50)
+    print(time.time() - t1, results_single)
+
+    env.reset()
+
+    t1 = time.time()
+    results = multiprocess_swarm_optimize(env, n_particles=200, max_steps=50)
+    print(time.time() - t1, results)
+
+    opt_single = bam.optimizers.apply_solution(results_single[0], env, mol.copy())
+    opt_multi = bam.optimizers.apply_solution(results[0], env, mol.copy())
+
+    print(mol.count_clashes())
+    opt_multi.to_pdb(
+        "/Users/noahhk/GIT/biobuild/buildamol/optimizers/final_opt2_new_multiprocessing_optimized.pdb"
+    )
+    print(opt_single.count_clashes(), opt_multi.count_clashes())
+
+    exit()
 
     for i in range(10):
         t1 = time.time()
-        sol, eval = genetic_optimize(env, variation_cooldown=0.98, variation=0.1)
-        out = bam.optimizers.apply_solution(sol, env, mol.copy())
-        print(time.time() - t1, out.count_clashes())
-    out.show()
+        results = multiprocess_swarm_optimize(env)
+        print(time.time() - t1, results[0][1])
+
+    #     out = bam.optimizers.apply_solution(sol, env, mol.copy())
+    #     print(time.time() - t1, out.count_clashes())
+    # out.show()
     pass

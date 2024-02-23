@@ -2,6 +2,7 @@
 This is the basic Rotatron environment. It provides the basic functionality for preprocessing a graph into numpy arrays, masking rotatable edges, and evaluating a possible solution.
 All other Rotatron environments inherit from this class.
 """
+
 import gym
 import numpy as np
 
@@ -9,6 +10,7 @@ from scipy.spatial.distance import cdist
 from scipy.spatial.transform import Rotation
 
 import buildamol.graphs.BaseGraph as BaseGraph
+from multiprocessing import Pool
 
 
 class Rotatron(gym.Env):
@@ -22,12 +24,18 @@ class Rotatron(gym.Env):
     rotatable_edges : list
         A list of edges that can be rotated during optimization.
         If None, all non-locked edges are used.
+    n_processes : int
+        The number of processes to use to speed up the computation of edge masks and lengths
+    setup : bool
+        Whether to set up the edge masks and lengths during initialization
     """
 
     def __init__(
         self,
         graph: "BaseGraph.BaseGraph",
         rotatable_edges: list = None,
+        n_processes: int = 1,
+        setup: bool = True,
     ):
         self.graph = graph
         self.rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)
@@ -42,8 +50,15 @@ class Rotatron(gym.Env):
         self.rotation_unit_masks = np.ones(
             (len(graph.nodes), len(graph.nodes)), dtype=bool
         )
-        self._generate_edge_masks()
-        self._generate_edge_lengths()
+
+        self.edge_lengths = np.zeros(self.n_edges)
+        self.edge_masks = np.zeros((self.n_edges, self.n_nodes), dtype=bool)
+
+        self.n_processes = n_processes
+
+        if setup:
+            self._generate_edge_masks(n_processes=n_processes)
+            self._generate_edge_lengths()
 
         self._edge_node_coords = np.array(
             [
@@ -72,19 +87,27 @@ class Rotatron(gym.Env):
             ]
         )
 
-    def _generate_edge_masks(self):
+    def _generate_edge_masks(self, n_processes):
         """
         Compute the edge masks of downstream nodes
         """
-        self.edge_masks = np.array(
+        if n_processes > 1:
+            p = Pool(n_processes)
+            p.map(self._generate_edge_mask, [e for e in self.rotatable_edges])
+            p.close()
+            p.join()
+        else:
+            self.edge_masks = np.array(
+                [self._generate_edge_mask(e) for e in self.rotatable_edges],
+                dtype=bool,
+            )
+
+    def _generate_edge_mask(self, edge):
+        return np.array(
             [
-                [
-                    1 if i in self.graph.get_descendants(*e) else 0
-                    for i in self.graph.nodes
-                ]
-                for e in self.rotatable_edges
-            ],
-            dtype=bool,
+                1 if i in self.graph.get_descendants(*edge) else 0
+                for i in self.graph.nodes
+            ]
         )
 
     @property
@@ -379,13 +402,13 @@ class Rotatron(gym.Env):
         pass
 
 
-if __name__ == "__main__":
-    import buildamol as bam
+# if __name__ == "__main__":
+#     import buildamol as bam
 
-    bam.load_sugars()
-    mol = bam.molecule("GLC") % "14bb"
-    mol *= 4
+#     bam.load_sugars()
+#     mol = bam.molecule("GLC") % "14bb"
+#     mol *= 4
 
-    rot = Rotatron(mol.get_atom_graph())
-    rot._generate_rotation_unit_masks()
-    rot._find_rotation_units()
+#     rot = Rotatron(mol.get_atom_graph(), n_processes=4)
+#     rot._generate_rotation_unit_masks()
+#     rot._find_rotation_units()

@@ -11,6 +11,7 @@ The evaluation is computed as:
 
 There are multiple variations of this basic formulation available (see the functions below). 
 """
+
 import gym
 
 import numpy as np
@@ -20,6 +21,10 @@ import buildamol.optimizers.Rotatron as Rotatron
 import buildamol.graphs.BaseGraph as BaseGraph
 
 # Rotatron = Rotatron.Rotatron
+
+
+def concatenation_wrapper(x):
+    pass
 
 
 def simple_concatenation_function(self, x):
@@ -112,6 +117,8 @@ class DistanceRotatron(Rotatron):
         This function should take the environment (self) as first argument and a 1D array of pairwise-distances from one node to all others as second argument and return a scalar.
     bounds : tuple
         The bounds for the minimal and maximal rotation angles.
+    n_processes : int
+        The number of processes to use for parallel computation during edge mask generation.
     """
 
     def __init__(
@@ -126,6 +133,7 @@ class DistanceRotatron(Rotatron):
         n_smallest: int = 10,
         concatenation_function: callable = None,
         bounds: tuple = (-np.pi, np.pi),
+        n_processes: int = 1,
         **kwargs,
     ):
         self.kwargs = kwargs
@@ -166,22 +174,16 @@ class DistanceRotatron(Rotatron):
 
         # =====================================
 
-        def concatenation_wrapper(x):
-            mask = x < self._radius
-            mask = np.logical_and(mask, self.rotation_unit_masks[self.ndx])
-            self.ndx += 1
-            if not np.logical_or.reduce(mask):
-                return -1
-            return self._concatenation_function(self, x[mask])
-
-        self.concatenation_function = concatenation_wrapper
+        # self.concatenation_function = concatenation_wrapper
         self._state_dists = np.zeros((len(graph.nodes), len(graph.nodes)))
 
         # =====================================
 
         self.edx = 0
 
-        Rotatron.__init__(self, graph, rotatable_edges)
+        Rotatron.__init__(
+            self, graph, rotatable_edges, n_processes=n_processes, **kwargs
+        )
         self.action_space = gym.spaces.Box(
             low=bounds[0], high=bounds[1], shape=(len(self.rotatable_edges),)
         )
@@ -249,6 +251,14 @@ class DistanceRotatron(Rotatron):
     def count_clashes(self):
         return np.sum(self._state_dists < self.clash_distance)
 
+    def concatenation_function(self, x):
+        mask = x < self._radius
+        mask = np.logical_and(mask, self.rotation_unit_masks[self.ndx])
+        self.ndx += 1
+        if not np.logical_or.reduce(mask):
+            return -1
+        return self._concatenation_function(self, x[mask])
+
 
 __all__ = [
     "DistanceRotatron",
@@ -260,83 +270,100 @@ __all__ = [
 ]
 
 
-if __name__ == "__main__":
-    import buildamol as bam
-    import matplotlib.pyplot as plt
-    import seaborn as sns
+# if __name__ == "__main__":
+#     import buildamol as bam
+#     import matplotlib.pyplot as plt
+#     import seaborn as sns
 
-    mol = bam.molecule("/Users/noahhk/GIT/biobuild/_tutorials copy/ext8_opt.pdb")
+#     mol = bam.molecule("/Users/noahhk/GIT/biobuild/_tutorials copy/ext8_opt.pdb")
 
-    graph = mol.get_residue_graph(True)
-    edges = graph.find_rotatable_edges(min_descendants=3)
+#     graph = mol.get_residue_graph(True)
+#     edges = graph.find_rotatable_edges(min_descendants=3)
 
-    d = DistanceRotatron(
-        graph,
-        edges,
-        pushback=3,
-        concatenation_function=concatenation_function_with_penalty,
-    )
-    opt = bam.optimizers.optimize(mol, d, "swarm")
+#     from time import time
 
-    print(opt.count_clashes())
-    opt.to_pdb(f"opt9_pow_pushback_{d.pushback}.pdb")
+#     for i in range(5, 10):
+#         t0 = time()
+#         d = DistanceRotatron(
+#             graph,
+#             edges,
+#             pushback=3,
+#             concatenation_function=concatenation_function_with_penalty,
+#             n_processes=i,
+#         )
+#         # opt = bam.optimizers.optimize(mol, d, "swarm")
+#         print(time() - t0)
+#     exit()
 
-    # import stable_baselines3 as sb3
+#     t1 = time()
+#     d = DistanceRotatron(
+#         graph,
+#         edges,
+#         pushback=3,
+#         concatenation_function=concatenation_function_with_penalty,
+#         n_processes=5,
+#     )
+#     opt = bam.optimizers.optimize(mol, d, "swarm")
 
-    # model = sb3.PPO("MlpPolicy", d, verbose=1)
-    # model.learn(total_timesteps=10000)
-    # model.save("ppo_distance_rotatron")
+#     print(opt.count_clashes())
+#     opt.to_pdb(f"opt9_pow_pushback_{d.pushback}.pdb")
 
-    x_ = d._best_eval
-    x0 = d.step(d.blank())
-    a = d.blank()
-    a[22] = 0.1
-    x = d.step(a)
-    print(x[1])
-    pass
+# import stable_baselines3 as sb3
 
-    # -------------------------------------
+# model = sb3.PPO("MlpPolicy", d, verbose=1)
+# model.learn(total_timesteps=10000)
+# model.save("ppo_distance_rotatron")
 
-    # bam.load_sugars()
-    # glc = bam.molecule("GLC")
-    # glc.repeat(2, "14bb")
+# x_ = d._best_eval
+# x0 = d.step(d.blank())
+# a = d.blank()
+# a[22] = 0.1
+# x = d.step(a)
+# print(x[1])
+# pass
 
-    # bonds = [glc.get_bonds("O4", "C4")[0]]
-    # env = DistanceRotatron(glc.make_atom_graph(), bonds, radius=20)
-    # actions = np.arange(
-    #     -np.pi,
-    #     np.pi,
-    #     np.pi / 80,
-    # )
-    # cmap = sns.color_palette("Blues", len(actions))
+# -------------------------------------
 
-    # evals = []
-    # v = glc.draw()
-    # for i in actions:
-    #     new_state, e, done, _ = env.step(np.array([i]))
-    #     evals.append([i, e])
+# bam.load_sugars()
+# glc = bam.molecule("GLC")
+# glc.repeat(2, "14bb")
 
-    #     _glc = glc.copy()
-    #     _glc.rotate_around_bond(*bonds[0], np.degrees(i), descendants_only=True)
+# bonds = [glc.get_bonds("O4", "C4")[0]]
+# env = DistanceRotatron(glc.make_atom_graph(), bonds, radius=20)
+# actions = np.arange(
+#     -np.pi,
+#     np.pi,
+#     np.pi / 80,
+# )
+# cmap = sns.color_palette("Blues", len(actions))
 
-    #     color = "lightgray"
-    #     if e > 0.2157:
-    #         color = "red"
-    #     # elif e > 0.1970:
-    #     #     color = "orange"
-    #     # elif e < 0.1965:
-    #     #     color = "green"
-    #     if color == "lightgray":
-    #         opacity = 0.4
-    #     else:
-    #         opacity = 1.0
-    #     v.draw_edges(
-    #         _glc.get_bonds(_glc.residues[1]), color=color, linewidth=3, opacity=opacity
-    #     )
+# evals = []
+# v = glc.draw()
+# for i in actions:
+#     new_state, e, done, _ = env.step(np.array([i]))
+#     evals.append([i, e])
 
-    # evals = np.array(evals)
+#     _glc = glc.copy()
+#     _glc.rotate_around_bond(*bonds[0], np.degrees(i), descendants_only=True)
 
-    # plt.plot(evals[:, 0], evals[:, 1])
-    # v.show()
-    # plt.show()
-    # pass
+#     color = "lightgray"
+#     if e > 0.2157:
+#         color = "red"
+#     # elif e > 0.1970:
+#     #     color = "orange"
+#     # elif e < 0.1965:
+#     #     color = "green"
+#     if color == "lightgray":
+#         opacity = 0.4
+#     else:
+#         opacity = 1.0
+#     v.draw_edges(
+#         _glc.get_bonds(_glc.residues[1]), color=color, linewidth=3, opacity=opacity
+#     )
+
+# evals = np.array(evals)
+
+# plt.plot(evals[:, 0], evals[:, 1])
+# v.show()
+# plt.show()
+# pass
