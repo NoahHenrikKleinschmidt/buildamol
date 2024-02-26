@@ -4,6 +4,7 @@ Hence, this environment tries to minimize the overlap between distributions in o
 
 As measure for the overlap between two distributions, the Jensen-Shannon divergence is used by default. Custom overlap functions can be passed to the environment.
 """
+
 import gym
 
 import numpy as np
@@ -176,6 +177,8 @@ class OverlapRotatron(Rotatron):
         and return a scalar.
     ignore_further_than : float
         If greater than 0, centroids that are further than this distance from each other are evaluated as 0 overlap automatically.
+    n_processes : int
+        The number of parallel processes to use when computing edge masks.
     bounds : tuple
         The bounds for the minimal and maximal rotation angles.
     """
@@ -184,12 +187,23 @@ class OverlapRotatron(Rotatron):
         self,
         graph: "BaseGraph.BaseGraph",
         rotatable_edges: list = None,
-        clash_distance: float = 0.9,
+        clash_distance: float = 1.2,
         crop_nodes_further_than: float = -1,
         distance_function: callable = None,
         ignore_further_than: float = -1,
+        n_processes: int = 1,
         bounds: tuple = (-np.pi, np.pi),
+        **kwargs,
     ):
+        self._hyperparameters = {
+            "clash_distance": clash_distance,
+            "crop_nodes_further_than": crop_nodes_further_than,
+            "distance_function": distance_function,
+            "ignore_further_than": ignore_further_than,
+            "n_processes": n_processes,
+            "bounds": bounds,
+            **kwargs,
+        }
         self.crop_radius = crop_nodes_further_than
         self.clash_distance = clash_distance
         self.ignore_further_than = ignore_further_than > 0
@@ -229,7 +243,9 @@ class OverlapRotatron(Rotatron):
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
         )
-        Rotatron.__init__(self, graph, rotatable_edges)
+        Rotatron.__init__(
+            self, graph, rotatable_edges, n_processes=n_processes, **kwargs
+        )
 
         # =====================================
 

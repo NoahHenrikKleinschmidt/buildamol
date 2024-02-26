@@ -180,22 +180,19 @@ def split_environment(
     sub_envs = []
     for i in range(n):
         mask = labels == i
-        edges = _all_edges[mask]
-        sub_env = DistanceRotatron(
-            env.graph,
-            edges,
-            radius=radius or env.radius,
-            n_processes=env.n_processes,
-            setup=False,
-        )
+        edges = _all_edges[mask].tolist()
+        hyperparams = dict(env._hyperparameters)
+
+        sub_env = env.__class__(env.graph, edges, setup=False, **hyperparams)
+
         sub_env.edge_masks = env.edge_masks[mask]
-        sub_env.edge_lengths = env.edge_lengths[mask]
+        sub_env.edge_masks = env.edge_masks[mask]
         sub_envs.append(sub_env)
 
     return sub_envs
 
 
-def parlallel_optimize(
+def parallel_optimize(
     mol: "Molecule.Molecule",
     envs: list["Rotatron.Rotatron"],
     algorithm: Union[str, callable] = None,
@@ -269,8 +266,9 @@ __all__ = [
     "optimize",
     "auto_algorithm",
     "split_environment",
-    "parlallel_optimize",
+    "parallel_optimize",
 ]
+
 
 if __name__ == "__main__":
 
@@ -283,11 +281,24 @@ if __name__ == "__main__":
 
     print("making first environment")
 
-    rotatron = bam.optimizers.DistanceRotatron(
-        mol.make_residue_graph(True), n_processes=6
-    )
+    from pathlib import Path
+
+    rotatron = bam.optimizers.ForceFieldRotatron
+
+    f = Path(__file__).parent / "{rotatron.__class__.__name__}-rotatron.pkl"
+    f.unlink()
+    if f.exists():
+        rotatron = bam.utils.load_pickle(f)
+    else:
+        graph = mol.make_residue_graph(True)
+        edges = mol.get_residue_connections(triplet=False)
+        edges = graph.direct_edges(graph.central_node, edges)
+        rotatron = rotatron(graph, edges, n_processes=6)
+
+        bam.utils.save_pickle(rotatron, f)
 
     print("splitting environment")
     N = 2
     split = split_environment(rotatron, N)
-    multi_final = parlallel_optimize(mol.copy(), split, n_processes=6)
+    final = parallel_optimize(mol.copy(), split)
+    final.to_pdb("_overlap_better.pdb")

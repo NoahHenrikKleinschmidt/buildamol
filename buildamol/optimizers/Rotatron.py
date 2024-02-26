@@ -67,6 +67,7 @@ class Rotatron(gym.Env):
             ]
         )
 
+        self._backup_eval = 0
         self._best_state = self.state.copy()
         self._best_action = self.blank()
         self._action_history = self.blank()

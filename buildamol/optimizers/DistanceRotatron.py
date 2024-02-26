@@ -128,7 +128,7 @@ class DistanceRotatron(Rotatron):
         radius: float = 20,
         pushback: float = 3,
         unfold: float = 2,
-        clash_distance: float = 0.9,
+        clash_distance: float = 1.2,
         crop_nodes_further_than: float = -1,
         n_smallest: int = 10,
         concatenation_function: callable = None,
@@ -136,6 +136,17 @@ class DistanceRotatron(Rotatron):
         n_processes: int = 1,
         **kwargs,
     ):
+        self._hyperparameters = {
+            "pushback": pushback,
+            "unfold": unfold,
+            "clash_distance": clash_distance,
+            "crop_nodes_further_than": crop_nodes_further_than,
+            "n_smallest": n_smallest,
+            "concatenation_function": concatenation_function,
+            "bounds": bounds,
+            "n_processes": n_processes,
+            **kwargs,
+        }
         self.kwargs = kwargs
         self.radius = radius
         self.crop_radius = crop_nodes_further_than * radius if radius > 0 else -1
@@ -220,7 +231,7 @@ class DistanceRotatron(Rotatron):
 
         mean_dist_eval = np.divide(1.0, np.mean(dist_eval[mask]))
 
-        final = np.log(mean_dist_eval)
+        final = np.log(mean_dist_eval)  # - self._backup_eval
         self._state_dists[:, :] = pairwise_dists
         self._last_eval = final
         return final
@@ -269,9 +280,25 @@ __all__ = [
     "concatenation_function_linear",
 ]
 
+if __name__ == "__main__":
 
-# if __name__ == "__main__":
-#     import buildamol as bam
+    import buildamol as bam
+
+    DistanceRotatron._backup_eval = 0.0
+
+    mol = bam.Molecule.from_json(
+        "/Users/noahhk/GIT/biobuild/buildamol/optimizers/_testing/files/GLYCAN.json"
+    )
+    print("init: ", mol.count_clashes())
+    graph = mol.get_residue_graph(True)
+    env = DistanceRotatron(
+        graph
+    )  # , concatenatiofn_function=simple_concatenation_function)
+
+    for i in range(15):
+        out = bam.optimizers.optimize(mol.copy(), env)
+        print(out.count_clashes())
+
 #     import matplotlib.pyplot as plt
 #     import seaborn as sns
 

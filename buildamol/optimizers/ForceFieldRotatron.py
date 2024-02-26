@@ -41,8 +41,12 @@ class ForceFieldRotatron(Rotatron):
         rotatable edges so that they are not considered in the overlap calculation.
     mmff_variant : str
         The MMFF variant to use. Can be one of "mmff94", "mmff94s", "uff", "mmff94splus"
+    n_processes : int
+        The number of processes to use for parallelization when computing edge masks
     bounds : tuple
         The bounds for the minimal and maximal rotation angles.
+    kwargs
+        Additional keyword arguments to pass to the Rotatron
     """
 
     def __init__(
@@ -52,12 +56,22 @@ class ForceFieldRotatron(Rotatron):
         clash_distance: float = 0.9,
         crop_nodes_further_than: float = -1,
         mmff_variant: str = "mmff94",
+        n_processes: int = 1,
         bounds: tuple = (-np.pi, np.pi),
+        **kwargs
     ):
         if not aux.HAS_RDKIT:
             raise ImportError(
                 "ForceFieldRotatron requires RDKit to be installed. Please install RDKit to use this rotatron."
             )
+        self._hyperparameters = {
+            "clash_distance": clash_distance,
+            "crop_nodes_further_than": crop_nodes_further_than,
+            "mmff_variant": mmff_variant,
+            "n_processes": n_processes,
+            "bounds": bounds,
+            **kwargs
+        }
         self.crop_radius = crop_nodes_further_than
         self.clash_distance = clash_distance
         self._bounds_tuple = bounds
@@ -86,7 +100,7 @@ class ForceFieldRotatron(Rotatron):
 
         # =====================================
 
-        Rotatron.__init__(self, graph, rotatable_edges)
+        Rotatron.__init__(self, graph, rotatable_edges, n_processes=n_processes, **kwargs)
         self.action_space = gym.spaces.Box(
             low=bounds[0], high=bounds[1], shape=(len(self.rotatable_edges),)
         )
