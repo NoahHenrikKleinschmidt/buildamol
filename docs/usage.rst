@@ -8,8 +8,8 @@ Basic Usage
 
 Most of the functionality is provided through a simple toplevel functional API, with a much more extended
 method-based API available for both simple and more complex operations. To facilitate user-friendliness most of the 
-`biobuild` functionality has been integrated into methods that are attached to the `Molecule` class, which is the
-main class of `biobuild`. The `Molecule` class is a wrapper around the `Bio.PDB.Structure.Structure` class which handles
+BuildAMol functionality has been integrated into methods that are attached to the `Molecule` class, which is the
+main class of BuildAMol. The `Molecule` class is a wrapper around the `Bio.PDB.Structure.Structure` class which handles
 all atomic data. 
 
 .. note::
@@ -19,7 +19,7 @@ all atomic data.
    which is the `Structure` object that it wraps. Also, the `Molecule` class is equipped with many equivalent methods to the `Structure`
    class that can be used to access the structure in more convenient ways.
 
-The `Molecule` class is the main class of `biobuild` and is used to create, modify, and visualize molecular structures. The `Molecule` class can:
+The `Molecule` class is the main class of BuildAMol and is used to create, modify, and visualize molecular structures. The `Molecule` class can:
 
 - read structures from PDB and mmCIF files
 - write structures to PDB and mmCIF files
@@ -57,6 +57,8 @@ The `Molecule` class is the main class of `biobuild` and is used to create, modi
    - a SMILES string
    - an InChI string or key
    - a `Structure` object from `Bio.PDB`
+   - an `openbabel.OBMol` object
+   - an `rdkit.Chem.Mol` object
 
 Functional API
 --------------
@@ -89,7 +91,7 @@ in the method-based API.
 Method-based API
 ----------------
 
-The method-based API allows for more flexibility. At the heart of `biobuild` is the `Molecule` class, which
+The method-based API allows for more flexibility. At the heart of BuildAMol is the `Molecule` class, which
 has a great number of methods to modify the structure or add/remove parts of it. Methods such as ``get_atom``,
 ``add_bond``, or ``remove_residue`` are basic operations to modify a structure in-place, while methods such as ``attach``
 allow to expand the structure by adding new parts to it.
@@ -115,7 +117,7 @@ Operator-based API
 
 The operator-based API is a short-hand proxy to the method-based API (just as the functional API is a proxy).
 It is essentially restricted to operations that regard connecting two molecules together. However, it is the most
-condensed way to write `biobuild` code - sometimes at the expense of readability. Available operators are:
+condensed way to write BuildAMol code - sometimes at the expense of readability. Available operators are:
 
 - `+` for connecting two molecules together
 - `*` for polymerizing a molecule
@@ -145,31 +147,89 @@ condensed way to write `biobuild` code - sometimes at the expense of readability
 Built-in-resources
 ==================
 
-`biobuild` comes with a number of built-in data resources. Namely, `biobuild` integrates the `PDBE component library <https://www.ebi.ac.uk/pdbe/pdb-component-library/#:~:text=The%20PDB%20Component%20Library%20is,and%20related%20protein%20structural%20data.>`_ for
+BuildAMol comes with a number of built-in data resources. Namely, BuildAMol integrates the `PDBE component library <https://www.ebi.ac.uk/pdbe/pdb-component-library/#:~:text=The%20PDB%20Component%20Library%20is,and%20related%20protein%20structural%20data.>`_ for
 components up to 40 atoms in size by default - naturally, the full library can be loaded if desired. This enables molecule creation through the ``from_compounds`` method that can be queried using `PDB id`, `chemical name`, `SMILES`, `InChI` and `InChIKey`.
-Furthermore, `biobuild` integrates parts of the `CHARMM force field <https://www.charmm.org/>`_ for
+Furthermore, BuildAMol integrates parts of the `CHARMM force field <https://www.charmm.org/>`_ for
 references of molecular connections. You may have noticed that in the above examples, the `1->4 beta` glycosyidic linkage was used a lot, but only referred to as ``"14bb"``.
 This is because the CHARMM force field has the geometric data stored under this identifier. 
-Finally, `biobuild` integrates `pubchempy` for the direct retrieval of molecules from PubChem (requires internet connection).
+Finally, BuildAMol integrates `pubchempy` for the direct retrieval of molecules from PubChem (requires internet connection).
 
 Toplevel functions exist to access these resources, e.g. ``buildamol.available_linkages()`` to get a list of pre-defined linkages,
 or ``buildamol.has_compound("alpha-mannose")`` to check if a particular compound is available in the loaded PDBE component library. Also,
-in order to make `biobuild` more useful to the respective user, it is possible to add custom data to the standard resources and set new default settings 
+in order to make BuildAMol more useful to the respective user, it is possible to add custom data to the standard resources and set new default settings 
 using functions such as ``set_default_topology`` or ``add_linkage``. 
 
 
 Example
 =======
 
-Building a glycan
------------------
+Building a simple polymer
+-------------------------
 
-`biobuild` was originally conceptualized with the aim of creating glycan structures - so, please, forgive if the example below produces a glycan. The following example demonstrates
-how we can create a larger structure from single monosaccharides using `biobuild` (using all three syntaxes intermixed):
+Let's make a simple polymer with a repeating unit composed of a benzene ring and two amino acids, glycine and tyrosine.
 
 .. code-block:: python
 
    import buildamol as bam
+
+   # first we load some reference data
+   # (not necessary but makes getting the molecules 
+   # quicker, since we don't need to query PubChem)
+   bam.load_small_molecules()
+   bam.load_amino_acids()  
+
+   benzene = bam.molecule("benzene")
+   glycine = bam.molecule("glycine")
+   tyrosine = bam.molecule("tyrosine")
+
+
+   # now we can connect the molecules together
+   # we start by defining how we want to connect the benzene
+   # ring to the amino acid tyrosine
+   link = bam.linkage("C1", "N") # = connect C1 from benzene to N from tyrosine
+   mol = benzene.attach(tyrosine, link1)
+
+   # now we can add a glycine to the molecule
+   link.atom1 = "C3" # just re-use the link object but change the target atom
+   mol = mol.attach(glycine, link, at_residue=1) # at_residue=1 means we always attach to the first residue (=benzene)
+
+   # now we can polymerize the molecule
+   
+   # we make a new linkage (luckily there are only two atoms with names C5 and OH so we don't have
+   # to worry about specifying which residues to connect exactly)
+   # let's use a for-loop to automate the process
+   link2 = bam.linkage("C5", "OH")
+   _mol = mol.copy()
+   for i in range(10):
+      mol = mol.attach(_mol, link2)
+   
+   # fun fact: we could have just used
+   # mol = mol.repeat(10, link2)
+
+   # now that we have the molecule we can perform some quick
+   # optimization on it
+   mol = mol.optimize()
+
+   # and finally visualize it
+   mol.show()
+
+.. image:: _resources/simple_polymer.gif
+   :width: 80%
+   :align: center
+   :alt: Example repeated structure with benzene ring, glycine and tyrosine.
+
+
+Building a glycan
+-----------------
+
+BuildAMol was originally conceptualized with the aim of creating glycan structures - so, in the example let's make a glycan. The following example demonstrates
+how we can create a larger structure from single monosaccharides using BuildAMol. We are also going to showcase the three different syntaxes that can be used to achieve this.
+Note, if you want to build glycans specifically, you should check out `Glycosylator`, which is a glycan-specific extension of BuildAMol!
+
+.. code-block:: python
+
+   import buildamol as bam
+
    bam.load_sugars()
 
    # get the monosaccharides
@@ -199,6 +259,7 @@ how we can create a larger structure from single monosaccharides using `biobuild
 
    # now visualise the structure
    glycan.show()
+
 .. image:: _resources/glycan_example.gif
    :width: 80%
    :align: center
@@ -206,6 +267,6 @@ how we can create a larger structure from single monosaccharides using `biobuild
 
 In the above visualization, `NAG` residues are colored in pink, `BMA` in orange, and `MAN` in green. Hetero-atoms are colored according to IUPAC conventions.
 
-The above example demonstrates how we can use `biobuild` to create a glycan structure from scratch. The example also demonstrates how we can use the three different syntaxes
+The above example demonstrates how we can use BuildAMol to create a glycan structure from scratch. The example also demonstrates how we can use the three different syntaxes
 to achieve this. Using the toplevel function `connect`, using the method `attach`, or by simple "molecular arithmetics" through the `+` operator.
 

@@ -86,3 +86,9 @@ More applied tutorials
    :link-type: ref
 
    In this tutorial we will build a molecule and run a molecular dynamics simulation on it.
+
+.. card:: Conformation Sampling
+   :link: example_conformation_sampling
+   :link-type: ref
+
+   In this tutorial we will generate multiple conformers of a molecule using BuildAMol's optimization methods.
