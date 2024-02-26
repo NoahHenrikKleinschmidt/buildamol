@@ -27,7 +27,7 @@ __all__ = [
 ]
 
 
-def MVN(points):
+def MVN(points, spread: float = 1.0):
     """
     Compute a multi-variate normal distribution for a given set of points.
 
@@ -43,7 +43,7 @@ def MVN(points):
     """
     return multivariate_normal(
         mean=np.mean(points, axis=0),
-        cov=np.cov(points, rowvar=False),
+        cov=spread * np.cov(points, rowvar=False),
         allow_singular=True,
     )
 
@@ -166,6 +166,9 @@ class OverlapRotatron(Rotatron):
     rotatable_edges : list
         A list of edges that can be rotated during optimization.
         If None, all non-locked edges are used.
+    artificial_spread : float
+        The spread to use for the multi-variate normal distributions. This is used to artificially increase the spread of the distributions.
+        This is useful for cases where the distributions may be too tight and far apart which makes it difficult for the overlap to be computed.
     clash_distance : float
         The distance at which two atoms are considered to be clashing.
     crop_nodes_further_than : float
@@ -187,6 +190,7 @@ class OverlapRotatron(Rotatron):
         self,
         graph: "BaseGraph.BaseGraph",
         rotatable_edges: list = None,
+        artificial_spread: float = 2.0,
         clash_distance: float = 1.2,
         crop_nodes_further_than: float = -1,
         distance_function: callable = None,
@@ -196,6 +200,7 @@ class OverlapRotatron(Rotatron):
         **kwargs,
     ):
         self._hyperparameters = {
+            "artificial_spread": artificial_spread,
             "clash_distance": clash_distance,
             "crop_nodes_further_than": crop_nodes_further_than,
             "distance_function": distance_function,
@@ -219,6 +224,7 @@ class OverlapRotatron(Rotatron):
         self.rotatable_edges = rotatable_edges
         self.n_nodes = len(self.graph.nodes)
         self.n_edges = len(self.rotatable_edges)
+        self.artificial_spread = artificial_spread
 
         # =====================================
         if self.crop_radius > 0:
@@ -296,7 +302,7 @@ class OverlapRotatron(Rotatron):
         """
         gaussians = []
         for i, mask in self.rotation_units.items():
-            gaussians.append(MVN(state[mask]))
+            gaussians.append(MVN(state[mask], spread=self.artificial_spread))
 
         idx = 0
         for i, G1 in enumerate(gaussians):
@@ -324,15 +330,21 @@ if __name__ == "__main__":
     from time import time
 
     mol = bam.molecule(
-        "/Users/noahhk/GIT/biobuild/biobuild/optimizers/_testing/files/EX6.json"
+        "/Users/noahhk/GIT/biobuild/buildamol/optimizers/_testing/files/GLYCAN.json"
     )
-
-    graph = mol.get_atom_graph()
-    graph.show()
 
     graph = mol.get_residue_graph()
     graph.make_detailed(n_samples=0.5, include_far_away=True)
-    graph.show()
+
+    edges = graph.find_rotatable_edges(root_node=graph.central_node, max_descendants=20)
+    env = OverlapRotatron(graph, edges, artificial_spread=2)
+
+    print(len(edges))
+
+    better = bam.optimizers.optimize(mol.copy(), env)
+    print(mol.count_clashes(), better.count_clashes())
+    better.show()
+
     exit()
     edges = graph.find_rotatable_edges(mol.get_atom(168), min_descendants=10)
 
