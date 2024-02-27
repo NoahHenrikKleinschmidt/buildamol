@@ -1465,3 +1465,42 @@ def test_base_classes_move():
     # bad because we move and rotate one individual atom
     # to an impossible position, so that's fine...
     d.show()
+
+
+def test_linkage_apply_deletes():
+    mol = bam.Molecule.from_compound("GLC")
+
+    # d = mol.draw()
+
+    link = bam.linkage("O3", "C1", ["HO3"], ["H1"])
+
+    link.apply_deletes(mol)
+
+    assert mol.get_atom("HO3") is None
+    assert mol.get_atom("H1") is not None
+
+    link.apply_deletes(None, mol)
+
+    assert mol.get_atom("HO3") is None
+    assert mol.get_atom("H1") is None
+
+    # d.draw_edges(*mol.bonds, color="red", linewidth=3)
+
+    # d.show()
+
+def test_linkage_apply_bond():
+    mol = bam.Molecule.from_compound("GLC")
+
+    d = mol.draw()
+
+    link = bam.linkage("O3", "C1", ["HO3"], ["H1"])
+
+    link.apply_deletes(mol, mol)
+    link.apply_bond(mol, mol)
+
+    assert mol.get_bond("O3", "C1") is not None
+
+
+    d.draw_edges(*mol.bonds, color="red", linewidth=3)
+
+    d.show()
