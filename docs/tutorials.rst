@@ -92,3 +92,9 @@ More applied tutorials
    :link-type: ref
 
    In this tutorial we will generate multiple conformers of a molecule using BuildAMol's optimization methods.
+
+.. card:: Building a Multi Molecule System
+   :link: example_multisystem
+   :link-type: ref
+
+   In this tutorial we will build a multi-molecule system using BuildAMol. Specifically, we will build a rotaxane.
