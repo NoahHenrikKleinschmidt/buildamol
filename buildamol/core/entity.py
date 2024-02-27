@@ -1378,6 +1378,8 @@ class BaseEntity:
         """
         if residue is not None:
             residue = self.get_residue(residue)
+            if residue is None:
+                raise ValueError(f"Residue {residue} not found")
             atom_gen = residue.get_atoms
         else:
             atom_gen = self._model.get_atoms
