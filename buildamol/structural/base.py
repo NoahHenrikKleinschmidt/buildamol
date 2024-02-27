@@ -385,6 +385,23 @@ def center_of_gravity(masses, coords):
 center_of_mass = center_of_gravity
 
 
+def center_of_geometry(coords):
+    """
+    Compute the center of geometry of a molecule.
+
+    Parameters
+    ----------
+    coords : array-like
+        The coordinates of the atoms as an nx3 array
+
+    Returns
+    -------
+    cog : array-like
+        The center of geometry
+    """
+    return np.mean(coords, axis=0)
+
+
 def rotate_molecule(
     molecule, angle: float, axis: np.ndarray, center: np.ndarray = None
 ):
