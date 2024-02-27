@@ -97,6 +97,7 @@ to the ``Molecule``'s ``attach`` method or any other function that requires a li
     
 
 """
+
 import buildamol.core.base_classes as base_classes
 import buildamol.utils as utils
 import buildamol.structural.neighbors as neighbors
@@ -442,6 +443,72 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 )
         return new
 
+    def apply_deletes(
+        self, target=None, source=None, target_residue=None, source_residue=None
+    ):
+        """
+        Delete atoms that should be deleted from the molecules as part of the linkage.
+
+        Parameters
+        ----------
+        target : Molecule
+            The first molecule.
+        source : Molecule
+            The second molecule.
+        target_residue : Residue, optional
+            The residue in the target molecule to which the source molecule will be patched.
+            By default, the attach_residue in the target molecule will be used.
+        source_residue : Residue, optional
+            The residue in the source molecule that will be patched into the target molecule.
+            By default, the attach_residue in the source molecule will be used.
+        """
+        if target is not None:
+            for i in self.deletes[0]:
+                atom = target.get_atom(
+                    i, residue=target_residue or target.attach_residue
+                )
+                if atom is not None:
+                    target.remove_atoms(atom)
+
+        if source is not None:
+            for i in self.deletes[1]:
+                atom = source.get_atom(
+                    i, residue=source_residue or source.attach_residue
+                )
+                if atom is not None:
+                    source.remove_atoms(atom)
+
+    def apply_bond(self, target, source, target_residue=None, source_residue=None):
+        """
+        Form the bond between the two molecules.
+
+        Note that this method does NOT perform any kind of geometric changes
+        to the molecules themselves. It only adds the bond between the two molecules.
+        It also does NOT merge the two molecules into one! Use the `Molecule.attach` method
+        (or the `connect` toplevel function) to actually connect two molecules!
+
+        Parameters
+        ----------
+        target : Molecule
+            The first molecule.
+        source : Molecule
+            The second molecule.
+        target_residue : Residue, optional
+            The residue in the target molecule to which the source molecule will be patched.
+            By default, the attach_residue in the target molecule will be used.
+        source_residue : Residue, optional
+            The residue in the source molecule that will be patched into the target molecule.
+            By default, the attach_residue in the source molecule will be used.
+        """
+        target.add_bond(
+            target.get_atom(
+                self.bond[0], residue=target_residue or target.attach_residue
+            ),
+            source.get_atom(
+                self.bond[1], residue=source_residue or source.attach_residue
+            ),
+        )
+
     @property
     def deletes(self):
         """
@@ -523,8 +590,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             _residues_dict[_residues[1]] = "2"
 
         if not use_bare_strings:
-            prefix = (
-                lambda x: _residues_dict[x.get_parent()] + x.id
+            prefix = lambda x: (
+                _residues_dict[x.get_parent()] + x.id
                 if not x.id[0] in ("1", "2")
                 else x.id
             )
