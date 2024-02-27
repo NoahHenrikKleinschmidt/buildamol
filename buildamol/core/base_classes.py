@@ -242,6 +242,37 @@ class Atom(ID, bio.Atom.Atom):
             self.radius,
         )
 
+    def set_id(self, id):
+        """
+        Set the atom identifier.
+
+        Parameters
+        ----------
+        id : str
+            The identifier to set.
+        """
+        self.id = id
+        return self
+
+    def set_element(self, element, adjust_id: bool = True):
+        """
+        Set the atom element.
+
+        Parameters
+        ----------
+        element : str
+            The element to set.
+        adjust_id : bool, optional
+            Whether to adjust the atom id to the new element. The default is True.
+        """
+        if adjust_id:
+            current = self.element
+        self.element = element.upper()
+        self.mass = pt.elements.symbol(element).mass
+        if adjust_id:
+            self.id = self.id.replace(current, self.element)
+        return self
+
     def move(self, vector):
         """
         Move the atom by a vector.
@@ -252,6 +283,7 @@ class Atom(ID, bio.Atom.Atom):
             The vector to move the atom by.
         """
         self.coord += vector
+        return self
 
     def __repr__(self):
         return f"Atom({self.id}, {self.serial_number})"
