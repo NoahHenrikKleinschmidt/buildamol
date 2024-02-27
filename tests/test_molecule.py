@@ -1372,3 +1372,50 @@ def test_keeps_pdb_enumeration():
     assert max(i.serial_number for i in _new.atoms) == 999
 
     os.remove("test.pdb")
+
+
+def test_molecule_move():
+    mol = bam.Molecule.from_compound("GLC")
+    old_coords = np.array([i.coord for i in mol.atoms])
+
+    mol.move((1, 0, 0))
+
+    new_coords = np.array([i.coord for i in mol.atoms])
+
+    assert new_coords.sum() != old_coords.sum()
+    assert new_coords[:, 0] == old_coords[:, 0] + 1
+    assert new_coords[:, 1] == old_coords[:, 1]
+    assert new_coords[:, 2] == old_coords[:, 2]
+
+
+def test_molecule_rotate():
+    mol = bam.Molecule.from_compound("GLC")
+    d = mol.draw()
+    mol.rotate(90, (1, 0, 0))
+    d.draw_edges(*mol.bonds, color="red")
+
+    mol.rotate(90, (0, 1, 0), center=mol.get_atom("HO6").coord)
+    d.draw_edges(*mol.bonds, color="blue")
+
+    d.show()
+
+
+def test_molecule_transpose():
+    mol = bam.Molecule.from_compound("GLC")
+
+    d = mol.draw()
+
+    mol.transpose((0, 0, 0), 90, (1, 0, 0))
+    d.draw_edges(*mol.get_bonds(), color="red", showlegend=False)
+
+    mol.transpose((1, 2, 0), 90, (0, 1, 0))
+
+    d.draw_edges(*mol.get_bonds(), color="blue", showlegend=False)
+
+    d.draw_atom(mol.get_atom("HO6"), color="pink")
+
+    mol.transpose((0, 0, 0), 90, (0, 0, 1), center=mol.get_atom("HO6").coord)
+
+    d.draw_edges(*mol.get_bonds(), color="green", showlegend=False)
+
+    d.show()

@@ -41,6 +41,7 @@ then all atoms, residues, chains and models will be converted to their biobuild 
     assert len(atoms) == len(bio_atoms) # True
     
 """
+
 from copy import deepcopy
 
 # from uuid import uuid4
@@ -241,6 +242,17 @@ class Atom(ID, bio.Atom.Atom):
             self.radius,
         )
 
+    def move(self, vector):
+        """
+        Move the atom by a vector.
+
+        Parameters
+        ----------
+        vector : ndarray
+            The vector to move the atom by.
+        """
+        self.coord += vector
+
     def __repr__(self):
         return f"Atom({self.id}, {self.serial_number})"
 
@@ -409,6 +421,18 @@ class Residue(ID, bio.Residue.Residue):
             atom = Atom.from_biopython(atom)
         bio.Residue.Residue.add(self, atom)
 
+    def move(self, vector):
+        """
+        Move the residue by a vector.
+
+        Parameters
+        ----------
+        vector : ndarray
+            The vector to move the residue by.
+        """
+        for atom in self.get_atoms():
+            atom.move(vector)
+
     def __repr__(self):
         return f"Residue({self.resname}, {self.serial_number})"
 
@@ -520,6 +544,18 @@ class Chain(ID, bio.Chain.Chain):
             new.add(residue.to_biopython())
         return new
 
+    def move(self, vector):
+        """
+        Move the chain by a vector.
+
+        Parameters
+        ----------
+        vector : ndarray
+            The vector to move the chain by.
+        """
+        for residue in self.get_residues():
+            residue.move(vector)
+
     def __repr__(self):
         return f"Chain({self._id})"
 
@@ -602,6 +638,18 @@ class Model(bio.Model.Model, ID):
         if not isinstance(chain, Chain):
             chain = Chain.from_biopython(chain)
         bio.Model.Model.add(self, chain)
+
+    def move(self, vector):
+        """
+        Move the model by a vector.
+
+        Parameters
+        ----------
+        vector : ndarray
+            The vector to move the model by.
+        """
+        for chain in self.get_chains():
+            chain.move(vector)
 
     @classmethod
     def from_biopython(cls, model):
@@ -776,6 +824,18 @@ class Structure(ID, bio.Structure.Structure):
                 m.add(c)
             s.add(m)
         return s
+
+    def move(self, vector):
+        """
+        Move the structure by a vector.
+
+        Parameters
+        ----------
+        vector : ndarray
+            The vector to move the structure by.
+        """
+        for model in self.get_models():
+            model.move(vector)
 
     def __repr__(self):
         return f"Structure({self._id})"

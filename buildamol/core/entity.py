@@ -395,6 +395,30 @@ class BaseEntity:
         return sorted(self._AtomGraph.nodes)
         # return list(self._model.get_atoms())
 
+    @property
+    def center_of_mass(self):
+        """
+        The center of mass of the molecule
+        """
+        return structural.center_of_gravity(
+            np.array([a.mass for a in self.atoms]),
+            np.array([a.coord for a in self.atoms]),
+        )
+
+    @property
+    def center_of_geometry(self):
+        """
+        The center of geometry of the molecule
+        """
+        return np.array([a.coord for a in self.atoms]).mean(axis=0)
+
+    @property
+    def mass(self):
+        """
+        The total mass of the molecule
+        """
+        return sum(a.mass for a in self.atoms)
+
     def get_atom_triplets(self):
         """
         Compute triplets of three consequtively bonded atoms
@@ -732,6 +756,96 @@ class BaseEntity:
         else:
             residue = self.get_residue(residue)
             self._attach_residue = residue
+
+    def move(self, vector: np.ndarray):
+        """
+        Move the molecule in 3D space
+
+        Parameters
+        ----------
+        vector : np.ndarray
+            The vector to move the molecule by
+        """
+        for atom in self.get_atoms():
+            atom.move(vector)
+        return self
+
+    def rotate(
+        self,
+        angle: float,
+        axis: np.ndarray,
+        center: np.ndarray = None,
+        angle_is_degrees: bool = True,
+    ):
+        """
+        Rotate the molecule around an axis
+
+        Parameters
+        ----------
+        angle : float
+            The angle to rotate by
+        axis : np.ndarray
+            The axis to rotate around
+        center : np.ndarray
+            The center of the rotation
+        angle_is_degrees : bool
+            Whether the angle is given in degrees (default) or radians
+        """
+        if not isinstance(axis, np.ndarray):
+            axis = np.array(axis)
+        if not angle_is_degrees:
+            angle = np.degrees(angle)
+
+        structural.rotate_molecule(self, angle, axis, center)
+
+        return self
+
+    def transpose(
+        self,
+        vector: np.ndarray,
+        angle: float,
+        axis: np.ndarray,
+        center: np.ndarray = None,
+        angle_is_degrees: bool = True,
+    ):
+        """
+        Transpose the molecule in 3D space
+
+        Parameters
+        ----------
+        vector : np.ndarray
+            The vector to move the molecule by
+        angle : float
+            The angle to rotate by
+        axis : np.ndarray
+            The axis to rotate around
+        center : np.ndarray
+            The center of the rotation
+        angle_is_degrees : bool
+            Whether the angle is given in degrees (default) or radians
+        """
+        if not isinstance(vector, np.ndarray):
+            vector = np.array(vector)
+        if not isinstance(axis, np.ndarray):
+            axis = np.array(axis)
+        if center is not None and not isinstance(center, np.ndarray):
+            center = np.array(center)
+
+        coords = np.array([a.coord for a in self.get_atoms()])
+        if center is None:
+            center = np.zeros(3)
+        coords -= center
+
+        if not angle_is_degrees:
+            angle = np.degrees(angle)
+
+        new_coords = structural.rotate_coords(coords=coords, angle=angle, axis=axis)
+        new_coords += center
+
+        for atom, coord in zip(self.get_atoms(), new_coords):
+            atom.coord = coord + vector
+
+        return self
 
     def rotate_descendants(
         self,

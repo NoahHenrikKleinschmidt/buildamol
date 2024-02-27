@@ -1245,3 +1245,25 @@ def test_autolabel2():
     assert isinstance(mol, bam.Molecule)
     mol.autolabel()
     assert set(i.id for i in mol.get_atoms()) == set(("C1", "H11", "H12", "H13", "H14"))
+
+
+def test_rotate_molecule():
+    mol = bam.Molecule.from_compound("GLC")
+
+    old_coords = np.array([a.coord for a in mol.get_atoms()])
+
+    d = mol.draw()
+    bam.structural.rotate_molecule(mol, np.array([1, 0, 0]), 90)
+    d.draw_edges(*mol.get_bonds(), color="red", linewidth=2)
+
+    bam.structural.rotate_molecule(mol, np.array([0, 1, 0.2]), 30)
+    d.draw_edges(*mol.get_bonds(), color="green", linewidth=2)
+
+    bam.structural.rotate_molecule(mol, np.array([4.5, 2.3, 1.4]), 45)
+    d.draw_edges(*mol.get_bonds(), color="blue", linewidth=2)
+
+    new_coords = np.array([a.coord for a in mol.get_atoms()])
+
+    assert not np.allclose(old_coords, new_coords)
+
+    d.show()

@@ -5,6 +5,8 @@ Basic structure related functions
 import numpy as np
 import Bio.PDB as bio
 
+from functools import partial
+
 
 def atom_make_full_id(self):
     """
@@ -378,6 +380,135 @@ def center_of_gravity(masses, coords):
         The center of gravity
     """
     return np.average(coords, axis=0, weights=masses)
+
+
+center_of_mass = center_of_gravity
+
+
+def rotate_molecule(
+    molecule, angle: float, axis: np.ndarray, center: np.ndarray = None
+):
+    """
+    Rotate a molecule around an axis by a given angle.
+
+    Parameters
+    ----------
+    molecule : Bio.PDB.Structure
+        The molecule to rotate
+    axis : array-like
+        The axis to rotate around
+    angle : float
+        The angle to rotate by (in radians)
+
+    Returns
+    -------
+    rotated_molecule : Bio.PDB.Structure
+        The rotated molecule
+    """
+    atoms = list(molecule.get_atoms())
+    coords = np.array([a.coord for a in atoms])
+    if center is not None:
+        coords -= center
+
+    new_coords = rotate_coords(coords=coords, angle=angle, axis=axis)
+    if center is not None:
+        new_coords += center
+
+    for a, c in zip(atoms, new_coords):
+        a.set_coord(c)
+
+    return molecule
+
+
+def rotate_coords(
+    coords: np.ndarray,
+    angle: float,
+    axis: np.ndarray,
+):
+    """
+    Rotate a set of coordinates around an axis by a given angle.
+
+    Parameters
+    ----------
+    coords : array-like
+        The coordinates to rotate
+    angle : float
+        The angle to rotate by (in radians)
+    axis : array-like
+        The axis to rotate around
+
+    Returns
+    -------
+    rotated_coords : array-like
+        The rotated coordinates
+    """
+    rot = _rotation_matrix(axis, angle)
+    return np.dot(np.asarray(coords), rot.T)
+
+
+def _rotate_coords_base_classes(
+    obj,
+    angle: float,
+    axis: np.ndarray,
+    axis_is_absolute: bool = False,
+):
+    """
+    Rotate a set of coordinates around an axis by a given angle.
+
+    Parameters
+    ----------
+    obj
+        The object to rotate
+    angle : float
+        The angle to rotate by (in radians)
+    axis : array-like
+        The axis to rotate around
+    axis_is_absolute : bool
+        Whether the axis is absolute or relative to the object.
+        If True, the axis is absolute and the object is rotated around the axis
+        which will also incur a translation of the object. If False, the axis
+        is relative to the object and the object is rotated around the axis
+        without translation.
+
+    Returns
+    -------
+    rotated_coords : array-like
+        The rotated coordinates
+    """
+    if hasattr(obj, "get_atoms"):
+        coords = np.array([a.coord for a in obj.get_atoms()])
+        if axis_is_absolute:
+            center = np.zeros(3)
+        else:
+            center = coords.mean()
+
+    else:
+        if axis_is_absolute:
+            center = np.zeros(3)
+        else:
+            # since we only have one point
+            # and we are just rotating around it
+            # there is not going to be any change
+            # in the position of the point
+            return obj
+            center = obj.coord
+        coords = obj.coord
+
+    rot = _rotation_matrix(axis, angle)
+    new = np.dot(coords - center, rot.T) + center
+    if hasattr(obj, "get_atoms"):
+        for a, c in zip(obj.get_atoms(), new):
+            a.set_coord(c)
+    else:
+        obj.set_coord(new)
+    return obj
+
+
+bio.Atom.Atom.rotate = _rotate_coords_base_classes
+bio.Residue.Residue.rotate = _rotate_coords_base_classes
+bio.Chain.Chain.rotate = _rotate_coords_base_classes
+bio.Model.Model.rotate = _rotate_coords_base_classes
+bio.Structure.Structure.rotate = _rotate_coords_base_classes
 
 
 def _rotation_matrix(axis, angle):
