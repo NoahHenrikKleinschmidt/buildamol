@@ -1383,9 +1383,9 @@ def test_molecule_move():
     new_coords = np.array([i.coord for i in mol.atoms])
 
     assert new_coords.sum() != old_coords.sum()
-    assert new_coords[:, 0] == old_coords[:, 0] + 1
-    assert new_coords[:, 1] == old_coords[:, 1]
-    assert new_coords[:, 2] == old_coords[:, 2]
+    assert np.all(new_coords[:, 0] == old_coords[:, 0] + 1)
+    assert np.all(new_coords[:, 1] == old_coords[:, 1])
+    assert np.all(new_coords[:, 2] == old_coords[:, 2])
 
 
 def test_molecule_rotate():
@@ -1418,4 +1418,50 @@ def test_molecule_transpose():
 
     d.draw_edges(*mol.get_bonds(), color="green", showlegend=False)
 
+    d.show()
+
+
+def test_base_classes_move():
+    mol = bam.Molecule.from_compound("GLC")
+
+    old_coords = np.array([i.coord for i in mol.atoms])
+
+    d = mol.draw()
+
+    atom = mol.atoms[0]
+    residue = mol.residues[0]
+    chain = mol.chains[0]
+    model = mol.model
+    structure = mol.structure
+
+    residue.move((1, 0, 0))
+    chain.move((1, 0, 0))
+    model.move((1, 0, 0))
+    structure.move((1, 0, 0))
+    atom.move((1, 0, 0))
+
+    new_coords = np.array([i.coord for i in mol.atoms])
+    assert new_coords.sum() != old_coords.sum()
+
+    d.draw_edges(*mol.bonds, color="red")
+
+    residue.rotate(10, (1, 0, 0), axis_is_absolute=False)
+    chain.rotate(10, (1, 0, 0), axis_is_absolute=False)
+    model.rotate(10, (1, 0, 0), axis_is_absolute=False)
+    structure.rotate(10, (1, 0, 0), axis_is_absolute=False)
+    atom.rotate(10, (1, 0, 0), axis_is_absolute=False)
+
+    d.draw_edges(*mol.bonds, color="blue")
+
+    residue.rotate(10, (1, 0, 0), axis_is_absolute=True)
+    chain.rotate(10, (1, 0, 0), axis_is_absolute=True)
+    model.rotate(10, (1, 0, 0), axis_is_absolute=True)
+    structure.rotate(10, (1, 0, 0), axis_is_absolute=True)
+    atom.rotate(10, (1, 0, 0), axis_is_absolute=True)
+
+    d.draw_edges(*mol.bonds, color="orange")
+
+    # the final output will have one bond that is really
+    # bad because we move and rotate one individual atom
+    # to an impossible position, so that's fine...
     d.show()
