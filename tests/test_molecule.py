@@ -1488,6 +1488,7 @@ def test_linkage_apply_deletes():
 
     # d.show()
 
+
 def test_linkage_apply_bond():
     mol = bam.Molecule.from_compound("GLC")
 
@@ -1500,7 +1501,40 @@ def test_linkage_apply_bond():
 
     assert mol.get_bond("O3", "C1") is not None
 
-
     d.draw_edges(*mol.bonds, color="red", linewidth=3)
 
     d.show()
+
+
+def test_squash():
+    mol = bam.Molecule.from_compound("GLC")
+
+    mol = mol % "14bb" * 3
+
+    assert len(mol.residues) == 3
+    atoms = len(mol.atoms)
+    bonds = len(mol.bonds)
+
+    mol.squash()
+    assert len(mol.residues) == 1
+    assert len(mol.atoms) == atoms
+    assert len(mol.bonds) == bonds
+
+    # mol.show()
+
+
+def test_merge():
+    mol = bam.Molecule.from_compound("GLC")
+
+    mol2 = mol.copy()
+
+    mol2 = mol2 % "14bb" * 3
+
+    mol2.move((10, 10, 0))
+
+    mol.merge(mol2)
+
+    assert len(mol.chains) == 2
+    assert len(mol.residues) == 4
+
+    # mol.show()

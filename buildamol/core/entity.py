@@ -639,7 +639,7 @@ class BaseEntity:
             v = utils.visual.MoleculeViewer3D()
             v.link(self)
             v.setup(show_atoms)
-                
+
             return v
 
     def vet(
@@ -742,6 +742,54 @@ class BaseEntity:
             new._AtomGraph.edges[b]["bond_obj"] = b
         return new
 
+    def merge(self, other, adjust_indexing: bool = True):
+        """
+        Merge another molecule into this one. This will simply add all chains, residues, and atoms of the other molecule to this one.
+        It will NOT perform any kind of geometrical alignment or anything like that.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to merge into this one
+        adjust_indexing : bool
+            Whether to adjust the indexing of the atoms and residues in the merged molecule
+        """
+        if adjust_indexing:
+            self.adjust_indexing(other)
+
+        self.add_chains(*other.chains)
+        self._add_bonds(*other.get_bonds())
+        return self
+
+    def squash(self, chain_id: str = "A", resname: str = "UNK"):
+        """
+        Turn the entire molecule into a single chain with a single residue.
+        """
+        chain = base_classes.Chain(chain_id)
+        residue = base_classes.Residue(resname, " ", 1)
+        chain.add(residue)
+        for atom in self.get_atoms():
+            residue.add(atom)
+
+        self._model.child_dict.clear()
+        self._model.child_list.clear()
+        self.add_chains(chain, adjust_seqid=False)
+        self.reindex()
+        return self
+
+    def squash_chains(self, chain_id: str = "A"):
+        """
+        Turn all chains of the molecule into a single chain but preserve the residues.
+        """
+        chain = base_classes.Chain(chain_id)
+        for residue in self.get_residues():
+            chain.add(residue)
+        self._model.child_dict.clear()
+        self._model.child_list.clear()
+        self.add_chains(chain, adjust_seqid=False)
+        self.reindex()
+        return self
+
     def get_attach_residue(self):
         """
         Get the residue that is used for attaching other molecules to this one.
@@ -762,6 +810,19 @@ class BaseEntity:
         else:
             residue = self.get_residue(residue)
             self._attach_residue = residue
+
+    def move_to(self, pos: np.ndarray):
+        """
+        Move the molecule to a specific position in 3D space
+
+        Parameters
+        ----------
+        pos : np.ndarray
+            The position to move the molecule to. This will be the new center of geometry.
+        """
+        vector = pos - self.center_of_geometry
+        self.move(vector)
+        return self
 
     def move(self, vector: np.ndarray):
         """
@@ -2851,7 +2912,17 @@ if __name__ == "__main__":
 
     bam.load_amino_acids()
     # ser = molecule("SER")
-    bam.Molecule.from_compound("SER")
+    ser = BaseEntity.from_compound("SER")
+
+    mol = ser % "LINK" * 6
+
+    print(mol.residues)
+
+    mol.squash()
+
+    print(mol.residues)
+
+    mol.show()
 
     # import buildamol as bam
 
