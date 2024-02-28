@@ -584,7 +584,7 @@ class BaseEntity:
         """
         utils.save_pickle(self, filename)
 
-    def show(self, residue_graph: bool = False):
+    def show(self, residue_graph: bool = False, show_atoms: bool = True):
         """
         Open a browser window to view the molecule in 3D using Plotly
 
@@ -592,8 +592,10 @@ class BaseEntity:
         ----------
         residue_graph : bool
             If True, a residue graph is shown instead of the full structure.
+        show_atoms : bool
+            Whether to show the atoms (default: True)
         """
-        v = self.draw(residue_graph)
+        v = self.draw(residue_graph, show_atoms)
         v.show()
 
     def nglview(self):
@@ -614,7 +616,7 @@ class BaseEntity:
         """
         return utils.visual.Chem2DViewer(self)
 
-    def draw(self, residue_graph: bool = False):
+    def draw(self, residue_graph: bool = False, show_atoms: bool = True):
         """
         Prepare a view of the molecule in 3D using Plotly
         but do not open a browser window.
@@ -623,6 +625,8 @@ class BaseEntity:
         ----------
         residue_graph : bool
             If True, a residue graph is shown instead of the full structure.
+        show_atoms : bool
+            Whether to show the atoms (default: True)
 
         Returns
         -------
@@ -634,6 +638,10 @@ class BaseEntity:
         else:
             v = utils.visual.MoleculeViewer3D()
             v.link(self)
+            if show_atoms:
+                v.setup()
+            else:
+                v.draw_edges(*self.get_bonds(), showlegend=False)
             return v
 
     def vet(

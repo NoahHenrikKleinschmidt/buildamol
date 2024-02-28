@@ -429,6 +429,7 @@ class PlotlyViewer3D:
         bond_colors: list = None,
         opacity: float = 0.6,
         linewidth: float = 2,
+        draw_atoms: bool = False,
     ):
         if not isinstance(bond_colors, list):
             bond_colors = [bond_colors] * len(residues)
@@ -446,7 +447,9 @@ class PlotlyViewer3D:
             bonds.loc[:, "bond_order"] = bonds["bond_order"] + linewidth
             _op = self.opacity
             self.opacity = opacity
-            fig = self._setup_fig(atoms, bonds)
+
+            fig = self._setup_fig(atoms, bonds, draw_atoms=draw_atoms)
+
             residue_traces.extend(fig.data)
             self.opacity = _op
             bonds.loc[:, "bond_order"] = bonds["bond_order"] - linewidth
@@ -547,30 +550,41 @@ class MoleculeViewer3D(PlotlyViewer3D):
         return _atom_df, _bond_df
 
     def link(self, mol: "Molecule"):
+        """
+        Link a source molecule to the viewer.
+        """
         self._src = mol
         atom_df, bond_df = self.make_df(mol)
         self._atom_df = atom_df
         self._bond_df = bond_df
-        self.add(self._setup_fig(atom_df, bond_df))
 
-    def _setup_fig(self, atom_df, bond_df):
-        fig = px.scatter_3d(
-            atom_df,
-            x="x",
-            y="y",
-            z="z",
-            color="atom_element",
-            color_discrete_map=self.__atom_colors__,
-            opacity=self.opacity,
-            hover_data=[
-                "atom_id",
-                "atom_serial",
-                "residue_serial",
-                "residue_name",
-                "chain_id",
-            ],
-            template="none",
-        )
+    def setup(self):
+        """
+        Setup the viewer with the molecule.
+        """
+        self.add(self._setup_fig(self._atom_df, self._bond_df))
+
+    def _setup_fig(self, atom_df, bond_df, draw_atoms=True):
+        if not draw_atoms:
+            fig = go.Figure()
+        else:
+            fig = px.scatter_3d(
+                atom_df,
+                x="x",
+                y="y",
+                z="z",
+                color="atom_element",
+                color_discrete_map=self.__atom_colors__,
+                opacity=self.opacity,
+                hover_data=[
+                    "atom_id",
+                    "atom_serial",
+                    "residue_serial",
+                    "residue_name",
+                    "chain_id",
+                ],
+                template="none",
+            )
         bonds = []
         for i, row in bond_df.iterrows():
             a1 = atom_df.loc[row["a"]]
@@ -776,8 +790,10 @@ if __name__ == "__main__":
     v = Chem2DViewer(man)
     v.show()
 
-    # v = MoleculeViewer3D()
-    # v.link(man)
+    v = MoleculeViewer3D()
+    v.link(man)
+    v.setup()
+    v.show()
     # atoms = man.atoms[:10]
     # v.draw_atoms(*atoms)
     # v.show()
