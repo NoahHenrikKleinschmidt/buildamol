@@ -22,14 +22,14 @@ On this page you will find some tutorials on how to use buildamol. Feel free to 
    :link: example_building_workflow
    :link-type: ref
 
-   In this tutorial we will build a molecule to get the hang of a "typical" Biobuild workflow.
+   In this tutorial we will build a molecule to get the hang of a "typical" BuildAMol workflow.
 
 
 .. card:: Syntax Flavors
    :link: example_syntax
    :link-type: ref
 
-   This tutorial covers the different syntax flavors that Biobuild supports.
+   This tutorial covers the different syntax flavors that BuildAMol supports.
 
 
 .. card:: Visualizing Molecules
@@ -52,6 +52,10 @@ On this page you will find some tutorials on how to use buildamol. Feel free to 
 
    This tutorial covers how to convert between different file formats and how to use other libraries with buildamol.
 
+
+Resource-oriented Tutorials
+---------------------------
+
 .. card:: Built-in Resources
    :link: example_built_in_resources
    :link-type: ref
@@ -62,18 +66,17 @@ On this page you will find some tutorials on how to use buildamol. Feel free to 
    :link: example_defaults
    :link-type: ref
 
-   This tutorial covers how to add your own resources to Biobuild so they are available to all your projects.
+   This tutorial covers how to add your own resources to BuildAMol so they are available to all your projects.
 
----
 
-More applied tutorials
+More applied Tutorials
 ----------------------
 
 .. card:: Building circular Molecules
    :link: example_building_circular
    :link-type: ref
 
-   This tutorial covers how to build circular molecules in Biobuild together with RDKit.
+   This tutorial covers how to build circular molecules in BuildAMol together with RDKit.
 
 .. card:: Building Polyphenylene
    :link: example_building_polyphenylene
@@ -93,8 +96,14 @@ More applied tutorials
 
    In this tutorial we will generate multiple conformers of a molecule using BuildAMol's optimization methods.
 
-.. card:: Building a Multi Molecule System
+.. card:: Building a Rotaxane - Multi-Molecule System
    :link: example_multisystem
    :link-type: ref
 
    In this tutorial we will build a multi-molecule system using BuildAMol. Specifically, we will build a rotaxane.
+
+.. card:: Building a Solvation Box
+   :link: example_solvationbox
+   :link-type: ref
+
+   In this tutorial we will build a solvation box around a molecule using BuildAMol.
