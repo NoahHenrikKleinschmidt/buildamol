@@ -300,6 +300,76 @@ class BaseGraph(nx.Graph):
 
         return rotatable_edges
 
+    def sample_rotatable_edges(
+        self,
+        edges: list = None,
+        n: int = 3,
+        m: int = 3,
+    ) -> list:
+        """
+        Sample a number of rotatable edges from the graph. This is done
+        by clustering the nodes together to sample "representive" edges
+        from each cluster. This is useful for subsampling the rotatable
+        edges for an optimization to reduce the search space.
+
+        Parameters
+        ----------
+        edges : list, optional
+            The edges to sample from, by default None, in which case all rotatable edges are sampled.
+        n: int
+            The number of clusters to sample from.
+        m : int
+            The number of edges to sample from each cluster
+        root_node
+            A root node to direct the edges (optional)
+
+        Returns
+        -------
+        list
+            A list of sampled edges
+        """
+        center = np.mean([i.coord for i in self.nodes])
+        if edges is None:
+            edges = self.find_rotatable_edges()
+        rotatable_edges = np.array(edges)
+
+        # x, y, z, n_neighbors_a_3, n_neighbors_b_3, n_descendants, dist_to_center
+        data = np.zeros((len(rotatable_edges), 7))
+        for idx, edge in enumerate(rotatable_edges):
+            node_a, node_b = edge
+            data[idx, 0:3] = (node_a.coord + node_b.coord) / 2
+            data[idx, 3] = len(self.get_neighbors(node_a, 3))
+            data[idx, 4] = len(self.get_neighbors(node_b, 3))
+            data[idx, 5] = len(self.get_descendants(*edge))
+            data[idx, 6] = np.linalg.norm(data[idx, 0:3] - center)
+
+        from sklearn.cluster import KMeans
+
+        kmeans = KMeans(n_clusters=min(n, len(rotatable_edges)))
+        kmeans.fit(data)
+        labels = kmeans.predict(data)
+        _rotatable_edges = []
+        for i in range(kmeans.n_clusters):
+            mask = np.where(labels == i)
+            cluster = rotatable_edges[mask]
+            if len(cluster) > m:
+                prob = (
+                    0.3 * (data[mask, 3] + data[mask, 4])
+                    + data[mask, 5]
+                    - data[mask, 6]
+                ).squeeze()
+                prob += np.abs(prob.min())
+                prob /= prob.sum()
+
+                cluster = np.random.choice(
+                    np.arange(len(cluster)), m, replace=False, p=prob
+                )
+                cluster = rotatable_edges[mask][cluster].tolist()
+
+            _rotatable_edges.extend(cluster)
+
+        return _rotatable_edges
+
     def in_same_cycle(self, node_1, node_2, cycles=None) -> bool:
         """
         Check if two nodes are in the same cycle
@@ -465,7 +535,7 @@ class BaseGraph(nx.Graph):
         # we need to get a reference node index to normalise the rotated
         # coordinates to the original coordinate system
         # indices = list(self.nodes)
-        idx_1 = next(idx for idx, i in enumerate(self.nodes) if i is node_1)
+        # idx_1 = next(idx for idx, i in enumerate(self.nodes) if i is node_1)
 
         # define the axis of rotation as the cross product of the edge's vectors
         edge_vector = node_2.coord - node_1.coord
@@ -532,13 +602,24 @@ if __name__ == "__main__":
     import seaborn as sns
     import matplotlib.pyplot as plt
 
+    from functools import partial
+
     mol = bam.molecule(
-        "/Users/noahhk/GIT/biobuild/biobuild/optimizers/_testing/files/EX7.json"
+        "/Users/noahhk/GIT/biobuild/buildamol/optimizers/_testing/files/EX8.json"
     )
     v = mol.draw()
     g = BaseGraph(None, mol.bonds)
     nx.set_edge_attributes(g, 1, "bond_order")
-    g.find_rotatable_edges()
+    _g = mol.get_atom_graph()
+
+    _g.sample_rotatable_edges = partial(BaseGraph.sample_rotatable_edges, _g)
+    edges = _g.sample_rotatable_edges(
+        _g.find_rotatable_edges(min_descendants=10), n=4, m=3
+    )
+
+    v.draw_edges(*edges, color="limegreen", linewidth=8, elongate=1.1)
+    v.show()
+    pass
     #  ref_atom_graph = mol.get_atom_graph()
 
     # a, b = mol.get_atoms(68, 65)
