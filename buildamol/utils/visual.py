@@ -558,11 +558,11 @@ class MoleculeViewer3D(PlotlyViewer3D):
         self._atom_df = atom_df
         self._bond_df = bond_df
 
-    def setup(self):
+    def setup(self, draw_atoms=True):
         """
         Setup the viewer with the molecule.
         """
-        self.add(self._setup_fig(self._atom_df, self._bond_df))
+        self.add(self._setup_fig(self._atom_df, self._bond_df, draw_atoms=draw_atoms))
 
     def _setup_fig(self, atom_df, bond_df, draw_atoms=True):
         if not draw_atoms:
