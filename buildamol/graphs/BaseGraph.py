@@ -300,7 +300,7 @@ class BaseGraph(nx.Graph):
 
         return rotatable_edges
 
-    def sample_rotatable_edges(
+    def sample_edges(
         self,
         edges: list = None,
         n: int = 3,
@@ -613,7 +613,7 @@ if __name__ == "__main__":
     _g = mol.get_atom_graph()
 
     _g.sample_rotatable_edges = partial(BaseGraph.sample_rotatable_edges, _g)
-    edges = _g.sample_rotatable_edges(
+    edges = _g.sample_edges(
         _g.find_rotatable_edges(min_descendants=10), n=4, m=3
     )
 
