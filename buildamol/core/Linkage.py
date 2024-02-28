@@ -443,6 +443,31 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 )
         return new
 
+    def apply(self, target, source, target_residue=None, source_residue=None):
+        """
+        Apply the linkage to the two molecules. This will delete the atoms that should be deleted and form the bond between the two molecules.
+
+        Note that this method does NOT perform any kind of geometric changes
+        to the molecules themselves. It only adds the bond between the two molecules.
+        It also does NOT merge the two molecules into one! Use the `Molecule.attach` method
+        (or the `connect` toplevel function) to actually connect two molecules!
+
+        Parameters
+        ----------
+        target : Molecule
+            The first molecule.
+        source : Molecule
+            The second molecule.
+        target_residue : Residue, optional
+            The residue in the target molecule to which the source molecule will be patched.
+            By default, the attach_residue in the target molecule will be used.
+        source_residue : Residue, optional
+            The residue in the source molecule that will be patched into the target molecule.
+            By default, the attach_residue in the source molecule will be used.
+        """
+        self.apply_deletes(target, source, target_residue, source_residue)
+        self.apply_bond(target, source, target_residue, source_residue)
+
     def apply_deletes(
         self, target=None, source=None, target_residue=None, source_residue=None
     ):
@@ -463,20 +488,44 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             By default, the attach_residue in the source molecule will be used.
         """
         if target is not None:
-            for i in self.deletes[0]:
-                atom = target.get_atom(
-                    i, residue=target_residue or target.attach_residue
+            target_residue = target_residue or target.attach_residue
+            if len(self.deletes[0]) == 0:
+                atom = target.get_neighbors(
+                    target.get_atom(self.bond[0], residue=target_residue)
                 )
+                atom = next((a for a in atom if a.element == "H"), None)
                 if atom is not None:
                     target.remove_atoms(atom)
+                else:
+                    raise ValueError(
+                        "No atom to delete in the target molecule was provided and no Hydrogen atom was found bound to the first atom in the bond."
+                    )
+            else:
+                for i in self.deletes[0]:
+                    atom = target.get_atom(i, residue=target_residue)
+                    if atom is not None:
+                        target.remove_atoms(atom)
 
         if source is not None:
-            for i in self.deletes[1]:
-                atom = source.get_atom(
-                    i, residue=source_residue or source.attach_residue
+            source_residue = source_residue or source.attach_residue
+            if len(self.deletes[1]) == 0:
+                atom = source.get_neighbors(
+                    source.get_atom(self.bond[1], residue=source_residue)
                 )
+                atom = next((a for a in atom if a.element == "H"), None)
                 if atom is not None:
                     source.remove_atoms(atom)
+                else:
+                    raise ValueError(
+                        "No atom to delete in the source molecule was provided and no Hydrogen atom was found bound to the second atom in the bond."
+                    )
+            else:
+                for i in self.deletes[1]:
+                    atom = source.get_atom(
+                        i, residue=source_residue or source.attach_residue
+                    )
+                    if atom is not None:
+                        source.remove_atoms(atom)
 
     def apply_bond(self, target, source, target_residue=None, source_residue=None):
         """
