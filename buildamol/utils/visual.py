@@ -29,6 +29,11 @@ default_plotly_opacity = 1.0
 The default opacity for plotly-based visualizations.
 """
 
+default_plotly_marker_size = 5
+"""
+The default marker size for plotly-based visualizations.
+"""
+
 default_plotly_bond_color = "black"
 """
 The default color for plotly-based bond visualizations.
@@ -267,6 +272,7 @@ class PlotlyViewer3D:
         PlotlyViewer3D.reset(self)
         self._color_idx = 0
         self.opacity = default_plotly_opacity
+        self.size = default_plotly_marker_size
         self.bond_color = default_plotly_bond_color
         self.bond_linewidth = default_plotly_linewidth
 
@@ -304,16 +310,26 @@ class PlotlyViewer3D:
             )
         )
 
-    def draw_point(self, id: str, coord, color="black", opacity=1.0, showlegend=True):
+    def draw_point(
+        self,
+        id: str,
+        coord,
+        color="black",
+        opacity=1.0,
+        size=5,
+        showlegend=True,
+        **kwargs,
+    ):
         new = go.Scatter3d(
             x=[coord[0]],
             y=[coord[1]],
             z=[coord[2]],
             mode="markers",
-            marker=dict(opacity=opacity, color=color),
+            marker=dict(opacity=opacity, color=color, size=size),
             name=id,
             hoverinfo="name",
             showlegend=showlegend,
+            **kwargs,
         )
         self.add(new)
 
@@ -373,7 +389,9 @@ class PlotlyViewer3D:
         coords: list,
         colors: list = None,
         opacities: list = None,
+        sizes: list = None,
         showlegends: list = None,
+        **kwargs,
     ):
         if colors is None:
             colors = ["black" for _ in range(len(coords))]
@@ -381,9 +399,17 @@ class PlotlyViewer3D:
             opacities = [1.0 for _ in range(len(coords))]
         if showlegends is None:
             showlegends = [True for _ in range(len(coords))]
+        if sizes is None:
+            sizes = [self.size for _ in range(len(coords))]
         for idx, coord in enumerate(coords):
             self.draw_point(
-                ids[idx], coord, colors[idx], opacities[idx], showlegends[idx]
+                ids[idx],
+                coord,
+                colors[idx],
+                opacities[idx],
+                sizes[idx],
+                showlegends[idx],
+                **kwargs,
             )
 
     def highlight_atoms(
@@ -392,6 +418,7 @@ class PlotlyViewer3D:
         names: list = None,
         colors: list = None,
         opacity: float = 1,
+        size: int = 10,
         showlegend: bool = True,
         hoverinfo: str = "name",
     ):
@@ -414,7 +441,7 @@ class PlotlyViewer3D:
                 y=[atom.coord[1]],
                 z=[atom.coord[2]],
                 mode="markers",
-                marker=dict(color=color, opacity=opacity, size=10),
+                marker=dict(color=color, opacity=opacity, size=size),
                 hoverinfo=hoverinfo,
                 showlegend=showlegend,
                 name=name,
@@ -488,7 +515,7 @@ class PlotlyViewer3D:
             *residues, bond_colors=bond_colors, opacity=opacity, linewidth=linewidth
         )
 
-    def draw_atom(self, atom, id=None, color=None, opacity=None):
+    def draw_atom(self, atom, id=None, color=None, opacity=None, size=None):
         if color is None:
             color = self.__atom_colors__.get(atom.element)
         if opacity is None:
@@ -500,6 +527,7 @@ class PlotlyViewer3D:
             atom.coord,
             color,
             opacity,
+            size,
         )
 
     def draw_bond(
@@ -568,6 +596,7 @@ class MoleculeViewer3D(PlotlyViewer3D):
         if not draw_atoms:
             fig = go.Figure()
         else:
+            atom_df["__marker_size"] = self.size
             fig = px.scatter_3d(
                 atom_df,
                 x="x",
@@ -576,6 +605,7 @@ class MoleculeViewer3D(PlotlyViewer3D):
                 color="atom_element",
                 color_discrete_map=self.__atom_colors__,
                 opacity=self.opacity,
+                size="__marker_size",
                 hover_data=[
                     "atom_id",
                     "atom_serial",
