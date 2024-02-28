@@ -210,6 +210,9 @@ Let's make a simple polymer with a repeating unit composed of a benzene ring and
    # optimization on it
    mol = mol.optimize()
 
+   # save the molecule to a MOL file
+   mol.to_molfile("polymer.mol")
+
    # and finally visualize it
    mol.show()
 
@@ -256,6 +259,9 @@ Note, if you want to build glycans specifically, you should check out `Glycosyla
 
    # add one final alpha-mannose
    glycan = bam.connect(glycan, man, "16ab")
+
+   # save the glycan to a PDB file
+   glycan.to_pdb("glycan.pdb")
 
    # now visualise the structure
    glycan.show()
