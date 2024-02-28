@@ -638,10 +638,8 @@ class BaseEntity:
         else:
             v = utils.visual.MoleculeViewer3D()
             v.link(self)
-            if show_atoms:
-                v.setup()
-            else:
-                v.draw_edges(*self.get_bonds(), showlegend=False)
+            v.setup(show_atoms)
+                
             return v
 
     def vet(
