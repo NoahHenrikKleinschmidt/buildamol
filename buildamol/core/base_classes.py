@@ -11,8 +11,8 @@ Consequently, the `__hash__` method is overwritten to use the UUID4 as the hash.
 Converting to and from `biopython`
 ----------------------------------
 
-Each biobuild class can be generated from a biopython class using the `from_biopython` class method. And each biobuild class has a `to_biopython` method that returns the pure-biopython equivalent.
-It is important to note, that for most purposes, however, the biobuild classes should work fine as trop-in replacements for the original biopython classes. 
+Each BuildAMol class can be generated from a biopython class using the `from_biopython` class method. And each BuildAMol class has a `to_biopython` method that returns the pure-biopython equivalent.
+It is important to note, that for most purposes, however, the BuildAMol classes should work fine as trop-in replacements for the original biopython classes. 
 
 .. code-block:: python
 
@@ -25,8 +25,8 @@ It is important to note, that for most purposes, however, the biobuild classes s
     assert atom == bio_atom # False since atom uses a UUID4 as its identifier
     assert atom.to_biopython() == bio_atom # True 
 
-The conversion from and to biopython works hierarchically, so if an entire biopython structure is converted to biobuild
-then all atoms, residues, chains and models will be converted to their biobuild equivalents.
+The conversion from and to biopython works hierarchically, so if an entire biopython structure is converted to BuildAMol
+then all atoms, residues, chains and models will be converted to their BuildAMol equivalents.
 
 .. code-block:: python
 
@@ -54,7 +54,7 @@ __all__ = ["Atom", "Residue", "Chain", "Model", "Structure", "Bond"]
 
 class ID:
     """
-    The base class for Biobuild's internal object identification.
+    The base class for BuildAMol's internal object identification.
     All classes that inheret from this class will be recorded as unique objects.
     """
 

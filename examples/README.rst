@@ -7,4 +7,4 @@ These are some tutorials on how to use buildamol. Feel free to browse through th
    :link: getting_started
    :link-type: ref
 
-   A quick introduction to Biobuild and its main features.
+   A quick introduction to BuildAMol and its main features.

@@ -15,7 +15,7 @@ Converting PubChem data to CIF
 ------------------------------
 PubChem allows data downloads in the form of JSON and SDF files. The JSON file contains the descriptive data of a chemical compound while the SDF contains
 the 3D conformer of the compound. The `pubchem_to_cif` function can be used to convert these files into a CIF file which can be used to load the compound
-into biobuild using the ``PDBECompounds`` class. The function takes the paths to the JSON and SDF files as input and optionally an ID for the compound
+into BuildAMol using the ``PDBECompounds`` class. The function takes the paths to the JSON and SDF files as input and optionally an ID for the compound
 and a path to the CIF file to write. If no ID is specified, the function will try to infer an ID from the JSON file.
 
 .. code-block:: python
@@ -74,7 +74,7 @@ _sdf_bond_type_map = {
     "4": "DOUB",
 }
 """
-Mapping of SDF bond types to biobuild bond types.
+Mapping of SDF bond types to BuildAMol bond types.
 """
 
 _sdf_charge_map = {
@@ -140,10 +140,10 @@ def query(_query: str, by: str = "name", idx: int = 0):
 def pubchem_to_cif(json_file: str, sdf_file: str, id: str = None, cif_file: str = None):
     """
     Convert a downloaded PubChem data entry to a CIF file. This is useful for preparing
-    a PubChem component for use in biobuild - i.e. to relabel atoms as required by the
+    a PubChem component for use in BuildAMol - i.e. to relabel atoms as required by the
     CHARMM force field. Simply download the PubChem data for a molecule in form of the JSON
     data and the 3D conformer SDF file and pass the file names to this function to generate
-    a CIF file from them which can be loaded into biobuild using the `PDBECompounds` class.
+    a CIF file from them which can be loaded into BuildAMol using the `PDBECompounds` class.
 
     Parameters
     ----------

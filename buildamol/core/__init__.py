@@ -1,5 +1,5 @@
 """
-The core classes and functions of biobuild
+The core classes and functions of BuildAMol
 """
 
 from buildamol.core.Molecule import *

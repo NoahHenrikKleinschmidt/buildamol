@@ -39,7 +39,7 @@ class PDBIO:
 
     def molecule_to_pdbio(self, obj):
         """
-        Store a biobuild Molecule in a PDB file
+        Store a BuildAMol Molecule in a PDB file
         """
         obj.to_pdb(self.__fileio__, symmetric=False)
 
@@ -82,9 +82,9 @@ class OpenMMBioPythonConverter(PDBIO):
         self.cleanup()
         return new
 
-    def biobuild_to_openmm(self, obj):
+    def buildamol_to_openmm(self, obj):
         """
-        Convert a biobuild Molecule to an OpenMM object
+        Convert a BuildAMol Molecule to an OpenMM object
 
         Parameters
         ----------
@@ -250,7 +250,7 @@ class PybelBioPythonConverter(PDBIO):
         # # designation of hydrogens by ids relating to their connectivity
         # # e.g. HO2 = Hydrogen at Oxygen2, the element is falsely inferred
         # # as Holmium (Ho) instead of H, so we need to manually correct for
-        # # this - thereby, of course, destroying biobuild capacity to work
+        # # this - thereby, of course, destroying BuildAMol capacity to work
         # # with Holmium, should anybody actually wish to use it...
         # if element == "Ho":
         #     element = "H"
@@ -334,9 +334,9 @@ class PybelBioPythonConverter(PDBIO):
 
         return new
 
-    def biobuild_to_pybel(self, obj):
+    def buildamol_to_pybel(self, obj):
         """
-        Convert a biobuild object to a pybel object
+        Convert a BuildAMol object to a pybel object
 
         Parameters
         ----------
@@ -360,7 +360,7 @@ class PybelBioPythonConverter(PDBIO):
         else:
             while not type(obj).__name__ in ["Molecule", "Structure"]:
                 obj = obj.get_parent()
-            return self.biobuild_to_pybel(obj)
+            return self.buildamol_to_pybel(obj)
 
         # read the file back in with pybel
         pybel_obj = next(aux.pybel.readfile("pdb", self.__fileio__), None)

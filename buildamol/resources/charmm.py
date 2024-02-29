@@ -34,7 +34,7 @@ Alternatively, the `CHARMMTopology` class can be used to read a CHARMM topology 
     
 .. note::
 
-    There is currently no implementation of a CHARMM parameter file parser, because biobuild does not use this data.
+    There is currently no implementation of a CHARMM parameter file parser, because BuildAMol does not use this data.
     However, the `CHARMMParser` can be used as a base class to implement a custom parser for CHARMM parameter files.
 
 
@@ -59,7 +59,7 @@ and both also have a functional equivalent called `save_topology` and `read_topo
 
     
 Topologies also support an encoding agnosting export to JSON format using the `to_json` method (function `export_topology`). This is 
-useful for sharing topologies with other users who may be using a different version of biobuild and therefore could potentially have issues
+useful for sharing topologies with other users who may be using a different version of BuildAMol and therefore could potentially have issues
 with pickled objects, or for programmatic creation of new topologies (since JSON is an easier format to work with than the CHARMM topology file format itself).
 
 .. code-block:: python
@@ -100,7 +100,7 @@ They also support adding new data via the the `add_linkage` method. For these as
 Setting default CHARMM objects
 ==============================
 
-biobuild pre-loads a default CHARMM topology for convenience. Many methods that make use of 
+BuildAMol pre-loads a default CHARMM topology for convenience. Many methods that make use of 
 this object such as the `attach` method of `Molecule` instances also accept arguments for custom topology objects.
 For convenience, a custom object can be set as the default, however, using the `set_default_topology` function.
 

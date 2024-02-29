@@ -1,6 +1,7 @@
 """
-Conformational optimizers for _biobuild_. 
+Conformational optimizers for BuildAMol. 
 """
+
 from buildamol.optimizers.Rotatron import Rotatron
 from buildamol.optimizers.DistanceRotatron import *
 from buildamol.optimizers.OverlapRotatron import *

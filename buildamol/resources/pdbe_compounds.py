@@ -5,13 +5,13 @@ Reading the PDBE Compound Library
 =================================
 
 The PDBE Compound Library is a database of small molecules that are found in PDB structures. It can be downloaded as an mmCIF file. 
-`biobuild` provides a parser to extract information from the mmCIF file.
+BuildAMol provides a parser to extract information from the mmCIF file.
 
 To parse a PDBE Compound Library file, we can use the toplevel function `read_compounds` or use the `PDBECompounds` class directly
 
 .. code-block:: python
 
-    import biobuild
+    import BuildAMol
     from buildamol.resources import PDBECompounds
 
     compounds = bam.read_compounds("path/to/pdbe-compounds.cif")
@@ -38,7 +38,7 @@ For future sessions the pre-parsed object can be directly loaded using the `load
 
 In order to export data from the PDBE compounds library, the `PDBECompounds` class also implements a `to_json` method to export the data as a JSON file.
 The JSON file can be loaded again using the `from_json` class method (or using `read_compounds` function). This is useful for sharing compound data with others
-who may use different versions of `biobuild` and thus may have issues with pickeled objects, or for sharing data with other programs.
+who may use different versions of BuildAMol and thus may have issues with pickeled objects, or for sharing data with other programs.
 
 .. code-block:: python
 
@@ -91,7 +91,7 @@ If multiple compounds match a query, they are returned as a list (unless `return
 Setting default PDBECompounds
 =============================
 
-_biobuild_ loads a default PDBECompounds object for convenience. The default instance can be accessed using the `get_default_compounds` function. A custom instance can be set as the default using the `set_default_compounds` function.
+_BuildAMol_ loads a default PDBECompounds object for convenience. The default instance can be accessed using the `get_default_compounds` function. A custom instance can be set as the default using the `set_default_compounds` function.
 
 .. code-block:: python
 
@@ -326,7 +326,7 @@ def get_compound(compound: str, search_by: str = None, return_type: str = "molec
         By default, all search types are used.
 
     return_type : str, optional
-        The type of object to return. One of `molecule` (a biobuild Molecule), `structure` (a biobuild structure only, does not include connectivity), `dict` (the compound data and coordinate dictionaries).
+        The type of object to return. One of `molecule` (a BuildAMol Molecule), `structure` (a BuildAMol structure only, does not include connectivity), `dict` (the compound data and coordinate dictionaries).
         Defaults to `molecule`.
 
     Returns
@@ -898,7 +898,7 @@ class PDBECompounds:
 
         return_type : str, optional
             The type of object to return, by default "molecule". Possible values are:
-            - "molecule": return a biobuild `Molecule` object
+            - "molecule": return a BuildAMol `Molecule` object
             - "dict": return a dictionary of the compound data
             - "structure": return a biopython `Structure` object
             - "residue": return a biopython `Residue` object
@@ -1245,7 +1245,7 @@ class PDBECompounds:
 
     def _molecule(self, compound: dict) -> Molecule:
         """
-        Make a biobuild Molecule from a compound.
+        Make a BuildAMol Molecule from a compound.
 
         Parameters
         ----------
@@ -1255,7 +1255,7 @@ class PDBECompounds:
         Returns
         -------
         Molecule
-            A biobuild Molecule.
+            A BuildAMol Molecule.
         """
         pdb = self._pdb[compound["id"]]
 
@@ -1309,7 +1309,7 @@ class PDBECompounds:
         Parameters
         ----------
         chain : buildamol.Chain
-            A biobuild Chain with the residues to fill.
+            A BuildAMol Chain with the residues to fill.
         compound : dict
             A dictionary of a compound.
         """

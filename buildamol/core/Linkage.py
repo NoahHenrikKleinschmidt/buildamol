@@ -5,11 +5,11 @@ Linkage definitions
 A linkage is a connection between two _molecules_. At its core each linkage simply defines two atoms that should be connected,
 and what atoms to remove in the process. It is a "pseudo" chemical reaction, so to speak. 
 
-Building on the CHARMM force field, biobuild distinguishes two kinds of linkages: patches and recipies.
+Building on the CHARMM force field, BuildAMol distinguishes two kinds of linkages: patches and recipies.
 
 A **patch** is a linkage that can be applied purely geometrically and does not require numeric optimization. This is because a 
 patch includes geometric data in form of _internal coordinates_ of the atoms in the immediate vicinity of the newly formed bond.
-Using this data, biobuild is able to attach molecule to one another through simple matrix transformations. Conesquently, patches
+Using this data, BuildAMol is able to attach molecule to one another through simple matrix transformations. Conesquently, patches
 are the most efficient way to connect molecules and are preferable to **recipes** - the other type of linkage.
 
 A **recipe** on the other hand is a linkage that requires numeric optimization. This is because a recipe does not include any
@@ -35,11 +35,11 @@ wrappers available to create either a patch or recipe, respectively, which requi
 
 Pre-defined patches
 -------------------
-biobuild comes with a number of pre-defined patches from the CHARMM force field. These can be accessed through the `resources` module:
+BuildAMol comes with a number of pre-defined patches from the CHARMM force field. These can be accessed through the `resources` module:
 
 .. code-block:: python
 
-    from biobuild import resources
+    from buildamol import resources
 
     # Get a list of all pre-defined patches
     patches = resources.available_patches()

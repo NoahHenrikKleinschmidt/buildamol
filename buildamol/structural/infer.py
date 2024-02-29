@@ -369,7 +369,7 @@ def vet_structure(
     Parameters
     ----------
     molecule : Molecule
-        A biobuild Molecule
+        A BuildAMol Molecule
     clash_range : tuple
         The minimal and maximal allowed distances between bonded atoms (in Angstrom).
         The lower limit is also used for non-bonded atoms.
@@ -406,7 +406,7 @@ def find_clashes(molecule, min_dist: float = 1.0, ignore_hydrogens: bool = False
     Parameters
     ----------
     molecule : Molecule
-        A biobuild Molecule
+        A BuildAMol Molecule
     min_dist : float
         The minimal allowed distance between atoms (in Angstrom).
     ignore_hydrogens : bool

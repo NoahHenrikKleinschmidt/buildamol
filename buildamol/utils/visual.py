@@ -120,7 +120,7 @@ class Chem2DViewer:
         Parameters
         ----------
         atoms : list
-            The Biobuild Atoms to highlight.
+            The BuildAMol Atoms to highlight.
         """
         self._atoms_to_highlight.extend(atom.serial_number for atom in atoms)
 
@@ -131,7 +131,7 @@ class Chem2DViewer:
         Parameters
         ----------
         bonds : list
-            The bonds (tuples of Biobuild Atoms) to highlight.
+            The bonds (tuples of BuildAMol Atoms) to highlight.
         """
 
         self._bonds_to_highlight.extend(

@@ -1,6 +1,7 @@
 """
 Functions to work with CIF files.
 """
+
 from tabulate import tabulate
 
 _bond_order_map = {
@@ -141,7 +142,7 @@ def make_bond_lines(mol):
 
 def parse_bond_table(filename, fmt_header: str = "_bond"):
     """
-    Parse the bond table from a biobuild generated CIF file.
+    Parse the bond table from a BuildAMol generated CIF file.
     """
     bonds = {}
     at_bonds_table = False

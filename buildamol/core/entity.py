@@ -1720,7 +1720,7 @@ class BaseEntity:
             if adjust_seqid and residue.id[1] != rdx:
                 residue.serial_number = rdx
                 # the above line with serial_number works for the
-                # biobuild class derivatives, the below line
+                # buildamol class derivatives, the below line
                 # is for the original biopython classes
                 # residue.id = (residue.id[0], rdx, *residue.id[2:])
 
@@ -2576,7 +2576,7 @@ class BaseEntity:
         -------
         openmm.app.PDBFile
         """
-        return utils.convert.OpenMMBioPythonConverter().biobuild_to_openmm(self)
+        return utils.convert.OpenMMBioPythonConverter().buildamol_to_openmm(self)
 
     def to_pybel(self):
         """
@@ -2588,7 +2588,7 @@ class BaseEntity:
             The Pybel molecule
         """
         conv = utils.convert.PybelBioPythonConverter()
-        mol = conv.biobuild_to_pybel(self)
+        mol = conv.buildamol_to_pybel(self)
         mol.title = self.id
         return mol
 

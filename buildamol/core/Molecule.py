@@ -1,16 +1,16 @@
 """
 The `Molecule` class is a wrapper around a biopython structure and a core part 
-of biobuild functionality. It provides a convenient interface to molecular structures
+of BuildAMol functionality. It provides a convenient interface to molecular structures
 and their properties, such as atoms, bonds, residues, chains, etc. 
 
 .. note:: 
 
-    To help with identifying individual atoms, residues, etc. biobuild uses a different identification scheme than biopython does.
-    Therefore biobuild comes with its own child classes of the biopython classes
+    To help with identifying individual atoms, residues, etc. BuildAMol uses a different identification scheme than biopython does.
+    Therefore BuildAMol comes with its own child classes of the biopython classes
     that are used to represent the structure. These classes are called `Atom`, `Residue`, `Chain`, etc.
     and can be used as drop-in replacements for the biopython classes and should not break any existing code.
     However, in case any incompatibility is observed anyway, the classes are equipped with a `to_biopython` method
-    that will remove the biobuild overhead and return pure biopython objects (this is not an in-place operation, however,
+    that will remove the BuildAMol overhead and return pure biopython objects (this is not an in-place operation, however,
     and will return a new object). 
 
 
@@ -29,7 +29,7 @@ try to detect the type of user provided input and generate a molecule from it. C
 
 .. code-block:: python
 
-    from biobuild import molecule
+    from buildamol import molecule
 
     my_glucose = molecule("GLC") # use the PDB id
 
@@ -55,7 +55,7 @@ Hence, if we know that "glucose" is already available in our local PDBECompounds
 
 .. code-block:: python
 
-    from biobuild import Molecule
+    from buildamol import Molecule
 
     my_glucose = Molecule.from_compound("GLC") # use the PDB id
 
@@ -190,7 +190,7 @@ chain or residue if none is specified.
 
 .. code-block:: python
 
-    from biobuild import Residue, Atom
+    from buildamol import Residue, Atom
 
     new_residue = Residue("XYZ", 1, " ")
     
@@ -277,7 +277,7 @@ numbering scheme, so this method should be called before connecting molecules th
     # reindex the molecule
     glc.reindex()
 
-We can also use one molecule as a "reference" for reindexing another molecule to make sure there are now labelling conflicts between them in case we want to connect them together later (this is usually done internally by _biobuild_ automatically).
+We can also use one molecule as a "reference" for reindexing another molecule to make sure there are now labelling conflicts between them in case we want to connect them together later (this is usually done internally by BuildAMol automatically).
 
 .. code-block:: python  
 
@@ -399,7 +399,7 @@ the default linkage type is used. But how do we set the default linkage type?
 
 Let's first check what linkage types are available by default anyway. Have you noticed an argument named `_topology`
 at the end of the `attach` or `repeat` methods? The `topology` refers to the underlying _CHARMM_ topology which hosts the linkage type information.
-By default a topology is already loaded in _biobuild_'s framework so it is not necessary for the user to specify anything here, but we can check which linkage types are available by:
+By default a topology is already loaded in BuildAMol's framework so it is not necessary for the user to specify anything here, but we can check which linkage types are available by:
 
 .. code-block:: python
 
@@ -642,7 +642,7 @@ def molecule(mol=None) -> "Molecule":
 
     Examples
     --------
-    >>> from biobuild import molecule
+    >>> from buildamol import molecule
     >>> mol = molecule("GLC")
     >>> mol = molecule("GLC.pdb")
     >>> mol = molecule("alpha-d-glucose")
