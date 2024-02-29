@@ -364,9 +364,9 @@ class BaseGraph(nx.Graph):
                 cluster = np.random.choice(
                     np.arange(len(cluster)), m, replace=False, p=prob
                 )
-                cluster = rotatable_edges[mask][cluster].tolist()
+                cluster = rotatable_edges[mask][cluster]
 
-            _rotatable_edges.extend(cluster)
+            _rotatable_edges.extend(cluster.tolist())
 
         return _rotatable_edges
 
@@ -613,9 +613,7 @@ if __name__ == "__main__":
     _g = mol.get_atom_graph()
 
     _g.sample_rotatable_edges = partial(BaseGraph.sample_rotatable_edges, _g)
-    edges = _g.sample_edges(
-        _g.find_rotatable_edges(min_descendants=10), n=4, m=3
-    )
+    edges = _g.sample_edges(_g.find_rotatable_edges(min_descendants=10), n=4, m=3)
 
     v.draw_edges(*edges, color="limegreen", linewidth=8, elongate=1.1)
     v.show()
