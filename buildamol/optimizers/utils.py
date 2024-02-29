@@ -197,6 +197,7 @@ def parallel_optimize(
     envs: list["Rotatron.Rotatron"],
     algorithm: Union[str, callable] = None,
     n_processes: int = None,
+    unify_final: bool = True,
     **kwargs,
 ) -> "Molecule.Molecule":
     """
@@ -218,6 +219,9 @@ def parallel_optimize(
         - or some other callable that takes an environment as its first argument
     n_processes : int, optional
         The number of processes to use. If not provided, the number of processes is automatically determined.
+    unify_final : bool, optional
+        If True, the solutions to all sub-environments are applied onto the same final molecule. If False,
+        a list of molecules is returned each with the solution of one sub-environment applied.
     **kwargs
         Additional keyword arguments to pass to the algorithm
 
@@ -249,6 +253,20 @@ def parallel_optimize(
     results = p.map(agent, envs)
     p.close()
     p.join()
+
+    if not unify_final:
+
+        final = []
+        for res, env in zip(results, envs):
+            _mol = mol.copy()
+            sol, eval = res
+            if sol.shape[0] != env.n_edges:
+                raise ValueError(
+                    f"Solution and environment do not match (size mismatch): {sol.shape[0]} != {env.n_edges}"
+                )
+            _mol = apply_solution(sol, env, _mol)
+            final.append(_mol)
+        return final
 
     for res, env in zip(results, envs):
         sol, eval = res
@@ -282,6 +300,15 @@ if __name__ == "__main__":
     print("making first environment")
 
     from pathlib import Path
+
+    rotatron = bam.optimizers.OverlapRotatron
+    graph = mol.get_atom_graph()
+    edges = mol.get_residue_connections(triplet=False)
+    edges = graph.direct_edges(edges=edges)
+    edges = graph.sample_edges(edges, m=5, n=3)
+    env = rotatron(graph, edges)
+    envs = [env] * 2
+    better = optimize(mol.copy(), env)
 
     rotatron = bam.optimizers.ForceFieldRotatron
 
