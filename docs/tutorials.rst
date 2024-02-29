@@ -84,6 +84,13 @@ More applied Tutorials
 
    In this tutorial we will build a polyphenylene dendrimer using some automization.
 
+.. card:: Glycosylation
+   :link: example_glycosylation
+   :link-type: ref
+
+   In this tutorial we will glycosylate a protein.
+
+
 .. card:: Molecular Dynamics
    :link: example_md
    :link-type: ref

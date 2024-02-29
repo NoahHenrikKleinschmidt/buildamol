@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Basic Usage
-===========
+Overview
+========
 
 Most of the functionality is provided through a simple toplevel functional API, with a much more extended
 method-based API available for both simple and more complex operations. To facilitate user-friendliness most of the 
