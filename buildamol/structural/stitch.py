@@ -15,6 +15,12 @@ import buildamol.structural.connector as base
 import buildamol.structural.base as structural_base
 import buildamol.optimizers as optimizers
 
+# something to hopefully fix the import issue
+if isinstance(Molecule, type):
+    __mol_factory__ = Molecule
+else:
+    __mol_factory__ = Molecule.Molecule
+
 
 class Stitcher(base.Connector):
     """
@@ -264,7 +270,7 @@ class Stitcher(base.Connector):
         bonds.extend(self.source.get_bonds(self._source_residue))
 
         # a double Molecule (Molecule.Molecule) seems necessary when the file is not direclty run...
-        tmp = Molecule.Molecule.empty("tmp")
+        tmp = __mol_factory__.empty("tmp")
 
         orig_coords_target = {
             atom: (atom.coord[0], atom.coord[1], atom.coord[2])
