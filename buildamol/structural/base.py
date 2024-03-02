@@ -7,6 +7,38 @@ import Bio.PDB as bio
 
 from functools import partial
 
+import buildamol.utils.auxiliary as aux
+
+
+x_axis = np.array([1, 0, 0])
+"""
+Unit vector along the x-axis
+"""
+y_axis = np.array([0, 1, 0])
+"""
+Unit vector along the y-axis
+"""
+
+z_axis = np.array([0, 0, 1])
+"""
+Unit vector along the z-axis
+"""
+
+xy_plane = np.array([0, 0, 1])
+"""
+Unit vector normal to the xy-plane
+"""
+
+xz_plane = np.array([0, 1, 0])
+"""
+Unit vector normal to the xz-plane
+"""
+
+yz_plane = np.array([1, 0, 0])
+"""
+Unit vector normal to the yz-plane
+"""
+
 
 def atom_make_full_id(self):
     """
@@ -528,6 +560,62 @@ bio.Model.Model.rotate = _rotate_coords_base_classes
 bio.Structure.Structure.rotate = _rotate_coords_base_classes
 
 
+def flip_molecule(mol, plane_vector: np.ndarray, center: np.ndarray = None):
+    """
+    Flip a molecule around an axis.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to flip
+    plane_vector : array-like
+        The vector describing the plane to flip around
+
+    Returns
+    -------
+    flipped_molecule : Bio.PDB.Structure
+        The flipped molecule
+    """
+    atoms = list(mol.get_atoms())
+    coords = np.array([a.coord for a in atoms])
+    plane_vector = np.array(plane_vector)
+    if center is not None:
+        center = np.array(center)
+        coords -= center
+
+    new_coords = flip_coords(coords=coords, plane_vector=plane_vector)
+    if center is not None:
+        new_coords += center
+
+    for a, c in zip(atoms, new_coords):
+        a.set_coord(c)
+
+    return mol
+
+
+def flip_coords(coords: np.ndarray, plane_vector: np.ndarray):
+    """
+    Flip a set of coordinates around an axis.
+
+    Parameters
+    ----------
+    coords : array-like
+        The coordinates to flip
+    plane_vector : array-like
+        The vector describing the plane to flip around
+
+    Returns
+    -------
+    flipped_coords : array-like
+        The flipped coordinates
+    """
+    # project the coordinates onto the plane
+    # and then subtract the projection from the
+    # original coordinates to get the flipped coordinates
+    return coords - 2 * np.dot(coords, plane_vector.T)[:, None] * plane_vector
+
+
+@aux.njit
 def _rotation_matrix(axis, angle):
     """
     Compute the rotation matrix about an arbitrary axis in 3D
