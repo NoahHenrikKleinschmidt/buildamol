@@ -46,6 +46,7 @@ from copy import deepcopy
 
 # from uuid import uuid4
 import Bio.PDB as bio
+import numpy as np
 import periodictable as pt
 
 
@@ -168,7 +169,7 @@ class Atom(ID, bio.Atom.Atom):
         bio.Atom.Atom.__init__(
             self,
             id,
-            coord,
+            np.asarray(coord),
             bfactor,
             occupancy,
             altloc,
@@ -191,6 +192,34 @@ class Atom(ID, bio.Atom.Atom):
     @full_id.setter
     def full_id(self, value):
         pass
+
+    def matches(
+        self, other, include_id: bool = True, include_coord: bool = False
+    ) -> bool:
+        """
+        Check if the atom matches another atom.
+        This will return True if the two atoms have the same element, id, parent-residue name, and altloc.
+        """
+        verdict = (
+            self.element == other.element
+            and self.parent.resname == other.parent.resname
+            and self.altloc == other.altloc
+        )
+        if include_id:
+            verdict = verdict and self.id == other.id
+
+        if include_coord:
+            verdict = verdict and np.allclose(self.coord, other.coord)
+        return verdict
+
+    def equals(self, other, include_coord: bool = False) -> bool:
+        """
+        Check if the atom is equal to another atom.
+        This will return True if the two atoms match and have the parent-serial number.
+        """
+        return self.matches(other, include_id=True, include_coord=include_coord) and (
+            self.parent.id[1] == other.parent.id[1]
+        )
 
     @classmethod
     def from_biopython(cls, atom) -> "Atom":
@@ -357,7 +386,7 @@ class Residue(ID, bio.Residue.Residue):
         "_coord",
     )
 
-    def __init__(self, resname, segid, icode):
+    def __init__(self, resname, segid=" ", icode=1):
         ID.__init__(self)
         bio.Residue.Residue.__init__(
             self, ("H_" + resname, icode, segid), resname, segid
@@ -401,6 +430,29 @@ class Residue(ID, bio.Residue.Residue):
     @coord.setter
     def coord(self, value):
         self._coord = value
+
+    def matches(self, other) -> bool:
+        """
+        Check if the residue matches another residue.
+        This will return True if the two residues have the same resname, segid, and parent-chain id.
+        """
+        return (
+            self.resname == other.resname
+            and self.segid == other.segid
+            and self.parent.id == other.parent.id
+        )
+
+    def equals(self, other, include_serial: bool = False) -> bool:
+        """
+        Check if the residue is equal to another residue.
+        This will check if the two residues are in the same parent and if all atoms are matching.
+        """
+        verdict = self.matches(other) and all(
+            i.matches(j) for i, j in zip(self.get_atoms(), other.get_atoms())
+        )
+        if include_serial:
+            verdict = verdict and self.serial_number == other.serial_number
+        return verdict
 
     # def add(self, atom):
     #     if atom.get_id() not in self.child_dict:
@@ -464,6 +516,20 @@ class Residue(ID, bio.Residue.Residue):
         """
         for atom in self.get_atoms():
             atom.move(vector)
+
+    def copy(self) -> "Residue":
+        """
+        Return a deep copy of the residue with a new UUID4.
+
+        Returns
+        -------
+        Residue
+            The copied residue.
+        """
+        new = ID.copy(self)
+        for atom in self.get_atoms():
+            ID._new_id(atom)
+        return new
 
     def __repr__(self):
         return f"Residue({self.resname}, {self.serial_number})"
@@ -537,6 +603,28 @@ class Chain(ID, bio.Chain.Chain):
             residue = Residue.from_biopython(residue)
         bio.Chain.Chain.add(self, residue)
 
+    def matches(self, other) -> bool:
+        """
+        Check if the chain matches another chain.
+        This will return True if the two chains have matching residues.
+        """
+        return all(
+            i.matches(j) for i, j in zip(self.get_residues(), other.get_residues())
+        )
+
+    def equals(self, other) -> bool:
+        """
+        Check if the chain is equal to another chain.
+        This will check if the two chains have the same id, the same parent-model id, and have equal residues.
+        """
+        return (
+            self.id == other.id
+            and self.parent.id == other.parent.id
+            and all(
+                i.equals(j) for i, j in zip(self.get_residues(), other.get_residues())
+            )
+        )
+
     @classmethod
     def from_biopython(cls, chain) -> "Chain":
         """
@@ -587,6 +675,22 @@ class Chain(ID, bio.Chain.Chain):
         """
         for residue in self.get_residues():
             residue.move(vector)
+
+    def copy(self):
+        """
+        Return a deep copy of the chain with a new UUID4.
+
+        Returns
+        -------
+        Chain
+            The copied chain.
+        """
+        new = ID.copy(self)
+        for residue in self.get_residues():
+            ID._new_id(residue)
+            for atom in residue.get_atoms():
+                ID._new_id(atom)
+        return new
 
     def __repr__(self):
         return f"Chain({self._id})"
@@ -683,6 +787,42 @@ class Model(bio.Model.Model, ID):
         for chain in self.get_chains():
             chain.move(vector)
 
+    def matches(self, other) -> bool:
+        """
+        Check if the model matches another model.
+        This will return True if the two models have matching chains.
+        """
+        return all(i.matches(j) for i, j in zip(self.get_chains(), other.get_chains()))
+
+    def equals(self, other) -> bool:
+        """
+        Check if the model is equal to another model.
+        This will return True if the two models have the same id, same parent-structure id, and have matching chains.
+        """
+        return (
+            self.matches(other)
+            and self.id == other.id
+            and self.parent.id == other.parent.id
+        )
+
+    def copy(self):
+        """
+        Return a deep copy of the model with a new UUID4.
+
+        Returns
+        -------
+        Model
+            The copied model.
+        """
+        new = ID.copy(self)
+        for chain in self.get_chains():
+            ID._new_id(chain)
+            for residue in chain.get_residues():
+                ID._new_id(residue)
+                for atom in residue.get_atoms():
+                    ID._new_id(atom)
+        return new
+
     @classmethod
     def from_biopython(cls, model):
         """
@@ -719,6 +859,12 @@ class Model(bio.Model.Model, ID):
 
     def __repr__(self):
         return f"Model({self._id})"
+
+    # somehow the __eq__ was not inherited from ID...
+    def __eq__(self, other):
+        if not isinstance(other, Model):
+            return False
+        return self._ID__id == other._ID__id
 
     def __lt__(self, other):
         return self.id < other.id
@@ -764,6 +910,47 @@ class Structure(ID, bio.Structure.Structure):
     @full_id.setter
     def full_id(self, value):
         pass
+
+    def add(self, model):
+        if not isinstance(model, Model):
+            model = Model.from_biopython(model)
+        bio.Structure.Structure.add(self, model)
+
+    def matches(self, other) -> bool:
+        """
+        Check if the structure matches another structure.
+        This will return True if the two structures have the same id.
+        """
+        return self.id == other.id
+
+    def equals(self, other) -> bool:
+        """
+        Check if the structure is equal to another structure.
+        This will return True if the two structures have the same id and have equal models.
+        """
+        return self.matches(other) and all(
+            i.equals(j) for i, j in zip(self.get_models(), other.get_models())
+        )
+
+    def copy(self):
+        """
+        Return a deep copy of the structure with a new UUID4.
+
+        Returns
+        -------
+        Structure
+            The copied structure.
+        """
+        new = ID.copy(self)
+        for model in self.get_models():
+            ID._new_id(model)
+            for chain in model.get_chains():
+                ID._new_id(chain)
+                for residue in chain.get_residues():
+                    ID._new_id(residue)
+                    for atom in residue.get_atoms():
+                        ID._new_id(atom)
+        return new
 
     @classmethod
     def from_biopython(cls, structure: "bio.Structure.Structure") -> "Structure":
