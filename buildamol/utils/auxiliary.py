@@ -42,6 +42,17 @@ except ImportError:
     HAS_OPENMM = False
 
 
+try:
+    from numba import njit
+
+    HAS_NUMBA = True
+    USE_NUMBA = False
+except ImportError:
+    njit = None
+    HAS_NUMBA = False
+    USE_NUMBA = False
+
+
 # =================================================================
 def load_pickle(filename):
     """
@@ -198,6 +209,23 @@ class DummyStructure:
 
     def get_models(self):
         return iter(self.models)
+
+
+def use_numba():
+    """
+    Use Numba if available
+    """
+    global USE_NUMBA
+    if HAS_NUMBA:
+        USE_NUMBA = True
+
+
+def dont_use_numba():
+    """
+    Don't use Numba
+    """
+    global USE_NUMBA
+    USE_NUMBA = False
 
 
 class DummyBar:

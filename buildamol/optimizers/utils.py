@@ -9,10 +9,18 @@ import buildamol.optimizers.DistanceRotatron as DistanceRotatron
 
 import buildamol.core.Molecule as Molecule
 import buildamol.optimizers.algorithms as agents
-import buildamol.utils.auxiliary as aux
 
 from multiprocessing import Pool, cpu_count
 from functools import partial
+
+
+__all__ = [
+    "apply_solution",
+    "optimize",
+    "auto_algorithm",
+    "split_environment",
+    "parallel_optimize",
+]
 
 
 def apply_solution(
@@ -277,15 +285,6 @@ def parallel_optimize(
         mol = apply_solution(sol, env, mol)
 
     return mol
-
-
-__all__ = [
-    "apply_solution",
-    "optimize",
-    "auto_algorithm",
-    "split_environment",
-    "parallel_optimize",
-]
 
 
 if __name__ == "__main__":

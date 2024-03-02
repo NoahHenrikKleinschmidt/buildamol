@@ -228,19 +228,9 @@ class OverlapRotatron(Rotatron):
 
         # =====================================
         if self.crop_radius > 0:
-            edge_coords = np.array(
-                [(a.coord + b.coord) / 2 for a, b in rotatable_edges]
+            graph, rotatable_edges = self._setup_helpers_crop_faraway_nodes(
+                self.crop_radius, graph, rotatable_edges
             )
-            nodes = list(graph.nodes)
-            node_coords = np.array([node.coord for node in nodes])
-
-            dists = cdist(edge_coords, node_coords)
-            dists = dists > self.crop_radius
-            dists = np.apply_along_axis(np.all, 0, dists)
-            if np.max(dists) != 0:
-                nodes_to_drop = [nodes[i] for i, d in enumerate(dists) if d]
-                graph.remove_nodes_from(nodes_to_drop)
-
         # =====================================
 
         self.action_space = gym.spaces.Box(
@@ -263,10 +253,6 @@ class OverlapRotatron(Rotatron):
 
         # =====================================
 
-        # self._gmms = {
-        #     k: gmm(self.state[mask], 1) for k, mask in self.rotation_units.items()
-        # }
-
         # this is the mainloop for computing pairwise overlaps
         n = 0
         for i, gmm1 in enumerate(self.rotation_units):
@@ -277,12 +263,6 @@ class OverlapRotatron(Rotatron):
         self.overlaps = np.zeros(n + 1)
         self.centers = np.zeros((n + 1, 3))
         self.covariances = np.zeros((n + 1, 3, 3))
-
-        # =====================================
-
-        self._last_eval = self.eval(self.state)
-        self._best_eval = self._last_eval
-        self._backup_eval = self._last_eval
 
         # =====================================
 
@@ -320,9 +300,6 @@ class OverlapRotatron(Rotatron):
                 idx += 1
 
         return np.mean(self.overlaps)
-
-    def _init_eval(self, state):
-        return np.inf
 
 
 if __name__ == "__main__":

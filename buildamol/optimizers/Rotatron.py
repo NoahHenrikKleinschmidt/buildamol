@@ -7,9 +7,12 @@ import gym
 import numpy as np
 
 from scipy.spatial.distance import cdist
-from scipy.spatial.transform import Rotation
 
+import buildamol.utils.auxiliary as aux
 import buildamol.graphs.BaseGraph as BaseGraph
+import buildamol.structural.base as structural
+from copy import deepcopy
+
 from multiprocessing import Pool
 
 
@@ -44,7 +47,7 @@ class Rotatron(gym.Env):
         self.n_nodes = len(self.node_dict)
         self.n_edges = len(self.rotatable_edges)
 
-        self.state = self._make_state_from_graph(self.graph)
+        self.state = self._make_state_from_graph(self.graph).astype(np.float64)
         self._backup_state = self.state.copy()
 
         self.rotation_unit_masks = np.ones(
@@ -61,147 +64,13 @@ class Rotatron(gym.Env):
             self._generate_edge_lengths()
 
         self._edge_node_coords = np.array(
-            [
-                [self.get_node_idx(e[0]), self.get_node_idx(e[1])]
-                for e in self.rotatable_edges
-            ]
+            [[self.node_dict[e[0]], self.node_dict[e[1]]] for e in self.rotatable_edges]
         )
 
-        self._backup_eval = 0
-        self._best_state = self.state.copy()
-        self._best_action = self.blank()
-        self._action_history = self.blank()
-        self._last_eval = self._init_eval(self.state)
-        self._best_eval = self._last_eval
-        self._backup_eval = self._last_eval
-
-    def _generate_edge_lengths(self):
-        """
-        Compute the lengths of the edges
-        """
-        self.edge_lengths = np.array(
-            [
-                np.linalg.norm(
-                    self.state[self.node_dict[e[0]]] - self.state[self.node_dict[e[1]]]
-                )
-                for e in self.rotatable_edges
-            ]
-        )
-
-    def _generate_edge_masks(self, n_processes):
-        """
-        Compute the edge masks of downstream nodes
-        """
-        if n_processes > 1:
-            p = Pool(n_processes)
-            p.map(self._generate_edge_mask, [e for e in self.rotatable_edges])
-            p.close()
-            p.join()
+        if aux.USE_NUMBA:
+            self._rotate = self._numba_rotate
         else:
-            self.edge_masks = np.array(
-                [self._generate_edge_mask(e) for e in self.rotatable_edges],
-                dtype=bool,
-            )
-
-    def _generate_edge_mask(self, edge):
-        return np.array(
-            [
-                1 if i in self.graph.get_descendants(*edge) else 0
-                for i in self.graph.nodes
-            ]
-        )
-
-    @property
-    def best(self):
-        """
-        The best state, the action that lead there, and evaluation that the environment has seen
-        """
-        return self._best_state, self._best_action, self._best_eval
-
-    def get_edge_idx(self, _edge):
-        return self.rotatable_edges.index(_edge)
-
-    def get_node_idx(self, _node):
-        return self.node_dict[_node]
-
-    def get_edge_vector(self, _edge):
-        adx, bdx = self.get_node_idx(_edge[0]), self.get_node_idx(_edge[1])
-        vec = self.state[bdx] - self.state[adx]
-        return vec
-
-    def _get_edge_vector(self, edx):
-        adx, bdx = self._edge_node_coords[edx]
-        vec = self.state[bdx] - self.state[adx]
-        return vec
-
-    def _get_edge_ref_coord(self, edx):
-        adx, bdx = self._edge_node_coords[edx]
-        return self.state[adx]
-
-    def get_node_coords(self, _node):
-        return self.state[self.get_node_idx(_node)]
-
-    def rotate(self, edge, angle, edx=None):
-        """
-        Rotate the graph around an edge
-
-        Parameters
-        ----------
-        edge : tuple
-            The edge to rotate around
-        angle : float
-            The angle to rotate by
-
-        Returns
-        -------
-        np.ndarray
-            The new state of the environment
-        """
-        if -1e-3 < angle < 1e-3:
-            return self.state
-        edx = edx or self.get_edge_idx(edge)
-        mask = self.edge_masks[edx]
-        vec = self.get_edge_vector(edge)
-        # new version where the lengths are pre-computed
-        # since we are only rotating the lengths should not change...
-        length = self.edge_lengths[edx]
-        vec /= length
-        ref_coord = self.get_node_coords(edge[0])
-
-        rot = Rotation.from_rotvec(vec * angle)
-        self.state[mask] = rot.apply(self.state[mask] - ref_coord) + ref_coord
-        return self.state
-
-    def _rotate(self, edx, angle):
-        """
-        Rotate the graph around an edge. This is the version that is used in the step function.
-
-        Parameters
-        ----------
-        edx : int
-            The edge index to rotate around
-        angle : float
-            The angle to rotate by
-
-        Returns
-        -------
-        np.ndarray
-            The new state of the environment
-        """
-        if -1e-3 < angle < 1e-3:
-            return self.state
-
-        mask = self.edge_masks[edx]
-        vec = self._get_edge_vector(edx)
-        # new version where the lengths are pre-computed
-        # since we are only rotating the lengths should not change...
-        length = self.edge_lengths[edx]
-        vec /= length
-        ref_coord = self._get_edge_ref_coord(edx)
-
-        rot = Rotation.from_rotvec(vec * angle)
-        self.state[mask] = rot.apply(self.state[mask] - ref_coord) + ref_coord
-        return self.state
+            self._rotate = self._normal_rotate
 
     def eval(self, state):
         """
@@ -218,12 +87,6 @@ class Rotatron(gym.Env):
             The evaluation for the state
         """
         return np.inf
-
-    def _init_eval(self, state):
-        """
-        The evaluation score that is computed before the first step
-        """
-        return self.eval(state)
 
     def step(self, action):
         """
@@ -245,20 +108,16 @@ class Rotatron(gym.Env):
         dict
             Additional information
         """
-
-        for i, edge in enumerate(self.rotatable_edges):
-            new_state = self.rotate(
+        new_state = self.state
+        for edge in range(self.n_edges):
+            new_state = self._rotate(
+                new_state,
                 edge,
-                action[i],
+                action[edge],
             )
+
         e = self.eval(new_state)
         done = self.is_done(new_state)
-        self._action_history += action
-
-        if e < self._best_eval:
-            self._best_eval = e
-            self._best_action = self._action_history.copy()
-            self._best_state = new_state
         return new_state, e, done, {}
 
     def is_done(self, state):
@@ -277,23 +136,23 @@ class Rotatron(gym.Env):
         """
         return False
 
-    def reset(self, state: bool = True, best: bool = False):
+    def reset(self, *args, **kwargs):
         """
         Reset the environment
         """
-        if state:
-            self.state[:, :] = self._backup_state
-        if best:
-            self._best_state[:, :] = self._backup_state
-            self._best_action[:] = 0
-            self._action_history[:] = 0
-            self._best_eval = self._backup_eval
+        self.state[:, :] = self._backup_state
 
     def blank(self):
         """
         A blank action
         """
         return np.zeros(len(self.rotatable_edges))
+
+    def copy(self):
+        """
+        Make a deep copy of the environment
+        """
+        return deepcopy(self)
 
     def _make_state_from_graph(self, graph):
         """
@@ -347,10 +206,10 @@ class Rotatron(gym.Env):
         """
         dists1 = cdist(self.state, self.state)
         for i, angle in enumerate(np.random.random(self.n_edges)):
-            state2 = self._rotate(i, angle)
+            state2 = self._rotate(self.state, i, angle)
         dists2 = cdist(state2, state2)
         for i, angle in enumerate(np.random.random(self.n_edges)):
-            state3 = self._rotate(i, angle)
+            state3 = self._rotate(state2, i, angle)
         dists3 = cdist(state3, state3)
 
         d12 = np.abs(dists1 - dists2) < 1e-4
@@ -360,27 +219,6 @@ class Rotatron(gym.Env):
         dists = np.sum([d12, d13, d23], axis=0) == 3
         self.rotation_unit_masks = ~dists
         self.reset()
-
-    def _node_rotation_unit_mask(self, edx, ndx):
-        """
-        Get the rotation unit mask for a node
-
-        Parameters
-        ----------
-        edx : int
-            The edge index
-        ndx : int
-            The node index
-
-        Returns
-        -------
-        np.ndarray
-            The rotation unit mask
-        """
-        array = self.edge_masks[edx]
-        if array[ndx]:
-            return ~array
-        return array
 
     def _find_rotation_units(self):
         self.rotation_units = {}
@@ -400,7 +238,162 @@ class Rotatron(gym.Env):
         self.rotation_units = {
             r: np.array(list(v)) for r, v in self.rotation_units.items()
         }
-        pass
+
+    def _generate_edge_lengths(self):
+        """
+        Compute the lengths of the edges
+        """
+        self.edge_lengths = np.array(
+            [
+                np.linalg.norm(
+                    self.state[self.node_dict[e[0]]] - self.state[self.node_dict[e[1]]]
+                )
+                for e in self.rotatable_edges
+            ]
+        )
+
+    def _generate_edge_masks(self, n_processes):
+        """
+        Compute the edge masks of downstream nodes
+        """
+        if n_processes > 1:
+            p = Pool(n_processes)
+            p.map(self._generate_edge_mask, [e for e in self.rotatable_edges])
+            p.close()
+            p.join()
+        else:
+            self.edge_masks = np.array(
+                [self._generate_edge_mask(e) for e in self.rotatable_edges],
+                dtype=bool,
+            )
+
+    def _generate_edge_mask(self, edge):
+        return np.array(
+            [
+                1 if i in self.graph.get_descendants(*edge) else 0
+                for i in self.graph.nodes
+            ]
+        )
+
+    def _normal_rotate(self, state, edx, angle):
+        if -1e-3 < angle < 1e-3:
+            return self.state
+
+        mask = self.edge_masks[edx]
+
+        # vec = self._get_edge_vector(edx)
+        adx, bdx = self._edge_node_coords[edx]
+        vec = state[bdx] - state[adx]
+        vec /= self.edge_lengths[edx]
+
+        # ref_coord = self._get_edge_ref_coord(edx)
+        ref_coord = state[adx]
+
+        state[mask] = (
+            structural.rotate_coords(state[mask] - ref_coord, angle, vec) + ref_coord
+        )
+        return state
+
+    def _numba_rotate(self, state, edx, angle):
+        if -1e-3 < angle < 1e-3:
+            return self.state
+
+        return _numba_wrapper_rotate(
+            state,
+            edx,
+            angle,
+            self._edge_node_coords,
+            self.edge_lengths,
+            self.edge_masks,
+        )
+
+    # ============================================================
+    # The setup helper functions can be used by other environments
+    # that inherit from this base class
+    # ============================================================
+
+    def _setup_helpers_crop_faraway_nodes(self, radius, graph=None, edges=None):
+        """
+        This is a helper function to remove nodes that are too far away from the rotatable edges.
+        """
+        if graph and edges:
+            rotatable_edges = self._get_rotatable_edges(graph, edges)
+        else:
+            rotatable_edges = self.rotatable_edges
+
+        edge_coords = np.array([(a.coord + b.coord) / 2 for a, b in rotatable_edges])
+
+        nodes = list(graph.nodes)
+        node_coords = np.array([node.coord for node in nodes])
+
+        dists = cdist(edge_coords, node_coords)
+        dists = dists > radius
+
+        dists = np.apply_along_axis(np.all, 0, dists)
+
+        if np.max(dists) != 0:
+            nodes_to_drop = [nodes[i] for i, d in enumerate(dists) if d]
+            graph.remove_nodes_from(nodes_to_drop)
+
+        return graph, rotatable_edges
+
+
+# ============================================================
+# The numba functions are used to speed up things.
+# For each function there must be a _normal_ and a _numba_
+# version. The _normal_ version is used in the setup if numba is not installed
+# The _numba_ version is used in the step function if numba is installed
+# ============================================================
+
+
+@aux.njit
+def _numba_wrapper_rotate(
+    state, edx, angle, edge_node_coords, edge_lengths, edge_masks
+):
+    """
+    Rotate the graph around an edge. This is the version that is used in the step function.
+
+    Parameters
+    ----------
+    edx : int
+        The edge index to rotate around
+    angle : float
+        The angle to rotate by
+
+    Returns
+    -------
+    np.ndarray
+        The new state of the environment
+    """
+    mask = edge_masks[edx]
+    adx, bdx = edge_node_coords[edx]
+    vec = state[bdx] - state[adx]
+    vec /= edge_lengths[edx]
+
+    ref_coord = state[adx]
+
+    rot = structural._numba_wrapper_rotation_matrix(vec, angle)
+    rot = np.transpose(rot).astype(np.float64)
+
+    state[mask] -= ref_coord
+    _c = state[mask]
+    _c = np.dot(_c, rot, out=_c)
+    state[mask] = _c
+    state[mask] += ref_coord
+
+    return state
+
+
+# if __name__ == "__main__":
+#     import buildamol as bam
+
+#     bam.load_sugars()
+#     mol = bam.molecule("GLC") % "14bb"
+#     mol *= 4
+
+#     rot = Rotatron(mol.get_atom_graph(), n_processes=4)
+#     rot._generate_rotation_unit_masks()
+#     rot._find_rotation_units()
 
 
 # if __name__ == "__main__":

@@ -495,6 +495,16 @@ def rotate_coords(
     return np.dot(np.asarray(coords), rot.T)
 
 
+@aux.njit
+def _numba_wrapper_rotate_coords(
+    coords: np.ndarray,
+    angle: float,
+    axis: np.ndarray,
+):
+    rot = _numba_wrapper_rotation_matrix(axis, angle)
+    return np.dot(np.asarray(coords), rot.T)
+
+
 def _rotate_coords_base_classes(
     obj,
     angle: float,
@@ -615,7 +625,6 @@ def flip_coords(coords: np.ndarray, plane_vector: np.ndarray):
     return coords - 2 * np.dot(coords, plane_vector.T)[:, None] * plane_vector
 
 
-@aux.njit
 def _rotation_matrix(axis, angle):
     """
     Compute the rotation matrix about an arbitrary axis in 3D
@@ -650,6 +659,9 @@ def _rotation_matrix(axis, angle):
             [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc],
         ]
     )
+
+
+_numba_wrapper_rotation_matrix = aux.njit(_rotation_matrix)
 
 
 def _IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
@@ -688,6 +700,34 @@ def _IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
 
     # rotate the middle bond around the new plane
     _rot = _rotation_matrix(plane_bcd, theta)
+    cd = np.dot(_rot, bc)
+    cd /= np.linalg.norm(cd)
+
+    # compute the coordinates of the fourth atom
+    d = anchor + r * cd
+    return d
+
+
+@aux.njit
+def _numba_wrapper_IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
+    ab = b - a
+    bc = c - b
+
+    # compute normalized bond vectors for available atoms
+    ab /= np.linalg.norm(ab)
+    bc /= np.linalg.norm(bc)
+
+    # compute plane vector for atoms 1-2-3
+    plane_abc = np.cross(ab, bc)
+    plane_abc /= np.linalg.norm(plane_abc)
+
+    # rotate the plane vector around the middle bond (2-3) to get the plane 2-3-4
+    _rot = _numba_wrapper_rotation_matrix(bc, dihedral)
+    plane_bcd = np.dot(_rot, plane_abc)
+    plane_bcd /= np.linalg.norm(plane_bcd)
+
+    # rotate the middle bond around the new plane
+    _rot = _numba_wrapper_rotation_matrix(plane_bcd, theta)
     cd = np.dot(_rot, bc)
     cd /= np.linalg.norm(cd)
 

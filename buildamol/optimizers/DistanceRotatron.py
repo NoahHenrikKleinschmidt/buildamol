@@ -163,19 +163,9 @@ class DistanceRotatron(Rotatron):
 
         # =====================================
         if self.crop_radius > 0:
-            rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)
-            edge_coords = np.array(
-                [(a.coord + b.coord) / 2 for a, b in rotatable_edges]
+            graph, rotatable_edges = self._setup_helpers_crop_faraway_nodes(
+                self.crop_radius, graph, rotatable_edges
             )
-            nodes = list(graph.nodes)
-            node_coords = np.array([node.coord for node in nodes])
-
-            dists = cdist(edge_coords, node_coords)
-            dists = dists > self.crop_radius
-            dists = np.apply_along_axis(np.all, 0, dists)
-            if np.max(dists) != 0:
-                nodes_to_drop = [nodes[i] for i, d in enumerate(dists) if d]
-                graph.remove_nodes_from(nodes_to_drop)
         # =====================================
 
         if radius > 0:
@@ -202,8 +192,6 @@ class DistanceRotatron(Rotatron):
             low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
         )
         # =====================================
-
-        self._best_clashes = self.count_clashes()
 
     def eval(self, state):
         """
@@ -236,31 +224,8 @@ class DistanceRotatron(Rotatron):
         self._last_eval = final
         return final
 
-    def step(self, action):
-        for i, edge in enumerate(self.rotatable_edges):
-            self.edx = i
-            new_state = self._rotate(i, action[i])
-
-        self._last_eval = self.eval(new_state)
-        clashes = self.count_clashes()
-        done = clashes == 0
-        self._action_history += action
-
-        if self._last_eval < self._best_eval and clashes <= self._best_clashes:
-            self._best_eval = self._last_eval
-            self._best_state *= 0
-            self._best_state += new_state
-            self._best_action *= 0
-            self._best_action += action
-            self._best_clashes = clashes
-
-        return new_state, self._last_eval, done, {}
-
     def is_done(self, state):
-        return self.count_clashes() == 0
-
-    def count_clashes(self):
-        return np.sum(self._state_dists < self.clash_distance)
+        return np.min(self._state_dists) > self.clash_distance
 
     def concatenation_function(self, x):
         mask = x < self._radius
