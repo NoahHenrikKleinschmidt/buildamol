@@ -1538,3 +1538,149 @@ def test_merge():
     assert len(mol.residues) == 4
 
     # mol.show()
+
+
+def test_base_matches_and_equal():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = mol.copy()
+
+    for a1, a2 in zip(mol.atoms, mol2.atoms):
+        assert a1.matches(a2)
+        assert a2.matches(a1)
+        assert a1.equals(a2)
+        assert a2.equals(a1)
+
+    for r1, r2 in zip(mol.residues, mol2.residues):
+        assert r1.matches(r2)
+        assert r2.matches(r1)
+        assert r1.equals(r2)
+        assert r2.equals(r1)
+
+    for c1, c2 in zip(mol.chains, mol2.chains):
+        assert c1.matches(c2)
+        assert c2.matches(c1)
+        assert c1.equals(c2)
+        assert c2.equals(c1)
+
+    for m1, m2 in zip(mol.structure.get_models(), mol2.structure.get_models()):
+        assert m1.matches(m2)
+        assert m2.matches(m1)
+        assert m1.equals(m2)
+        assert m2.equals(m1)
+
+    assert mol.structure.matches(mol2.structure)
+    assert mol2.structure.matches(mol.structure)
+    assert mol.structure.equals(mol2.structure)
+    assert mol2.structure.equals(mol.structure)
+
+
+def test_base_matches_and_equal_2():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = bam.Molecule.from_compound("GAL")
+    mol_1 = (mol % "14bb" * 3) % "12ab" + mol2
+    mol_2 = (mol % "14bb" * 3) % "12ab" + mol2
+    mol = mol_1
+    mol2 = mol_2
+
+    for a1, a2 in zip(mol.atoms, mol2.atoms):
+        assert a1.matches(a2)
+        assert a2.matches(a1)
+        assert a1.equals(a2)
+        assert a2.equals(a1)
+        assert not a1 == a2
+
+    for r1, r2 in zip(mol.residues, mol2.residues):
+        assert r1.matches(r2)
+        assert r2.matches(r1)
+        assert r1.equals(r2)
+        assert r2.equals(r1)
+        assert not r1 == r2
+
+    for c1, c2 in zip(mol.chains, mol2.chains):
+        assert c1.matches(c2)
+        assert c2.matches(c1)
+        assert c1.equals(c2)
+        assert c2.equals(c1)
+        assert not c1 == c2
+
+    for m1, m2 in zip(mol.structure.get_models(), mol2.structure.get_models()):
+        assert m1.matches(m2)
+        assert m2.matches(m1)
+        assert m1.equals(m2)
+        assert m2.equals(m1)
+        assert not m1 == m2
+
+    assert mol.structure.matches(mol2.structure)
+    assert mol2.structure.matches(mol.structure)
+    assert mol.structure.equals(mol2.structure)
+    assert mol2.structure.equals(mol.structure)
+    assert not mol.structure == mol2.structure
+
+
+def test_base_matches_with_reindex():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = mol.copy()
+    mol2.reindex(1, 2, len(mol2.atoms))
+
+    for a1, a2 in zip(mol.atoms, mol2.atoms):
+        assert a1.matches(a2)
+        assert a2.matches(a1)
+        assert a1.equals(a2)  # on atom level all should still be equal
+        assert a2.equals(a1)
+
+    for r1, r2 in zip(mol.residues, mol2.residues):
+        assert r1.matches(r2)
+        assert r2.matches(r1)
+        assert not r1.equals(r2)
+        assert not r2.equals(r1)
+
+    for c1, c2 in zip(mol.chains, mol2.chains):
+        assert c1.matches(c2)
+        assert c2.matches(c1)
+        assert c1.equals(c2)
+        assert c2.equals(c1)
+
+    for m1, m2 in zip(mol.structure.get_models(), mol2.structure.get_models()):
+        assert m1.matches(m2)
+        assert m2.matches(m1)
+        assert m1.equals(m2)
+        assert m2.equals(m1)
+
+    assert mol.structure.matches(mol2.structure)
+    assert mol2.structure.matches(mol.structure)
+    assert mol.structure.equals(mol2.structure)
+    assert mol2.structure.equals(mol.structure)
+
+
+def test_base_no_matches():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = bam.Molecule.from_compound("GAL")
+
+    for a1, a2 in zip(mol.atoms, mol2.atoms):
+        assert not a1.matches(a2)
+        assert not a2.matches(a1)
+        assert not a1.equals(a2)  # on atom level all should still be equal
+        assert not a2.equals(a1)
+
+    for r1, r2 in zip(mol.residues, mol2.residues):
+        assert not r1.matches(r2)
+        assert not r2.matches(r1)
+        assert not r1.equals(r2)
+        assert not r2.equals(r1)
+
+    for c1, c2 in zip(mol.chains, mol2.chains):
+        assert not c1.matches(c2)
+        assert not c2.matches(c1)
+        assert not c1.equals(c2)
+        assert not c2.equals(c1)
+
+    for m1, m2 in zip(mol.structure.get_models(), mol2.structure.get_models()):
+        assert not m1.matches(m2)
+        assert not m2.matches(m1)
+        assert not m1.equals(m2)
+        assert not m2.equals(m1)
+
+    assert not mol.structure.matches(mol2.structure)
+    assert not mol2.structure.matches(mol.structure)
+    assert not mol.structure.equals(mol2.structure)
+    assert not mol2.structure.equals(mol.structure)

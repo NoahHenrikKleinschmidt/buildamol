@@ -171,3 +171,306 @@ def test_apply():
     after = np.array([i.coord for i in out.get_atoms()])
 
     assert not np.allclose(before, after, atol=1e-2)
+
+
+def test_optim_distance_swarm():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.DistanceRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "swarm", n_particles=50)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_distance_anneal():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.DistanceRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "anneal", n_particles=50)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_distance_genetic():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.DistanceRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "genetic", max_generations=500)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_distance_scipy():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.DistanceRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "scipy")
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_overlap_swarm():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.OverlapRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "swarm", n_particles=50)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_overlap_anneal():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.OverlapRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "anneal", n_particles=50)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_overlap_genetic():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.OverlapRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "genetic", max_generations=500)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_overlap_scipy():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.OverlapRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "scipy")
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_forcefield_swarm():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.ForceFieldRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "swarm", n_particles=50)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_forcefield_anneal():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.ForceFieldRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "anneal", n_particles=50)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_forcefield_genetic():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.ForceFieldRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "genetic", max_generations=500)
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_forcefield_scipy():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+
+    env = opt.ForceFieldRotatron(g, edges)
+    assert env is not None
+
+    out = opt.optimize(mol.copy(), env, "scipy")
+
+    print(out.count_clashes())
+    out.show()
+
+
+def test_optim_numba_distance_swarm():
+    bam.use_numba()
+    test_optim_distance_swarm()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_distance_anneal():
+    bam.use_numba()
+    test_optim_distance_anneal()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_distance_genetic():
+    bam.use_numba()
+    test_optim_distance_genetic()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_distance_scipy():
+    bam.use_numba()
+    test_optim_distance_scipy()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_overlap_swarm():
+    bam.use_numba()
+    test_optim_overlap_swarm()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_overlap_anneal():
+    bam.use_numba()
+    test_optim_overlap_anneal()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_overlap_genetic():
+    bam.use_numba()
+    test_optim_overlap_genetic()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_overlap_scipy():
+    bam.use_numba()
+    test_optim_overlap_scipy()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_forcefield_swarm():
+    bam.use_numba()
+    test_optim_forcefield_swarm()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_forcefield_anneal():
+    bam.use_numba()
+    test_optim_forcefield_anneal()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_forcefield_genetic():
+    bam.use_numba()
+    test_optim_forcefield_genetic()
+    bam.dont_use_numba()
+
+
+def test_optim_numba_forcefield_scipy():
+    bam.use_numba()
+    test_optim_forcefield_scipy()
+    bam.dont_use_numba()
+
+
+# def test_benchmark_numba():
+#     mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/0.pdb")
+#     g = mol.get_atom_graph()
+#     edges = g.find_rotatable_edges(g.central_node)
+#     edges = g.sample_edges(edges)
+
+#     env = opt.DistanceRotatron(g, edges, n_processes=10)
+#     env2 = env.copy()
+
+#     env2._rotate = env2._normal_rotate
+
+#     from time import time
+
+#     open("rotate_benchmark_numba.csv", "w").close()
+
+#     for i in range(50):
+#         start = time()
+#         sol, _eval = opt.swarm_optimize(env, n_particles=50)
+#         dt = time() - start
+#         print(dt, ", numba", file=open("rotate_benchmark_numba.csv", "a"))
+
+#         start = time()
+#         sol, _eval = opt.swarm_optimize(env2, n_particles=50)
+#         dt = time() - start
+#         print(dt, ", normal", file=open("rotate_benchmark_numba.csv", "a"))

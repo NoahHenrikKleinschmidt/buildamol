@@ -1253,17 +1253,33 @@ def test_rotate_molecule():
     old_coords = np.array([a.coord for a in mol.get_atoms()])
 
     d = mol.draw()
-    bam.structural.rotate_molecule(mol, np.array([1, 0, 0]), 90)
+    bam.structural.rotate_molecule(mol, 90, np.array([1, 0, 0]))
     d.draw_edges(*mol.get_bonds(), color="red", linewidth=2)
 
-    bam.structural.rotate_molecule(mol, np.array([0, 1, 0.2]), 30)
+    bam.structural.rotate_molecule(mol, 30, np.array([0, 1, 0.2]))
     d.draw_edges(*mol.get_bonds(), color="green", linewidth=2)
 
-    bam.structural.rotate_molecule(mol, np.array([4.5, 2.3, 1.4]), 45)
+    bam.structural.rotate_molecule(mol, 45, np.array([4.5, 2.3, 1.4]))
     d.draw_edges(*mol.get_bonds(), color="blue", linewidth=2)
 
     new_coords = np.array([a.coord for a in mol.get_atoms()])
 
     assert not np.allclose(old_coords, new_coords)
 
+    d.show()
+
+
+def test_flip():
+    mol = bam.Molecule.from_compound("GLC")
+    old_coords = np.array([a.coord for a in mol.get_atoms()])
+    d = mol.draw()
+    bam.structural.flip_molecule(mol, [0, 0, 1], center=mol.center_of_geometry)
+    d.draw_vector("axis", [0, 0, 0], [0, 0, 1], color="orange")
+    d.draw_edges(*mol.get_bonds(), color="red", linewidth=2)
+    bam.structural.flip_molecule(mol, [0, 1, 0])
+    d.draw_edges(*mol.get_bonds(), color="green", linewidth=2)
+    bam.structural.flip_molecule(mol, [1, 0, 0])
+    d.draw_edges(*mol.get_bonds(), color="blue", linewidth=2)
+    new_coords = np.array([a.coord for a in mol.get_atoms()])
+    assert not np.allclose(old_coords, new_coords)
     d.show()
