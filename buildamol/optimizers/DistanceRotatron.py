@@ -29,43 +29,28 @@ def concatenation_wrapper(x):
     pass
 
 
-def simple_concatenation_function(self, x):
+def simple_concatenation_function(x, unfold, pushback, n_smallest, clash_distance):
     """
     A simple concatentation function that computes the evaluation as:
 
     Mean distance ** unfold + (mean of n smallest distances) ** pushback
     """
-    smallest = np.sort(x)[: self.n_smallest]
-    e = np.power(np.mean(x), self.unfold) + np.power(np.mean(smallest), self.pushback)
-    return e
-
-
-@aux.njit
-def _numba_wrapper_simple_concatenation_function(
-    x, unfold, pushback, n_smallest, clash_distance
-):
     smallest = np.sort(x)[:n_smallest]
     e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
     return e
 
 
-def concatenation_function_with_penalty(self, x):
+_numba_wrapper_simple_concatenation_function = aux.njit(simple_concatenation_function)
+
+
+def concatenation_function_with_penalty(
+    x, unfold, pushback, n_smallest, clash_distance
+):
     """
     A concatentation function that computes the evaluation as:
 
     (Mean distance ** unfold + (mean of n smallest distances) ** pushback) / clash penalty
     """
-    smallest = np.sort(x)[: self.n_smallest]
-    penalty = np.sum(x < 1.5 * self.clash_distance)
-    e = np.power(np.mean(x), self.unfold) + np.power(np.mean(smallest), self.pushback)
-    e /= (1 + penalty) ** 2
-    return e
-
-
-@aux.njit
-def _numba_wrapper_concatenation_function_with_penalty(
-    x, unfold, pushback, n_smallest, clash_distance
-):
     smallest = np.sort(x)[:n_smallest]
     penalty = np.sum(x < 1.5 * clash_distance)
     e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
@@ -73,64 +58,54 @@ def _numba_wrapper_concatenation_function_with_penalty(
     return e
 
 
-def concatenation_function_no_pushback(self, x):
+_numba_wrapper_concatenation_function_with_penalty = aux.njit(
+    concatenation_function_with_penalty
+)
+
+
+def concatenation_function_no_pushback(x, unfold, pushback, n_smallest, clash_distance):
     """
     A concatentation function that computes the evaluation as:
 
     Mean distance ** unfold
     """
-    e = np.power(np.mean(x), self.unfold)
-    return e
-
-
-@aux.njit
-def _numba_wrapper_concatenation_function_no_pushback(
-    x, unfold, pushback, n_smallest, clash_distance
-):
     e = np.power(np.mean(x), unfold)
     return e
 
 
-def concatenation_function_no_unfold(self, x):
+_numba_wrapper_concatenation_function_no_pushback = aux.njit(
+    concatenation_function_no_pushback
+)
+
+
+def concatenation_function_no_unfold(x, unfold, pushback, n_smallest, clash_distance):
     """
     A concatentation function that computes the evaluation as:
 
     Mean distance + pushback * mean of n smallest distances
     """
-    smallest = np.sort(x)[: self.n_smallest]
-    e = np.power(np.mean(smallest), self.pushback)
-    return e
-
-
-@aux.njit
-def _numba_wrapper_concatenation_function_no_unfold(
-    x, unfold, pushback, n_smallest, clash_distance
-):
     smallest = np.sort(x)[:n_smallest]
     e = np.power(np.mean(smallest), pushback)
     return e
 
 
-def concatenation_function_linear(self, x):
+_numba_wrapper_concatenation_function_no_unfold = aux.njit(
+    concatenation_function_no_unfold
+)
+
+
+def concatenation_function_linear(x, unfold, pushback, n_smallest, clash_distance):
     """
     A concatentation function that computes the evaluation as:
 
     Mean distance * unfold + (mean of n smallest distances) * pushback
     """
-    smallest = np.sort(x)[: self.n_smallest]
-    e = np.multiply(np.mean(x), self.unfold) + np.multiply(
-        np.mean(smallest), self.pushback
-    )
-    return e
-
-
-@aux.njit
-def _numba_wrapper_concatenation_function_linear(
-    x, unfold, pushback, n_smallest, clash_distance
-):
     smallest = np.sort(x)[:n_smallest]
     e = np.multiply(np.mean(x), unfold) + np.multiply(np.mean(smallest), pushback)
     return e
+
+
+_numba_wrapper_concatenation_function_linear = aux.njit(concatenation_function_linear)
 
 
 __numba_wrappers__ = {
@@ -171,7 +146,9 @@ class DistanceRotatron(Rotatron):
         The number of smallest distances to use when computing the evaluation for each node.
     concatenation_function : callable
         A custom function to use when computing the evaluation for each node.
-        This function should take the environment (self) as first argument and a 1D array of pairwise-distances from one node to all others as second argument and return a scalar.
+        This function should take the state array as first argument and may take any additional arguments.
+        These additional arguments must be passed as keyword arguments to the environment during setup.
+        The function must return a float.
     bounds : tuple
         The bounds for the minimal and maximal rotation angles.
     n_processes : int
@@ -250,7 +227,12 @@ class DistanceRotatron(Rotatron):
 
         # =====================================
 
-        self._numba_func_args = ("unfold", "pushback", "n_smallest", "clash_distance")
+        self._numba_func_signature = (
+            "unfold",
+            "pushback",
+            "n_smallest",
+            "clash_distance",
+        )
 
         if concatenation_function is None:
             concatenation_function = concatenation_function_with_penalty
@@ -263,15 +245,15 @@ class DistanceRotatron(Rotatron):
             concatenation_function = __numba_wrappers__.get(
                 concatenation_function, concatenation_function
             )
-            self._numba_concat_args = aux.get_args(
-                concatenation_function, self.hyperparameters
-            )
 
             self.eval = self._numba_eval
         else:
             self.eval = self._normal_eval
 
         self._concatenation_function = concatenation_function
+        self._concatenation_function_kwargs = aux.get_args(
+            self._concatenation_function, self.hyperparameters
+        )
         self._bounds_tuple = bounds
 
         # =====================================
@@ -293,17 +275,24 @@ class DistanceRotatron(Rotatron):
         pairwise_dists = cdist(state, state)
         np.fill_diagonal(pairwise_dists, self._radius)
 
-        self.ndx = 0
-        dist_eval = np.apply_along_axis(self.concatenation_function, 1, pairwise_dists)
-        mask = dist_eval > -1
+        mask = pairwise_dists < self._radius
+        mask = np.logical_and(mask, self.rotation_unit_masks)
+        dist_eval = np.zeros(len(pairwise_dists))
 
-        if not np.logical_or.reduce(mask):
-            return self._last_eval
+        _changed_entries = mask.any(axis=1)
+        dist_eval[~_changed_entries] = -1
 
-        mean_dist_eval = np.divide(1.0, np.mean(dist_eval[mask]))
+        for i in np.where(_changed_entries)[0]:
+            dist_eval[i] = self._concatenation_function(
+                pairwise_dists[i][mask[i]], **self._concatenation_function_kwargs
+            )
+
+        mean_dist_eval = np.divide(1.0, np.mean(dist_eval[dist_eval > -1]))
 
         final = np.log(mean_dist_eval)  # - self._backup_eval
-        self._state_dists[:, :] = pairwise_dists
+
+        min_dist = np.min(pairwise_dists)
+        self._state_dists = min_dist
         self._last_eval = final
         return final
 
@@ -314,7 +303,7 @@ class DistanceRotatron(Rotatron):
             rotation_unit_masks=self.rotation_unit_masks,
             last_eval=self._last_eval,
             radius=self._radius,
-            **self._numba_concat_args,
+            **self._concatenation_function_kwargs,
         )
         self._state_dists = min_dist
         self._last_eval = final
@@ -329,7 +318,9 @@ class DistanceRotatron(Rotatron):
         self.ndx += 1
         if not np.logical_or.reduce(mask):
             return -1
-        return self._concatenation_function(self, x[mask])
+        return self._concatenation_function(
+            x[mask], **self._concatenation_function_kwargs
+        )
 
 
 @aux.njit
@@ -349,20 +340,19 @@ def _numba_wrapper_eval(
 
     dist_eval = np.zeros(len(state))
 
+    mask = pairwise_dists < radius
+    mask = np.logical_and(mask, rotation_unit_masks)
+    dist_eval = np.zeros(len(pairwise_dists))
+
     for i in range(len(pairwise_dists)):
-        mask = pairwise_dists[i] < radius
-        mask = np.logical_and(mask, rotation_unit_masks[i])
-
-        if not np.any(mask):
+        if not mask[i].any():
             dist_eval[i] = -1
-            continue
-
-        dist_eval[i] = concatenation_function(
-            pairwise_dists[i][mask], unfold, pushback, n_smallest, clash_distance
-        )
+        else:
+            dist_eval[i] = concatenation_function(
+                pairwise_dists[i][mask[i]], unfold, pushback, n_smallest, clash_distance
+            )
 
     mask = dist_eval > -1
-
     mean_dist_eval = np.divide(1.0, np.mean(dist_eval[mask]))
 
     final = np.log(mean_dist_eval)  # - self._backup_eval
@@ -392,12 +382,16 @@ if __name__ == "__main__":
     print("init: ", mol.count_clashes())
     graph = mol.get_residue_graph(True)
     env = DistanceRotatron(
-        graph, numba=True
+        graph, numba=False
     )  # , concatenatiofn_function=simple_concatenation_function)
 
+    from time import time
+
     for i in range(15):
+
+        t0 = time()
         out = bam.optimizers.optimize(mol.copy(), env)
-        print(out.count_clashes())
+        print(time() - t0, out.count_clashes())
 
 #     import matplotlib.pyplot as plt
 #     import seaborn as sns
