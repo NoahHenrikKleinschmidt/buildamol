@@ -288,8 +288,15 @@ class PlotlyViewer3D:
         """
         Add a plotly figure to the viewer.
         """
-        data = getattr(fig, "data", fig)
+        if isinstance(fig, PlotlyViewer3D):
+            data = fig.figure.data
+        else:
+            data = getattr(fig, "data", fig)
         self.figure.add_traces(data)
+
+    def __add__(self, fig):
+        self.add(fig)
+        return self
 
     def show(self):
         self.figure.show()
@@ -393,14 +400,16 @@ class PlotlyViewer3D:
 
     def draw_points(
         self,
-        ids: list,
         coords: list,
+        ids: list = None,
         colors: list = None,
         opacities: list = None,
         sizes: list = None,
         showlegends: list = None,
         **kwargs,
     ):
+        if ids is None:
+            ids = [str(i) for i in range(len(coords))]
         if colors is None:
             colors = ["black" for _ in range(len(coords))]
         if opacities is None:
