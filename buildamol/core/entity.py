@@ -1332,7 +1332,7 @@ class BaseEntity:
                 ]
             else:
                 raise ValueError(
-                    f"Unknown search parameter '{by}', must be either 'name', 'seqid' or 'full_id'"
+                    f"Unknown search parameter '{by}', must be either 'name', 'seqid' or 'full_id' -> erroneous input: {residue=}"
                 )
             if chain is not None:
                 chain = self.get_chain(chain)
@@ -1430,7 +1430,7 @@ class BaseEntity:
                 return atoms
             else:
                 raise ValueError(
-                    "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+                    f"Unknown search parameter, must be either 'id', 'serial' or 'full_id' -> erroneous input: {atoms=}"
                 )
 
         if by == "id":
@@ -1444,7 +1444,7 @@ class BaseEntity:
             atoms = [i for i in self._model.get_atoms() if i.element in atoms]
         else:
             raise ValueError(
-                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element'"
+                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element' -> erroneous input: {atoms=}"
             )
 
         return atoms
@@ -1504,7 +1504,7 @@ class BaseEntity:
                 by = "full_id"
             else:
                 raise ValueError(
-                    "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+                    f"Unknown search parameter, must be either 'id', 'serial' or 'full_id' -> erroneous input: {atom=}"
                 )
 
         if by == "id":
@@ -1517,7 +1517,7 @@ class BaseEntity:
             _atom = (i for i in atom_gen() if i.element == atom.upper())
         else:
             raise ValueError(
-                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element'"
+                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element' -> erroneous input: {atom=}"
             )
 
         return next(_atom, None)
@@ -1659,7 +1659,7 @@ class BaseEntity:
             _residue = (i for i in self._model.get_residues() if i.full_id == residue)
         else:
             raise ValueError(
-                "Unknown search parameter, must be either 'name', 'seqid' or 'full_id'"
+                f"Unknown search parameter, must be either 'name', 'seqid' or 'full_id' -> erroneous input: {residue=}"
             )
         if chain is not None:
             chain = self.get_chain(chain)
