@@ -312,14 +312,19 @@ class BaseGraph(nx.Graph):
             max_ancestors = np.inf
 
         circulars = [set(i) for i in nx.cycle_basis(self)]
-        rotatable_edges = [
+        # we changed stuff to generators to gain some performance
+        # revert if it causes issues. We know that the root_node
+        # step needs a list so we unpack if needed...
+        rotatable_edges = (
             i
             for i in self.edges
             if not self.is_locked(*i)
+            # and (hasattr(i[0], "element") and hasattr(i[1], "element"))
             and self[i[0]][i[1]].get("bond_order", 1) == 1
             and not self.in_same_cycle(*i, circulars)
-        ]
+        )
         if root_node is not None:
+            rotatable_edges = list(rotatable_edges)
             _directed = nx.dfs_tree(self, root_node)
             rotatable_edges = [
                 i
