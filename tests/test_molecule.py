@@ -714,6 +714,9 @@ def test_repeat_with_recipe():
     n = 10
     man = man.repeat(n, recipe)
 
+    v = man.draw()
+    v.show()
+
     new_residues = len(man.residues)
     new_atoms = len(man.atoms)
     new_bonds = len(man.bonds)
@@ -732,9 +735,6 @@ def test_repeat_with_recipe():
     # test that the new molecule has no weird bond angles
     for angle in man.compute_angles().values():
         assert 100 < angle < 130
-
-    v = man.draw()
-    v.show()
 
 
 def test_make_mannose8():
@@ -1684,3 +1684,44 @@ def test_base_no_matches():
     assert not mol2.structure.matches(mol.structure)
     assert not mol.structure.equals(mol2.structure)
     assert not mol2.structure.equals(mol.structure)
+
+
+def test_polyphenylene():
+    bam.load_small_molecules()
+    benzene = bam.get_compound("benzene")
+    # don't worry about the skewed visuals
+    # (that's because there are miniscule difference in the z-axis, < 1e-2A)
+    # benzene.show()
+
+    # set up the linkage instructions
+    link = bam.linkage("C1", "C1")
+
+    # start with the centrla benzene ring
+    periphery = benzene.copy()
+
+    for carbon in range(1, 6):
+
+        # update the linkage to the next carbon
+        link.atom1 = f"C{carbon}"
+
+        # attach one benzene to the central one
+        periphery.attach(benzene, link, at_residue=1)
+
+    # periphery.show()
+
+    # setup a new linkage
+    link2 = bam.linkage("C1", "C4")
+
+    # set a new attach residue for the periphery (now it's the second residue)
+    periphery.set_attach_residue(2)
+
+    # now make the central core
+    core = benzene.copy()
+
+    # and attach the periphery to the core
+    for carbon in bam.utils.element_range("C", 6):
+        link2.atom1 = carbon
+
+        core.attach(periphery, link2, at_residue=1)
+
+    core.show()

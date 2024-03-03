@@ -133,21 +133,44 @@ def test_atom_graph_get_descendants():
     assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
 
 
+# def test_get_descendants_visual():
+#     mol = bam.Molecule.from_json(
+#         "/Users/noahhk/GIT/biobuild/buildamol/optimizers/_testing/files/EX6.json"
+#     )
+#     graph = mol.get_atom_graph()
+#     atom1 = mol.get_atom(69)
+#     atom2 = mol.get_atom(67)
+
+#     descendants = graph.get_descendants(atom1, atom2)
+#     v = mol.draw()
+#     v.draw_vector(
+#         "bond", atom1.coord, atom2.coord, color="magenta", elongate=1.3, linewidth=5
+#     )
+#     for i in descendants:
+#         v.draw_point(str(i.id), i.coord, color="green")
+#     v.show()
+
+
 def test_atom_graph_rotate_descendants_only():
     mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.infer_bonds()
-    mol = bam.graphs.AtomGraph.from_molecule(mol)
+    graph = bam.graphs.AtomGraph.from_molecule(mol)
 
-    c6 = next(i for i in mol.structure.get_atoms() if i.id == "C6")
-    c5 = next(i for i in mol.structure.get_atoms() if i.id == "C5")
+    c6 = next(i for i in graph.structure.get_atoms() if i.id == "C6")
+    c5 = next(i for i in graph.structure.get_atoms() if i.id == "C5")
 
-    descendants = mol.get_descendants(c5, c6)
-    others = set(i for i in mol.atoms if i not in descendants)
+    descendants = graph.get_descendants(c5, c6)
+    _d = {i.id for i in descendants}
+    _e = {"H61", "H62", "O6", "HO6"}
+    assert _d == _e, f"Expected {_e} descendants, got {_d}"
+
+    others = set(i for i in graph.atoms if i not in descendants)
 
     current_descendants = np.array([i.coord for i in descendants])
     current_others = np.array([i.coord for i in others])
 
-    mol.rotate_around_edge(c5, c6, np.radians(35), descendants_only=True)
+    v = graph.draw()
+    graph.rotate_around_edge(c5, c6, np.radians(35), descendants_only=True)
 
     new_descendants = np.array([i.coord for i in descendants])
     new_others = np.array([i.coord for i in others])
@@ -156,6 +179,9 @@ def test_atom_graph_rotate_descendants_only():
     assert not np.allclose(
         current_descendants, new_descendants
     ), "Descendants have not moved"
+
+    v.draw_points([i.coord for i in graph.nodes])
+    v.show()
 
 
 def test_atom_graph_rotate_all():
@@ -355,6 +381,67 @@ def test_residue_graph_get_descendants():
     assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
 
 
+def test_get_descendants_sets():
+    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
+
+    v = graph.draw()
+
+    nag2 = mol.residues[0]
+    nag3 = mol.residues[1]
+
+    v.draw_point("nag2", nag2.coord, color="red")
+    v.draw_point("nag3", nag3.coord, color="blue")
+    v.show()
+
+    all_serials = {i.serial_number for i in mol.residues}
+
+    _received = graph.get_descendants(nag2, nag3)
+    _received = {i.serial_number for i in _received}
+    _expected = all_serials - {nag2.serial_number, nag3.serial_number}
+    assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+    _received = graph.get_descendants(nag3, nag2)
+    _received = {i.serial_number for i in _received}
+    _expected = set()
+    assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+    bma = mol.residues[2]
+
+    _received = graph.get_descendants(nag3, bma)
+    _received = {i.serial_number for i in _received}
+    _expected = all_serials - {
+        nag3.serial_number,
+        bma.serial_number,
+        nag2.serial_number,
+    }
+    assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+    _received = graph.get_descendants(bma, nag3)
+    _received = {i.serial_number for i in _received}
+    _expected = {nag2.serial_number}
+    assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+    man5 = mol.get_residue(5)
+    man6 = mol.get_residue(6)
+
+    _received = graph.get_descendants(man5, man6)
+    _received = {i.serial_number for i in _received}
+    _expected = {7}
+    assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+    _received = graph.get_descendants(man6, man5)
+    _received = {i.serial_number for i in _received}
+    _expected = all_serials - {7, 6, 5}
+    assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+    _received = graph.get_descendants(man5, bma)
+    _received = {i.serial_number for i in _received}
+    _expected = all_serials - {5, 6, 7, 8, 9, 4}
+    assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+
 def test_residue_graph_rotate_descendants_only():
     mol = bam.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
@@ -533,3 +620,15 @@ def test_atom_graph_lock():
     assert len(glc.bonds) == old
     assert len(g.edges) == old_edges
     assert len(set(g._locked_edges)) == len(set(glc.locked_bonds)) == 2
+
+
+def test_sample_edges():
+    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    graph = mol.get_residue_graph(True)
+    edges = graph.find_rotatable_edges(min_descendants=10)
+    assert len(edges) > 0
+    all_edges = [i for i in edges]
+    edges = graph.sample_edges(edges, n=5, m=2)
+    assert len(edges) == 10
+    assert all(i in all_edges for i in edges)

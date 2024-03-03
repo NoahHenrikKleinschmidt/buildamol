@@ -172,6 +172,8 @@ def test_apply():
 
     assert not np.allclose(before, after, atol=1e-2)
 
+    out.show()
+
 
 def test_optim_distance_swarm():
     mol = bam.read_pdb(base.MANNOSE9)
@@ -378,97 +380,122 @@ def test_optim_forcefield_scipy():
 
 
 def test_optim_numba_distance_swarm():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_distance_swarm()
     bam.dont_use_numba()
 
 
 def test_optim_numba_distance_anneal():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_distance_anneal()
     bam.dont_use_numba()
 
 
 def test_optim_numba_distance_genetic():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_distance_genetic()
     bam.dont_use_numba()
 
 
 def test_optim_numba_distance_scipy():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_distance_scipy()
     bam.dont_use_numba()
 
 
 def test_optim_numba_overlap_swarm():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_overlap_swarm()
     bam.dont_use_numba()
 
 
 def test_optim_numba_overlap_anneal():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_overlap_anneal()
     bam.dont_use_numba()
 
 
 def test_optim_numba_overlap_genetic():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_overlap_genetic()
     bam.dont_use_numba()
 
 
 def test_optim_numba_overlap_scipy():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_overlap_scipy()
     bam.dont_use_numba()
 
 
 def test_optim_numba_forcefield_swarm():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_forcefield_swarm()
     bam.dont_use_numba()
 
 
 def test_optim_numba_forcefield_anneal():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_forcefield_anneal()
     bam.dont_use_numba()
 
 
 def test_optim_numba_forcefield_genetic():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_forcefield_genetic()
     bam.dont_use_numba()
 
 
 def test_optim_numba_forcefield_scipy():
-    bam.use_numba()
+    bam.use_all_numba()
     test_optim_forcefield_scipy()
     bam.dont_use_numba()
 
 
-# def test_benchmark_numba():
-#     mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/0.pdb")
-#     g = mol.get_atom_graph()
-#     edges = g.find_rotatable_edges(g.central_node)
-#     edges = g.sample_edges(edges)
+def test_benchmark_numba():
+    mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/0.pdb")
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    edges = g.sample_edges(edges)
 
-#     env = opt.DistanceRotatron(g, edges, n_processes=10)
-#     env2 = env.copy()
+    from time import time
 
-#     env2._rotate = env2._normal_rotate
+    f = "numba_benchmark.csv"
+    open(f, "w").close()
 
-#     from time import time
+    for mode in ("normal", "numba"):
 
-#     open("rotate_benchmark_numba.csv", "w").close()
+        env = opt.DistanceRotatron(g, edges, n_processes=5)
 
-#     for i in range(50):
-#         start = time()
-#         sol, _eval = opt.swarm_optimize(env, n_particles=50)
-#         dt = time() - start
-#         print(dt, ", numba", file=open("rotate_benchmark_numba.csv", "a"))
+        for i in range(3):
+            m = mol.copy()
+            start = time()
+            out = opt.optimize(m, env, algorithm="swarm", n_particles=50)
+            dt = time() - start
+            print(out.count_clashes(), dt, mode, sep=",", file=open(f, "a"))
+
+        bam.use_all_numba()
+
+
+def test_benchmark_numba_hybrid():
+    mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/0.pdb")
+    g = mol.get_atom_graph(True)
+    edges = g.find_rotatable_edges(g.central_node)
+    edges = g.sample_edges(edges)
+
+    from time import time
+
+    f = "numba_benchmark.csv"
+    open(f, "w").close()
+
+    env = opt.DistanceRotatron(g, edges, n_processes=5, numba=True)
+
+    for i in range(10):
+        m = mol.copy()
+        start = time()
+        out = opt.optimize(m, env, algorithm="swarm", max_steps=100, n_particles=50)
+        dt = time() - start
+        print(out.count_clashes(), dt, "hybrid", sep=",", file=open(f, "a"))
+
 
 #         start = time()
 #         sol, _eval = opt.swarm_optimize(env2, n_particles=50)
