@@ -103,7 +103,7 @@ More applied Tutorials
 
    In this tutorial we will generate multiple conformers of a molecule using BuildAMol's optimization methods.
 
-.. card:: Building a Rotaxane - Multi-Molecule System
+.. card:: Building a Rotaxane - Multi-Molecule Systems
    :link: example_multisystem
    :link-type: ref
 
@@ -114,3 +114,9 @@ More applied Tutorials
    :link-type: ref
 
    In this tutorial we will build a solvation box around a molecule using BuildAMol.
+
+.. card:: Molecules from scratch - building a Nanotube
+   :link: example_nanotube
+   :link-type: ref
+
+   In this tutorial we will build a nanotube from scratch, atom by atom, using BuildAMol.

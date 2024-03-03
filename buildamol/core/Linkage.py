@@ -557,6 +557,17 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 self.bond[1], residue=source_residue or source.attach_residue
             ),
         )
+        if target is source:
+            return
+
+        source.add_bond(
+            source.get_atom(
+                self.bond[1], residue=source_residue or source.attach_residue
+            ),
+            target.get_atom(
+                self.bond[0], residue=target_residue or target.attach_residue
+            ),
+        )
 
     @property
     def deletes(self):

@@ -288,8 +288,15 @@ class PlotlyViewer3D:
         """
         Add a plotly figure to the viewer.
         """
-        data = getattr(fig, "data", fig)
+        if isinstance(fig, PlotlyViewer3D):
+            data = fig.figure.data
+        else:
+            data = getattr(fig, "data", fig)
         self.figure.add_traces(data)
+
+    def __add__(self, fig):
+        self.add(fig)
+        return self
 
     def show(self):
         self.figure.show()
@@ -297,18 +304,26 @@ class PlotlyViewer3D:
     def write_html(self, path):
         self.figure.write_html(path)
 
-    def reset(self):
+    def reset(self, zlim=None):
         self.figure = go.Figure(
             layout=go.Layout(
                 scene=dict(
                     xaxis=dict(showgrid=False, showline=False, showticklabels=False),
                     yaxis=dict(showgrid=False, showline=False, showticklabels=False),
-                    zaxis=dict(showgrid=False, showline=False, showticklabels=False),
+                    zaxis=dict(
+                        showgrid=False,
+                        showline=False,
+                        showticklabels=False,
+                        range=zlim,
+                    ),
                     # aspectmode="cube",
                 ),
                 template="simple_white",
             )
         )
+
+    def update_layout(self, **kwargs):
+        self.figure.update_layout(**kwargs)
 
     def draw_point(
         self,
@@ -385,14 +400,16 @@ class PlotlyViewer3D:
 
     def draw_points(
         self,
-        ids: list,
         coords: list,
+        ids: list = None,
         colors: list = None,
         opacities: list = None,
         sizes: list = None,
         showlegends: list = None,
         **kwargs,
     ):
+        if ids is None:
+            ids = [str(i) for i in range(len(coords))]
         if colors is None:
             colors = ["black" for _ in range(len(coords))]
         if opacities is None:
@@ -816,9 +833,14 @@ if __name__ == "__main__":
 
     bam.load_sugars()
     man = bam.molecule("MAN")
-    man.repeat(5, "14bb")
-    v = Chem2DViewer(man)
+
+    v = MoleculeViewer3D()
+    v.link(man)
+    v.setup()
     v.show()
+    man.repeat(5, "14bb")
+    # v = Chem2DViewer(man)
+    # v.show()
 
     v = MoleculeViewer3D()
     v.link(man)

@@ -254,7 +254,7 @@ class BaseEntity:
         """
         if id is None:
             if not mol.HasProp("_Name"):
-                id = "unnamed"
+                id = "Untitled"
             else:
                 id = mol.GetProp("_Name")
 
@@ -642,29 +642,29 @@ class BaseEntity:
 
             return v
 
-    def vet(
-        self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
-    ) -> bool:
-        """
-        Vet the structural integrity of a molecule.
-        This will return True if there are no clashes and all angles
-        of adjacent atom triplets are within a tolerable range, False otherwise.
+    # def vet(
+    #     self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
+    # ) -> bool:
+    #     """
+    #     Vet the structural integrity of a molecule.
+    #     This will return True if there are no clashes and all angles
+    #     of adjacent atom triplets are within a tolerable range, False otherwise.
 
-        Parameters
-        ----------
-        clash_range : tuple, optional
-            The minimal and maximal allowed distances for two bonded atoms (in Angstrom).
-            The minimal distance is also used for non-bonded atoms.
+    #     Parameters
+    #     ----------
+    #     clash_range : tuple, optional
+    #         The minimal and maximal allowed distances for two bonded atoms (in Angstrom).
+    #         The minimal distance is also used for non-bonded atoms.
 
-        angle_range : tuple, optional
-            The minimal and maximal allowed angles between tree adjacent bonded atoms (in degrees).
+    #     angle_range : tuple, optional
+    #         The minimal and maximal allowed angles between tree adjacent bonded atoms (in degrees).
 
-        Returns
-        -------
-        bool
-            True if the structure is alright, False otherwise.
-        """
-        return structural.vet_structure(self, clash_range, angle_range)
+    #     Returns
+    #     -------
+    #     bool
+    #         True if the structure is alright, False otherwise.
+    #     """
+    #     return structural.vet_structure(self, clash_range, angle_range)
 
     def find_clashes(
         self, clash_threshold: float = 1.0, ignore_hydrogens: bool = True
@@ -851,19 +851,56 @@ class BaseEntity:
         ----------
         angle : float
             The angle to rotate by
-        axis : np.ndarray
-            The axis to rotate around
+        axis : np.ndarray or str
+            The axis to rotate around. This must be a unit vector.
+            Alternatively, it may be one of the strings "x", "y", or "z" to rotate around the respective axes.
         center : np.ndarray
             The center of the rotation
         angle_is_degrees : bool
             Whether the angle is given in degrees (default) or radians
         """
         if not isinstance(axis, np.ndarray):
-            axis = np.array(axis)
+            if isinstance(axis, str):
+                if axis.lower() == "x":
+                    axis = np.array([1, 0, 0])
+                elif axis.lower() == "y":
+                    axis = np.array([0, 1, 0])
+                elif axis.lower() == "z":
+                    axis = np.array([0, 0, 1])
+            else:
+                axis = np.array(axis)
+
         if not angle_is_degrees:
             angle = np.degrees(angle)
 
         structural.rotate_molecule(self, angle, axis, center)
+
+        return self
+
+    def flip(self, plane_vector: np.ndarray, center: np.ndarray = None):
+        """
+        Flip the molecule around an axis
+
+        Parameters
+        ----------
+        plane_vector : np.ndarray or str
+            The vector defining the plane to flip around. This must be a unit vector.
+            It may also be one of the strings "xy", "xz", or "yz" to flip around the respective planes.
+        center : np.ndarray
+            The center of the flip
+        """
+        if not isinstance(plane_vector, np.ndarray):
+            if isinstance(plane_vector, str):
+                if plane_vector.lower() == "xy":
+                    plane_vector = np.array([0, 0, 1])
+                elif plane_vector.lower() == "xz":
+                    plane_vector = np.array([0, 1, 0])
+                elif plane_vector.lower() == "yz":
+                    plane_vector = np.array([1, 0, 0])
+            else:
+                plane_vector = np.array(plane_vector)
+
+        structural.flip_molecule(self, plane_vector, center)
 
         return self
 
@@ -1295,7 +1332,7 @@ class BaseEntity:
                 ]
             else:
                 raise ValueError(
-                    f"Unknown search parameter '{by}', must be either 'name', 'seqid' or 'full_id'"
+                    f"Unknown search parameter '{by}', must be either 'name', 'seqid' or 'full_id' -> erroneous input: {residue=}"
                 )
             if chain is not None:
                 chain = self.get_chain(chain)
@@ -1393,7 +1430,7 @@ class BaseEntity:
                 return atoms
             else:
                 raise ValueError(
-                    "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+                    f"Unknown search parameter, must be either 'id', 'serial' or 'full_id' -> erroneous input: {atoms=}"
                 )
 
         if by == "id":
@@ -1407,7 +1444,7 @@ class BaseEntity:
             atoms = [i for i in self._model.get_atoms() if i.element in atoms]
         else:
             raise ValueError(
-                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element'"
+                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element' -> erroneous input: {atoms=}"
             )
 
         return atoms
@@ -1444,9 +1481,10 @@ class BaseEntity:
             The atom
         """
         if residue is not None:
-            residue = self.get_residue(residue)
-            if residue is None:
-                raise ValueError(f"Residue {residue} not found")
+            _residue = self.get_residue(residue)
+            if _residue is None:
+                raise ValueError(f"Residue {_residue} not found")
+            residue = _residue
             atom_gen = residue.get_atoms
         else:
             atom_gen = self._model.get_atoms
@@ -1466,7 +1504,7 @@ class BaseEntity:
                 by = "full_id"
             else:
                 raise ValueError(
-                    "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+                    f"Unknown search parameter, must be either 'id', 'serial' or 'full_id' -> erroneous input: {atom=}"
                 )
 
         if by == "id":
@@ -1479,7 +1517,7 @@ class BaseEntity:
             _atom = (i for i in atom_gen() if i.element == atom.upper())
         else:
             raise ValueError(
-                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element'"
+                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element' -> erroneous input: {atom=}"
             )
 
         return next(_atom, None)
@@ -1621,7 +1659,7 @@ class BaseEntity:
             _residue = (i for i in self._model.get_residues() if i.full_id == residue)
         else:
             raise ValueError(
-                "Unknown search parameter, must be either 'name', 'seqid' or 'full_id'"
+                f"Unknown search parameter, must be either 'name', 'seqid' or 'full_id' -> erroneous input: {residue=}"
             )
         if chain is not None:
             chain = self.get_chain(chain)
@@ -1678,7 +1716,7 @@ class BaseEntity:
             if _copy:
                 chain = chain.copy()
             if adjust_seqid:
-                chain._id = utils.auxiliary.chain_id_maker(len(self.chains) + 1)
+                chain._id = utils.auxiliary.chain_id_maker(len(self.chains))
             self._model.add(chain)
         return self
 
@@ -2589,7 +2627,8 @@ class BaseEntity:
         """
         conv = utils.convert.PybelBioPythonConverter()
         mol = conv.buildamol_to_pybel(self)
-        mol.title = self.id
+        if self.id is not None:
+            mol.title = self.id
         return mol
 
     def to_rdkit(self):
@@ -2604,7 +2643,8 @@ class BaseEntity:
         conv = utils.convert.RDKITBiopythonConverter()
         conv.molecule_to_pdbio(self)
         mol = conv._pdbio_to_rdkit()
-        mol.SetProp("_Name", self.id)
+        if self.id is not None:
+            mol.SetProp("_Name", self.id)
         return mol
 
     def to_biopython(self):

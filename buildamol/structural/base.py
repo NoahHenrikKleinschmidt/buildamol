@@ -7,6 +7,38 @@ import Bio.PDB as bio
 
 from functools import partial
 
+import buildamol.utils.auxiliary as aux
+
+
+x_axis = np.array([1, 0, 0])
+"""
+Unit vector along the x-axis
+"""
+y_axis = np.array([0, 1, 0])
+"""
+Unit vector along the y-axis
+"""
+
+z_axis = np.array([0, 0, 1])
+"""
+Unit vector along the z-axis
+"""
+
+xy_plane = np.array([0, 0, 1])
+"""
+Unit vector normal to the xy-plane
+"""
+
+xz_plane = np.array([0, 1, 0])
+"""
+Unit vector normal to the xz-plane
+"""
+
+yz_plane = np.array([1, 0, 0])
+"""
+Unit vector normal to the yz-plane
+"""
+
 
 def atom_make_full_id(self):
     """
@@ -463,6 +495,16 @@ def rotate_coords(
     return np.dot(np.asarray(coords), rot.T)
 
 
+@aux.njit
+def _numba_wrapper_rotate_coords(
+    coords: np.ndarray,
+    angle: float,
+    axis: np.ndarray,
+):
+    rot = _numba_wrapper_rotation_matrix(axis, angle)
+    return np.dot(np.asarray(coords), rot.T)
+
+
 def _rotate_coords_base_classes(
     obj,
     angle: float,
@@ -528,6 +570,61 @@ bio.Model.Model.rotate = _rotate_coords_base_classes
 bio.Structure.Structure.rotate = _rotate_coords_base_classes
 
 
+def flip_molecule(mol, plane_vector: np.ndarray, center: np.ndarray = None):
+    """
+    Flip a molecule around an axis.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to flip
+    plane_vector : array-like
+        The vector describing the plane to flip around
+
+    Returns
+    -------
+    flipped_molecule : Bio.PDB.Structure
+        The flipped molecule
+    """
+    atoms = list(mol.get_atoms())
+    coords = np.array([a.coord for a in atoms])
+    plane_vector = np.array(plane_vector)
+    if center is not None:
+        center = np.array(center)
+        coords -= center
+
+    new_coords = flip_coords(coords=coords, plane_vector=plane_vector)
+    if center is not None:
+        new_coords += center
+
+    for a, c in zip(atoms, new_coords):
+        a.set_coord(c)
+
+    return mol
+
+
+def flip_coords(coords: np.ndarray, plane_vector: np.ndarray):
+    """
+    Flip a set of coordinates around an axis.
+
+    Parameters
+    ----------
+    coords : array-like
+        The coordinates to flip
+    plane_vector : array-like
+        The vector describing the plane to flip around
+
+    Returns
+    -------
+    flipped_coords : array-like
+        The flipped coordinates
+    """
+    # project the coordinates onto the plane
+    # and then subtract the projection from the
+    # original coordinates to get the flipped coordinates
+    return coords - 2 * np.dot(coords, plane_vector.T)[:, None] * plane_vector
+
+
 def _rotation_matrix(axis, angle):
     """
     Compute the rotation matrix about an arbitrary axis in 3D
@@ -562,6 +659,23 @@ def _rotation_matrix(axis, angle):
             [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc],
         ]
     )
+
+
+_numba_wrapper_rotation_matrix = aux.njit(_rotation_matrix)
+
+
+def _euclidean_distances(X, Y):
+    """
+    Compute the euclidean distances between two sets of points.
+    """
+    result = np.empty((X.shape[0], Y.shape[0]), dtype=X.dtype)
+    for i in range(X.shape[0]):
+        for j in range(Y.shape[0]):
+            result[i, j] = np.sqrt(np.sum((X[i] - Y[j]) ** 2))
+    return result
+
+
+_numba_wrapper_euclidean_distances = aux.njit(_euclidean_distances)
 
 
 def _IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
@@ -600,6 +714,34 @@ def _IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
 
     # rotate the middle bond around the new plane
     _rot = _rotation_matrix(plane_bcd, theta)
+    cd = np.dot(_rot, bc)
+    cd /= np.linalg.norm(cd)
+
+    # compute the coordinates of the fourth atom
+    d = anchor + r * cd
+    return d
+
+
+@aux.njit
+def _numba_wrapper_IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
+    ab = b - a
+    bc = c - b
+
+    # compute normalized bond vectors for available atoms
+    ab /= np.linalg.norm(ab)
+    bc /= np.linalg.norm(bc)
+
+    # compute plane vector for atoms 1-2-3
+    plane_abc = np.cross(ab, bc)
+    plane_abc /= np.linalg.norm(plane_abc)
+
+    # rotate the plane vector around the middle bond (2-3) to get the plane 2-3-4
+    _rot = _numba_wrapper_rotation_matrix(bc, dihedral)
+    plane_bcd = np.dot(_rot, plane_abc)
+    plane_bcd /= np.linalg.norm(plane_bcd)
+
+    # rotate the middle bond around the new plane
+    _rot = _numba_wrapper_rotation_matrix(plane_bcd, theta)
     cd = np.dot(_rot, bc)
     cd /= np.linalg.norm(cd)
 

@@ -726,6 +726,67 @@ def _atom_from_residue(id, residue):
     return next((atom for atom in residue.get_atoms() if atom.id == id), None)
 
 
+# def aromatic_to_double(bonds: list) -> list:
+#     """
+#     Set bonds between aromatic atoms to single and double bonds
+#     This is used to convert aromatic bonds from RDKit which have a bond order of 1.5 to a double bond.
+
+#     Parameters
+#     ----------
+#     bonds : list
+#         A list of Bond objects.
+
+#     Yields
+#     -------
+#     int
+#         The bond order of the bond.
+#     """
+
+#     connectivity = defaultdict(int)
+#     for bond in bonds:
+#         atom1, atom2 = bond
+#         connectivity[atom1] += bond.order
+#         connectivity[atom2] += bond.order
+
+#     for bond in bonds:
+#         atom1, atom2 = bond
+
+#         n_bonds_1 = connectivity[atom1]
+#         n_bonds_2 = connectivity[atom2]
+
+#         # aromatic carbons can have 3 or 4 bonds
+#         # with 3 bonds they still have room left for one more bond
+#         # with 4 bonds they are fully saturated
+#         if atom1.element == "C" and atom2.element == "C":
+
+#             if bond.order == int(bond.order):
+#                 yield int(bond.order)
+#                 continue
+
+#             if n_bonds_1 == 3 or n_bonds_2 == 3:
+#                 connectivity[atom1] += 1
+#                 connectivity[atom2] += 1
+#                 yield 2  # double bond
+#                 continue
+
+#             elif n_bonds_1 == 4 or n_bonds_2 == 4:
+#                 connectivity[atom1] -= 1
+#                 connectivity[atom2] -= 1
+#                 yield 1
+#                 continue
+
+#             # aromatic bonds from RDKit have 1.5 bond order
+#             elif bond.order == 1.5:
+#                 yield 1  # single bond
+#                 continue
+
+#         # yield any other bond orders as they are
+#         if bond.order != int(bond.order):
+#             yield bond.order
+#         else:
+#             yield int(bond.order)
+
+
 def apply_reference_bonds(structure, _compounds=None):
     """
     Apply bonds according to loaded reference compounds. This will compute a list of tuples with bonded
@@ -975,8 +1036,8 @@ def _prune_H_triplets(bonds):
 
         non_H1, H, non_H2 = triplet
 
-        e_non_H1 = non_H1.element
-        e_non_H2 = non_H2.element
+        e_non_H1 = non_H1.element.title()
+        e_non_H2 = non_H2.element.title()
 
         if bond_mappings[non_H1] > element_connectivity[e_non_H1]:
             if triplet[:2] in bonds:
