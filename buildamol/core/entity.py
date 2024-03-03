@@ -642,29 +642,29 @@ class BaseEntity:
 
             return v
 
-    def vet(
-        self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
-    ) -> bool:
-        """
-        Vet the structural integrity of a molecule.
-        This will return True if there are no clashes and all angles
-        of adjacent atom triplets are within a tolerable range, False otherwise.
+    # def vet(
+    #     self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
+    # ) -> bool:
+    #     """
+    #     Vet the structural integrity of a molecule.
+    #     This will return True if there are no clashes and all angles
+    #     of adjacent atom triplets are within a tolerable range, False otherwise.
 
-        Parameters
-        ----------
-        clash_range : tuple, optional
-            The minimal and maximal allowed distances for two bonded atoms (in Angstrom).
-            The minimal distance is also used for non-bonded atoms.
+    #     Parameters
+    #     ----------
+    #     clash_range : tuple, optional
+    #         The minimal and maximal allowed distances for two bonded atoms (in Angstrom).
+    #         The minimal distance is also used for non-bonded atoms.
 
-        angle_range : tuple, optional
-            The minimal and maximal allowed angles between tree adjacent bonded atoms (in degrees).
+    #     angle_range : tuple, optional
+    #         The minimal and maximal allowed angles between tree adjacent bonded atoms (in degrees).
 
-        Returns
-        -------
-        bool
-            True if the structure is alright, False otherwise.
-        """
-        return structural.vet_structure(self, clash_range, angle_range)
+    #     Returns
+    #     -------
+    #     bool
+    #         True if the structure is alright, False otherwise.
+    #     """
+    #     return structural.vet_structure(self, clash_range, angle_range)
 
     def find_clashes(
         self, clash_threshold: float = 1.0, ignore_hydrogens: bool = True
