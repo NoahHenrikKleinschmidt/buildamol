@@ -234,6 +234,32 @@ def get_args(func, namespace):
     return kwargs
 
 
+def element_range(symbol: str, n: int, start: int = 1):
+    """
+    Generate a range of systemic atom ids based on element symbol and number of atoms
+
+    Parameters
+    ----------
+    symbol : str
+        The element symbol
+    n : int
+        The number of elements
+    start : int, optional
+        The start number, by default 1
+
+    Returns
+    -------
+    list of str
+        The element names
+
+    Examples
+    --------
+    >>> element_range("C", 3)
+    ['C1', 'C2', 'C3']
+    """
+    return [f"{symbol}{i}" for i in range(start, start + n)]
+
+
 def use_numba():
     """
     Use Numba if available to speed up some functions
