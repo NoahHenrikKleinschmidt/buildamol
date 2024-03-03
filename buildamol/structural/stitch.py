@@ -327,6 +327,7 @@ class Stitcher(base.Connector):
         graph.make_detailed(n_samples=0.5)
         if include_bystanders:
             graph.add_nodes_from(bystanders.get_atoms())
+            graph._residues[bystanders.id] = bystanders
 
         edges = graph.find_rotatable_edges()
         env = optimizers.DistanceRotatron(
