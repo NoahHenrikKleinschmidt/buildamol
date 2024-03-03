@@ -52,7 +52,13 @@ def apply_solution(
 
     for i, bond in enumerate(bonds):
         angle = sol[i]
-        a, b = mol.get_atom(bond[0].full_id), mol.get_atom(bond[1].full_id)
+        # used to be full_id to account for the fact that the bond might
+        # come from another molecule. But there is no reason to assume someone
+        # would apply the solutions of one molecule to another.
+        # so we could simply use the serial_number instead of full_id which makes
+        # things faster, assuming that the serial number was not altered in some way
+        # outside of the molecule object.
+        a, b = mol.get_atom(bond[0].serial_number), mol.get_atom(bond[1].serial_number)
         if a is None or b is None:
             raise ValueError(
                 f"Object and environment do not match (bond mismatch): {bond}"
