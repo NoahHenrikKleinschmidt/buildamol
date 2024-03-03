@@ -47,10 +47,12 @@ try:
 
     HAS_NUMBA = True
     USE_NUMBA = False
+    USE_ALL_NUMBA = False
 except ImportError:
     njit = None
     HAS_NUMBA = False
     USE_NUMBA = False
+    USE_ALL_NUMBA = False
 
 
 # =================================================================
@@ -211,13 +213,43 @@ class DummyStructure:
         return iter(self.models)
 
 
+def get_args(func, namespace):
+    """
+    Filter a dictionary based on the argument-namespace of a function
+
+    Parameters
+    ----------
+    func : function
+        The function whose argument-namespace will be used for filtering
+    namespace : dict
+        The dictionary to be filtered
+
+    Returns
+    -------
+    dict
+        The filtered dictionary
+    """
+    arg_names = func.__code__.co_varnames[: func.__code__.co_argcount]
+    kwargs = {k: v for k, v in namespace.items() if k in arg_names}
+    return kwargs
+
+
 def use_numba():
     """
-    Use Numba if available
+    Use Numba if available to speed up some functions
     """
     global USE_NUMBA
     if HAS_NUMBA:
         USE_NUMBA = True
+
+
+def use_all_numba():
+    """
+    Use Numba if available to speed up all functions
+    """
+    global USE_ALL_NUMBA
+    if HAS_NUMBA:
+        USE_ALL_NUMBA = True
 
 
 def dont_use_numba():

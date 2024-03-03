@@ -664,6 +664,20 @@ def _rotation_matrix(axis, angle):
 _numba_wrapper_rotation_matrix = aux.njit(_rotation_matrix)
 
 
+def _euclidean_distances(X, Y):
+    """
+    Compute the euclidean distances between two sets of points.
+    """
+    result = np.empty((X.shape[0], Y.shape[0]), dtype=X.dtype)
+    for i in range(X.shape[0]):
+        for j in range(Y.shape[0]):
+            result[i, j] = np.sqrt(np.sum((X[i] - Y[j]) ** 2))
+    return result
+
+
+_numba_wrapper_euclidean_distances = aux.njit(_euclidean_distances)
+
+
 def _IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
     """
     compute the coordinates of a fourth atom from a proper internal coordinate

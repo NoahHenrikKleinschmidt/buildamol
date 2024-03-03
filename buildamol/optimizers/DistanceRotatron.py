@@ -19,6 +19,8 @@ from scipy.spatial.distance import cdist
 
 import buildamol.optimizers.Rotatron as Rotatron
 import buildamol.graphs.BaseGraph as BaseGraph
+import buildamol.utils.auxiliary as aux
+import buildamol.structural.base as structural
 
 # Rotatron = Rotatron.Rotatron
 
@@ -38,6 +40,15 @@ def simple_concatenation_function(self, x):
     return e
 
 
+@aux.njit
+def _numba_wrapper_simple_concatenation_function(
+    x, unfold, pushback, n_smallest, clash_distance
+):
+    smallest = np.sort(x)[:n_smallest]
+    e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
+    return e
+
+
 def concatenation_function_with_penalty(self, x):
     """
     A concatentation function that computes the evaluation as:
@@ -47,6 +58,17 @@ def concatenation_function_with_penalty(self, x):
     smallest = np.sort(x)[: self.n_smallest]
     penalty = np.sum(x < 1.5 * self.clash_distance)
     e = np.power(np.mean(x), self.unfold) + np.power(np.mean(smallest), self.pushback)
+    e /= (1 + penalty) ** 2
+    return e
+
+
+@aux.njit
+def _numba_wrapper_concatenation_function_with_penalty(
+    x, unfold, pushback, n_smallest, clash_distance
+):
+    smallest = np.sort(x)[:n_smallest]
+    penalty = np.sum(x < 1.5 * clash_distance)
+    e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
     e /= (1 + penalty) ** 2
     return e
 
@@ -61,6 +83,14 @@ def concatenation_function_no_pushback(self, x):
     return e
 
 
+@aux.njit
+def _numba_wrapper_concatenation_function_no_pushback(
+    x, unfold, pushback, n_smallest, clash_distance
+):
+    e = np.power(np.mean(x), unfold)
+    return e
+
+
 def concatenation_function_no_unfold(self, x):
     """
     A concatentation function that computes the evaluation as:
@@ -69,6 +99,15 @@ def concatenation_function_no_unfold(self, x):
     """
     smallest = np.sort(x)[: self.n_smallest]
     e = np.power(np.mean(smallest), self.pushback)
+    return e
+
+
+@aux.njit
+def _numba_wrapper_concatenation_function_no_unfold(
+    x, unfold, pushback, n_smallest, clash_distance
+):
+    smallest = np.sort(x)[:n_smallest]
+    e = np.power(np.mean(smallest), pushback)
     return e
 
 
@@ -83,6 +122,24 @@ def concatenation_function_linear(self, x):
         np.mean(smallest), self.pushback
     )
     return e
+
+
+@aux.njit
+def _numba_wrapper_concatenation_function_linear(
+    x, unfold, pushback, n_smallest, clash_distance
+):
+    smallest = np.sort(x)[:n_smallest]
+    e = np.multiply(np.mean(x), unfold) + np.multiply(np.mean(smallest), pushback)
+    return e
+
+
+__numba_wrappers__ = {
+    simple_concatenation_function: _numba_wrapper_simple_concatenation_function,
+    concatenation_function_with_penalty: _numba_wrapper_concatenation_function_with_penalty,
+    concatenation_function_no_pushback: _numba_wrapper_concatenation_function_no_pushback,
+    concatenation_function_no_unfold: _numba_wrapper_concatenation_function_no_unfold,
+    concatenation_function_linear: _numba_wrapper_concatenation_function_linear,
+}
 
 
 class DistanceRotatron(Rotatron):
@@ -136,7 +193,7 @@ class DistanceRotatron(Rotatron):
         n_processes: int = 1,
         **kwargs,
     ):
-        self._hyperparameters = {
+        self.hyperparameters = {
             "pushback": pushback,
             "unfold": unfold,
             "clash_distance": clash_distance,
@@ -144,6 +201,7 @@ class DistanceRotatron(Rotatron):
             "n_smallest": n_smallest,
             "concatenation_function": concatenation_function,
             "bounds": bounds,
+            "radius": radius,
             "n_processes": n_processes,
             **kwargs,
         }
@@ -155,13 +213,8 @@ class DistanceRotatron(Rotatron):
         self.unfold = unfold
         self.n_smallest = n_smallest
 
-        if concatenation_function is None:
-            concatenation_function = concatenation_function_with_penalty
-
-        self._concatenation_function = concatenation_function
-        self._bounds_tuple = bounds
-
         # =====================================
+
         if self.crop_radius > 0:
             graph, rotatable_edges = self._setup_helpers_crop_faraway_nodes(
                 self.crop_radius, graph, rotatable_edges
@@ -193,7 +246,37 @@ class DistanceRotatron(Rotatron):
         )
         # =====================================
 
-    def eval(self, state):
+        self._last_eval = 0.0
+
+        # =====================================
+
+        self._numba_func_args = ("unfold", "pushback", "n_smallest", "clash_distance")
+
+        if concatenation_function is None:
+            concatenation_function = concatenation_function_with_penalty
+
+        if (
+            kwargs.get("numba", False)
+            or aux.USE_ALL_NUMBA
+            or (self.n_nodes**2 > 100000 and aux.USE_NUMBA)
+        ):
+            concatenation_function = __numba_wrappers__.get(
+                concatenation_function, concatenation_function
+            )
+            self._numba_concat_args = aux.get_args(
+                concatenation_function, self.hyperparameters
+            )
+
+            self.eval = self._numba_eval
+        else:
+            self.eval = self._normal_eval
+
+        self._concatenation_function = concatenation_function
+        self._bounds_tuple = bounds
+
+        # =====================================
+
+    def _normal_eval(self, state):
         """
         Calculate the evaluation score for a given state
 
@@ -224,6 +307,19 @@ class DistanceRotatron(Rotatron):
         self._last_eval = final
         return final
 
+    def _numba_eval(self, state):
+        min_dist, final = _numba_wrapper_eval(
+            state=state,
+            concatenation_function=self._concatenation_function,
+            rotation_unit_masks=self.rotation_unit_masks,
+            last_eval=self._last_eval,
+            radius=self._radius,
+            **self._numba_concat_args,
+        )
+        self._state_dists = min_dist
+        self._last_eval = final
+        return final
+
     def is_done(self, state):
         return np.min(self._state_dists) > self.clash_distance
 
@@ -234,6 +330,45 @@ class DistanceRotatron(Rotatron):
         if not np.logical_or.reduce(mask):
             return -1
         return self._concatenation_function(self, x[mask])
+
+
+@aux.njit
+def _numba_wrapper_eval(
+    state,
+    concatenation_function,
+    rotation_unit_masks,
+    last_eval,
+    radius,
+    unfold,
+    pushback,
+    n_smallest,
+    clash_distance,
+):
+    pairwise_dists = structural._numba_wrapper_euclidean_distances(state, state)
+    np.fill_diagonal(pairwise_dists, radius)
+
+    dist_eval = np.zeros(len(state))
+
+    for i in range(len(pairwise_dists)):
+        mask = pairwise_dists[i] < radius
+        mask = np.logical_and(mask, rotation_unit_masks[i])
+
+        if not np.any(mask):
+            dist_eval[i] = -1
+            continue
+
+        dist_eval[i] = concatenation_function(
+            pairwise_dists[i][mask], unfold, pushback, n_smallest, clash_distance
+        )
+
+    mask = dist_eval > -1
+
+    mean_dist_eval = np.divide(1.0, np.mean(dist_eval[mask]))
+
+    final = np.log(mean_dist_eval)  # - self._backup_eval
+
+    min_dist = np.min(pairwise_dists)
+    return min_dist, final
 
 
 __all__ = [
@@ -257,7 +392,7 @@ if __name__ == "__main__":
     print("init: ", mol.count_clashes())
     graph = mol.get_residue_graph(True)
     env = DistanceRotatron(
-        graph
+        graph, numba=True
     )  # , concatenatiofn_function=simple_concatenation_function)
 
     for i in range(15):

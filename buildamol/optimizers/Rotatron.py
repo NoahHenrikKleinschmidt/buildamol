@@ -31,6 +31,8 @@ class Rotatron(gym.Env):
         The number of processes to use to speed up the computation of edge masks and lengths
     setup : bool
         Whether to set up the edge masks and lengths during initialization
+    numba : bool
+        Whether to use numba to speed up the rotation function.
     """
 
     def __init__(
@@ -39,6 +41,7 @@ class Rotatron(gym.Env):
         rotatable_edges: list = None,
         n_processes: int = 1,
         setup: bool = True,
+        numba: bool = False,
     ):
         self.graph = graph
         self.rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)
@@ -67,7 +70,11 @@ class Rotatron(gym.Env):
             [[self.node_dict[e[0]], self.node_dict[e[1]]] for e in self.rotatable_edges]
         )
 
-        if aux.USE_NUMBA:
+        if (
+            numba
+            or aux.USE_ALL_NUMBA
+            or (self.n_edges * self.n_nodes > 10000 and aux.USE_NUMBA)
+        ):
             self._rotate = self._numba_rotate
         else:
             self._rotate = self._normal_rotate
