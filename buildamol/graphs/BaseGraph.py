@@ -24,6 +24,7 @@ class BaseGraph(nx.Graph):
         self._neighborhood = None
         self._locked_edges = set()
         self._structure_was_searched = False
+        self.__descendent_cache = {}
 
     @property
     def structure(self):
@@ -178,20 +179,55 @@ class BaseGraph(nx.Graph):
         >>> graph.get_descendants("B", "A")
         set() # because in this direction there are no other nodes
         """
-        neighs = set(self.adj[node_2])
-        neighs.remove(node_1)
+        if node_1 is node_2:
+            raise KeyError("Cannot get descendants of a node with itself!")
+
+        _seen = self.__descendent_cache.get((node_1, node_2))
+        if _seen:
+            return _seen
+
+        __all_nodes = set(self.nodes)
+
+        _seen = self.__descendent_cache.get((node_2, node_1))
+        if _seen:
+            return __all_nodes - _seen - {node_1, node_2}
+
         _seen = set((node_1, node_2))
-        _new_neighs = set(neighs)
-        while len(_new_neighs) > 0:
+        _new_neighs = {node_2}
+        descendants = set()
+        while _new_neighs:
             neigh = _new_neighs.pop()
-            descendants = set(self.adj[neigh])
-            descendants -= _seen
             _seen.add(neigh)
-            neighs.add(neigh)
-            if len(descendants) == 0:
-                continue
+
+            descendants.clear()
+            for d in self.adj[neigh]:
+                if d in _seen:
+                    continue
+                _desc_from_cache = self.__descendent_cache.get((neigh, d))
+                if _desc_from_cache:
+                    _seen.add(d)
+                    _seen.update(_desc_from_cache)
+                else:
+                    descendants.add(d)
+
             _new_neighs.update(descendants)
-        return neighs
+            _new_neighs.difference_update(_seen)
+
+        _seen.difference_update((node_1, node_2))
+
+        self.__descendent_cache[(node_1, node_2)] = _seen
+        self.__descendent_cache[(node_2, node_1)] = (
+            __all_nodes - _seen - {node_1, node_2}
+        )
+
+        # v = self._molecule.draw()
+        # v.draw_vector("edge", node_1.coord, node_2.coord, elongate=1.3, linewidth=4, color="limegreen")
+
+        # for i in _seen:
+        #     v.draw_point("n", i.coord, color="grey", showlegend=False)
+        # v.show()
+
+        return _seen
 
     def get_ancestors(self, node_1, node_2):
         """
@@ -332,6 +368,11 @@ class BaseGraph(nx.Graph):
         if edges is None:
             edges = self.find_rotatable_edges()
         rotatable_edges = np.array(edges)
+
+        if len(rotatable_edges) == 0:
+            raise ValueError("No rotatable edges found!")
+        elif len(rotatable_edges) < n * m:
+            return rotatable_edges.tolist()
 
         # x, y, z, n_neighbors_a_3, n_neighbors_b_3, n_descendants, dist_to_center
         data = np.zeros((len(rotatable_edges), 7))
