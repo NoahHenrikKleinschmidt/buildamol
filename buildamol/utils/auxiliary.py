@@ -3,10 +3,12 @@ Utility and auxiliary functions
 """
 
 import os
-import re
+
+# import re
 import string
 
 import pickle
+import numpy as np
 
 # =================================================================
 try:
@@ -258,6 +260,21 @@ def element_range(symbol: str, n: int, start: int = 1):
     ['C1', 'C2', 'C3']
     """
     return [f"{symbol}{i}" for i in range(start, start + n)]
+
+
+def coord_array(*objs) -> np.ndarray:
+    """
+    Creates a numpy array of coordinates from objects with a get_coord() method or a coord attribute
+    """
+    coords = []
+    for obj in objs:
+        if hasattr(obj, "get_coord"):
+            coords.append(obj.get_coord())
+        elif hasattr(obj, "coord"):
+            coords.append(obj.coord)
+        else:
+            raise ValueError(f"Object {obj} has no get_coord() or coord attribute")
+    return np.array(coords)
 
 
 def use_numba():

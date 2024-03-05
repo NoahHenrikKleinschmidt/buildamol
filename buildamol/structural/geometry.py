@@ -14,6 +14,7 @@ class Geometry:
 
     max_points = -1
     size = -1
+    angle = -1
 
     def apply(self, atoms: list, bonds: list = None, **kwargs):
         """
@@ -89,11 +90,11 @@ class Tetrahedral(Geometry):
 
     max_points = 3
     size = 5
+    angle = np.radians(120)
+    dihedral = np.radians(109.5)
 
     def __init__(self, bond_length=1.2):
         self.bond_length = bond_length
-        self.angle = np.radians(120)
-        self.dihedral = np.radians(109.5)
 
     def make_coords(self, *coords, length: float = None):
         """
@@ -308,10 +309,10 @@ class TrigonalPlanar(Geometry):
 
     max_points = 3
     size = 4
+    angle = np.radians(120)
 
     def __init__(self, bond_length=1.2):
         self.bond_length = bond_length
-        self.angle = np.radians(120)
 
     def make_coords(self, *coords, length: float = None):
         """
@@ -462,6 +463,7 @@ class Linear(Geometry):
 
     max_points = 2
     size = 3
+    angle = np.pi
 
     def __init__(self, bond_length=1.2):
         self.bond_length = bond_length
@@ -560,10 +562,10 @@ class TrigonalBipyramidal(Geometry):
 
     max_points = 3
     size = 7
+    angle = np.radians(120)
 
     def __init__(self, bond_length=1.2):
         self.bond_length = bond_length
-        self.angle = np.radians(120)
 
     def make_coords(self, *coords, length: float = None, direction: str = None):
         """
@@ -944,15 +946,17 @@ def _infer_point_relations(points, planar_angle, mixed_angle=np.pi / 2):
 
         if abs(theta - mixed_angle) < 1e-3:
             return "mixed"
-        
+
         elif abs(theta - planar_angle) < 1e-3:
             return "planar"
-        
+
         elif abs(theta - np.pi) < 1e-3:
             return "axial"
-        
+
         else:
-            return ValueError("Cannot infer point relationships. Specify 'direction' manually.")
+            return ValueError(
+                "Cannot infer point relationships. Specify 'direction' manually."
+            )
 
     raise ValueError("Invalid number of points")
 
@@ -965,10 +969,10 @@ class Octahedral(Geometry):
 
     max_points = 3
     size = 8
+    angle = np.pi / 2
 
     def __init__(self, bond_length=1.2):
         self.bond_length = bond_length
-        self.angle = np.radians(90)
 
     def make_coords(self, *coords, length: float = None, direction: str = None):
         """
@@ -1327,6 +1331,13 @@ class Octahedral(Geometry):
         coords[6] = center + axis1 * length
 
         return coords
+
+
+__default_tetrahedral__ = Tetrahedral()
+__default_trigonal_planar__ = TrigonalPlanar()
+__default_linear__ = Linear()
+__default_trigonal_bipyramidal__ = TrigonalBipyramidal()
+__default_octahedral__ = Octahedral()
 
 
 if __name__ == "__main__":

@@ -2389,6 +2389,14 @@ class BaseEntity:
         structural.relabel_hydrogens(self)
         return self
 
+    def add_hydrogens(self):
+        """
+        Infer missing hydrogens in the structure.
+        """
+        H = structural.infer.Hydrogenator()
+        H.infer_hydrogens(self, bond_length=1.05)
+        return self
+
     def get_quartets(self):
         """
         A generator for all atom quartets in the structure

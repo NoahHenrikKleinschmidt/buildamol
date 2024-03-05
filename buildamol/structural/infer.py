@@ -18,6 +18,10 @@ import buildamol.utils.defaults as defaults
 import buildamol.resources as resources
 import buildamol.structural.base as base
 import buildamol.structural.neighbors as neighbors
+import buildamol.structural.geometry as geometry
+
+# might cause circular imports!
+import buildamol.core.base_classes as base_classes
 
 element_connectivity = {
     "C": 4,
@@ -86,6 +90,39 @@ class AutoLabel:
             self._df_all.loc[self._df.index, "label"] = self._df["label"]
 
         return self._df_all[["atom", "label"]]
+
+    @staticmethod
+    def hydrogen_neighbors(atom):
+        """
+        Generate automated labels for an atom's possible hydrogen neighbors.
+
+        Parameters
+        ----------
+        atom : Atom
+            The atom
+
+        Returns
+        -------
+        list
+            A list of possible hydrogen labels
+
+        Examples
+        --------
+        >>> from buildamol import Atom
+        >>> a = Atom(id="C1")
+        >>> AutoLabel.hydrogen_neighbors(a)
+        ['H1', 'H11', 'H12', 'H13', 'H14']
+        >>> a = Atom(id="OXT")
+        >>> AutoLabel.hydrogen_neighbors(a)
+        ['HOXT', 'HOXT1', 'HOXT2']
+        """
+        connectivity = element_connectivity.get(atom.element, 0)
+        if atom.element == "C":
+            return [
+                f"H{atom.id[1:]}",
+                *(f"H{atom.id[1:]}{i+1}" for i in range(connectivity)),
+            ]
+        return [f"H{atom.id}", *(f"H{atom.id}{i+1}" for i in range(connectivity))]
 
     def _neighbors(self, atoms):
         """
@@ -307,6 +344,135 @@ def autolabel(molecule):
         atom.name = label
 
     return molecule
+
+
+class Hydrogenator:
+    """
+    A class to automatically add hydrogen atoms to organic molecules.
+
+    Note
+    ----
+    This is designed specifically to infer hydrogens for organic molecules.
+    So it can infer hydrogen coordinates for CHNOPS atoms, but may not work reliably for non organic molecules.
+
+    """
+
+    tetrahedral = geometry.Tetrahedral()
+    trigonal_planar = geometry.TrigonalPlanar()
+    linear = geometry.Linear()
+
+    __geometries__ = {
+        (1, 4): tetrahedral,
+        (1, 3): tetrahedral,
+        (1, 2): trigonal_planar,
+        (2, 4): trigonal_planar,
+        (3, 4): linear,
+        (2, 5): tetrahedral,  # an organic phosphate
+    }
+
+    def infer_hydrogens(
+        self, molecule: "Molecule", bond_length: float = 1
+    ) -> "Molecule":
+        """
+        Add hydrogen atoms to a molecule.
+
+        Parameters
+        ----------
+        molecule : buildamol.core.Molecule
+            The molecule to add hydrogen atoms to.
+        bond_length : float
+            The bond length to use for the hydrogen atoms.
+
+        Returns
+        -------
+        Molecule
+            The molecule with hydrogen atoms added.
+        """
+        self._molecule = molecule
+        self._bond_length = bond_length
+
+        for atom in self._molecule._atoms:
+
+            if atom.element == "H":
+                continue
+
+            connectivity = element_connectivity.get(atom.element, 0)
+            if connectivity == 0:
+                continue
+
+            bonds = self._molecule.get_bonds(atom)
+            free_slots = (
+                connectivity - sum(b.order for b in bonds) - (atom.pqr_charge or 0)
+            )
+
+            if free_slots > 0:
+                neighbors = set(j for i in bonds for j in i if j != atom)
+                self._add_hydrogens(
+                    atom=atom,
+                    neighbors=neighbors,
+                    free_slots=free_slots,
+                    bond_order=max(i.order for i in bonds),
+                    connectivity=connectivity,
+                )
+
+        return self._molecule
+
+    def _add_hydrogens(self, atom, neighbors, free_slots, bond_order, connectivity):
+        """
+        Add hydrogen atoms to a molecule.
+
+        Parameters
+        ----------
+        atom : Atom
+            The atom to add hydrogen atoms to.
+        neighbors : set
+            The eighbors the atom has.
+        free_slots : int
+            The number of free slots the atom has.
+        bond_order : int
+            The highest bond order of all bonds that connects the atom to a neighbor.
+        connectivity: int
+            The theoretically possible number of bonds the atom can form.
+
+        Returns
+        -------
+        list
+            A list of hydrogen atoms.
+        list
+            A list of bonds to the atom for each hydrogen.
+        """
+        geometry = Hydrogenator.__geometries__.get((bond_order, connectivity), None)
+        if geometry is None:
+            return
+
+        _neighbors = list(neighbors)[: geometry.max_points - 1]
+        out = geometry.make_coords(atom, *_neighbors, length=self._bond_length)[
+            len(_neighbors) :
+        ]
+
+        labels = AutoLabel.hydrogen_neighbors(atom)
+        if free_slots > 1:
+            labels.pop(0)
+
+        # now figure out which of the coordinates already belong to a neighbor
+        # and filter for the free locations
+        if len(out) > 1:
+            neighbor_coords = np.array([i.coord for i in neighbors])
+            d = cdist(out, neighbor_coords)
+            out = [out[i] for i in range(len(out)) if not np.any(d[i] < 0.95)]
+
+        if len(out) < free_slots:
+            raise ValueError(
+                f"Could not add the correct number of hydrogen atoms to {atom}! Expected {free_slots}, got {len(out)}."
+            )
+
+        Hs = [
+            base_classes.Atom(labels[i], out[i], element="H") for i in range(free_slots)
+        ]
+        bonds = [base_classes.Bond(atom, H, 1) for H in Hs]
+
+        self._molecule.add_atoms(*Hs)
+        self._molecule.add_bonds(*bonds)
 
 
 def relabel_hydrogens(molecule):
