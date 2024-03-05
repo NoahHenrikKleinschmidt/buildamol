@@ -1540,6 +1540,51 @@ def test_merge():
     # mol.show()
 
 
+def test_atom_new():
+    a = bam.Atom.new("C")
+    assert a.element == "C"
+    assert a.id == "C1"
+    assert a.coord.sum() == 0
+    assert a.serial_number == 1
+
+    a = bam.Atom.new("C ")
+    assert a.element == "C"
+    assert a.id == "C"
+
+    a = bam.Atom.new("C2", coord=(1, 2, 3))
+    assert a.element == "C"
+    assert a.id == "C2"
+    assert a.coord.sum() == 6
+
+    a = bam.Atom.new("CA")
+    assert a.element == "CA"
+    assert a.id == "CA1"
+
+    a = bam.Atom.new(" CA")
+    assert a.element == "C"
+    assert a.id == "CA"
+
+    a = bam.Atom.new("CA ")
+    assert a.element == "CA"
+    assert a.id == "CA"
+
+    a = bam.Atom.new(" CA  ")
+    assert a.element == "C"
+    assert a.id == "CA"
+
+    a = bam.Atom.new("CA_D")
+    assert a.element == "CA"
+    assert a.id == "CAD"
+
+    a = bam.Atom.new("5C")
+    assert a.element == "C"
+    assert a.id == "5C"
+
+    a = bam.Atom.from_element("Fe")
+    assert a.element == "FE"
+    assert a.id == "FE1"
+
+
 def test_base_matches_and_equal():
     mol = bam.Molecule.from_compound("GLC")
     mol2 = mol.copy()
@@ -1725,3 +1770,47 @@ def test_polyphenylene():
         core.attach(periphery, link2, at_residue=1)
 
     core.show()
+
+
+def test_add_hydrogens_glucose():
+    mol = bam.Molecule.from_compound("GLC")
+    ref_n = mol.count_atoms()
+
+    mol.remove_atoms(*mol.get_atoms("H", by="element"))
+    assert mol.count_atoms() < ref_n
+
+    mol.add_hydrogens()
+
+    assert len(mol._atoms) == ref_n
+
+    mol.show()
+
+
+def test_add_hydrogens_mannose9():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+
+    ref_n = mol.count_atoms()
+
+    old_hydrogens = mol.get_atoms("H", by="element")
+    mol.remove_atoms(*old_hydrogens)
+
+    assert mol.count_atoms() < ref_n
+
+    v = mol.draw()
+    mol.add_hydrogens()
+    
+    new_hydrogens = mol.get_atoms("H", by="element")
+
+    diff_H = set(new_hydrogens) - set(old_hydrogens)
+
+    v.draw_points(
+        mol.get_coords(*new_hydrogens), colors="limegreen"
+    )
+    v.draw_points(
+        bam.utils.coord_array(*old_hydrogens), colors="purple"
+    )
+    v.show()
+
+    assert len(mol._atoms) == ref_n
+

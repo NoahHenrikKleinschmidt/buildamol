@@ -1283,3 +1283,420 @@ def test_flip():
     new_coords = np.array([a.coord for a in mol.get_atoms()])
     assert not np.allclose(old_coords, new_coords)
     d.show()
+
+
+def test_infer_hydrogens_glucose():
+    mol = bam.Molecule.from_compound("GLC")
+    ref = mol.copy()
+
+    mol.remove_atoms("H1", "H61", "H62", "HO1")
+
+    # v = mol.draw()
+
+    hydrogenator = bam.structural.infer.Hydrogenator()
+    hydrogenator.infer_hydrogens(mol)
+
+    # v.draw_points(
+    #     mol.get_coords("H1", "H61", "H62", "HO1"), colors="orange"
+    #     )
+
+    # v.show()
+
+    assert len(mol.get_atoms("H1")) == 1
+    assert len(mol.get_atoms("H61")) == 1
+    assert len(mol.get_atoms("H62")) == 1
+    assert len(mol.get_atoms("HO1")) == 1
+
+    assert mol.get_atom("HO1") in mol.get_neighbors(mol.get_atom("O1"))
+    assert mol.get_atom("H1") in mol.get_neighbors(mol.get_atom("C1"))
+
+    new_coords = mol.get_coords("H1", "H61", "H62", "HO1")
+    ref_coords = ref.get_coords("H1", "H61", "H62", "HO1")
+
+    # evaluate that each of the inferred atoms is close
+    # by one of the references. (this is primarily because
+    # H61/H62 may have swapped labels when inferred)
+    d = bam.structural.cdist(new_coords, ref_coords)
+
+    assert d[0].min() < 0.5
+    assert d[1].min() < 0.5
+    assert d[2].min() < 0.5
+    assert (
+        d[3].min() < 1.1
+    )  # this is the HO1 which can freely rotate around the C-O axis and therefore is not necessarily in the same position
+
+
+def test_infer_hydrogens_glucose_all():
+    mol = bam.Molecule.from_compound("GLC")
+    ref = mol.copy()
+
+    mol.remove_atoms(*mol.get_atoms("H", by="element"))
+
+    # v = mol.draw()
+
+    hydrogenator = bam.structural.infer.Hydrogenator()
+    hydrogenator.infer_hydrogens(mol, bond_length=1.05)
+
+    # v.draw_points(mol.get_coords("H", by="element"), colors="orange")
+
+    # v.show()
+
+    assert len(mol.get_atoms("H1")) == 1
+    assert len(mol.get_atoms("H61")) == 1
+    assert len(mol.get_atoms("H62")) == 1
+    assert len(mol.get_atoms("HO1")) == 1
+
+    assert mol.get_atom("HO1") in mol.get_neighbors(mol.get_atom("O1"))
+    assert mol.get_atom("H1") in mol.get_neighbors(mol.get_atom("C1"))
+
+    new_coords = mol.get_coords("H1", "H61", "H62", "HO1")
+    ref_coords = ref.get_coords("H1", "H61", "H62", "HO1")
+
+    # evaluate that each of the inferred atoms is close
+    # by one of the references. (this is primarily because
+    # H61/H62 may have swapped labels when inferred)
+    d = bam.structural.cdist(new_coords, ref_coords)
+
+    assert d[0].min() < 0.1
+    assert d[1].min() < 0.1
+    assert d[2].min() < 0.1
+    assert (
+        d[3].min() < 2.1
+    )  # this is the HO1 which can freely rotate around the C-O axis and therefore is not necessarily in the same position
+
+
+def test_infer_hydrogens_tyrosine_all():
+    bam.load_amino_acids()
+    mol = bam.Molecule.from_compound("TYR")
+    ref = mol.copy()
+
+    mol.remove_atoms(*mol.get_atoms("H", by="element"))
+
+    # v = mol.draw()
+
+    hydrogenator = bam.structural.infer.Hydrogenator()
+    hydrogenator.infer_hydrogens(mol, 1.05)
+
+    # v.draw_points(mol.get_coords(
+    #     "H", by="element"
+    # ), colors="orange")
+
+    # v.show()
+
+    ref_coords = ref.get_coords("HD2", "HB2", "HB3", "HXT")
+    new_coords = mol.get_coords("HD2", "HB1", "HB2", "HOXT")
+
+    d = bam.structural.cdist(new_coords, ref_coords)
+    assert d[0].min() < 0.1
+    assert d[1].min() < 0.1
+    assert d[2].min() < 0.1
+    assert (
+        d[3].min() < 2.1
+    )  # the OH may freely rotate and be therefore not in the same position
+
+
+def test_geometry_tetrahedral():
+    bam.load_small_molecules()
+    mol = bam.get_compound("CH4")
+    assert mol is not None
+
+    tetrahedron = bam.structural.geometry.Tetrahedral()
+    assert tetrahedron is not None
+
+    C = mol.get_atom("C", by="element")
+    Hs = mol.get_atoms("H", by="element")
+
+    # make just from one central atom and one H
+    coords = tetrahedron.make_coords(C, Hs[0])
+
+    v = mol.draw()
+    v.draw_points(coords, colors="orange")
+    assert np.all(coords[0] == C.coord)
+    assert np.all(coords[1] == Hs[0].coord)
+    theta = bam.structural.angle_between(coords[1], coords[0], coords[4])
+    assert 109 < theta < 110
+    theta = bam.structural.angle_between(coords[2], coords[0], coords[4])
+    assert 109 < theta < 110
+    theta = bam.structural.angle_between(coords[3], coords[0], coords[4])
+    assert 109 < theta < 110
+
+    # make from central atom and 2 neighbors
+    coords = tetrahedron.make_coords(C, *Hs[:2])
+
+    v.draw_points(coords, colors="red")
+    v.show()
+
+    assert np.all(coords[0] == C.coord)
+    assert np.all(coords[1] == Hs[0].coord)
+    assert np.all(coords[2] == Hs[1].coord)
+
+    theta = bam.structural.angle_between(coords[1], coords[0], coords[2])
+    assert 95 < theta < 130
+    theta = bam.structural.angle_between(coords[1], coords[0], coords[3])
+    assert 95 < theta < 130
+    theta = bam.structural.angle_between(coords[1], coords[0], coords[4])
+    assert 95 < theta < 130
+    theta = bam.structural.angle_between(coords[2], coords[0], coords[4])
+    assert 95 < theta < 130
+    theta = bam.structural.angle_between(coords[3], coords[0], coords[4])
+    assert 95 < theta < 130
+
+
+def test_tetrahedral_applied_glucose():
+    bam.load_sugars()
+    mol = bam.get_compound("GLC")
+    assert mol is not None
+
+    C = mol.get_atom("C1")
+    C2 = mol.get_atom("C2")
+    O5 = mol.get_atom("O5")
+    O1 = mol.get_atom("O1")
+    H1 = mol.get_atom("H1")
+
+    tetrahedron = bam.structural.geometry.Tetrahedral()
+
+    # reconstruct coordinates
+    coords = tetrahedron.make_coords(C, C2, O1)
+
+    coords[3] = bam.structural.adjust_distance(coords[0], coords[3], C - O5)
+    coords[4] = bam.structural.adjust_distance(coords[0], coords[4], C - H1)
+
+    # v = mol.draw()
+    # v.draw_points(coords, colors="orange")
+    # v.show()
+
+    assert np.all(coords[0] == C.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert np.all(coords[2] == O1.coord)
+
+    assert np.abs(coords[3] - O5.coord).sum() < 0.01
+    assert np.abs(coords[4] - H1.coord).sum() < 0.01
+
+
+def test_planar():
+    mol = bam.molecule("ethene").autolabel()
+    assert mol is not None
+
+    planar = bam.structural.geometry.TriangularPlanar()
+
+    C1 = mol.get_atom("C1")
+    C2 = mol.get_atom("C2")
+    H1 = mol.get_atom("H11")
+    H2 = mol.get_atom("H12")
+
+    coords = planar.make_coords(C1, C2, H1)
+
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert np.all(coords[2] == H1.coord)
+    coords[3] = bam.structural.adjust_distance(coords[0], coords[3], C1 - H2)
+    assert np.abs(coords[3] - H2.coord).sum() < 0.01
+
+    mol.transpose(
+        [0, 2, 12],
+        45.6,
+        np.array([0.2, 1, 0.3]) / np.linalg.norm(np.array([0.2, 1, 0.3])),
+    )
+
+    coords = planar.make_coords(C1, C2, H1)
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert np.all(coords[2] == H1.coord)
+    coords[3] = bam.structural.adjust_distance(coords[0], coords[3], C1 - H2)
+    assert np.abs(coords[3] - H2.coord).sum() < 0.01
+
+    # v = mol.draw()
+    # v.draw_points(coords, colors="orange")
+    # v.show()
+
+    coords = planar.make_coords(C1, C2)
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert bam.structural.angle_between(coords[0], coords[1], coords[2]) - 120 < 0.5
+    assert bam.structural.angle_between(coords[0], coords[1], coords[3]) - 120 < 0.5
+    assert bam.structural.angle_between(coords[2], coords[0], coords[3]) - 120 < 0.5
+
+
+def test_linear():
+    mol = bam.molecule("C#C")[0]
+    mol.autolabel()
+    assert mol is not None
+
+    linear = bam.structural.geometry.Linear()
+
+    C1 = mol.get_atom("C1")
+    C2 = mol.get_atom("C2")
+    H1 = mol.get_atom("H1")
+    H2 = mol.get_atom("H2")
+
+    coords = linear.make_coords(C1, C2)
+
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert bam.structural.angle_between(coords[0], coords[1], coords[2]) - 180 < 0.5
+
+    coords[2] = bam.structural.adjust_distance(coords[0], coords[2], C1 - H1)
+    assert np.abs(coords[2] - H1.coord).sum() < 0.01
+
+    mol.transpose(
+        [0, 2, 12],
+        45.6,
+        np.array([0.2, 1, 0.3]) / np.linalg.norm(np.array([0.2, 1, 0.3])),
+    )
+
+    coords = linear.make_coords(C1, C2)
+
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert bam.structural.angle_between(coords[0], coords[1], coords[2]) - 180 < 0.5
+
+    coords[2] = bam.structural.adjust_distance(coords[0], coords[2], C1 - H1)
+    assert np.abs(coords[2] - H1.coord).sum() < 0.01
+
+
+def test_bipyramid():
+
+    mol = bam.Molecule.empty()
+    res = bam.Residue("PCL5")
+    mol.add_residues(res)
+
+    bipyramid = bam.structural.geometry.TrigonalBipyramidal()
+
+    P = bam.Atom.new("P")
+    C1 = bam.Atom.new("Cl", [0, 0, 1])
+
+    # atoms without coordinates yet
+    C2 = bam.Atom.new("Cl")
+    C3 = bam.Atom.new("Cl")
+    C4 = bam.Atom.new("Cl")
+    C5 = bam.Atom.new("Cl")
+
+    mol.add_atoms(P, C1, C2, C3, C4, C5)
+
+    coords = bipyramid.make_coords(P, C1, direction="planar")
+    assert np.all(coords[0] == P.coord)
+    assert np.all(coords[1] == C1.coord)
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[2]) - 120 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[3]) - 120 < 0.5
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[4]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[5]) - 90 < 0.5
+
+    C2.coord = coords[2]
+    C3.coord = coords[3]
+    C4.coord = coords[4]
+    C5.coord = coords[5]
+
+    # v = mol.draw()
+
+    coords = bipyramid.make_coords(P, C2, C4, direction="mixed")
+
+    # v.draw_points(coords, colors="orange")
+    # v.show()
+
+    assert np.all(coords[0] == P.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert np.all(coords[2] == C4.coord)
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[4]) - 120 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[3]) - 120 < 0.5
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[2]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[5]) - 90 < 0.5
+
+    # now test with non-specified directionality to see if it could infer them
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C4, C5)], bipyramid.angle
+    )
+    assert direction == "axial"
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C2, C3)], bipyramid.angle
+    )
+    assert direction == "planar"
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C2, C4)], bipyramid.angle
+    )
+    assert direction == "mixed"
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C4, C2)], bipyramid.angle
+    )
+    assert direction == "mixed"
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C2, C5)], bipyramid.angle
+    )
+    assert direction == "mixed"
+
+
+def test_octahedral():
+    mol = bam.Molecule.empty(add_one_residue="PF6")
+
+    octahedral = bam.structural.geometry.Octahedral()
+
+    P = bam.Atom.new("P")
+    F1 = bam.Atom.new("F", [1, 0, 0])
+    F2 = bam.Atom.new("F", [0, 1, 0])
+    F3 = bam.Atom.new("F")
+    F4 = bam.Atom.new("F")
+    F5 = bam.Atom.new("F")
+    F6 = bam.Atom.new("F")
+
+    mol.add_atoms(P, F1, F2, F3, F4, F5, F6)
+
+    coords = octahedral.make_coords(P, F1, F2, direction="planar", length=1)
+    assert np.all(coords[0] == P.coord)
+    assert np.all(coords[1] == F1.coord)
+    assert np.all(coords[2] == F2.coord)
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[2]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[3]) - 180 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[4]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[5]) - 90 < 0.5
+
+    assert bam.structural.angle_between(coords[2], coords[0], coords[3]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[2], coords[0], coords[4]) - 180 < 0.5
+    assert bam.structural.angle_between(coords[2], coords[0], coords[5]) - 90 < 0.5
+
+    F3.coord = coords[3]
+    F4.coord = coords[4]
+    F5.coord = coords[5]
+    F6.coord = coords[6]
+
+    # v = mol.draw()
+
+    mol.rotate(23, "x").rotate(45, "y").move([1, 2, 3])
+
+    coords = octahedral.make_coords(P, F1, F5, direction="mixed", length=1)
+
+    # v.draw_points(coords, colors="orange")
+
+    # v.show()
+
+    assert np.all(coords[0] == P.coord)
+    assert np.all(coords[1] == F1.coord)
+    assert np.all(coords[2] == F5.coord)
+
+    assert np.abs(F2.coord - coords[3]).sum() < 0.1
+    assert np.abs(F3.coord - coords[4]).sum() < 0.1
+    assert np.abs(F4.coord - coords[5]).sum() < 0.1
+    assert np.abs(F6.coord - coords[6]).sum() < 0.1
+
+
+def test_tetrahedral_apply():
+    bam.load_small_molecules()
+    mol = bam.get_compound("CH4").autolabel()
+
+    # v = mol.draw()
+
+    tetra = bam.structural.geometry.Tetrahedral()
+
+    old = mol.get_coords()
+
+    atoms = [mol.get_atom("C1"), *mol.get_atoms("H", by="element")]
+    tetra.apply(atoms)
+    new = mol.get_coords()
+
+    # v.draw_points(new, ids=[i.id for i in atoms], colors="green")
+    # v.show()
+
+    assert ((old - new) ** 2).sum() < 0.1
