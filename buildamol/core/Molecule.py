@@ -922,14 +922,17 @@ class Molecule(entity.BaseEntity):
         self._root_atom = root_atom
 
     @classmethod
-    def empty(cls, id: str = None) -> "Molecule":
+    def empty(cls, id: str = None, add_one_residue: str = None) -> "Molecule":
         """
-        Create an empty Molecule object
+        Create an Molecule without any atoms in it. This will have a single Model and Chain by default, however.
+        Optionally, add one residue to it.
 
         Parameters
         ----------
         id : str
             The id of the Molecule. By default an id is inferred from the filename.
+        add_one_residue : bool
+            If provided, a single residue with the given resname is added to the molecule
 
         Returns
         -------
@@ -937,7 +940,10 @@ class Molecule(entity.BaseEntity):
             An empty Molecule object
         """
         structure = structural.make_empty_structure(id)
-        return cls(structure)
+        new = cls(structure)
+        if add_one_residue is not None:
+            new.add_residues(entity.base_classes.Residue(add_one_residue))
+        return new
 
     @classmethod
     def from_pdb(
