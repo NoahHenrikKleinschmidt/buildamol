@@ -412,12 +412,21 @@ class PlotlyViewer3D:
             ids = [str(i) for i in range(len(coords))]
         if colors is None:
             colors = ["black" for _ in range(len(coords))]
+        elif isinstance(colors, str):
+            colors = [colors for _ in range(len(coords))]
         if opacities is None:
             opacities = [1.0 for _ in range(len(coords))]
+        elif isinstance(opacities, (int, float)):
+            opacities = [opacities for _ in range(len(coords))]
         if showlegends is None:
             showlegends = [True for _ in range(len(coords))]
+        elif isinstance(showlegends, bool):
+            showlegends = [showlegends for _ in range(len(coords))]
         if sizes is None:
             sizes = [self.size for _ in range(len(coords))]
+        elif isinstance(sizes, (int, float)):
+            sizes = [sizes for _ in range(len(coords))]
+
         for idx, coord in enumerate(coords):
             self.draw_point(
                 ids[idx],
