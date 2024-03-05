@@ -52,6 +52,16 @@ import periodictable as pt
 
 __all__ = ["Atom", "Residue", "Chain", "Model", "Structure", "Bond"]
 
+__global_counters__ = {
+    "A": 1,
+    "R": 1,
+    "C": 1,
+    "M": 1,
+    "S": 1,
+}
+
+__global_element_counters__ = {}
+
 
 class ID:
     """
@@ -169,7 +179,7 @@ class Atom(ID, bio.Atom.Atom):
         bio.Atom.Atom.__init__(
             self,
             id,
-            np.asarray(coord),
+            np.asarray(coord, dtype=np.float64),
             bfactor,
             occupancy,
             altloc,
@@ -180,6 +190,63 @@ class Atom(ID, bio.Atom.Atom):
             radius,
         )
         self.level = "A"
+
+    @classmethod
+    def new(cls, element_or_id: str, coord: "ndarray" = None, **kwargs) -> "Atom":
+        """
+        Create a blank atom with a given element and coordinates.
+
+        Parameters
+        ----------
+        element_or_id : str
+            The atom element. If the element is not found in the periodic table, it will be used as the atom id.
+            To ensure the correct element is assigned to the atom either pass it as it as keyword argument directly or
+            to let BuildAMol correctly infer the element use one of the following patterns with your atom id:
+                - <element+><number> -> C1, O2, CA2 (calcium id=CA2)
+                - <number><element+> ->  1C, 2O, 1CA (calcium id=1CA)
+                - <space><element><string|number+> -> " CA" (Carbon id=CA), " ND2  " (Nitrongen id=ND2), " OXT" (Oxygen id=OXT)
+                - <element+><space+> -> "CA " (Calcium id=CA), "FE " (Iron id=FE)
+                - <element+>_<string|number+> -> "CA_" (Calcium id=CA), "C_A" (Carbon id=CA)
+            (the + indicates multiple characters)
+        coord : ndarray, optional
+            The atom coordinates. The default is None.
+        **kwargs
+            Additional keyword arguments to pass to the Atom
+
+        Returns
+        -------
+        Atom
+            The blank atom.
+        """
+        if coord is None:
+            coord = np.zeros(3)
+        if pt.elements.__dict__.get(element_or_id) or pt.elements.__dict__.get(
+            element_or_id.title()
+        ):
+            element = element_or_id.upper()
+            __global_element_counters__[element] = (
+                __global_element_counters__.get(element, 0) + 1
+            )
+            id = f"{element}{__global_element_counters__[element]}"
+        else:
+            id, element = Atom._infer_element_from_id(element_or_id)
+
+        element = kwargs.pop("element", element)
+        return cls(id=id, coord=coord, element=element, **kwargs)
+
+    @classmethod
+    def from_element(self, element: str, **kwargs):
+        """
+        Create a blank atom with a given element and coordinates.
+
+        Parameters
+        ----------
+        element : str
+            The atom element.
+        **kwargs
+            Additional keyword arguments to pass to the Atom
+        """
+        return Atom.new(element, **kwargs)
 
     @property
     def full_id(self):
@@ -271,6 +338,13 @@ class Atom(ID, bio.Atom.Atom):
             self.radius,
         )
 
+    @property
+    def atomic_number(self):
+        """
+        The atomic number of the atom's element.
+        """
+        return pt.elements.symbol(self.element).number
+
     def set_id(self, id):
         """
         Set the atom identifier.
@@ -313,6 +387,44 @@ class Atom(ID, bio.Atom.Atom):
         """
         self.coord += vector
         return self
+
+    @staticmethod
+    def _infer_element_from_id(id: str) -> str:
+        """
+        A method to infer the element from the atom id.
+
+        Rules that are considered (+ indicates multiple characters):
+        - <element+><number>, e.g. C1, O2, CA2 (calcium id=CA2)
+        - <number><element+>, e.g. 1C, 2O, 1CA (calcium id=1CA)
+        - <space><element><string|number+> -> " CA" (Carbon id=CA), " ND2  " (Nitrongen id=ND2), " OXT" (Oxygen id=OXT)
+        - <element+><space+> -> "CA " (Calcium), "FE " (Iron)
+        - <element+>_<string|number+> -> "CA_" (Calcium id=CA), "C_A" (Carbon id=CA)
+
+        """
+        id = id.upper()
+        element = None
+
+        # <number><element+>, e.g. 1C, 2O, 3N, 1H
+        # or
+        # <element+><number>, e.g. C1, O2, N3, H1
+        if id[0].isdigit() or (id[0] != " " and id[-1].isdigit()):
+            element = id.translate(str.maketrans("", "", "0123456789"))
+
+        # <space><element><string+> -> " CA" (Carbon id=CA), " ND2" (Nitrongen id=ND2), " OXT" (Oxygen id=OXT)
+        elif id[0] == " ":
+            id = id.strip()
+            element = id[0]
+
+        # <element+>_<string+> -> "CA_" (Calcium id=CA), "C_A" (Carbon id=CA)
+        elif "_" in id:
+            element = id.split("_")[0]
+            id = id.replace("_", "")
+
+        # <element+><space+> -> "CA " (Calcium), "FE " (Iron)
+        elif id[-1] == " ":
+            element = id = id.strip()
+
+        return id, element
 
     def __repr__(self):
         return f"Atom({self.id}, {self.serial_number})"
@@ -395,6 +507,30 @@ class Residue(ID, bio.Residue.Residue):
         self.serial_number = icode
         self._coord = None
 
+    @classmethod
+    def new(cls, resname: str, segid: str = " ", icode: int = None) -> "Residue":
+        """
+        Create a blank residue with a given name and segid.
+
+        Parameters
+        ----------
+        resname : str
+            The residue name.
+        segid : str, optional
+            The residue segid. The default is " ".
+        icode : int, optional
+            The residue icode. The default is None.
+
+        Returns
+        -------
+        Residue
+            The blank residue.
+        """
+        if icode is None:
+            icode = __global_counters__["R"]
+            __global_counters__["R"] += 1
+        return cls(resname, segid, icode)
+
     @property
     def id(self):
         return ("H_" + self.resname, self.serial_number, self.segid)
@@ -430,6 +566,18 @@ class Residue(ID, bio.Residue.Residue):
     @coord.setter
     def coord(self, value):
         self._coord = value
+
+    def get_coord(self):
+        """
+        Get the center of mass of the residue.
+        """
+        return self.coord
+
+    def set_coord(self, value):
+        """
+        Set the center of mass of the residue.
+        """
+        self.coord = value
 
     def matches(self, other) -> bool:
         """
@@ -586,6 +734,23 @@ class Chain(ID, bio.Chain.Chain):
         super(bio.Chain.Chain, self).__init__(id)
         self.level = "C"
 
+    @classmethod
+    def new(cls, id: str) -> "Chain":
+        """
+        Create a blank chain with a given id.
+
+        Parameters
+        ----------
+        id : str, optional
+            The chain identifier. The default is None.
+
+        Returns
+        -------
+        Chain
+            The blank chain.
+        """
+        return cls(id)
+
     @property
     def full_id(self):
         p = self.get_parent()
@@ -738,6 +903,26 @@ class Model(bio.Model.Model, ID):
         ID.__init__(self)
         super(bio.Model.Model, self).__init__(id)
         self.level = "M"
+
+    @classmethod
+    def new(cls, id: int = None) -> "Model":
+        """
+        Create a blank model with a given id.
+
+        Parameters
+        ----------
+        id : int
+            The model identifier.
+
+        Returns
+        -------
+        Model
+            The blank model.
+        """
+        if id is None:
+            id = __global_counters__["M"]
+            __global_counters__["M"] += 1
+        return cls(id)
 
     @property
     def serial_number(self):
@@ -902,6 +1087,23 @@ class Structure(ID, bio.Structure.Structure):
         ID.__init__(self)
         super(bio.Structure.Structure, self).__init__(id)
         self.level = "S"
+
+    @classmethod
+    def new(cls, id: str) -> "Structure":
+        """
+        Create a blank structure with a given id.
+
+        Parameters
+        ----------
+        id : str
+            The structure identifier.
+
+        Returns
+        -------
+        Structure
+            The blank structure.
+        """
+        return cls(id)
 
     @property
     def full_id(self):
