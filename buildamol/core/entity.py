@@ -381,11 +381,25 @@ class BaseEntity:
         return sorted(self._model.get_chains(), key=lambda x: len(x.id))
 
     @property
+    def _chains(self):
+        """
+        Get the list of chains as returned by the get_chains() method
+        """
+        return list(self._model.get_chains())
+
+    @property
     def residues(self):
         """
         A sorted list of all residues in the structure
         """
         return sorted(self._model.get_residues(), key=lambda x: x.id[1])
+
+    @property
+    def _residues(self):
+        """
+        Get the list of residues as returned by the get_residues() method
+        """
+        return list(self._model.get_residues())
 
     @property
     def atoms(self):
@@ -394,6 +408,13 @@ class BaseEntity:
         """
         return sorted(self._AtomGraph.nodes)
         # return list(self._model.get_atoms())
+
+    @property
+    def _atoms(self):
+        """
+        Get the list of atoms as returned by the get_atoms() method
+        """
+        return list(self.get_atoms())
 
     @property
     def center_of_mass(self):
