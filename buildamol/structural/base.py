@@ -5,10 +5,12 @@ Basic structure related functions
 import numpy as np
 import Bio.PDB as bio
 
-from functools import partial
-
 import buildamol.utils.auxiliary as aux
 
+origin = np.array([0, 0, 0])
+"""
+The origin of the 3D coordinate system
+"""
 
 x_axis = np.array([1, 0, 0])
 """
@@ -301,9 +303,32 @@ def compute_dihedral(atom1, atom2, atom3, atom4):
     dihedral : float
         The dihedral angle between the four atoms in degrees
     """
-    ab = atom1.coord - atom2.coord
-    bc = atom3.coord - atom2.coord
-    cd = atom4.coord - atom3.coord
+    return dihedral_between(atom1.coord, atom2.coord, atom3.coord, atom4.coord)
+
+
+def dihedral_between(coords1, coords2, coords3, coords4):
+    """
+    Compute the dihedral angle between four points
+
+    Parameters
+    ----------
+    coords1 : numpy.ndarray
+        The coordinates of the first atom
+    coords2 : numpy.ndarray
+        The coordinates of the second atom
+    coords3 : numpy.ndarray
+        The coordinates of the third atom
+    coords4 : numpy.ndarray
+        The coordinates of the fourth atom
+
+    Returns
+    -------
+    dihedral : float
+        The dihedral angle between the four atoms in degrees
+    """
+    ab = coords1 - coords2
+    bc = coords3 - coords2
+    cd = coords4 - coords3
 
     # normalize bc so that it does not influence magnitude of vector
     # rejections that come next
@@ -319,42 +344,7 @@ def compute_dihedral(atom1, atom2, atom3, atom4):
     return np.degrees(np.arctan2(y, x))
 
 
-def compute_torsional(atom1, atom2, atom3, atom4):
-    """
-    Compute the torsional angle between four atoms.
-
-    Parameters
-    ----------
-    atom1 : Bio.PDB.Atom
-        The first atom
-    atom2 : Bio.PDB.Atom
-        The second atom
-    atom3 : Bio.PDB.Atom
-        The third atom
-    atom4 : Bio.PDB.Atom
-        The fourth atom
-
-    Returns
-    -------
-    torsional : float
-        The torsional angle between the four atoms in degrees
-    """
-    ab = atom1.coord - atom2.coord
-    bc = atom3.coord - atom2.coord
-    cd = atom4.coord - atom3.coord
-
-    # normalize b so that it does not influence magnitude of vector
-    # rejections that come next
-    bc /= np.linalg.norm(bc)
-
-    # vector rejections
-    v = ab - np.dot(ab, bc) * bc
-    w = cd - np.dot(cd, bc) * bc
-
-    # angle between v and w in radians
-    x = np.dot(v, w)
-    y = np.dot(np.cross(bc, v), w)
-    return np.degrees(np.arctan2(y, x))
+compute_torsional = compute_dihedral
 
 
 def distance_between(coord1, coord2):
@@ -432,6 +422,52 @@ def center_of_geometry(coords):
         The center of geometry
     """
     return np.mean(coords, axis=0)
+
+
+def adjust_bond_length(bond, new_length: float):
+    """
+    Adjust the bond length of a bond.
+
+    Parameters
+    ----------
+    bond : buildamol.Bond
+        The bond to adjust
+    new_length : float
+        The new bond length
+
+    Returns
+    -------
+    adjusted_bond : Bio.PDB.Bond
+        The adjusted bond
+    """
+    atom1, atom2 = bond
+    vec = atom2.coord - atom1.coord
+    vec /= np.linalg.norm(vec)
+    atom2.coord = atom1.coord + new_length * vec
+    return bond
+
+
+def adjust_distance(coord1, coord2, new_length: float):
+    """
+    Adjust the distance between two points.
+
+    Parameters
+    ----------
+    coord1 : array-like
+        The first point
+    coord2 : array-like
+        The second point
+    new_length : float
+        The new distance
+
+    Returns
+    -------
+    new_coord2 : array-like
+        The new coordinates of the second point
+    """
+    vec = coord2 - coord1
+    vec /= np.linalg.norm(vec)
+    return coord1 + new_length * vec
 
 
 def rotate_molecule(

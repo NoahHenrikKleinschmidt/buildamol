@@ -30,3 +30,5 @@ from buildamol.structural.neighbors import (
     compute_triplets,
     generate_triplets,
 )
+
+import buildamol.structural.geometry as geometry
