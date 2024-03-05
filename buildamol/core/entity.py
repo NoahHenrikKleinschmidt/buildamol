@@ -922,7 +922,7 @@ class BaseEntity:
         angle : float
             The angle to rotate by
         axis : np.ndarray
-            The axis to rotate around
+            The axis to rotate around. This must be a unit vector.
         center : np.ndarray
             The center of the rotation
         angle_is_degrees : bool
@@ -2657,6 +2657,77 @@ class BaseEntity:
             The Biopython structure
         """
         return self._base_struct.to_biopython()
+
+    def to_numpy(self, export_bonds: bool = True):
+        """
+        Convert the molecule to numpy arrays
+
+        Parameters
+        ----------
+        export_bonds : bool
+            If True, the bonds are also exported.
+            If False, the bond array will remain empty.
+
+        Returns
+        -------
+        tuple
+            The atomic numbers and atomic coordinates in one array
+            and the bonds with atom serial numbers and bond order in a second array
+        """
+        return utils.convert.mol_to_numpy_array(self, export_bonds)
+
+    def get_coords(self, *atom_selector, **atom_selectors) -> np.ndarray:
+        """
+        Get the coordinates of the atoms in the molecule
+
+        Parameters
+        ----------
+        atom_selectors
+            Arguments or keyword arguments to pass to get_atoms(). If None, all atoms are selected.
+
+        Returns
+        -------
+        np.ndarray
+            The coordinates
+        """
+        return np.array(
+            [atom.coord for atom in self.get_atoms(*atom_selector, **atom_selectors)]
+        )
+
+    def get_bond_array(self) -> np.ndarray:
+        """
+        Get the bonds of the atoms in the molecule
+        as an array of atom1, atom2, bond_order
+
+        Returns
+        -------
+        np.ndarray
+            The bonds
+        """
+        return np.array(
+            [
+                [bond.atom1.serial_number, bond.atom2.serial_number, bond.order]
+                for bond in self.get_bonds()
+            ]
+        )
+
+    def get_bond_mask(self) -> np.ndarray:
+        """
+        Get the bonds of the atoms in the molecule
+        as a 2D mask where fields with 1 indicate a bond between the atoms
+        of row and column.
+
+        Returns
+        -------
+        np.ndarray
+            The bond mask
+        """
+        n = len(self.get_atoms())
+        mask = np.zeros((n, n), dtype=int)
+        for bond in self.get_bonds():
+            mask[bond.atom1.serial_number - 1, bond.atom2.serial_number - 1] = 1
+            mask[bond.atom2.serial_number - 1, bond.atom1.serial_number - 1] = 1
+        return mask
 
     # def infer_missing_atoms(self, _topology=None, _compounds=None):
     #     """

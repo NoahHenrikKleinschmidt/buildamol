@@ -19,6 +19,39 @@ has_rdkit = aux.HAS_RDKIT
 has_openmm = aux.HAS_OPENMM
 
 
+def mol_to_numpy_array(mol, include_bonds: bool = False):
+    """
+    Convert a molecule to a numpy array
+
+    Parameters
+    ----------
+    mol : object
+        The molecule to convert
+    include_bonds : bool, optional
+        Whether to include the bonds in the array
+        If False, the bond array will be empty
+
+    Returns
+    -------
+    tuple,
+        An array of atomic numbers and atom coordinates
+        and an array of bonds between atoms as serial numbers of a,b and bond order
+    """
+    coords = np.array(
+        [
+            (atom.serial_number, atom.atomic_number, atom.coords)
+            for atom in mol.get_atoms()
+        ]
+    )
+    if include_bonds:
+        bonds = np.zeros((coords.shape[0], 3))
+        for idx, b in enumerate(mol.get_bonds()):
+            bonds[idx, :] = [b.atom1.serial_number, b.atom2.serial_number, b.order]
+    else:
+        bonds = np.empty((0, 1))
+    return coords, bonds
+
+
 class PDBIO:
     """
     The base class for intermediary PDB file-based conversions
