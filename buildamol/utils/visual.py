@@ -304,21 +304,46 @@ class PlotlyViewer3D:
     def write_html(self, path):
         self.figure.write_html(path)
 
-    def reset(self, zlim=None):
+    def reset(self, **kwargs):
         self.figure = go.Figure(
             layout=go.Layout(
                 scene=dict(
-                    xaxis=dict(showgrid=False, showline=False, showticklabels=False),
-                    yaxis=dict(showgrid=False, showline=False, showticklabels=False),
+                    xaxis=dict(
+                        showgrid=False,
+                        showline=False,
+                        showticklabels=False,
+                        range=kwargs.pop("xlim", None),
+                    ),
+                    yaxis=dict(
+                        showgrid=False,
+                        showline=False,
+                        showticklabels=False,
+                        range=kwargs.pop("ylim", None),
+                    ),
                     zaxis=dict(
                         showgrid=False,
                         showline=False,
                         showticklabels=False,
-                        range=zlim,
+                        range=kwargs.pop("zlim", None),
                     ),
                     # aspectmode="cube",
                 ),
                 template="simple_white",
+            )
+        )
+
+    def viewbox(self, xlim=None, ylim=None, zlim=None):
+        if isinstance(xlim, (int, float)):
+            xlim = [-xlim, xlim]
+        if isinstance(ylim, (int, float)):
+            ylim = [-ylim, ylim]
+        if isinstance(zlim, (int, float)):
+            zlim = [-zlim, zlim]
+        self.figure.update_layout(
+            scene=dict(
+                xaxis=dict(range=xlim),
+                yaxis=dict(range=ylim),
+                zaxis=dict(range=zlim),
             )
         )
 
