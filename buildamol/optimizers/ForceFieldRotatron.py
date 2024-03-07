@@ -7,6 +7,7 @@ The ForceFieldRotatron is a rotatron that uses RDKit's MMFF94 force field to eva
     Consequently, even though this environment **can** be used with ResidueGraphs, it is not recommended.
     
 """
+
 import gym
 
 import numpy as np
@@ -70,7 +71,7 @@ class ForceFieldRotatron(Rotatron):
             "mmff_variant": mmff_variant,
             "n_processes": n_processes,
             "bounds": bounds,
-            **kwargs
+            **kwargs,
         }
         self.crop_radius = crop_nodes_further_than
         self.clash_distance = clash_distance
@@ -100,7 +101,9 @@ class ForceFieldRotatron(Rotatron):
 
         # =====================================
 
-        Rotatron.__init__(self, graph, rotatable_edges, n_processes=n_processes, **kwargs)
+        Rotatron.__init__(
+            self, graph, rotatable_edges, n_processes=n_processes, **kwargs
+        )
         self.action_space = gym.spaces.Box(
             low=bounds[0], high=bounds[1], shape=(len(self.rotatable_edges),)
         )
@@ -135,10 +138,8 @@ class ForceFieldRotatron(Rotatron):
             The energy for the state
         """
         # calculate the energy
-        p = aux.AllChem.MMFFGetMoleculeProperties(
-            self.mol, mmffVariant=self.mmff_variant
-        )
-        e = aux.AllChem.MMFFGetMoleculeForceField(self.mol, p).CalcEnergy()
+        p = aux.MMFFGetMoleculeProperties(self.mol, mmffVariant=self.mmff_variant)
+        e = aux.MMFFGetMoleculeForceField(self.mol, p).CalcEnergy()
         return e
 
     def eval(self, state):
@@ -164,16 +165,18 @@ if __name__ == "__main__":
     from time import time
 
     mol = bam.molecule(
-        "/Users/noahhk/GIT/biobuild/biobuild/optimizers/_testing/files/EX7.json"
+        "/Users/noahhk/GIT/biobuild/buildamol/optimizers/__testing__/files/EX8.json"
     )
     mol.autolabel()
 
     graph = mol.get_atom_graph()
 
-    edges = graph.find_rotatable_edges(mol.get_atom(168), min_descendants=10)
+    edges = graph.find_rotatable_edges(
+        graph.central_node, min_descendants=20
+    )  # mol.get_atom(168), min_descendants=10)
 
     env = ForceFieldRotatron(graph, edges)
-    out = bam.optimizers.optimize(mol.copy(), env, "genetic", max_generations=50)
+    out = bam.optimizers.optimize(mol.copy(), env, "swarm")
     out.show()
 
     # v = graph.draw()

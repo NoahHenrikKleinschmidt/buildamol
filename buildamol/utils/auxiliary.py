@@ -10,51 +10,53 @@ import string
 import pickle
 import numpy as np
 
-# =================================================================
-try:
-    from rdkit import Chem
-    from rdkit.Chem import AllChem
-    from rdkit import RDLogger
-    from rdkit.Chem import Draw
+import importlib
 
-    HAS_RDKIT = True
-except ImportError:
+# =================================================================
+
+
+def has_package(name):
+    return importlib.util.find_spec(name) is not None
+
+
+HAS_RDKIT = has_package("rdkit")
+HAS_PYBEL = has_package("openbabel")
+HAS_OPENMM = has_package("openmm")
+HAS_NUMBA = has_package("numba")
+
+
+if HAS_RDKIT:
+    Chem = importlib.import_module("rdkit.Chem")
+    AllChem = importlib.import_module("rdkit.Chem.AllChem")
+    RDLogger = importlib.import_module("rdkit.RDLogger")
+    Draw = importlib.import_module("rdkit.Chem.Draw")
+    MMFFGetMoleculeProperties = AllChem.MMFFGetMoleculeProperties
+    MMFFGetMoleculeForceField = AllChem.MMFFGetMoleculeForceField
+else:
     AllChem = None
     Chem = None
     Draw = None
     RDLogger = None
-    HAS_RDKIT = False
+    MMFFGetMoleculeProperties = None
+    MMFFGetMoleculeForceField = None
 
-
-try:
-    from openbabel import pybel
-
-    HAS_PYBEL = True
-except ImportError:
+if HAS_PYBEL:
+    pybel = importlib.import_module("openbabel.pybel")
+else:
     pybel = None
-    HAS_PYBEL = False
 
-
-try:
-    import openmm.app as openmm
-
-    HAS_OPENMM = True
-except ImportError:
+if HAS_OPENMM:
+    openmm = importlib.import_module("openmm.app")
+else:
     openmm = None
-    HAS_OPENMM = False
 
+if HAS_NUMBA:
+    njit = importlib.import_module("numba").njit
+else:
+    njit = lambda x: x
 
-try:
-    from numba import njit
-
-    HAS_NUMBA = True
-    USE_NUMBA = False
-    USE_ALL_NUMBA = False
-except ImportError:
-    njit = None
-    HAS_NUMBA = False
-    USE_NUMBA = False
-    USE_ALL_NUMBA = False
+USE_NUMBA = False
+USE_ALL_NUMBA = False
 
 
 # =================================================================
