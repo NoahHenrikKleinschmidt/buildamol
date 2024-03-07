@@ -16,6 +16,36 @@ class Geometry:
     size = -1
     angle = -1
 
+    def make_and_apply(
+        self, atoms_to_make_from: list, atoms_to_apply_to: list, **kwargs
+    ):
+        """
+        Automatically make and apply the geometry to a list of atom objects
+
+        Parameters
+        ----------
+        atoms_to_make_from : list
+            The list of atoms to make the geometry from.
+            Note that there must not be more atoms than the geometry can generate coordinates for.
+            Note that in each case the central atom must be the first atom in the list.
+            Other atoms (planar or axial, where applicable) must come after. Be sure to pass
+            a 'direction' argument to specify the inference direction if the points are ambiguous.
+        atoms_to_apply_to : list
+            The list of atoms to apply the geometry to.
+            Note that there must not be more atoms than the geometry can generate coordinates for.
+            Note that in each case the central atom must be the first atom in the list.
+            Other atoms (planar or axial, where applicable) must come after.
+        **kwargs
+            Additional keyword arguments to pass to the coordinate generation function.
+        """
+        coords = self.make_coords(*atoms_to_make_from, **kwargs)
+        if len(atoms_to_apply_to) > self.size:
+            raise ValueError(
+                f"Too many atoms for this geometry. {self.__class__.__name__} generates {self.size} coordinates but the input has {len(atoms_to_apply_to)} atoms."
+            )
+        for i, atom in enumerate(atoms_to_apply_to):
+            atom.coord = coords[i]
+
     def apply(self, atoms: list, bonds: list = None, **kwargs):
         """
         Automatically apply coordinate generation to a list of atom objects
@@ -28,6 +58,9 @@ class Geometry:
             Note that in each case the central atom must be the first atom in the list.
             Other atoms (planar or axial, where applicable) must come after. Be sure to pass
             a 'direction' argument to specify the inference direction if the points are ambiguous.
+        bonds : list
+            A list of tuples of the same atoms as in 'atoms' that are bonded. This can be used to adjust the bond lengths after the geometry is applied.
+
         **kwargs
             Additional keyword arguments to pass to the coordinate generation function.
 
@@ -632,7 +665,7 @@ class TrigonalBipyramidal(Geometry):
         """
         length = length or self.bond_length
         center = getattr(center, "coord", center)
-        other = center + base.z_axis * length
+        other = center + base.x_axis * length
         return self.make_coords_from_two_axial(center, other, length=length)
 
     def make_coords_from_two_axial(self, center, other, length: float = None):
@@ -1491,9 +1524,9 @@ if __name__ == "__main__":
     octa = TrigonalBipyramidal()
     coords = octa.make_coords(
         np.array([0, 0, 0], dtype=np.float64),
-        np.array([0.5, 0, 0], dtype=np.float64),
+        # np.array([0.5, 0, 0], dtype=np.float64),
         # np.array([1, 0, 0], dtype=np.float64),
-        direction="axial",
+        # direction="axial",
     )
 
     v.draw_points(coords, colors=["orange"] * 7)
