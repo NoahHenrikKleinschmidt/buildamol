@@ -119,4 +119,11 @@ More applied Tutorials
    :link: example_nanotube
    :link-type: ref
 
-   In this tutorial we will build a nanotube from scratch, atom by atom, using BuildAMol.
+   In this tutorial we will build a nanotube 100% from scratch, atom by atom, using numpy to build coordinates and BuildAMol to assemble a molecule.
+
+.. card:: Molecules from scratch - building PF5
+   :link: example_geometry
+   :link-type: ref
+
+   In this tutorial we will build a PF5 molecule using BuildAMol's molecular geometries to automatically generate coordinates.
+   
