@@ -35,7 +35,7 @@ def simple_concatenation_function(x, unfold, pushback, n_smallest, clash_distanc
 
     Mean distance ** unfold + (mean of n smallest distances) ** pushback
     """
-    smallest = np.sort(x)[:n_smallest]
+    smallest = np.partition(x, n_smallest)[:n_smallest]  # np.sort(x)[:n_smallest]
     e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
     return e
 
@@ -49,9 +49,9 @@ def concatenation_function_with_penalty(
     """
     A concatentation function that computes the evaluation as:
 
-    (Mean distance ** unfold + (mean of n smallest distances) ** pushback) / clash penalty
+    [(Mean distance ** unfold + (mean of n smallest distances) ** pushback)] / clash penalty
     """
-    smallest = np.sort(x)[:n_smallest]
+    smallest = np.partition(x, n_smallest)[:n_smallest]  # np.sort(x)[:n_smallest]
     penalty = np.sum(x < 1.5 * clash_distance)
     e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
     e /= (1 + penalty) ** 2
@@ -82,9 +82,9 @@ def concatenation_function_no_unfold(x, unfold, pushback, n_smallest, clash_dist
     """
     A concatentation function that computes the evaluation as:
 
-    Mean distance + pushback * mean of n smallest distances
+    (Mean of n smallest distances) ** pushback
     """
-    smallest = np.sort(x)[:n_smallest]
+    smallest = np.partition(x, n_smallest)[:n_smallest]  # np.sort(x)[:n_smallest]
     e = np.power(np.mean(smallest), pushback)
     return e
 
@@ -100,7 +100,7 @@ def concatenation_function_linear(x, unfold, pushback, n_smallest, clash_distanc
 
     Mean distance * unfold + (mean of n smallest distances) * pushback
     """
-    smallest = np.sort(x)[:n_smallest]
+    smallest = np.partition(x, n_smallest)[:n_smallest]  # np.sort(x)[:n_smallest]
     e = np.multiply(np.mean(x), unfold) + np.multiply(np.mean(smallest), pushback)
     return e
 
@@ -377,12 +377,12 @@ if __name__ == "__main__":
     DistanceRotatron._backup_eval = 0.0
 
     mol = bam.Molecule.from_json(
-        "/Users/noahhk/GIT/biobuild/buildamol/optimizers/_testing/files/GLYCAN.json"
+        "/Users/noahhk/GIT/biobuild/buildamol/optimizers/__testing__/files/EX8.json"
     )
     print("init: ", mol.count_clashes())
     graph = mol.get_residue_graph(True)
     env = DistanceRotatron(
-        graph, numba=False
+        graph, numba=False, concatenation_function=simple_concatenation_function
     )  # , concatenatiofn_function=simple_concatenation_function)
 
     from time import time
