@@ -1333,12 +1333,29 @@ class Octahedral(Geometry):
         return coords
 
 
-__default_tetrahedral__ = Tetrahedral()
-__default_trigonal_planar__ = TrigonalPlanar()
-__default_linear__ = Linear()
-__default_trigonal_bipyramidal__ = TrigonalBipyramidal()
-__default_octahedral__ = Octahedral()
+tetrahedral = Tetrahedral()
+"""
+The default tetrahedral geometry
+"""
+trigonal_palar = TrigonalPlanar()
+"""
+The default trigonal planar geometry
+"""
 
+linear = Linear()
+"""
+The default linear geometry
+"""
+
+trigonal_bipyramidal = TrigonalBipyramidal()
+"""
+The default trigonal bipyramidal geometry
+"""
+
+octahedral = Octahedral()
+"""
+The default octahedral geometry
+"""
 
 if __name__ == "__main__":
     import buildamol as bam
