@@ -21,7 +21,7 @@ import buildamol.core.base_classes as base_classes
 
 class BaseEntity:
     """
-    THe Base class for all classes that store and handle biopython structures, namely the Molecule class.
+    The Base class for all classes that store and handle biopython structures, namely the Molecule class.
 
     Parameters
     ----------
@@ -1897,6 +1897,22 @@ class BaseEntity:
         # if p:
         #     p.child_dict.pop(_old)
         #     p.child_dict[name] = atom
+        return self
+
+    def change_element(self, atom: Union[int, base_classes.Atom], element: str):
+        """
+        Change the element of an atom. This will automatically add or remove hydrogens
+        if the new element has a different valency.
+
+        Parameters
+        ----------
+        atom : int or base_classes.Atom
+            The atom to rename, either the object itself or its serial number
+        element : str
+            The new element
+        """
+        atom = self.get_atom(atom)
+        structural.change_element(atom, element, self)
         return self
 
     def add_atoms(self, *atoms: base_classes.Atom, residue=None, _copy: bool = False):

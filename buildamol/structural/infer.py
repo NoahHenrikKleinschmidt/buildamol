@@ -45,6 +45,27 @@ element_connectivity = {
     "Mn": 2,
 }
 
+element_to_hydrogen_bond_lengths = {
+    "C": 1.09,
+    "N": 1.01,
+    "O": 0.96,
+    "S": 1.04,
+    "P": 1.10,
+    "F": 0.92,
+    "Cl": 0.99,
+    "Br": 1.14,
+    "I": 1.33,
+    "B": 1.19,
+    "Si": 1.17,
+    "Se": 1.17,
+    "Zn": 1.31,
+    "Ca": 1.74,
+    "Mg": 1.36,
+    "Fe": 1.24,
+    "Cu": 1.28,
+    "Mn": 1.20,
+}
+
 
 class AutoLabel:
     """
@@ -370,6 +391,9 @@ class Hydrogenator:
         (2, 5): tetrahedral,  # an organic phosphate
     }
 
+    # some default bond length for hydrogen atoms
+    _bond_length = 1.05
+
     def infer_hydrogens(
         self, molecule: "Molecule", bond_length: float = 1
     ) -> "Molecule":
@@ -417,6 +441,27 @@ class Hydrogenator:
 
         return self._molecule
 
+    def add_hydrogens(self, atom, _molecule=None):
+        """
+        Add hydrogens to one particular atom.
+        """
+        self._molecule = _molecule or self._molecule
+        connectivity = element_connectivity.get(atom.element, 0)
+        if connectivity == 0:
+            return
+
+        bonds = self._molecule.get_bonds(atom)
+        free_slots = connectivity - sum(b.order for b in bonds) - (atom.pqr_charge or 0)
+        if free_slots > 0:
+            neighbors = set(j for i in bonds for j in i if j != atom)
+            self._add_hydrogens(
+                atom=atom,
+                neighbors=neighbors,
+                free_slots=free_slots,
+                bond_order=max(i.order for i in bonds),
+                connectivity=connectivity,
+            )
+
     def _add_hydrogens(self, atom, neighbors, free_slots, bond_order, connectivity):
         """
         Add hydrogen atoms to a molecule.
@@ -454,6 +499,11 @@ class Hydrogenator:
         if free_slots > 1:
             labels.pop(0)
 
+        # technically this is convenient because
+        # it ensures that we don't have multiple Hs
+        # with the same id present
+        # labels = list(set(labels) - set(i.id for i in neighbors))
+
         # now figure out which of the coordinates already belong to a neighbor
         # and filter for the free locations
         if len(out) > 1:
@@ -470,6 +520,11 @@ class Hydrogenator:
             base_classes.Atom(labels[i], out[i], element="H") for i in range(free_slots)
         ]
         bonds = [base_classes.Bond(atom, H, 1) for H in Hs]
+
+        # now adjust the bond lengths to match the elements
+        length = element_to_hydrogen_bond_lengths.get(atom.element, self._bond_length)
+        for b in bonds:
+            base.adjust_bond_length(b, length)
 
         self._molecule.add_atoms(*Hs)
         self._molecule.add_bonds(*bonds)
@@ -890,6 +945,54 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
 
 def _atom_from_residue(id, residue):
     return next((atom for atom in residue.get_atoms() if atom.id == id), None)
+
+
+def has_free_valence(atom, bonds, needed: int = 1):
+    """
+    Check if an atom has free valence.
+
+    Parameters
+    ----------
+    atom : Atom
+        The atom to check for free valence.
+    bonds : list
+        A list of Bond objects that connect the atom to other atoms.
+    needed : int
+        The number of free valences needed.
+
+    Returns
+    -------
+    bool
+        True if the atom has free valence, False otherwise.
+    """
+    degree = sum(bond.order for bond in bonds)
+    return degree <= element_connectivity.get(atom.element, 0) - needed
+
+
+def change_element(atom, new_element: str, _molecule):
+    """
+    Change the element of an atom and update its connectivity accordingly.
+    This will remove hydrogen atoms if the new element has a lower connectivity,
+    or add them.
+    """
+    old_element = atom.element
+    atom.set_element(new_element)
+    new_connectivity = element_connectivity.get(new_element, 0)
+    reference_connectivity = element_connectivity.get(old_element, 0)
+
+    if _molecule.get_degree(atom) > new_connectivity:
+        neighbors = _molecule.get_neighbors(atom)
+        to_remove = []
+        while _molecule.get_degree(atom) > new_connectivity:
+            for neighbor in neighbors:
+                if neighbor.element == "H":
+                    to_remove.append(neighbor)
+                    new_connectivity += 1
+                    break
+        _molecule.remove_atoms(*to_remove)
+    elif _molecule.get_degree(atom) < new_connectivity:
+        hydrogenator = Hydrogenator()
+        hydrogenator.add_hydrogens(atom, _molecule)
 
 
 # def aromatic_to_double(bonds: list) -> list:
