@@ -161,7 +161,7 @@ class Atom(ID, bio.Atom.Atom):
     def __init__(
         self,
         id: str,
-        coord: "ndarray",
+        coord: "np.ndarray",
         serial_number: int = 1,
         bfactor: float = 0.0,
         occupancy: float = 1.0,
@@ -192,7 +192,7 @@ class Atom(ID, bio.Atom.Atom):
         self.level = "A"
 
     @classmethod
-    def new(cls, element_or_id: str, coord: "ndarray" = None, **kwargs) -> "Atom":
+    def new(cls, element_or_id: str, coord: "np.ndarray" = None, **kwargs) -> "Atom":
         """
         Create a blank atom with a given element and coordinates.
 
@@ -567,7 +567,7 @@ class Residue(ID, bio.Residue.Residue):
     def coord(self, value):
         self._coord = value
 
-    def get_coord(self):
+    def get_coord(self) -> "np.ndarray":
         """
         Get the center of mass of the residue.
         """
@@ -578,6 +578,12 @@ class Residue(ID, bio.Residue.Residue):
         Set the center of mass of the residue.
         """
         self.coord = value
+
+    def get_coords(self) -> "np.ndarray":
+        """
+        Get the coordinates of all atoms in the residue.
+        """
+        return np.array([atom.coord for atom in self.get_atoms()])
 
     def matches(self, other) -> bool:
         """
@@ -767,6 +773,12 @@ class Chain(ID, bio.Chain.Chain):
         if not isinstance(residue, Residue):
             residue = Residue.from_biopython(residue)
         bio.Chain.Chain.add(self, residue)
+
+    def get_coords(self) -> "np.ndarray":
+        """
+        Get the coordinates of all atoms in the chain.
+        """
+        return np.array([atom.coord for atom in self.get_atoms()])
 
     def matches(self, other) -> bool:
         """
@@ -960,6 +972,12 @@ class Model(bio.Model.Model, ID):
             chain = Chain.from_biopython(chain)
         bio.Model.Model.add(self, chain)
 
+    def get_coords(self) -> "np.ndarray":
+        """
+        Get the coordinates of all atoms in the model.
+        """
+        return np.array([atom.coord for atom in self.get_atoms()])
+
     def move(self, vector):
         """
         Move the model by a vector.
@@ -1117,6 +1135,12 @@ class Structure(ID, bio.Structure.Structure):
         if not isinstance(model, Model):
             model = Model.from_biopython(model)
         bio.Structure.Structure.add(self, model)
+
+    def get_coords(self) -> "np.ndarray":
+        """
+        Get the coordinates of all atoms in the structure.
+        """
+        return np.array([atom.coord for atom in self.get_atoms()])
 
     def matches(self, other) -> bool:
         """
@@ -1304,6 +1328,10 @@ class Bond:
         else:
             raise ValueError("Bond must be initialized with one tuple or two atoms")
 
+    @property
+    def length(self) -> float:
+        return self.compute_length()
+
     def invert(self):
         """
         Invert the bond, i.e. swap the two atoms.
@@ -1375,6 +1403,33 @@ class Bond:
             The bond length.
         """
         return self.atom1 - self.atom2
+
+    def to_vector(self) -> "np.ndarray":
+        """
+        Convert the bond to a vector.
+
+        Returns
+        -------
+        ndarray
+            The bond as a vector from atom1 to atom2.
+        """
+        vec = np.zeros(3)
+        vec[0] = self.atom2.coord[0] - self.atom1.coord[0]
+        vec[1] = self.atom2.coord[1] - self.atom1.coord[1]
+        vec[2] = self.atom2.coord[2] - self.atom1.coord[2]
+        return vec
+
+    def to_list(self) -> list:
+        """
+        Convert the bond to a list of
+        atom1, atom2, bond_order.
+
+        Returns
+        -------
+        list
+            The bond as a list.
+        """
+        return [self.atom1, self.atom2, self.order]
 
     def to_tuple(self) -> tuple:
         """
