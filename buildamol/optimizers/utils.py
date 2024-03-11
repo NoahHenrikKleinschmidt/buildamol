@@ -5,6 +5,7 @@ This module contains utility functions for the optimizers.
 from typing import Union
 import numpy as np
 import buildamol.optimizers.Rotatron as Rotatron
+import buildamol.optimizers.Translatron as Translatron
 import buildamol.optimizers.DistanceRotatron as DistanceRotatron
 
 import buildamol.core.Molecule as Molecule
@@ -15,7 +16,8 @@ from functools import partial
 
 
 __all__ = [
-    "apply_solution",
+    "apply_rotatron_solution",
+    "apply_translatron_solution",
     "optimize",
     "auto_algorithm",
     "split_environment",
@@ -23,11 +25,11 @@ __all__ = [
 ]
 
 
-def apply_solution(
+def apply_rotatron_solution(
     sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule.Molecule"
 ) -> "Molecule.Molecule":
     """
-    Apply a solution to a Molecule object.
+    Apply the solution of a Rotatron environment to a Molecule object.
 
     Parameters
     ----------
@@ -58,22 +60,46 @@ def apply_solution(
         # so we could simply use the serial_number instead of full_id which makes
         # things faster, assuming that the serial number was not altered in some way
         # outside of the molecule object.
-        a, b = mol.get_atom(bond[0].serial_number), mol.get_atom(bond[1].serial_number)
+        a, b = bond
+        if not (a in mol.get_atoms() or b in mol.get_atoms()):
+            a, b = mol.get_atom(a.full_id), mol.get_atom(b.full_id)
         if a is None or b is None:
             raise ValueError(
                 f"Object and environment do not match (bond mismatch): {bond}"
             )
 
-        mol.rotate_around_bond(
-            a, b, angle, descendants_only=True, angle_is_degrees=False
-        )
+        mol._rotate_around_bond(a, b, angle, descendants_only=True)
 
+    return mol
+
+
+def apply_translatron_solution(
+    sol: np.ndarray,
+    env: "Translatron.Translatron",
+    mol: "Molecule.Molecule",
+):
+    """
+    Apply the solution of a Translatron environment to a Molecule object.
+
+    Parameters
+    ----------
+    sol : np.ndarray
+        The solution of translational vectors to apply
+    env : Translatron
+        The environment used to find the solution
+    mol : Molecule
+        The molecule to apply the solution to
+    """
+    mol.rotate(sol[3], "x", angle_is_degrees=False)
+    mol.rotate(sol[4], "y", angle_is_degrees=False)
+    mol.rotate(sol[5], "z", angle_is_degrees=False)
+    mol.move(sol[:3])
     return mol
 
 
 def optimize(
     mol: "Molecule.Molecule",
-    env: "Rotatron.Rotatron" = None,
+    env: Union["Rotatron.Rotatron", "Translatron.Translatron"] = None,
     algorithm: Union[str, callable] = None,
     **kwargs,
 ) -> "Molecule.Molecule":
@@ -91,8 +117,8 @@ def optimize(
     ----------
     mol : Molecule
         The molecule to optimize. This molecule will be modified in-place.
-    env : Rotatron, optional
-        The environment to use. This needs to be a Rotatron instance that is fully set up and ready to use.
+    env : Rotatron or Translatron, optional
+        The environment to use. This needs to be a Rotatron instance or Translatron instance that is fully set up and ready to use.
     algorithm : str or callable, optional
         The algorithm to use. If not provided, an algorithm is automatically determined, depending on the molecule size.
         If provided, this can be:
@@ -110,7 +136,7 @@ def optimize(
     Molecule
         The optimized molecule
     """
-    algorithm = algorithm or auto_algorithm(mol)
+    algorithm = algorithm or auto_algorithm(mol, env)
     if algorithm == "genetic":
         agent = agents.genetic_optimize
     elif algorithm == "swarm":
@@ -136,30 +162,47 @@ def optimize(
 
         env = DistanceRotatron(graph, edges, radius=25)
 
+    applier = auto_applier(env)
+
     sol, eval = agent(env, **kwargs)
 
     # in case of the genetic algorithm, the solution is a list of solutions
     # so we need to take the first one
-    if sol.shape[0] != env.n_edges:
-        if sol[0].shape[0] != env.n_edges:
+    n_edges = getattr(env, "n_edges", sol.shape[0])
+    if sol.shape[0] != n_edges:
+        if sol[0].shape[0] != n_edges:
             raise ValueError(
                 f"Solution and environment do not match (size mismatch): {sol.shape[0]} != {env.n_edges}"
             )
-        final = [apply_solution(s, env, mol.copy()) for s in sol]
+        final = [applier(s, env, mol.copy()) for s in sol]
         return final
 
-    final = apply_solution(sol, env, mol)
+    final = applier(sol, env, mol)
     return final
 
 
-def auto_algorithm(mol):
+def auto_algorithm(mol, env=None):
     """
     Decide which algorithm to use for a quick-optimize based on the molecule size.
     """
+    if env is not None:
+        if isinstance(env, Rotatron):
+            return "swarm"
+        if isinstance(env, Translatron):
+            return "scipy"
     # if mol.count_atoms() < 500:
     #     if aux.HAS_RDKIT:
     #         return "rdkit"
     return "swarm"
+
+
+def auto_applier(env):
+    if isinstance(env, Rotatron):
+        return apply_rotatron_solution
+    if isinstance(env, Translatron):
+        return apply_translatron_solution
+    else:
+        raise ValueError(f"Unknown environment type: {env}")
 
 
 def split_environment(
@@ -278,7 +321,7 @@ def parallel_optimize(
                 raise ValueError(
                     f"Solution and environment do not match (size mismatch): {sol.shape[0]} != {env.n_edges}"
                 )
-            _mol = apply_solution(sol, env, _mol)
+            _mol = apply_rotatron_solution(sol, env, _mol)
             final.append(_mol)
         return final
 
@@ -288,7 +331,7 @@ def parallel_optimize(
             raise ValueError(
                 f"Solution and environment do not match (size mismatch): {sol.shape[0]} != {env.n_edges}"
             )
-        mol = apply_solution(sol, env, mol)
+        mol = apply_rotatron_solution(sol, env, mol)
 
     return mol
 

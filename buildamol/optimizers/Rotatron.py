@@ -42,6 +42,7 @@ class Rotatron(gym.Env):
         n_processes: int = 1,
         setup: bool = True,
         numba: bool = False,
+        **kwargs
     ):
         self.graph = graph
         self.rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)

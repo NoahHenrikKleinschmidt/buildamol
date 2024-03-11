@@ -418,13 +418,15 @@ def swarm_optimize(
         update_positions = _update_positions
         update_velocities = _update_velocities
 
-    positions = np.random.rand(n_particles, env.action_space.shape[0])
+    positions = np.array(
+        [env.action_space.sample() for i in range(n_particles)]
+    )  # np.random.rand(n_particles, env.action_space.shape[0])
     velocities = np.random.rand(n_particles, env.action_space.shape[0])
     best_positions = positions.copy()
     best_fitnesses = np.zeros(n_particles)
     fitnesses = np.zeros(n_particles)
 
-    bounds = env._bounds_tuple or (-9999, 9999)
+    bounds = getattr(env, "_bounds_tuple", None) or (-9999, 9999)
     bounds = np.array(bounds, dtype=np.float64)
 
     best_fitness = np.inf
@@ -704,10 +706,14 @@ def anneal_optimize(
     else:
         accept = _accept
 
-    particles = np.random.rand(n_particles, env.action_space.shape[0])
-    fitnesses = np.zeros(n_particles)
+    particles = np.array(
+        [env.action_space.sample() for i in range(n_particles)]
+    )  # np.random.rand(n_particles, env.action_space.shape[0])
+    fitnesses = np.full(n_particles, 9999)
     best_fitness = np.inf
     best_solution = np.zeros(env.action_space.shape[0])
+
+    bounds = getattr(env, "_bounds_tuple", None) or (-9999, 9999)
 
     temperature = 1.0
 
@@ -717,7 +723,7 @@ def anneal_optimize(
             position = particles[i] + np.random.uniform(
                 -variance, variance, size=particles[i].shape
             )
-            position = np.clip(position, env._bounds_tuple[0], env._bounds_tuple[1])
+            position = np.clip(position, bounds[0], bounds[1])
             fitness = env.step(position)[1]
 
             if accept(fitnesses[i], fitness, temperature):
@@ -801,8 +807,10 @@ if __name__ == "__main__":
     results = multiprocess_swarm_optimize(env, n_particles=200, max_steps=50)
     print(time.time() - t1, results)
 
-    opt_single = bam.optimizers.apply_solution(results_single[0], env, mol.copy())
-    opt_multi = bam.optimizers.apply_solution(results[0], env, mol.copy())
+    opt_single = bam.optimizers.apply_rotatron_solution(
+        results_single[0], env, mol.copy()
+    )
+    opt_multi = bam.optimizers.apply_rotatron_solution(results[0], env, mol.copy())
 
     print(mol.count_clashes())
     opt_multi.to_pdb(

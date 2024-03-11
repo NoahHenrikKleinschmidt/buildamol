@@ -9,6 +9,8 @@ import numpy as np
 import buildamol.utils.auxiliary as aux
 import buildamol.structural.base as structural
 
+__all__ = ["Translatron"]
+
 
 class Translatron(gym.Env):
     """
@@ -25,15 +27,50 @@ class Translatron(gym.Env):
     finish_func : callable
         A function that takes the environment and the new coordinates and returns a boolean value indicating
         whether the optimization is finished.
+    bounds : tuple
+        The bounds for the minimal and maximal translation and rotation values.
+        If a tuple of length two this is interpreted as the low and high bounds for translation only.
+        Otherwise provide a tuple of length 6 for the bounds of translation and rotation, in which case
+        the values are interpreted as the high bounds with symmetrically opposite low bounds (implicit).
     """
 
-    def __init__(self, graph, constraint_func: callable, finish_func: callable = None):
+    def __init__(
+        self,
+        graph,
+        constraint_func: callable,
+        finish_func: callable = None,
+        bounds: tuple = (-10,10),
+    ):
         self.graph = graph
         self.constraint_func = constraint_func
         self.finish_func = finish_func or self.__no_finish
 
+        if len(bounds) == 2:
+            low = [bounds[0], bounds[0], bounds[0], -np.pi, -np.pi, -np.pi]
+            high = [bounds[1], bounds[1], bounds[1], np.pi, np.pi, np.pi]
+        elif len(bounds) == 6:
+            low = [
+                -bounds[0],
+                -bounds[1],
+                -bounds[2],
+                -bounds[3],
+                -bounds[4],
+                -bounds[5],
+            ]
+            high = [
+                bounds[0],
+                bounds[1],
+                bounds[2],
+                bounds[3],
+                bounds[4],
+                bounds[5],
+            ]
+
         self.action_space = spaces.Box(
-            low=-9000.0, high=9000.0, shape=(6,), dtype=np.float32
+            low=np.array(low),
+            high=np.array(high),
+            shape=(6,),
+            dtype=np.float32,
         )
         self._setup(graph)
 
@@ -43,7 +80,7 @@ class Translatron(gym.Env):
             self.apply = self._normal_apply
 
     def reset(self, *args, **kwargs):
-        self.state = self.__backup_coords.copy()
+        self.state[:] = self.__backup_coords
 
     def step(self, action):
         new_coords = self.apply(action)
@@ -51,21 +88,26 @@ class Translatron(gym.Env):
         done = self.finish_func(self, new_coords)
         return new_coords, reward, done, {}
 
+    def eval(self, state):
+        return self.constraint_func(self, state)
+
     def _normal_apply(self, action):
         """
         Apply an action to the current state.
         """
-        new = self.state + action[:3]
-        new = structural.rotate_coords(new, action[3], structural.x_axis)
+        new = structural.rotate_coords(self.state, action[3], structural.x_axis)
         new = structural.rotate_coords(new, action[4], structural.y_axis)
         new = structural.rotate_coords(new, action[5], structural.z_axis)
+        new = new + action[:3]
         return new
 
     def _numba_apply(self, action):
-        new = self.state + action[:3]
-        new = structural._numba_wrapper_rotate_coords(new, action[3], structural.x_axis)
+        new = structural._numba_wrapper_rotate_coords(
+            self.state, action[3], structural.x_axis
+        )
         new = structural._numba_wrapper_rotate_coords(new, action[4], structural.y_axis)
         new = structural._numba_wrapper_rotate_coords(new, action[5], structural.z_axis)
+        new = new + action[:3]
         return new
 
     def blank(self):
