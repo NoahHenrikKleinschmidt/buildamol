@@ -7,36 +7,36 @@ import Bio.PDB as bio
 
 import buildamol.utils.auxiliary as aux
 
-origin = np.array([0, 0, 0])
+origin = np.array([0, 0, 0], dtype=np.float64)
 """
 The origin of the 3D coordinate system
 """
 
-x_axis = np.array([1, 0, 0])
+x_axis = np.array([1, 0, 0], dtype=np.float64)
 """
 Unit vector along the x-axis
 """
-y_axis = np.array([0, 1, 0])
+y_axis = np.array([0, 1, 0], dtype=np.float64)
 """
 Unit vector along the y-axis
 """
 
-z_axis = np.array([0, 0, 1])
+z_axis = np.array([0, 0, 1], dtype=np.float64)
 """
 Unit vector along the z-axis
 """
 
-xy_plane = np.array([0, 0, 1])
+xy_plane = np.array([0, 0, 1], dtype=np.float64)
 """
 Unit vector normal to the xy-plane
 """
 
-xz_plane = np.array([0, 1, 0])
+xz_plane = np.array([0, 1, 0], dtype=np.float64)
 """
 Unit vector normal to the xz-plane
 """
 
-yz_plane = np.array([1, 0, 0])
+yz_plane = np.array([1, 0, 0], dtype=np.float64)
 """
 Unit vector normal to the yz-plane
 """
