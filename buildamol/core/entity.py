@@ -637,7 +637,12 @@ class BaseEntity:
         """
         return utils.visual.Chem2DViewer(self)
 
-    def draw(self, residue_graph: bool = False, show_atoms: bool = True):
+    def draw(
+        self,
+        residue_graph: bool = False,
+        show_atoms: bool = True,
+        line_color: str = "black",
+    ):
         """
         Prepare a view of the molecule in 3D using Plotly
         but do not open a browser window.
@@ -648,6 +653,8 @@ class BaseEntity:
             If True, a residue graph is shown instead of the full structure.
         show_atoms : bool
             Whether to show the atoms (default: True)
+        line_color : str
+            The color of the lines connecting the atoms
 
         Returns
         -------
@@ -658,6 +665,7 @@ class BaseEntity:
             return self.make_residue_graph().draw()
         else:
             v = utils.visual.MoleculeViewer3D()
+            v.bond_color = line_color
             v.link(self)
             v.setup(show_atoms)
 
@@ -876,7 +884,7 @@ class BaseEntity:
             The axis to rotate around. This must be a unit vector.
             Alternatively, it may be one of the strings "x", "y", or "z" to rotate around the respective axes.
         center : np.ndarray
-            The center of the rotation
+            The center of the rotation. By default the center of geometry is used to achieve relative rotations (i.e. without translation). Use "absolute" if you want to rotate around the literal axes.
         angle_is_degrees : bool
             Whether the angle is given in degrees (default) or radians
         """
@@ -891,8 +899,15 @@ class BaseEntity:
             else:
                 axis = np.array(axis)
 
-        if not angle_is_degrees:
-            angle = np.degrees(angle)
+        if center is None:
+            center = self.center_of_geometry
+        elif isinstance(center, str) and center.lower() == "absolute":
+            center = np.zeros(3)
+        elif not isinstance(center, np.ndarray):
+            center = np.array(center)
+
+        if angle_is_degrees:
+            angle = np.radians(angle)
 
         structural.rotate_molecule(self, angle, axis, center)
 
@@ -961,8 +976,8 @@ class BaseEntity:
             center = np.zeros(3)
         coords -= center
 
-        if not angle_is_degrees:
-            angle = np.degrees(angle)
+        if angle_is_degrees:
+            angle = np.radians(angle)
 
         new_coords = structural.rotate_coords(coords=coords, angle=angle, axis=axis)
         new_coords += center
@@ -2053,6 +2068,24 @@ class BaseEntity:
 
         atom = self.get_atom(atom)
         self._purge_bonds(atom)
+
+    def get_degree(self, atom: Union[int, str, base_classes.Atom]):
+        """
+        Get the degree of an atom in the structure
+
+        Parameters
+        ----------
+        atom
+            The atom to get the degree of, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+
+        Returns
+        -------
+        int
+            The degree of the atom's connectivity as the sum of the bond orders that connect it to its neighbors
+        """
+        atom = self.get_atom(atom)
+        return sum(b.order for b in self.bonds if atom in b)
 
     def lock_all(self):  # , both_ways: bool = True):
         """
