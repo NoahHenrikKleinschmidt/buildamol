@@ -46,9 +46,15 @@ def write_pdb(mol, filename, symmetric: bool = True):
         Whether to write the molecule in a symmetric way, by default True.
     """
     with open(filename, "w") as f:
-        for model in mol.get_models():
-            f.write(f"MODEL {model.id}\n")
-            mol.set_model(model)
+        if len(mol.models) > 1:
+            for model in mol.get_models():
+                f.write(f"MODEL {model.id}\n")
+                mol.set_model(model)
+                f.write(make_atoms_table(mol))
+                f.write("\n")
+                f.write(make_connect_table(mol, symmetric))
+                f.write("\nEND\n")
+        else:
             f.write(make_atoms_table(mol))
             f.write("\n")
             f.write(make_connect_table(mol, symmetric))
