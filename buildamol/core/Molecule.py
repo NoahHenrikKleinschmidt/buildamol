@@ -1512,15 +1512,7 @@ class Molecule(entity.BaseEntity):
             out = optimizers.rdkit_optimize(obj)
             out.id = self.id
             return out
-        elif algorithm == "scipy":
-            algorithm = optimizers.scipy_optimize
-        elif algorithm == "genetic":
-            algorithm = optimizers.genetic_optimize
-        elif algorithm == "swarm":
-            algorithm = optimizers.swarm_optimize
-        elif algorithm == "anneal":
-            algorithm = optimizers.anneal_optimize
-        else:
+        elif algorithm not in ("scipy", "genetic", "swarm", "anneal"):
             raise ValueError(f"Unknown algorithm {algorithm}")
 
         rotatron = rotatron or "distance"
@@ -1528,6 +1520,8 @@ class Molecule(entity.BaseEntity):
             rotatron = optimizers.DistanceRotatron
         elif rotatron == "overlap":
             rotatron = optimizers.OverlapRotatron
+        elif rotatron == "forcefield":
+            rotatron = optimizers.ForceFieldRotatron
         else:
             raise ValueError(f"Unknown rotatron {rotatron}")
 
@@ -1543,10 +1537,8 @@ class Molecule(entity.BaseEntity):
         )
 
         env = rotatron(graph, edges, **rotatron_kws)
-        sol, _ = algorithm(env, **algorithm_kws)
-        if sol.shape[0] != len(env.rotatable_edges):
-            sol = sol[0]
-        out = optimizers.apply_solution(sol, env, obj)
+
+        out = optimizers.optimize(obj, env, algorithm, **algorithm_kws)
         return out
 
     def __add__(self, other) -> "Molecule":
