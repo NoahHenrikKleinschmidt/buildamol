@@ -1588,12 +1588,12 @@ def test_bipyramid():
     C4.coord = coords[4]
     C5.coord = coords[5]
 
-    # v = mol.draw()
+    v = mol.draw()
 
     coords = bipyramid.make_coords(P, C2, C4, direction="mixed")
 
-    # v.draw_points(coords, colors="orange")
-    # v.show()
+    v.draw_points(coords, colors="orange")
+    v.show()
 
     assert np.all(coords[0] == P.coord)
     assert np.all(coords[1] == C2.coord)
@@ -1629,7 +1629,7 @@ def test_bipyramid():
 
 
 def test_octahedral():
-    mol = bam.Molecule.empty(add_one_residue="PF6")
+    mol = bam.Molecule.new(None, "PF6")
 
     octahedral = bam.structural.geometry.Octahedral()
 
@@ -1700,3 +1700,60 @@ def test_tetrahedral_apply():
     # v.show()
 
     assert ((old - new) ** 2).sum() < 0.1
+
+
+def test_change_element_add_hydrogens():
+    mol = bam.Molecule.from_compound("GLC")
+
+    old_neighbors = mol.get_neighbors("O1")
+    old_atom = mol.get_atom("O1")
+
+    bam.structural.infer.change_element(mol.get_atom("O1"), "N", mol)
+
+    new = mol.get_atom("N1")
+    assert old_atom is new
+
+    assert mol.get_atom("N1").element == "N"
+    assert mol.get_atom("N1").id == "N1"
+    assert len(mol.get_neighbors("N1")) == len(old_neighbors) + 1
+
+    old_neighbors = mol.get_neighbors("O5")
+
+    old = mol.get_atom("O5")
+    bam.structural.infer.change_element(mol.get_atom("O5"), "N", mol)
+    new = mol.get_atom("N5")
+    assert old is new
+
+    assert mol.get_atom("N5").element == "N"
+    assert mol.get_atom("N5").id == "N5"
+    assert len(mol.get_neighbors("N5")) == len(old_neighbors) + 1
+
+    mol.show()
+
+
+def test_change_element_remove_hydrogens():
+    mol = bam.Molecule.from_compound("GLC")
+
+    old_neighbors = mol.get_neighbors("O1")
+
+    old = mol.get_atom("O1")
+    bam.structural.infer.change_element(mol.get_atom("O1"), "N", mol)
+    new = mol.get_atom("N1")
+    assert old is new
+
+    assert mol.get_atom("N1").element == "N"
+    assert mol.get_atom("N1").id == "N1"
+    assert len(mol.get_neighbors("N1")) == len(old_neighbors) + 1
+
+    old_neighbors = mol.get_neighbors("N1")
+    old = mol.get_atom("N1")
+    # now change back again
+    bam.structural.change_element(mol.get_atom("N1"), "O", mol)
+    new = mol.get_atom("O1")
+    assert old is new
+
+    assert mol.get_atom("O1").element == "O"
+    assert mol.get_atom("O1").id == "O1"
+    assert len(mol.get_neighbors("O1")) == len(old_neighbors) - 1
+
+    mol.show()

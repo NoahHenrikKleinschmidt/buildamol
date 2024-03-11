@@ -161,7 +161,7 @@ def test_apply():
     assert sol is not None
     assert _eval is not None
 
-    out = opt.apply_solution(sol, env, mol.copy())
+    out = opt.apply_rotatron_solution(sol, env, mol.copy())
     assert out is not None
 
     assert out.count_atoms() == mol.count_atoms()
@@ -451,53 +451,83 @@ def test_optim_numba_forcefield_scipy():
     bam.dont_use_numba()
 
 
-def test_benchmark_numba():
-    mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/0.pdb")
-    g = mol.get_atom_graph()
-    edges = g.find_rotatable_edges(g.central_node)
-    edges = g.sample_edges(edges)
+# def test_benchmark_numba():
+#     mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/0.pdb")
+#     g = mol.get_atom_graph()
+#     edges = g.find_rotatable_edges(g.central_node)
+#     edges = g.sample_edges(edges)
 
-    from time import time
+#     from time import time
 
-    f = "numba_benchmark.csv"
-    open(f, "w").close()
+#     f = "numba_benchmark.csv"
+#     open(f, "w").close()
 
-    for mode in ("normal", "numba"):
+#     for mode in ("normal", "numba"):
 
-        env = opt.DistanceRotatron(g, edges, n_processes=5)
+#         env = opt.DistanceRotatron(g, edges, n_processes=5)
 
-        for i in range(3):
-            m = mol.copy()
-            start = time()
-            out = opt.optimize(m, env, algorithm="swarm", n_particles=50)
-            dt = time() - start
-            print(out.count_clashes(), dt, mode, sep=",", file=open(f, "a"))
+#         for i in range(3):
+#             m = mol.copy()
+#             start = time()
+#             out = opt.optimize(m, env, algorithm="swarm", n_particles=50)
+#             dt = time() - start
+#             print(out.count_clashes(), dt, mode, sep=",", file=open(f, "a"))
 
-        bam.use_all_numba()
-
-
-def test_benchmark_numba_hybrid():
-    mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/0.pdb")
-    g = mol.get_atom_graph(True)
-    edges = g.find_rotatable_edges(g.central_node)
-    edges = g.sample_edges(edges)
-
-    from time import time
-
-    f = "numba_benchmark.csv"
-    open(f, "w").close()
-
-    env = opt.DistanceRotatron(g, edges, n_processes=5, numba=True)
-
-    for i in range(10):
-        m = mol.copy()
-        start = time()
-        out = opt.optimize(m, env, algorithm="swarm", max_steps=100, n_particles=50)
-        dt = time() - start
-        print(out.count_clashes(), dt, "hybrid", sep=",", file=open(f, "a"))
+#         bam.use_all_numba()
 
 
+# def test_benchmark_numba_hybrid():
+#     mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/0.pdb")
+#     g = mol.get_atom_graph(True)
+#     edges = g.find_rotatable_edges(g.central_node)
+#     edges = g.sample_edges(edges)
+
+#     from time import time
+
+#     f = "numba_benchmark.csv"
+#     open(f, "w").close()
+
+#     env = opt.DistanceRotatron(g, edges, n_processes=5, numba=True)
+
+#     for i in range(10):
+#         m = mol.copy()
 #         start = time()
-#         sol, _eval = opt.swarm_optimize(env2, n_particles=50)
+#         out = opt.optimize(m, env, algorithm="swarm", max_steps=100, n_particles=50)
 #         dt = time() - start
-#         print(dt, ", normal", file=open("rotate_benchmark_numba.csv", "a"))
+#         print(out.count_clashes(), dt, "hybrid", sep=",", file=open(f, "a"))
+
+
+# #         start = time()
+# #         sol, _eval = opt.swarm_optimize(env2, n_particles=50)
+# #         dt = time() - start
+# #         print(dt, ", normal", file=open("rotate_benchmark_numba.csv", "a"))
+
+
+def test_translatron_optimize():
+    mol = bam.read_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+
+    ref_coords = mol.get_coords()
+
+    def constraint(env, coords):
+        dist = (coords - ref_coords) ** 2
+        dist = np.mean(dist)
+        env._dist = dist
+        return dist
+
+    def finish(env, coords):
+        return env._dist < 0.1
+
+    mol.move([10, 10, 10])
+    mol.rotate(34, [0.6, 0.12, 0.5])
+    mol.rotate(90, [0.1, 0.2, 0.3])
+
+    env = opt.Translatron(mol.get_atom_graph(), constraint, finish)
+
+    out = opt.optimize(mol.copy(), env)
+
+    assert out.count_clashes() == mol.count_clashes()
+
+    v = mol.draw(show_atoms=False)
+    v += out.draw(show_atoms=False, line_color="red")
+    v.show()

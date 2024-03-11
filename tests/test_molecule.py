@@ -1799,18 +1799,24 @@ def test_add_hydrogens_mannose9():
 
     v = mol.draw()
     mol.add_hydrogens()
-    
+
     new_hydrogens = mol.get_atoms("H", by="element")
 
     diff_H = set(new_hydrogens) - set(old_hydrogens)
 
-    v.draw_points(
-        mol.get_coords(*new_hydrogens), colors="limegreen"
-    )
-    v.draw_points(
-        bam.utils.coord_array(*old_hydrogens), colors="purple"
-    )
+    v.draw_points(mol.get_coords(*new_hydrogens), colors="limegreen")
+    v.draw_points(bam.utils.coord_array(*old_hydrogens), colors="purple")
     v.show()
 
     assert len(mol._atoms) == ref_n
 
+
+def test_optimize():
+    mol = bam.Molecule.from_json(
+        "/Users/noahhk/GIT/biobuild/docs/examples/rotaxane_scaffold.json"
+    )
+    mol.optimize()
+
+    for b in mol.get_bonds():
+        assert 0.9 < b.compute_length() < 2
+    # mol.show()
