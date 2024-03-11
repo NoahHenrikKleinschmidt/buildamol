@@ -292,16 +292,23 @@ class BaseEntity:
     @property
     def structure(self):
         """
-        The biopython structure
+        The buildamol base-structure
         """
         return self._base_struct
 
     @property
     def model(self):
         """
-        The biopython model
+        The working model of the structure
         """
         return self._model
+
+    @property
+    def models(self):
+        """
+        A list of all models in the base-structure
+        """
+        return list(self._base_struct.get_models())
 
     @property
     def linkage(self):
@@ -1295,6 +1302,67 @@ class BaseEntity:
 
     def get_models(self):
         return self._base_struct.get_models()
+
+    def set_model(self, model: int):
+        """
+        Set the active model of the molecule
+
+        Parameters
+        ----------
+        model : Int
+            The id of the model to set as active
+        """
+        if isinstance(model, int):
+            self._model = self._base_struct.child_list[model]
+        elif isinstance(model, base_classes.Model):
+            if model in self._base_struct.child_list:
+                self._model = model
+            else:
+                raise ValueError(
+                    f"Model {model} not in molecule. Available models: {self.get_models()}. First add the model to the molecule to set it as the active model!"
+                )
+
+    def get_model(self, model: int):
+        """
+        Get a model from the molecule
+
+        Parameters
+        ----------
+        model : Int
+            The id of the model to get
+        """
+        if isinstance(model, int):
+            return self._base_struct.child_list[model]
+        elif isinstance(model, base_classes.Model):
+            if model in self._base_struct.child_list:
+                return model
+            else:
+                raise ValueError(
+                    f"Model {model} not in molecule. Available models: {self.get_models()}. First add the model to the molecule to set it as the active model!"
+                )
+
+    def add_model(self, model: Union[int, base_classes.Model] = None):
+        """
+        Add a new model to the molecule's structure
+
+        Parameters
+        ----------
+        model : int or Model
+            If not given, a new completely blank model is created. If an integer is given, an existing model
+            is copied and added to the molecule. If a Model object is given, it is added to the molecule.
+        """
+        if isinstance(model, int):
+            new = self.get_model(model).copy()
+            new.id = len(self._base_struct.child_list)
+        elif isinstance(model, base_classes.Model):
+            new = model
+            new.id = len(self._base_struct.child_list)
+        elif model is None:
+            new = base_classes.Model(len(self._base_struct.child_list))
+        else:
+            raise ValueError(f"Unknown model type {type(model)}")
+
+        self._base_struct.add(new)
 
     def get_residues(
         self,
