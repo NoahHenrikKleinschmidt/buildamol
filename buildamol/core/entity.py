@@ -1241,6 +1241,74 @@ class BaseEntity:
         atom = self.get_atom(atom)
         return self._AtomGraph.get_neighbors(atom, n, mode)
 
+    def get_equatorial_neighbor(self, atom: Union[int, str, tuple, base_classes.Atom]):
+        """
+        Get the equatorial neighbor of an atom, if the atom is in a ring structure.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The equatorial neighbor, if it exists, None otherwise
+        """
+        atom = self.get_atom(atom)
+        return structural.get_equatorial_neighbor(self, atom)
+
+    def get_axial_neighbor(self, atom: Union[int, str, tuple, base_classes.Atom]):
+        """
+        Get the axial neighbor of an atom, if the atom is in a ring structure.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The axial neighbor, if it exists, None otherwise
+        """
+        atom = self.get_atom(atom)
+        return structural.get_axial_neighbor(self, atom)
+
+    def get_equatorial_hydrogen(self, atom: Union[int, str, tuple, base_classes.Atom]):
+        """
+        Get the equatorial hydrogen neighbor of an atom, if the atom is in a ring structure.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The equatorial hydrogen, if it exists, None otherwise
+        """
+        atom = self.get_atom(atom)
+        return structural.get_equatorial_hydrogen_neighbor(self, atom)
+
+    def get_axial_hydrogen(self, atom: Union[int, str, tuple, base_classes.Atom]):
+        """
+        Get the axial hydrogen neighbor of an atom, if the atom is in a ring structure.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The axial hydrogen, if it exists, None otherwise
+        """
+        atom = self.get_atom(atom)
+        return structural.get_axial_hydrogen_neighbor(self, atom)
+
     def reindex(
         self, start_chainid: int = 1, start_resid: int = 1, start_atomid: int = 1
     ):

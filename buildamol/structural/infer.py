@@ -66,6 +66,305 @@ element_to_hydrogen_bond_lengths = {
     "Mn": 1.20,
 }
 
+single_bond_lengths = {
+    "C": {
+        "C": 1.54,
+        "N": 1.47,
+        "O": 1.43,
+        "S": 1.81,
+        "P": 1.87,
+        "F": 1.35,
+        "Cl": 1.77,
+        "Br": 1.94,
+        "I": 2.14,
+        "H": 1.09,
+    },
+    "N": {
+        "C": 1.47,
+        "N": 1.45,
+        "O": 1.43,
+        "S": 1.81,
+        "P": 1.87,
+        "F": 1.35,
+        "Cl": 1.77,
+        "Br": 1.94,
+        "I": 2.14,
+        "H": 1.01,
+    },
+    "O": {
+        "C": 1.43,
+        "N": 1.43,
+        "O": 1.34,
+        "S": 1.81,
+        "P": 1.87,
+        "F": 1.35,
+        "Cl": 1.77,
+        "Br": 1.94,
+        "I": 2.14,
+        "H": 0.96,
+    },
+    "S": {
+        "C": 1.81,
+        "N": 1.81,
+        "O": 1.81,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.81,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+        "H": 1.04,
+    },
+    "P": {
+        "C": 1.87,
+        "N": 1.87,
+        "O": 1.87,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.87,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+        "H": 1.10,
+    },
+    "F": {
+        "C": 1.35,
+        "N": 1.35,
+        "O": 1.35,
+        "S": 1.81,
+        "P": 1.87,
+        "F": 1.35,
+        "Cl": 1.77,
+        "Br": 1.94,
+        "I": 2.14,
+        "H": 0.92,
+    },
+    "Cl": {
+        "C": 1.77,
+        "N": 1.77,
+        "O": 1.77,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.77,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+        "H": 0.99,
+    },
+    "Br": {
+        "C": 1.94,
+        "N": 1.94,
+        "O": 1.94,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.94,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+        "H": 1.14,
+    },
+    "I": {
+        "C": 2.14,
+        "N": 2.14,
+        "O": 2.14,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 2.14,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+        "H": 1.33,
+    },
+    "H": {
+        "C": 1.09,
+        "N": 1.01,
+        "O": 0.96,
+        "S": 1.04,
+        "P": 1.10,
+        "F": 0.92,
+        "Cl": 0.99,
+        "Br": 1.14,
+        "I": 1.33,
+    },
+}
+
+double_bond_lengths = {
+    "C": {
+        "C": 1.34,
+        "N": 1.30,
+        "O": 1.21,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.34,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+    },
+    "N": {
+        "C": 1.30,
+        "N": 1.28,
+        "O": 1.21,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.30,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+    },
+    "O": {
+        "C": 1.21,
+        "N": 1.21,
+        "O": 1.20,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.21,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+    },
+    "S": {
+        "C": 2.05,
+        "N": 2.05,
+        "O": 2.05,
+        "S": 2.28,
+        "P": 2.28,
+        "F": 2.05,
+        "Cl": 2.28,
+        "Br": 2.28,
+        "I": 2.28,
+    },
+    "P": {
+        "C": 2.05,
+        "N": 2.05,
+        "O": 2.05,
+        "S": 2.28,
+        "P": 2.28,
+        "F": 2.05,
+        "Cl": 2.28,
+        "Br": 2.28,
+        "I": 2.28,
+    },
+    "F": {
+        "C": 1.34,
+        "N": 1.30,
+        "O": 1.21,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.34,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+    },
+    "Cl": {
+        "C": 2.05,
+        "N": 2.05,
+        "O": 2.05,
+        "S": 2.28,
+        "P": 2.28,
+        "F": 2.05,
+        "Cl": 2.28,
+        "Br": 2.28,
+        "I": 2.28,
+    },
+    "Br": {
+        "C": 2.05,
+        "N": 2.05,
+        "O": 2.05,
+        "S": 2.28,
+        "P": 2.28,
+        "F": 2.05,
+        "Cl": 2.28,
+        "Br": 2.28,
+        "I": 2.28,
+    },
+    "I": {
+        "C": 2.05,
+        "N": 2.05,
+        "O": 2.05,
+        "S": 2.28,
+        "P": 2.28,
+        "F": 2.05,
+        "Cl": 2.28,
+        "Br": 2.28,
+        "I": 2.28,
+    },
+}
+
+triple_bond_lengths = {
+    "C": {
+        "C": 1.20,
+        "N": 1.16,
+        "O": 1.13,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.20,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+    },
+    "N": {
+        "C": 1.16,
+        "N": 1.14,
+        "O": 1.13,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.16,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+    },
+    "O": {
+        "C": 1.13,
+        "N": 1.13,
+        "O": 1.12,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.13,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+    },
+    "S": {
+        "C": 2.05,
+        "N": 2.05,
+        "O": 2.05,
+        "S": 2.51,
+        "P": 2.51,
+        "F": 2.05,
+        "Cl": 2.51,
+        "Br": 2.51,
+        "I": 2.51,
+    },
+    "P": {
+        "C": 2.05,
+        "N": 2.05,
+        "O": 2.05,
+        "S": 2.51,
+        "P": 2.51,
+        "F": 2.05,
+        "Cl": 2.51,
+        "Br": 2.51,
+        "I": 2.51,
+    },
+    "F": {
+        "C": 1.20,
+        "N": 1.16,
+        "O": 1.13,
+        "S": 2.05,
+        "P": 2.05,
+        "F": 1.20,
+        "Cl": 2.05,
+        "Br": 2.05,
+        "I": 2.05,
+    },
+}
+
+bond_length_by_order = {
+    1: single_bond_lengths,
+    2: double_bond_lengths,
+    3: triple_bond_lengths,
+}
+
 
 class AutoLabel:
     """
@@ -577,6 +876,439 @@ def relabel_hydrogens(molecule):
                 hydrogen.id = f"H{_n}{i+1}"
 
     return molecule
+
+
+def change_bond_order(molecule, atom1, atom2, order):
+    """
+    Change the bond order between two atoms. This will also adjust the protonation state and add or remove hydrogens if necessary.
+    This function will not, however, adjust the overall geometry of the molecule. It can currently only adjust the local geometry of the atoms involved and their hydrogen partners.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to change the bond order in.
+    atom1 : Atom
+        The first atom of the bond.
+    atom2 : Atom
+        The second atom of the bond.
+    order : int
+        The new bond order. This can be either 1, 2, or 3.
+    """
+    # check if the bond order is valid
+    if order not in (1, 2, 3):
+        raise ValueError(f"Invalid bond order {order}.")
+
+    bond = molecule.get_bond(atom1, atom2)
+    if bond is None:
+        raise ValueError(f"No bond found between {atom1} and {atom2}.")
+
+    # check if the bond order is the same
+    if bond.order == order:
+        return
+
+    # now remove all hydrogens from the atoms
+    hydrogens = []
+    for atom in (atom1, atom2):
+        for hydrogen in molecule.get_neighbors(atom):
+            if hydrogen.element == "H":
+                hydrogens.append(hydrogen)
+    molecule.remove_atoms(*hydrogens)
+
+    # set the new bond order
+    bond.order = order
+
+    # adjust the bond length
+    length = bond_length_by_order[order][atom1.element][atom2.element]
+    base.adjust_bond_length(bond, length)
+
+    # now add the hydrogens back
+    H = Hydrogenator()
+    H.add_hydrogens(atom1, molecule)
+    H.add_hydrogens(atom2, molecule)
+
+    return molecule
+
+
+def find_equatorial_substituents(molecule):
+    """
+    Find all atoms in a molecule that are equatorial to some ring within the molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+
+    Returns
+    -------
+    list
+        A list of atoms that are equatorial to some ring.
+    """
+    rings = molecule._AtomGraph.find_rings()
+    equatorial_atoms = []
+
+    for ring in rings:
+        ring_mean = np.mean([atom.get_coord() for atom in ring], axis=0)
+        ring_mean = np.array(ring_mean)
+
+        for atom in ring:
+            neighbors = molecule.get_neighbors(atom)
+            if len(neighbors) < 3:
+                continue
+
+            neighbors = list(neighbors)
+            vec = atom.get_coord() - ring_mean
+
+            for neighbor in neighbors:
+                if neighbor in ring:
+                    continue
+
+                neighbor_vec = neighbor.get_coord() - atom.get_coord()
+                angle = np.arccos(
+                    np.dot(vec, neighbor_vec)
+                    / (np.linalg.norm(vec) * np.linalg.norm(neighbor_vec))
+                )
+                angle = np.degrees(angle)
+                if angle < 45:
+                    equatorial_atoms.append(neighbor)
+                    break
+
+    return equatorial_atoms
+
+
+def find_axial_substituents(molecule):
+    """
+    Find all atoms in a molecule that are axial to some ring within the molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+
+    Returns
+    -------
+    list
+        A list of atoms that are axial to some ring.
+    """
+    rings = molecule._AtomGraph.find_rings()
+    axial_atoms = []
+
+    for ring in rings:
+        ring_mean = np.mean([atom.get_coord() for atom in ring], axis=0)
+        ring_mean = np.array(ring_mean)
+
+        for atom in ring:
+            neighbors = molecule.get_neighbors(atom)
+            if len(neighbors) < 3:
+                continue
+
+            neighbors = list(neighbors)
+            vec = atom.get_coord() - ring_mean
+
+            for neighbor in neighbors:
+                if neighbor in ring:
+                    continue
+
+                neighbor_vec = neighbor.get_coord() - atom.get_coord()
+                angle = np.arccos(
+                    np.dot(vec, neighbor_vec)
+                    / (np.linalg.norm(vec) * np.linalg.norm(neighbor_vec))
+                )
+                angle = np.degrees(angle)
+                if angle > 55:
+                    axial_atoms.append(neighbor)
+                    break
+
+    return axial_atoms
+
+
+def find_equatorial_hydrogens(molecule):
+    """
+    Find the equatorial hydrogen atoms in a molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+
+    Returns
+    -------
+    list
+        The equatorial hydrogen atoms.
+    """
+    rings = molecule._AtomGraph.find_rings()
+    equatorial_Hs = []
+
+    # v = molecule.draw()
+
+    for ring in rings:
+
+        ring_mean = np.mean([atom.get_coord() for atom in ring], axis=0)
+        ring_mean = np.array(ring_mean)
+
+        for atom in ring:
+
+            neighbors = molecule.get_neighbors(atom)
+            if len(neighbors) < 3:
+                continue
+
+            neighbors = list(neighbors)
+            vec = atom.get_coord() - ring_mean
+
+            Hs = [i for i in neighbors if i.element == "H"]
+            if len(Hs) < 1:
+                continue
+
+            for H in Hs:
+                H_vec = H.get_coord() - atom.get_coord()
+                angle = np.arccos(
+                    np.dot(vec, H_vec) / (np.linalg.norm(vec) * np.linalg.norm(H_vec))
+                )
+                angle = np.degrees(angle)
+                if angle < 45:
+                    equatorial_Hs.append(H)
+                    break
+
+    # v.draw_atoms(*equatorial_Hs, colors="red")
+    # v.show()
+
+    return equatorial_Hs
+
+
+def find_axial_hydrogens(molecule):
+    """
+    Find the axial hydrogen atoms in a molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+
+    Returns
+    -------
+    list
+        The axial hydrogen atoms.
+    """
+    rings = molecule._AtomGraph.find_rings()
+    axial_Hs = []
+
+    # v = molecule.draw()
+
+    for ring in rings:
+
+        ring_mean = np.mean([atom.get_coord() for atom in ring], axis=0)
+        ring_mean = np.array(ring_mean)
+
+        for atom in ring:
+
+            neighbors = molecule.get_neighbors(atom)
+            if len(neighbors) < 3:
+                continue
+
+            neighbors = list(neighbors)
+            vec = atom.get_coord() - ring_mean
+
+            Hs = [i for i in neighbors if i.element == "H"]
+            if len(Hs) < 1:
+                continue
+
+            for H in Hs:
+                H_vec = H.get_coord() - atom.get_coord()
+                angle = np.arccos(
+                    np.dot(vec, H_vec) / (np.linalg.norm(vec) * np.linalg.norm(H_vec))
+                )
+                angle = np.degrees(angle)
+                if angle > 55:
+                    axial_Hs.append(H)
+                    break
+
+    # v.draw_atoms(*axial_Hs, colors="red")
+    # v.show()
+
+    return axial_Hs
+
+
+def get_equatorial_hydrogen_neighbor(molecule, atom):
+    """
+    Get the equatorial hydrogen atom of a given atom.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+    atom : Atom
+        The atom to search for
+
+    Returns
+    -------
+    Atom
+        The equatorial hydrogen atom (if present, or None if not present)
+    """
+    ring = next((i for i in molecule._AtomGraph.find_rings() if atom in i), None)
+    if ring is None:
+        return None
+
+    ring_mean = np.mean([atom.get_coord() for atom in ring], axis=0)
+    ring_mean = np.array(ring_mean)
+
+    neighbors = molecule.get_neighbors(atom)
+    if len(neighbors) < 3:
+        return None
+
+    neighbors = list(neighbors)
+    vec = atom.get_coord() - ring_mean
+
+    Hs = [i for i in neighbors if i.element == "H"]
+    if len(Hs) < 1:
+        return None
+
+    for H in Hs:
+        H_vec = H.get_coord() - atom.get_coord()
+        angle = np.arccos(
+            np.dot(vec, H_vec) / (np.linalg.norm(vec) * np.linalg.norm(H_vec))
+        )
+        angle = np.degrees(angle)
+        if angle < 45:
+            return H
+
+    return None
+
+
+def get_axial_hydrogen_neighbor(molecule, atom):
+    """
+    Get the axial hydrogen atom of a given atom.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+    atom : Atom
+        The atom to search for
+
+    Returns
+    -------
+    Atom
+        The axial hydrogen atom (if present, or None if not present)
+    """
+    ring = next((i for i in molecule._AtomGraph.find_rings() if atom in i), None)
+    if ring is None:
+        return None
+
+    ring_mean = np.mean([atom.get_coord() for atom in ring], axis=0)
+    ring_mean = np.array(ring_mean)
+
+    neighbors = molecule.get_neighbors(atom)
+    if len(neighbors) < 3:
+        return None
+
+    neighbors = list(neighbors)
+    vec = atom.get_coord() - ring_mean
+
+    Hs = [i for i in neighbors if i.element == "H"]
+    if len(Hs) < 1:
+        return None
+
+    for H in Hs:
+        H_vec = H.get_coord() - atom.get_coord()
+        angle = np.arccos(
+            np.dot(vec, H_vec) / (np.linalg.norm(vec) * np.linalg.norm(H_vec))
+        )
+        angle = np.degrees(angle)
+        if angle > 55:
+            return H
+
+    return None
+
+
+def get_equatorial_neighbor(molecule, atom):
+    """
+    Get the equatorial atom of a given atom.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+    atom : Atom
+        The atom to search for
+
+    Returns
+    -------
+    Atom
+        The equatorial atom (if present, or None if not present)
+    """
+    ring = next((i for i in molecule._AtomGraph.find_rings() if atom in i), None)
+    if ring is None:
+        return None
+
+    ring_mean = np.mean([atom.get_coord() for atom in ring], axis=0)
+    ring_mean = np.array(ring_mean)
+
+    neighbors = molecule.get_neighbors(atom)
+    if len(neighbors) < 3:
+        return None
+
+    neighbors = list(neighbors)
+    vec = atom.get_coord() - ring_mean
+
+    for neighbor in neighbors:
+        if neighbor in ring:
+            continue
+
+        neighbor_vec = neighbor.get_coord() - atom.get_coord()
+        angle = np.arccos(
+            np.dot(vec, neighbor_vec)
+            / (np.linalg.norm(vec) * np.linalg.norm(neighbor_vec))
+        )
+        angle = np.degrees(angle)
+        if angle < 45:
+            return neighbor
+
+    return None
+
+
+def get_axial_neighbor(molecule, atom):
+    """
+    Get the axial atom of a given atom.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+    atom : Atom
+        The atom to search for
+
+    Returns
+    -------
+    Atom
+        The axial atom (if present, or None if not present)
+    """
+    ring = next((i for i in molecule._AtomGraph.find_rings() if atom in i), None)
+    if ring is None:
+        return None
+
+    ring_mean = np.mean([atom.get_coord() for atom in ring], axis=0)
+    ring_mean = np.array(ring_mean)
+
+    neighbors = molecule.get_neighbors(atom)
+    if len(neighbors) < 3:
+        return None
+
+    neighbors = list(neighbors)
+    vec = atom.get_coord() - ring_mean
+
+    for neighbor in neighbors:
+        if neighbor in ring:
+            continue
+
+        neighbor_vec = neighbor.get_coord() - atom.get_coord()
+        angle = np.arccos(
+            np.dot(vec, neighbor_vec)
+            / (np.linalg.norm(vec) * np.linalg.norm(neighbor_vec))
+        )
+        angle = np.degrees(angle)
+        if angle > 55:
+            return neighbor
+
+    return None
 
 
 def vet_structure(
