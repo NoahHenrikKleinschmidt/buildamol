@@ -531,6 +531,109 @@ def rotate_coords(
     return np.dot(np.asarray(coords), rot.T)
 
 
+def superimpose_points(
+    coords: np.ndarray,
+    points1: tuple,
+    points2: tuple,
+):
+    """
+    Superimpose two structures by aligning two sets of points.
+    This will place the first point of points1 on the first point of points2 and so on, while transforming the
+    rest of the points accordingly.
+
+    Parameters
+    ----------
+    coords : array-like
+        The coordinates of the atoms to move and align. The coordinates of the participants of Bond1 must be
+        part of the coordinates.
+    points1 : tuple
+        The first set of points. This must be a tuple of two or three coordinates (numpy.ndarray) which are part of the coords.
+    points2 : tuple
+        The second bond. This must be a tuple of two or three coordinates (numpy.ndarray), depending on how many were provided as points1 (the same number of points).
+
+    Returns
+    -------
+    new_coords : array-like
+        The new coordinates of the atoms
+    """
+
+    _old_coords = np.array(points1)
+    _new_coords = np.array(points2)
+
+    if len(_old_coords) != len(_new_coords):
+        raise ValueError(
+            "The number of points in points1 and points2 must be the same."
+        )
+
+    # compute translation vector
+    old_centroid = _old_coords.mean(axis=0)
+    new_centroid = _new_coords.mean(axis=0)
+
+    _relative_old_coords = _old_coords - old_centroid
+    _relative_new_coords = _new_coords - new_centroid
+
+    H = (_relative_old_coords).T.dot(_relative_new_coords)
+    U, S, VT = np.linalg.svd(H)
+    R = VT.T @ U.T
+
+    # Check for reflection
+    if np.linalg.det(R) < 0:
+        VT[-1, :] *= -1
+        R = VT.T @ U.T
+
+    new_coords = (R @ (coords - old_centroid).T).T + new_centroid
+
+    return new_coords
+
+    # get the bond vectors
+    v1 = points1[1] - points1[0]
+    v2 = points2[1] - points2[0]
+
+    # normalize the bond vectors
+    v1 /= np.linalg.norm(v1)
+    v2 /= np.linalg.norm(v2)
+
+    # compute the rotation axis
+    axis = np.cross(v1, v2)
+    axis /= np.linalg.norm(axis)
+
+    # compute the angle between the bond vectors
+    angle = np.arctan(np.dot(v1, v2))
+
+    # rotate the coordinates
+    centroid = np.mean([points2[0], points2[1]], axis=0)
+    new_coords = coords + centroid
+    new_coords = rotate_coords(new_coords, angle, axis)
+    new_coords -= centroid
+
+    return new_coords
+
+    # # get the bond vectors
+    # bond1_atom1_idx = int(np.where(coords == bond1[0])[0])
+
+    # v0 = bond2[0] - bond1[0]
+    # v1 = bond1[1] - bond1[0] - v0
+    # v2 = bond2[1] - bond2[0] - v0
+
+    # # normalize the bond vectors
+    # v1 /= np.linalg.norm(v1)
+    # v2 /= np.linalg.norm(v2)
+
+    # # compute the rotation axis
+    # axis = np.cross(v1, v2)
+    # axis /= np.linalg.norm(axis)
+
+    # # compute the angle between the bond vectors
+    # angle = np.arctan(np.dot(v1, v2))
+
+    # # rotate the coordinates
+    # new_coords = coords - v0 - bond1[0]
+    # new_coords = rotate_coords(new_coords, angle, axis)
+    # new_coords += bond1[0]
+
+    # return new_coords
+
+
 @aux.njit
 def _numba_wrapper_rotate_coords(
     coords: np.ndarray,
