@@ -276,43 +276,45 @@ class BaseGraph(nx.Graph):
         """
         return self.get_descendants(node_2, node_1)
 
-    def find_rings(self) -> list:
+    def find_cycles(self) -> list:
         """
-        Find all rings in the graph
+        Find all cycles in the graph
 
         Returns
         -------
         list
-            A list of rings in the graph, where each ring is a list of nodes
+            A list of cycles in the graph, where each cycle is a list of nodes
         """
         return nx.cycle_basis(self)
 
-    def find_nodes_in_rings(self) -> set:
+    def find_nodes_in_cycles(self) -> set:
         """
-        Find all nodes that are in rings
+        Find all nodes that are in cycles
 
         Returns
         -------
         set
-            The nodes in rings
+            The nodes in cycles
         """
-        rings = [set(i) for i in nx.cycle_basis(self)]
-        if len(rings) == 0:
+        cycles = [set(i) for i in nx.cycle_basis(self)]
+        if len(cycles) == 0:
             return set()
-        return set.union(*rings)
+        return set.union(*cycles)
 
-    def find_edges_in_rings(self) -> set:
+    def find_edges_in_cycles(self) -> set:
         """
-        Find all edges that connect nodes in rings, where both nodes are in rings
+        Find all edges that connect nodes in cycles, where both nodes are in the same cycle
 
         Returns
         -------
         set
-            The edges in rings
+            The edges in cycles
         """
-        nodes_in_rings = self.find_nodes_in_rings()
+        nodes_in_cycles = self.find_cycles()
         return set(
-            (i, j) for i, j in self.edges if i in nodes_in_rings and j in nodes_in_rings
+            (i, j)
+            for i, j in self.edges
+            if self.in_same_cycle(i, j, cycles=nodes_in_cycles)
         )
 
     def find_rotatable_edges(
@@ -387,8 +389,8 @@ class BaseGraph(nx.Graph):
         max_descendants: int = None,
         max_ancestors: int = None,
         bond_order: int = None,
-        exclude_rings: bool = False,
-        only_rings: bool = False,
+        exclude_cycles: bool = False,
+        only_cycles: bool = False,
         exclude_locked: bool = False,
         only_locked: bool = False,
     ) -> list:
@@ -410,10 +412,10 @@ class BaseGraph(nx.Graph):
             The maximum number of ancestors that an edge must have to be considered rotatable.
         bond_order: int or tuple, optional
             The bond order to filter by. If a tuple is given, the bond order must be one of the values in the tuple.
-        exclude_rings: bool, optional
-            Whether to exclude edges that are in rings, by default False
-        only_rings: bool, optional
-            Whether to only include edges that are in rings, by default False
+        exclude_cycles: bool, optional
+            Whether to exclude edges that are in cycles, by default False
+        only_cycles: bool, optional
+            Whether to only include edges that are in cycles, by default False
         exclude_locked: bool, optional
             Whether to exclude locked edges, by default False
         only_locked: bool, optional
@@ -456,16 +458,20 @@ class BaseGraph(nx.Graph):
             else:
                 raise ValueError(f"Invalid datatype {type(bond_order)} for bond_order!")
 
-        if exclude_rings and only_rings:
-            raise ValueError("Cannot exclude and include rings at the same time!")
-        elif exclude_rings:
-            circulars = self.find_edges_in_rings()
+        if exclude_cycles and only_cycles:
+            raise ValueError("Cannot exclude and include cycles at the same time!")
+        elif exclude_cycles:
+            circulars = self.find_edges_in_cycles()
             if len(circulars) > 0:
-                matching_edges = (i for i in matching_edges if i not in circulars)
-        elif only_rings:
-            circulars = self.find_edges_in_rings()
+                matching_edges = (
+                    i for i in matching_edges if not self.in_same_cycle(*i, circulars)
+                )
+        elif only_cycles:
+            circulars = self.find_edges_in_cycles()
             if len(circulars) > 0:
-                matching_edges = (i for i in matching_edges if i in circulars)
+                matching_edges = (
+                    i for i in matching_edges if self.in_same_cycle(*i, circulars)
+                )
 
         if root_node is not None:
             matching_edges = list(matching_edges)
