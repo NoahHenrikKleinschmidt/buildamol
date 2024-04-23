@@ -108,6 +108,50 @@ class Geometry:
 
         return atoms
 
+    def fill_hydrogens(self, *atoms, make_bonds: bool = True, **kwargs):
+        """
+        Fill the geometry with hydrogen atoms where empty coordinates are found
+
+        Parameters
+        ----------
+        atoms : list
+            The list of atoms to apply the geometry to.
+            Note that there must not be more atoms than the geometry can generate coordinates for.
+            Note that in each case the central atom must be the first atom in the list.
+            Other atoms (planar or axial, where applicable) must come after. Be sure to pass a 'direction' argument to specify the inference direction if the points are ambiguous.
+        make_bonds : bool
+            If True, bond objects will also be returned connecting the central atom to the other atoms (provided or newly made).
+        **kwargs
+            Additional keyword arguments to pass to the coordinate generation function.
+
+        Returns
+        -------
+        atoms : list
+            The list of atoms with the new coordinates applied and hydrogens added where necessary.
+        bonds : list
+            A list of Bonds of the same atoms as in 'atoms' that are bonded. Or None if 'make_bonds' is False.
+        """
+        coords = self.make_coords(*atoms, **kwargs)
+
+        # # set the coordinates of the atoms
+        # for i, atom in enumerate(atoms):
+        #     if atom.coord is None:
+        #         atom.coord = coords[i]
+
+        # now fill the rest with hydrogens
+        import buildamol.core.base_classes as core
+
+        atoms = list(atoms)
+        for coord in coords[len(atoms) :]:
+            atom = core.Atom.new("H", coord=coord)
+            atoms.append(atom)
+
+        if make_bonds:
+            bonds = [core.Bond(atoms[0], a) for a in atoms[1:]]
+            return atoms, bonds
+        else:
+            return atoms, None
+
     def make_coords(*coords, **kwargs):
         """
         Make the coordinates of the geometry
@@ -129,7 +173,7 @@ class Tetrahedral(Geometry):
     def __init__(self, bond_length=1.2):
         self.bond_length = bond_length
 
-    def make_coords(self, *coords, length: float = None):
+    def make_coords(self, *coords, length: float = None, **kwargs):
         """
         Make the coordinates of a tetrahedron
 
@@ -212,11 +256,11 @@ class Tetrahedral(Geometry):
         axis /= np.linalg.norm(axis)
         a = np.abs(axis)
         if a[0] < 1e-6 and a[1] < 1e-6:
-            axis2 = base.y_axis
+            axis2 = base.x_axis
         elif a[0] < 1e-6 and a[2] < 1e-6:
             axis2 = base.z_axis
         else:
-            axis2 = base.x_axis
+            axis2 = base.y_axis
 
         coords = np.zeros((5, 3))
         coords[0] = center
@@ -347,7 +391,7 @@ class TrigonalPlanar(Geometry):
     def __init__(self, bond_length=1.2):
         self.bond_length = bond_length
 
-    def make_coords(self, *coords, length: float = None):
+    def make_coords(self, *coords, length: float = None, **kwargs):
         """
         Make the coordinates of a planar triangle
 
@@ -501,7 +545,7 @@ class Linear(Geometry):
     def __init__(self, bond_length=1.2):
         self.bond_length = bond_length
 
-    def make_coords(self, *coords, length: float = None):
+    def make_coords(self, *coords, length: float = None, **kwargs):
         """
         Make the coordinates of a line
 
@@ -594,7 +638,7 @@ class TrigonalBipyramidal(Geometry):
     """
 
     max_points = 3
-    size = 7
+    size = 6
     angle = np.radians(120)
 
     def __init__(self, bond_length=1.2):
@@ -666,7 +710,7 @@ class TrigonalBipyramidal(Geometry):
         length = length or self.bond_length
         center = getattr(center, "coord", center)
         other = center + base.x_axis * length
-        return self.make_coords_from_two_axial(center, other, length=length)
+        return self.make_coords_from_two_planar(center, other, length=length)
 
     def make_coords_from_two_axial(self, center, other, length: float = None):
         """
@@ -1001,7 +1045,7 @@ class Octahedral(Geometry):
     """
 
     max_points = 3
-    size = 8
+    size = 7
     angle = np.pi / 2
 
     def __init__(self, bond_length=1.2):
@@ -1073,7 +1117,7 @@ class Octahedral(Geometry):
         length = length or self.bond_length
         center = getattr(center, "coord", center)
         other = center + base.x_axis * length
-        return self.make_coords_from_two_axial(center, other, length=length)
+        return self.make_coords_from_two_planar(center, other, length=length)
 
     def make_coords_from_two_axial(self, center, other, length: float = None):
         """
