@@ -276,6 +276,45 @@ class BaseGraph(nx.Graph):
         """
         return self.get_descendants(node_2, node_1)
 
+    def find_rings(self) -> list:
+        """
+        Find all rings in the graph
+
+        Returns
+        -------
+        list
+            A list of rings in the graph, where each ring is a list of nodes
+        """
+        return nx.cycle_basis(self)
+
+    def find_nodes_in_rings(self) -> set:
+        """
+        Find all nodes that are in rings
+
+        Returns
+        -------
+        set
+            The nodes in rings
+        """
+        rings = [set(i) for i in nx.cycle_basis(self)]
+        if len(rings) == 0:
+            return set()
+        return set.union(*rings)
+
+    def find_edges_in_rings(self) -> set:
+        """
+        Find all edges that connect nodes in rings, where both nodes are in rings
+
+        Returns
+        -------
+        set
+            The edges in rings
+        """
+        nodes_in_rings = self.find_nodes_in_rings()
+        return set(
+            (i, j) for i, j in self.edges if i in nodes_in_rings and j in nodes_in_rings
+        )
+
     def find_rotatable_edges(
         self,
         root_node=None,
@@ -283,9 +322,9 @@ class BaseGraph(nx.Graph):
         min_ancestors: int = 1,
         max_descendants: int = None,
         max_ancestors: int = None,
-    ):
+    ) -> list:
         """
-        Find all edges in the graph that are rotatable (i.e. not locked and not in a circular constellation).
+        Find all edges in the graph that are rotatable (i.e. not locked, single, and not in a circular constellation).
         You can also filter and direct the edges.
 
         Parameters
@@ -310,7 +349,6 @@ class BaseGraph(nx.Graph):
             max_descendants = np.inf
         if not max_ancestors:
             max_ancestors = np.inf
-
         circulars = [set(i) for i in nx.cycle_basis(self)]
         # we changed stuff to generators to gain some performance
         # revert if it causes issues. We know that the root_node
@@ -340,6 +378,112 @@ class BaseGraph(nx.Graph):
         ]
 
         return rotatable_edges
+
+    def find_edges(
+        self,
+        root_node=None,
+        min_descendants: int = 1,
+        min_ancestors: int = 1,
+        max_descendants: int = None,
+        max_ancestors: int = None,
+        bond_order: int = None,
+        exclude_rings: bool = False,
+        only_rings: bool = False,
+        exclude_locked: bool = False,
+        only_locked: bool = False,
+    ) -> list:
+        """
+        Find edges in the graph according to the given criteria.
+        This does not restrict for edges that are rotatable.
+
+        Parameters
+        ----------
+        root_node
+            A root node by which to direct the edges (closer to further).
+        min_descendants: int, optional
+            The minimum number of descendants that an edge must have to be considered rotatable.
+        min_ancestors: int, optional
+            The minimum number of ancestors that an edge must have to be considered rotatable.
+        max_descendants: int, optional
+            The maximum number of descendants that an edge must have to be considered rotatable.
+        max_ancestors: int, optional
+            The maximum number of ancestors that an edge must have to be considered rotatable.
+        bond_order: int or tuple, optional
+            The bond order to filter by. If a tuple is given, the bond order must be one of the values in the tuple.
+        exclude_rings: bool, optional
+            Whether to exclude edges that are in rings, by default False
+        only_rings: bool, optional
+            Whether to only include edges that are in rings, by default False
+        exclude_locked: bool, optional
+            Whether to exclude locked edges, by default False
+        only_locked: bool, optional
+            Whether to only include locked edges, by default False
+
+        Returns
+        -------
+        list
+            A list of rotatable edges
+        """
+        if not max_descendants:
+            max_descendants = np.inf
+        if not max_ancestors:
+            max_ancestors = np.inf
+
+        matching_edges = iter(self.edges)
+
+        if only_locked and exclude_locked:
+            raise ValueError(
+                "Cannot exclude and include locked edges at the same time!"
+            )
+        if exclude_locked:
+            matching_edges = (i for i in matching_edges if i not in self._locked_edges)
+        elif only_locked:
+            matching_edges = (i for i in matching_edges if i in self._locked_edges)
+
+        if bond_order is not None:
+            if isinstance(bond_order, int):
+                matching_edges = (
+                    i
+                    for i in matching_edges
+                    if self[i[0]][i[1]].get("bond_order", 1) == bond_order
+                )
+            elif isinstance(bond_order, tuple):
+                matching_edges = (
+                    i
+                    for i in matching_edges
+                    if self[i[0]][i[1]].get("bond_order", 1) in bond_order
+                )
+            else:
+                raise ValueError(f"Invalid datatype {type(bond_order)} for bond_order!")
+
+        if exclude_rings and only_rings:
+            raise ValueError("Cannot exclude and include rings at the same time!")
+        elif exclude_rings:
+            circulars = self.find_edges_in_rings()
+            if len(circulars) > 0:
+                matching_edges = (i for i in matching_edges if i not in circulars)
+        elif only_rings:
+            circulars = self.find_edges_in_rings()
+            if len(circulars) > 0:
+                matching_edges = (i for i in matching_edges if i in circulars)
+
+        if root_node is not None:
+            matching_edges = list(matching_edges)
+            _directed = nx.dfs_tree(self, root_node)
+            matching_edges = [
+                i
+                for i in _directed.edges
+                if i in matching_edges or i[::-1] in matching_edges
+            ]
+
+        matching_edges = [
+            i
+            for i in matching_edges
+            if min_descendants < len(self.get_descendants(*i)) < max_descendants
+            and min_ancestors < len(self.get_ancestors(*i)) < max_ancestors
+        ]
+
+        return matching_edges
 
     def sample_edges(
         self,
