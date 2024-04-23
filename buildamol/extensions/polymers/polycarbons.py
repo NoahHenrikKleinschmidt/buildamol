@@ -39,7 +39,7 @@ def linear_alkane(n: int, include_hydrogens: bool = True) -> core.Molecule:
     if n < 1:
         raise ValueError("The number of atoms must be at least 1")
 
-    molecule = core.Molecule.empty(id="ALK", add_one_residue="ALK")
+    molecule = core.Molecule.new(id="ALK", resname="ALK")
 
     carbon_xs = np.arange(n) * _length_C_C
     carbon_zs = np.zeros(n, dtype=np.float64)
@@ -115,7 +115,7 @@ def cyclic_alkane(n: int, include_hydrogens: bool = True) -> core.Molecule:
     if n < 3:
         raise ValueError("The number of atoms must be at least 3")
 
-    molecule = core.Molecule.empty(id="ALK", add_one_residue="ALK")
+    molecule = core.Molecule.new(id="ALK", resname="ALK")
 
     # a radius estimate
     angle = np.radians(35)
@@ -158,7 +158,7 @@ def linear_alkene(n: int, include_hydrogens: bool = True) -> core.Molecule:
     if n < 2:
         raise ValueError("The number of atoms must be at least 2")
 
-    molecule = core.Molecule.empty(id="ALK", add_one_residue="ALK")
+    molecule = core.Molecule.new(id="ALK", resname="ALK")
 
     carbon_xs = np.arange(n) * _length_C_C
     carbon_zs = np.zeros(n, dtype=np.float64)

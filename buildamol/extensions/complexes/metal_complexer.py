@@ -330,7 +330,7 @@ class MetalComplexer:
                 if optimize:
                     _ligand_bonds.extend(
                         ligand.get_atom_graph().find_edges(
-                            root_node=b, exclude_rings=True, exclude_locked=True
+                            root_node=b, exclude_cycles=True, exclude_locked=True
                         )
                     )
                     _ligand_bonds.append((self.metal, b))
@@ -368,7 +368,7 @@ class MetalComplexer:
                 if optimize:
                     _ligand_bonds.extend(
                         ligand.get_atom_graph().find_edges(
-                            root_node=b, exclude_rings=True, exclude_locked=True
+                            root_node=b, exclude_cycles=True, exclude_locked=True
                         )
                     )
                     _ligand_bonds.append((self.metal, b))
@@ -446,7 +446,7 @@ class MetalComplexer:
 
         graph = ligand.get_atom_graph()
         edges = graph.find_edges(
-            root_node=root_binder, exclude_rings=True, exclude_locked=True
+            root_node=root_binder, exclude_cycles=True, exclude_locked=True
         )
         edges.append((root_delete, root_binder))
         r = base_rotatron(graph, edges)

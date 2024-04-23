@@ -47,7 +47,7 @@ def nanotube(n: int, k: int) -> core.Molecule:
     z[1::2] = np.sin(angle) * polycarbons._length_C_H
 
     # assembly half the unit ring
-    ring = core.Molecule.empty(id="RING", add_one_residue="RNG")
+    ring = core.Molecule.new(id="RING", resname="RNG")
     Cs, cbonds = polycarbons._make_carbons(carbon_x, carbon_y, z)
     cbonds.append((f"C1", f"C{n}"))
 
