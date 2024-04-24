@@ -532,6 +532,176 @@ class TrigonalPlanar(Geometry):
         return coords
 
 
+class SquarePlanar(Geometry):
+    """
+    Square Planar geometry (or partial octahedral without axial atoms)
+    (has 4 substituents)
+    """
+
+    max_points = 3
+    size = 5
+    angle = np.pi / 2
+
+    def __init__(self, bond_length=1.2):
+        self.bond_length = bond_length
+
+    def make_coords(self, *coords, length: float = None, **kwargs):
+        """
+        Make the coordinates of a square planar
+
+        Parameters
+        ----------
+        coords : array-like
+            The coordinates of the atoms that define the square planar
+            The first atom is the center of the square planar and two more atoms may follow.
+        float : float
+            The bond length to use for the square planar.
+            By default the bond length is either the default value or the distance between center and first other point (unless specified using this argument).
+
+        Returns
+        -------
+        array-like
+            The coordinates of the square planar with center at the 0th index and the other 4 atoms following.
+            Provided points always precede the ones that were generated.
+        """
+        if len(coords) == 1:
+            return self.make_coords_from_one(coords[0], length=length)
+        elif len(coords) == 2:
+            return self.make_coords_from_two(*coords, length=length)
+        elif len(coords) == 3:
+            return self.make_coords_from_three(*coords, length=length)
+
+    def make_coords_from_one(self, center, length: float = None):
+        """
+        Get the coordinates of a square planar
+
+        Parameters
+        ----------
+        center : Atom or array-like
+            The center of the square planar
+        float : float
+            The bond length to use for the square planar.
+            If not provided the default bond length is used.
+
+        Returns
+        -------
+        array-like
+            The coordinates of the square planar with center at the 0th index and the other 5 atoms following, where first come the planar ones, then the axial ones.
+        """
+        length = length or self.bond_length
+        center = getattr(center, "coord", center)
+        other = center + base.x_axis * length
+        return self.make_coords_from_two(center, other, length=length)
+
+    def make_coords_from_two(self, center, other, length: float = None):
+        """
+        Make the coordinates of a square planar given the central node and another node
+
+
+        Parameters
+        ----------
+        center : Atom or array-like
+            The center of the square planar
+        other : Atom or array-like
+            The planar node
+        float : float
+            The bond length to use for the square planar.
+            If not provided the distance between center and other is used.
+
+        Returns
+        -------
+        array-like
+            The coordinates of the square planar with center at the 0th index and the other 4 atoms following.
+            Provided points always precede the ones that were generated. E.g. other will be at the 1st index.
+        """
+        center = getattr(center, "coord", center)
+        other = getattr(other, "coord", other)
+        if length is None:
+            length = np.linalg.norm(center - other)
+        if length == 0:
+            raise ValueError("The two atoms are at the same position")
+        axis = center - other
+        axis /= np.linalg.norm(axis)
+        perpendicular_axis = np.cross(axis, base.z_axis)
+
+        coords = np.zeros((5, 3))
+        coords[0] = center
+        coords[1] = other
+        coords[2] = (
+            base.rotate_coords(-axis * length, self.angle, perpendicular_axis) + center
+        )
+        coords[3] = (
+            base.rotate_coords(-axis * length, 2 * self.angle, perpendicular_axis)
+            + center
+        )
+        coords[4] = (
+            base.rotate_coords(-axis * length, 3 * self.angle, perpendicular_axis)
+            + center
+        )
+
+        return coords
+
+    def make_coords_from_three(self, center, other1, other2, length: float = None):
+        """
+        Make the coordinates of a square planar given the two other nodes
+
+        Parameters
+        ----------
+        other1 : Atom or array-like
+            The first planar node
+        other2 : Atom or array-like
+            The second planar node
+        float : float
+            The bond length to use for the square planar.
+            If not provided the distance between other1 and other2 is used.
+
+        Returns
+        -------
+        array-like
+            The coordinates of the square planar with center at the 0th index and the other 4 atoms following.
+            Provided points always precede the ones that were generated. E.g. other1 and other2 will be at the 1st and 2nd index.
+        """
+
+        center = getattr(center, "coord", center)
+        other1 = getattr(other1, "coord", other1)
+        other2 = getattr(other2, "coord", other2)
+        length1 = np.linalg.norm(center - other1)
+        length2 = np.linalg.norm(center - other2)
+        if length1 == 0 or length2 == 0:
+            raise ValueError("The two atoms are at the same position")
+        if length is None:
+            length = length1
+        axis1 = center - other1
+        axis1 /= np.linalg.norm(axis1)
+        axis2 = center - other2
+        axis2 /= np.linalg.norm(axis2)
+
+        if np.allclose(np.abs(axis1), np.abs(axis2)):
+            a = np.abs(axis1)
+            if a[0] < 1e-6 and a[1] < 1e-6:
+                axis2 = base.y_axis
+            elif a[0] < 1e-6 and a[2] < 1e-6:
+                axis2 = base.z_axis
+            else:
+                axis2 = base.x_axis
+        perpendicular_axis = np.cross(axis1, axis2)
+
+        coords = np.zeros((5, 3))
+        coords[0] = center
+        coords[1] = other1
+        coords[2] = other2
+        coords[3] = (
+            base.rotate_coords(-axis1 * length, 2 * self.angle, perpendicular_axis)
+            + center
+        )
+        coords[4] = (
+            base.rotate_coords(-axis1 * length, 3 * self.angle, perpendicular_axis)
+            + center
+        )
+
+        return coords
+
+
 class Linear(Geometry):
     """
     Linear geometry for Sp1 hybridized atoms
@@ -1419,6 +1589,11 @@ trigonal_palar = TrigonalPlanar()
 The default trigonal planar geometry
 """
 
+square_planar = SquarePlanar()
+"""
+The default square planar geometry
+"""
+
 linear = Linear()
 """
 The default linear geometry
@@ -1433,6 +1608,7 @@ octahedral = Octahedral()
 """
 The default octahedral geometry
 """
+
 
 if __name__ == "__main__":
     import buildamol as bam
