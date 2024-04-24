@@ -12,11 +12,29 @@ import numpy as np
 
 import importlib
 
-# =================================================================
+
+# the version with the extra dictionary somehow
+# seems to prevent the loading issues where packages are
+# reassigned in sys.modules, raising errors. Thus we keep it like this...
+__lazy_modules__ = {}
+
+
+def lazy_module(fullname):
+    base = fullname.split(".")[-1]
+    if base not in __lazy_modules__:
+        spec = importlib.util.find_spec(fullname)
+        module = importlib.util.module_from_spec(spec)
+        loader = importlib.util.LazyLoader(spec.loader)
+        loader.exec_module(module)
+        __lazy_modules__[base] = module
+    return __lazy_modules__[base]
 
 
 def has_package(name):
     return importlib.util.find_spec(name) is not None
+
+
+# =================================================================
 
 
 HAS_RDKIT = has_package("rdkit")
@@ -26,6 +44,7 @@ HAS_NUMBA = has_package("numba")
 HAS_STK = has_package("stk")
 
 if HAS_RDKIT:
+    # rdkit is fast to load, so we can just load it here
     Chem = importlib.import_module("rdkit.Chem")
     AllChem = importlib.import_module("rdkit.Chem.AllChem")
     RDLogger = importlib.import_module("rdkit.RDLogger")
@@ -41,22 +60,51 @@ else:
     MMFFGetMoleculeForceField = None
 
 if HAS_PYBEL:
-    pybel = importlib.import_module("openbabel.pybel")
+    pybel = lazy_module("openbabel.pybel")
 else:
     pybel = None
 
 if HAS_OPENMM:
-    openmm = importlib.import_module("openmm.app")
+    openmm = lazy_module("openmm.app")
 else:
     openmm = None
 
 if HAS_NUMBA:
-    njit = importlib.import_module("numba").njit
+
+    class NjitManager:
+        """
+        The njit manager that ensures that we only compile
+        a function once when it is called for the first time
+        so we avoid loading numba when we don't need it at all
+        (otherwise numba is always loaded and slows down the startup, even if nothing is ever compiled)
+        """
+
+        def __init__(self):
+            self.__functions__ = {}
+
+        def __call__(self, func):
+
+            name = func.__name__
+
+            if name not in self.__functions__:
+
+                from numba import njit as __njit__
+
+                self.__functions__[name] = __njit__(func)
+
+            return self.__functions__[name]
+
+    njit = NjitManager()
+
 else:
-    njit = lambda x: x
+    # numba = None
+
+    def njit(func):
+        return func
+
 
 if HAS_STK:
-    stk = importlib.import_module("stk")
+    stk = lazy_module("stk")
 else:
     stk = None
 
