@@ -61,10 +61,8 @@ def apply_rotatron_solution(
         # things faster, assuming that the serial number was not altered in some way
         # outside of the molecule object.
         a, b = bond
-        if not a in mol.get_atoms():
-            a = mol.get_atom(a.serial_number)
-        if not b in mol.get_atoms():
-            b = mol.get_atom(b.serial_number)
+        a = mol.get_atom(a.serial_number)
+        b = mol.get_atom(b.serial_number)
         if a is None or b is None:
             raise ValueError(
                 f"Object and environment do not match (bond mismatch): {bond}"
