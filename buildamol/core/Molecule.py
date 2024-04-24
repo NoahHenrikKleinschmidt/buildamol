@@ -489,6 +489,7 @@ __all__ = [
     "carboxylate",
     "phenylate",
     "benzylate",
+    "thiolate",
 ]
 
 
@@ -1118,6 +1119,47 @@ def phenylate(
         l.add_delete(delete.id, "target")
 
     mol.attach(phenyl, l, at_residue=at_residue, inplace=inplace)
+    return mol
+
+
+def thiolate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Add a thiol group to a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to thiolate
+    at_atom : int or str or Atom
+        The atom to thiolate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to thiolate.
+        If not provided, any Hydrogen atom attached to the thiolated atom will be deleted.
+    inplace : bool
+        Whether to thiolate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    thiol = Molecule.from_compound("HOH")
+    thiol.get_atom("O").set_element("S")  # change the oxygen to sulfur
+
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("THIOLATE")
+    l.add_bond((at_atom.id, "S"))
+    l.add_delete("H1", "source")
+    if delete:
+        l.add_delete(delete.id, "target")
+
+    mol.attach(thiol, l, at_residue=at_residue, inplace=inplace)
     return mol
 
 
