@@ -761,38 +761,51 @@ class BaseEntity:
             1 for i in structural.find_clashes(self, clash_threshold, ignore_hydrogens)
         )
 
-    def copy(self):
+    def copy(self, n: int = 1) -> list:
         """
-        Create a deepcopy of the molecule
+        Create one or multiple deepcopy of the molecule
+
+        Parameters
+        ----------
+        n : int, optional
+            The number of copies to make, by default 1
+
+        Returns
+        -------
+        Molecule or list
+            The copied molecule(s)
         """
-        new = deepcopy(self)
-        new._base_struct._new_id()
-        new._AtomGraph.clear()
-        for model in new._base_struct.child_list:
-            new._base_struct.child_dict.pop(model.get_id())
-            model._new_id()
-            new._base_struct.child_dict[model.get_id()] = model
-            for chain in model.child_list:
-                model.child_dict.pop(chain.get_id())
-                chain._new_id()
-                model.child_dict[chain.get_id()] = chain
-                for residue in chain.child_list:
-                    chain.child_dict.pop(residue.get_id())
-                    residue._new_id()
-                    chain.child_dict[residue.get_id()] = residue
-                    for atom in residue.child_list:
-                        residue.child_dict.pop(atom.get_id())
-                        atom._new_id()
-                        residue.child_dict[atom.get_id()] = atom
-        new._AtomGraph.add_nodes_from(new.get_atoms())
-        new._AtomGraph.add_edges_from(new.get_bonds())
-        for b in new.get_bonds():
-            # I don't think this is necessary. Add again if it causes problems...
-            # b.atom1 = new.get_atom(b.atom1.serial_number)
-            # b.atom2 = new.get_atom(b.atom2.serial_number)
-            new._AtomGraph.edges[b]["bond_order"] = b.order
-            new._AtomGraph.edges[b]["bond_obj"] = b
-        return new
+        if n > 1:
+            return [self.copy() for i in range(n)]
+        else:
+            new = deepcopy(self)
+            new._base_struct._new_id()
+            new._AtomGraph.clear()
+            for model in new._base_struct.child_list:
+                new._base_struct.child_dict.pop(model.get_id())
+                model._new_id()
+                new._base_struct.child_dict[model.get_id()] = model
+                for chain in model.child_list:
+                    model.child_dict.pop(chain.get_id())
+                    chain._new_id()
+                    model.child_dict[chain.get_id()] = chain
+                    for residue in chain.child_list:
+                        chain.child_dict.pop(residue.get_id())
+                        residue._new_id()
+                        chain.child_dict[residue.get_id()] = residue
+                        for atom in residue.child_list:
+                            residue.child_dict.pop(atom.get_id())
+                            atom._new_id()
+                            residue.child_dict[atom.get_id()] = atom
+            new._AtomGraph.add_nodes_from(new.get_atoms())
+            new._AtomGraph.add_edges_from(new.get_bonds())
+            for b in new.get_bonds():
+                # I don't think this is necessary. Add again if it causes problems...
+                # b.atom1 = new.get_atom(b.atom1.serial_number)
+                # b.atom2 = new.get_atom(b.atom2.serial_number)
+                new._AtomGraph.edges[b]["bond_order"] = b.order
+                new._AtomGraph.edges[b]["bond_obj"] = b
+            return new
 
     def merge(self, other, adjust_indexing: bool = True):
         """
@@ -3113,7 +3126,6 @@ class BaseEntity:
         """
         conv = utils.convert.STKBuildAMolConverter()
         return conv.buildamol_to_stk(self)
-    
 
     def to_biopython(self):
         """
