@@ -89,6 +89,52 @@ class PDBIO:
         os.remove(self.__fileio__)
 
 
+class STKBuildAMolConverter(PDBIO):
+    """
+    Convert STK to buildamol and vice versa
+    """
+
+    def __init__(self):
+        self.__fileio__ = tempfile.mktemp(suffix=".mol")
+
+    def buildamol_to_stk(self, obj):
+        """
+        Convert a BuildAMol object to an STK object
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if not aux.HAS_STK:
+            raise ImportError("Could not import stk")
+        obj.to_molfile(self.__fileio__)
+        return aux.stk.BuildingBlock.init_from_file(self.__fileio__)
+
+    def stk_to_pdbio(self, obj):
+        """
+        Convert an STK object to a BuildAMol object
+
+        Parameters
+        ----------
+        obj : object
+            The object to convert
+
+        Returns
+        -------
+        object
+            The converted object
+        """
+        if not aux.HAS_STK:
+            raise ImportError("Could not import stk")
+        aux.stk.PdbWriter().write(obj, self.__fileio__)
+
+
 class OpenMMBioPythonConverter(PDBIO):
     """
     Convert OpenMM data structures to Biopython

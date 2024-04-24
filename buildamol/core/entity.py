@@ -264,6 +264,21 @@ class BaseEntity:
         return new
 
     @classmethod
+    def from_stk(cls, obj):
+        """
+        Load a Molecule from an stk ConstructedMolecule
+
+        Parameters
+        ----------
+        obj : stk.ConstructedMolecule
+            The stk ConstructedMolecule
+        """
+        conv = utils.convert.STKBuildAMolConverter()
+        conv.stk_to_pdbio(obj)
+        new = cls.from_pdb(conv.__fileio__)
+        return new
+
+    @classmethod
     def load(cls, filename: str):
         """
         Load a Molecule from a pickle file
@@ -3086,6 +3101,19 @@ class BaseEntity:
         if self.id is not None:
             mol.SetProp("_Name", self.id)
         return mol
+
+    def to_stk(self):
+        """
+        Convert the molecule to a STK molecule
+
+        Returns
+        -------
+        stk.BuildingBlock
+            The STK molecule
+        """
+        conv = utils.convert.STKBuildAMolConverter()
+        return conv.buildamol_to_stk(self)
+    
 
     def to_biopython(self):
         """

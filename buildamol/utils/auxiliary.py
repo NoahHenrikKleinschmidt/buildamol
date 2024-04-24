@@ -23,7 +23,7 @@ HAS_RDKIT = has_package("rdkit")
 HAS_PYBEL = has_package("openbabel")
 HAS_OPENMM = has_package("openmm")
 HAS_NUMBA = has_package("numba")
-
+HAS_STK = has_package("stk")
 
 if HAS_RDKIT:
     Chem = importlib.import_module("rdkit.Chem")
@@ -54,6 +54,11 @@ if HAS_NUMBA:
     njit = importlib.import_module("numba").njit
 else:
     njit = lambda x: x
+
+if HAS_STK:
+    stk = importlib.import_module("stk")
+else:
+    stk = None
 
 USE_NUMBA = False
 USE_ALL_NUMBA = False
