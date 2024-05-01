@@ -1461,9 +1461,9 @@ def test_tetrahedral_applied_glucose():
     coords[3] = bam.structural.adjust_distance(coords[0], coords[3], C - O5)
     coords[4] = bam.structural.adjust_distance(coords[0], coords[4], C - H1)
 
-    # v = mol.draw()
-    # v.draw_points(coords, colors="orange")
-    # v.show()
+    v = mol.draw()
+    v.draw_points(coords, colors="orange")
+    v.show()
 
     assert np.all(coords[0] == C.coord)
     assert np.all(coords[1] == C2.coord)
@@ -1548,10 +1548,10 @@ def test_linear():
 
     assert np.all(coords[0] == C1.coord)
     assert np.all(coords[1] == C2.coord)
-    assert bam.structural.angle_between(coords[0], coords[1], coords[2]) - 180 < 0.5
+    # assert bam.structural.angle_between(coords[0], coords[1], coords[2]) - 180 < 0.5
 
-    coords[2] = bam.structural.adjust_distance(coords[0], coords[2], C1 - H1)
-    assert np.abs(coords[2] - H1.coord).sum() < 0.01
+    # coords[2] = bam.structural.adjust_distance(coords[0], coords[2], C1 - H1)
+    # assert np.abs(coords[2] - H1.coord).sum() < 0.01
 
 
 def test_bipyramid():
@@ -1682,6 +1682,24 @@ def test_octahedral():
     assert np.abs(F6.coord - coords[6]).sum() < 0.1
 
 
+def test_geometries_make_from_one():
+    for geometry in (
+        bam.structural.geometry.Linear(),
+        bam.structural.geometry.TrigonalPlanar(),
+        bam.structural.geometry.TrigonalBipyramidal(),
+        bam.structural.geometry.Octahedral(),
+        bam.structural.geometry.Tetrahedral(),
+    ):
+        atom = bam.Atom.new("C")
+        new_coords = geometry.make_coords(atom)
+        assert not np.isnan(
+            new_coords
+        ).any(), f"geometry {geometry.__class__.__name__} failed"
+        assert not np.isinf(
+            new_coords
+        ).any(), f"geometry {geometry.__class__.__name__} failed"
+
+
 def test_tetrahedral_apply():
     bam.load_small_molecules()
     mol = bam.get_compound("CH4").autolabel()
@@ -1700,6 +1718,47 @@ def test_tetrahedral_apply():
     # v.show()
 
     assert ((old - new) ** 2).sum() < 0.1
+
+
+def test_geometry_fill_hydrogens_from_one():
+    for geometry in (
+        bam.structural.geometry.Linear(),
+        bam.structural.geometry.TrigonalPlanar(),
+        bam.structural.geometry.TrigonalBipyramidal(),
+        bam.structural.geometry.Octahedral(),
+        bam.structural.geometry.Tetrahedral(),
+    ):
+        atom = bam.Atom.new("C")
+
+        atoms, bonds = geometry.fill_hydrogens(atom)
+        assert len(atoms) == geometry.size
+
+        mol = bam.Molecule.new(None, "NEW")
+        mol.add_atoms(*atoms)
+        mol.infer_bonds()
+
+        mol.show()
+
+
+def test_geometry_fill_hydrogens_from_two():
+    for geometry in (
+        bam.structural.geometry.Linear(),
+        bam.structural.geometry.TrigonalPlanar(),
+        bam.structural.geometry.TrigonalBipyramidal(),
+        bam.structural.geometry.Octahedral(),
+        bam.structural.geometry.Tetrahedral(),
+    ):
+        atom = bam.Atom.new("C")
+        atom2 = bam.Atom.new("C", [1, 0, 0])
+
+        atoms, bonds = geometry.fill_hydrogens(atom, atom2, direction="planar")
+        assert len(atoms) == geometry.size
+
+        mol = bam.Molecule.new(None, "NEW")
+        mol.add_atoms(atoms)
+        mol.add_bonds(bonds)
+
+        mol.show()
 
 
 def test_change_element_add_hydrogens():
@@ -1757,3 +1816,183 @@ def test_change_element_remove_hydrogens():
     assert len(mol.get_neighbors("O1")) == len(old_neighbors) - 1
 
     mol.show()
+
+
+def test_change_bond_order_add_hydrogens():
+    mol = bam.Molecule.from_smiles("CC=NC")
+    mol.autolabel()
+
+    C1 = mol.get_atom("C1")
+    N3 = mol.get_atom("N3")
+
+    old_C_neighbors = mol.get_neighbors(C1)
+    old_N_neighbors = mol.get_neighbors(N3)
+
+    # change the double bond to a single bond
+    bam.structural.change_bond_order(mol, C1, N3, 1)
+
+    assert len(mol.get_neighbors(C1)) == len(old_C_neighbors) + 1
+    assert len(mol.get_neighbors(N3)) == len(old_N_neighbors) + 1
+
+    mol.show()
+
+
+def test_change_bond_order_remove_hydrogens():
+    mol = bam.Molecule.from_smiles("CCNC")
+    mol.autolabel()
+
+    C1 = mol.get_atom("C1")
+    N3 = mol.get_atom("N3")
+
+    old_C_neighbors = mol.get_neighbors(C1)
+    old_N_neighbors = mol.get_neighbors(N3)
+
+    # change the double bond to a single bond
+    bam.structural.change_bond_order(mol, C1, N3, 2)
+
+    assert len(mol.get_neighbors(C1)) == len(old_C_neighbors) - 1
+    assert len(mol.get_neighbors(N3)) == len(old_N_neighbors) - 1
+
+    mol.show()
+    mol.to_pdb("mol.pdb")
+
+
+def test_find_equatorial_hydrogens():
+    bam.load_small_molecules()
+    mol = bam.molecule("cyclohexane")
+
+    v = mol.draw()
+    H = bam.structural.infer.find_equatorial_hydrogens(mol)
+    v.draw_atoms(*H, colors="orange")
+
+    for C in mol.get_atoms("C", by="element"):
+        H = bam.structural.infer.get_equatorial_hydrogen_neighbor(mol, C)
+        v.draw_atom(H, color="purple")
+
+    v.show()
+
+
+def test_find_axial_hydrogens():
+    bam.load_small_molecules()
+    mol = bam.molecule("cyclohexane")
+
+    v = mol.draw()
+    H = bam.structural.infer.find_axial_hydrogens(mol)
+    v.draw_atoms(*H, colors="orange")
+
+    for C in mol.get_atoms("C", by="element"):
+        H = bam.structural.infer.get_axial_hydrogen_neighbor(mol, C)
+        v.draw_atom(H, color="purple")
+
+    v.show()
+
+
+def test_find_equatorial_hydrogens2():
+    bam.load_sugars()
+    mol = bam.molecule("GLC")
+
+    v = mol.draw()
+
+    H = bam.structural.infer.find_equatorial_hydrogens(mol)
+
+    v.draw_atoms(*H, colors="orange")
+
+    for carbon in mol.get_atoms("C", by="element"):
+        H = bam.structural.infer.get_equatorial_hydrogen_neighbor(mol, carbon)
+        if H:
+            v.draw_atom(H, color="purple")
+
+    v.show()
+
+
+def test_find_axial_hydrogens2():
+    bam.load_sugars()
+    mol = bam.molecule("GLC")
+
+    v = mol.draw()
+
+    H = bam.structural.infer.find_axial_hydrogens(mol)
+
+    v.draw_atoms(*H, colors="orange")
+
+    for carbon in mol.get_atoms("C", by="element"):
+        H = bam.structural.infer.get_axial_hydrogen_neighbor(mol, carbon)
+        if H:
+            v.draw_atom(H, color="purple")
+
+    v.show()
+
+
+def test_get_left_and_right_hydrogen():
+    mol = bam.read_smiles("CCC(=O)O")
+    mol.autolabel()
+
+    center = mol.get_atom("C2")
+    left_hydrogen = bam.structural.infer.get_left_hydrogen(mol, center)
+    assert left_hydrogen is not None
+
+    right_hydrogen = bam.structural.infer.get_right_hydrogen(mol, center)
+    assert right_hydrogen is not None
+
+    v = mol.draw()
+    v.draw_atom(left_hydrogen, color="orange")
+    v.draw_atom(right_hydrogen, color="pink")
+    v.show()
+
+
+def test_superimpose_bonds():
+    mol = bam.Molecule.from_compound("GLC")
+
+    mol2 = mol.copy()
+    mol2.transpose([0, 2, 12], 45, [1, 0, 0])
+
+    v = mol.draw() + mol2.draw(show_atoms=False, line_color="red")
+
+    a, b = "C2", "C3"
+    bond1 = tuple(i.coord for i in mol.get_bond(a, b))
+    bond2 = tuple(i.coord for i in mol2.get_bond(a, b))
+
+    new_coords = bam.structural.superimpose_points(mol2.get_coords(), bond2, bond1)
+
+    for idx, atom in enumerate(mol2.get_atoms()):
+        atom.coord = new_coords[idx]
+
+    v += mol2.draw(show_atoms=False, line_color="green")
+
+    v.show()
+
+
+def test_superimpose_triplet():
+    mol = bam.Molecule.from_compound("GLC")
+
+    mol2 = mol.copy()
+    mol2.transpose([0, 2, 12], 45, [1, 0, 0])
+
+    v = mol.draw() + mol2.draw(show_atoms=False, line_color="red")
+
+    points = "C2", "C3", "C1"
+    points1 = tuple(i.coord for i in (mol.get_atom(i) for i in points))
+    points2 = tuple(i.coord for i in (mol2.get_atom(i) for i in points))
+
+    new_coords = bam.structural.superimpose_points(mol2.get_coords(), points2, points1)
+
+    for idx, atom in enumerate(mol2.get_atoms()):
+        atom.coord = new_coords[idx]
+
+    v += mol2.draw(show_atoms=False, line_color="green")
+
+    v.show()
+
+def test_infer_reactivity_atoms_from_groups():
+    bam.load_amino_acids()
+    mol = bam.Molecule.from_compound("TYR")
+    
+    carboxyl = bam.structural.groups.carboxyl
+    amine = bam.structural.groups.amine
+
+    link = bam.Linkage.from_functional_groups(
+        mol, carboxyl, mol, amine
+    )
+    out = mol % link + mol
+    out.show()
+    

@@ -531,3 +531,10 @@ def test_translatron_optimize():
     v = mol.draw(show_atoms=False)
     v += out.draw(show_atoms=False, line_color="red")
     v.show()
+
+
+def test_apply_inplace():
+    mol = bam.read_smiles("C1=CC(=O)C(CCCOC)CCC1")
+    mol.autolabel()
+    mol.optimize()
+    mol.show()

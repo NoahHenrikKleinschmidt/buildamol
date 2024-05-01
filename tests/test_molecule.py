@@ -1820,3 +1820,118 @@ def test_optimize():
     for b in mol.get_bonds():
         assert 0.9 < b.compute_length() < 2
     # mol.show()
+
+
+def test_phosphorylate():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.phosphorylate(mol, "C1")
+    mol.show()
+
+
+def test_methylate():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.methylate(mol, "C1")
+    mol.show()
+
+
+def test_acetylate():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.acetylate(mol, "C1")
+    mol.show()
+
+
+def test_amidate():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.amidate(mol, "C1")
+    mol.show()
+
+
+def test_get_left_right_hydrogens():
+    mol = bam.Molecule.from_smiles("OC(=O)CC=O").autolabel()
+    center = mol.get_atom("C2")
+    left = mol.get_left_hydrogen(center)
+    right = mol.get_right_hydrogen(center)
+    assert left.element == "H"
+    assert right.element == "H"
+    v = mol.draw()
+    v.draw_point("center", center.coord, color="red")
+    v.draw_point("left", left.coord, color="blue")
+    v.draw_point("right", right.coord, color="green")
+    v.show()
+
+
+def test_superimpose():
+    mol = bam.Molecule.from_compound("GLC")
+
+    mol2 = mol.copy()
+    mol2.transpose([0, 2, 12], 45, [1, 0, 0])
+    mol3 = mol2.copy()
+    mol4 = mol2.copy()
+
+    v = mol.draw() + mol2.draw(show_atoms=False, line_color="red")
+
+    mol2.superimpose_to_atom(
+        mol2.get_atom("C1"),
+        mol.get_atom("C1"),
+    )
+
+    v += mol2.draw(show_atoms=False, line_color="blue")
+
+    mol3.superimpose_to_bond(
+        mol3.get_bond("C1", "C2"),
+        mol.get_bond("C1", "C2"),
+    )
+
+    v += mol3.draw(show_atoms=False, line_color="green")
+
+    mol4.superimpose_to_triplet(
+        ("C1", "O1", "HO1"),
+        mol.get_atoms("C1", "O1", "HO1"),
+    )
+
+    v += mol4.draw(show_atoms=False, line_color="purple")
+
+    v.show()
+
+
+def test_react_with():
+    mol = bam.Molecule.from_compound("TYR")
+
+    out = mol.react_with(
+        mol, bam.structural.groups.carboxyl, bam.structural.groups.amine
+    )
+    out.show()
+
+
+def test_react_with2():
+    mol = bam.Molecule.from_compound("TYR")
+
+    out = mol.react_with(
+        mol,
+        bam.structural.groups.carboxyl,
+        bam.structural.groups.hydroxyl,
+        inplace=False,
+    ).react_with(
+        mol, bam.structural.groups.carboxyl, bam.structural.groups.amine, inplace=False
+    )
+    out.show()
+
+
+def test_from_geometry():
+    P = bam.Atom.new("P")
+
+    mol1 = bam.Molecule.from_geometry(bam.structural.geometry.trigonal_bipyramidal, [P])
+    assert len(mol1.atoms) == 6
+    assert len(mol1.bonds) == 5
+
+    Fs = [bam.Atom.new("F") for _ in range(5)]
+    mol2 = bam.Molecule.from_geometry(
+        bam.structural.geometry.trigonal_bipyramidal, [P, *Fs]
+    )
+
+    assert len(mol2.atoms) == 6
+    assert len(mol2.bonds) == 5
+
+    mol3 = bam.Molecule.from_geometry(bam.structural.geometry.trigonal_bipyramidal, [P, *Fs[:3]])
+
+    mol3.show()
