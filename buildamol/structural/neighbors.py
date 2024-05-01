@@ -171,11 +171,11 @@ class ResidueNeighborhood(Neighborhood):
 
     # a maybe little hacky way to get the residue name or atom id, depending on the node type
     # since we have mixed types in detailed residue graphs
-    __index_method__ = __index_method__ = (
-        lambda _, node: node.id[1] if isinstance(node.id, tuple) else node.serial_number
+    __index_method__ = __index_method__ = lambda _, node: (
+        node.id[1] if isinstance(node.id, tuple) else node.serial_number
     )
-    __id_method__ = (
-        lambda _, node: getattr(node, "resname")
+    __id_method__ = lambda _, node: (
+        getattr(node, "resname")
         if hasattr(node, "resname")
         else f"{node.id}@{node.serial_number}"
     )
@@ -587,3 +587,136 @@ def generate_quartets(bonds: list):
             if quartet:
                 if len(set(quartet.atoms)) == 4:
                     yield quartet
+
+
+class constraints:
+    """
+    Neighborhood structural constraints
+    """
+
+    none = lambda graph, node: True
+    """
+    No constraints
+    """
+
+    alone = lambda graph, node: len(graph.adj[node]) == 0
+    """
+    The node has no neighbors
+    """
+
+    neighbors_any = lambda *args: (
+        lambda graph, node: any(i in (j.element for j in graph.adj[node]) for i in args)
+    )
+    """
+    The node has at least one neighbor with any of the specified elements
+    """
+
+    neighbors_all = lambda *args: (
+        lambda graph, node: all(i in (j.element for j in graph.adj[node]) for i in args)
+    )
+    """
+    The node neighbors all the specified elements but may have more
+    """
+
+    neighbors_exactly = lambda *args: (
+        lambda graph, node: set(j.element for j in graph.adj[node]) == set(args)
+    )
+    """
+    The node neighbors all and only the specified elements
+    """
+
+    neighbors_not = lambda *args: (
+        lambda graph, node: all(
+            i not in (j.element for j in graph.adj[node]) for i in args
+        )
+    )
+    """
+    The node does not have any neighbors with the specified elements
+    """
+
+    has_neighbor_hist = lambda hist: (
+        lambda graph, node: all(
+            hist[i] == sum(1 for j in graph.adj[node] if j.element == i) for i in hist
+        )
+    )
+    """
+    The node has the specified number of neighbors for each element
+    Hist is a dictionary with element symbols as keys and the number of neighbors as values
+    """
+
+    has_n_neighbors = lambda n: (lambda graph, node: len(graph.adj[node]) == n)
+    has_not_n_neighbors = lambda n: (lambda graph, node: len(graph.adj[node]) != n)
+    has_at_least_n_neighbors = lambda n: (lambda graph, node: len(graph.adj[node]) >= n)
+    has_at_most_n_neighbors = lambda n: (lambda graph, node: len(graph.adj[node]) <= n)
+
+    extended_neighbors_any = lambda n, *args: (
+        lambda graph, node: any(
+            i in (j.element for j in graph.get_neighbors(node, n)) for i in args
+        )
+    )
+    """
+    The node has at least one neighbor with any of the specified elements within n bonds
+    """
+
+    extended_neighbors_all = lambda n, *args: (
+        lambda graph, node: all(
+            i in (j.element for j in graph.get_neighbors(node, n)) for i in args
+        )
+    )
+    """
+    The node neighbors all the specified elements within n bonds but may have more
+    """
+
+    extended_neighbors_exactly = lambda n, *args: (
+        lambda graph, node: set(j.element for j in graph.get_neighbors(node, n))
+        == set(args)
+    )
+    """
+    The node neighbors all and only the specified elements within n bonds
+    """
+
+    extended_neighbors_not = lambda n, *args: (
+        lambda graph, node: all(
+            i not in (j.element for j in graph.get_neighbors(node, n)) for i in args
+        )
+    )
+    """
+    The node does not have any neighbors with the specified elements within n bonds
+    """
+
+    extended_has_neighbor_hist = lambda n, hist: (
+        lambda graph, node: all(
+            hist[i] == sum(1 for j in graph.get_neighbors(node, n) if j.element == i)
+            for i in hist
+        )
+    )
+    """
+    The node has the specified number of neighbors for each element within n bonds
+    Hist is a dictionary with element symbols as keys and the number of neighbors as values
+    """
+
+    extended_has_n_neighbors = lambda n, m: (
+        lambda graph, node: len(graph.get_neighbors(node, n)) == m
+    )
+    extended_has_not_n_neighbors = lambda n, m: (
+        lambda graph, node: len(graph.get_neighbors(node, n)) != m
+    )
+    extended_has_at_least_n_neighbors = lambda n, m: (
+        lambda graph, node: len(graph.get_neighbors(node, n)) >= m
+    )
+
+    extended_has_at_most_n_neighbors = lambda n, m: (
+        lambda graph, node: len(graph.get_neighbors(node, n)) <= m
+    )
+
+    def multi_constraint(*funcs):
+        """
+        Combine multiple constraints into one
+
+        Parameters
+        ----------
+        funcs : list
+            A list of constraint functions to combine.
+            Each of these must take a graph and a node as arguments and return a boolean.
+        """
+        return lambda graph, node: all(f(graph, node) for f in funcs)
