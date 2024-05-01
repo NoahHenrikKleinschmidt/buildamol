@@ -1510,6 +1510,27 @@ class BaseEntity:
         atom = self.get_atom(atom)
         return structural.get_right_hydrogen_neighbor(self, atom)
 
+    def get_hydrogen(
+        self, atom: Union[int, str, tuple, base_classes.Atom]
+    ) -> base_classes.Atom:
+        """
+        Get any hydrogen neighbor of an atom.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The hydrogen, if it exists, None otherwise
+        """
+        Hs = self.get_neighbors(atom, n=1, filter=lambda a: a.element == "H")
+        if len(Hs) == 0:
+            return None
+        return Hs.pop()
+
     def reindex(
         self, start_chainid: int = 1, start_resid: int = 1, start_atomid: int = 1
     ):
@@ -1760,7 +1781,11 @@ class BaseEntity:
         return sum(1 for i in self._model.get_chains())
 
     def get_atoms(
-        self, *atoms: Union[int, str, tuple], by: str = None, keep_order: bool = False
+        self,
+        *atoms: Union[int, str, tuple],
+        by: str = None,
+        keep_order: bool = False,
+        filter: callable = None,
     ) -> list:
         """
         Get one or more atoms from the structure either based on their
@@ -1788,6 +1813,10 @@ class BaseEntity:
 
         keep_order : bool
             Whether to return the atoms in the order they were queried. If False, the atoms are returned in the order they appear in the structure.
+
+        filter : callable
+            A filter function that is applied to the atoms. If the filter returns True, the atom is included in the result.
+            The filter function must take an atom as its only argument and return a boolean.
 
         Returns
         -------
@@ -1837,6 +1866,9 @@ class BaseEntity:
                 atoms = sorted(_atoms, key=lambda x: atoms.index(x.element))
         else:
             atoms = _atoms
+
+        if filter:
+            return [a for a in atoms if filter(a)]
 
         return atoms
 
