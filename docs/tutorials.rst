@@ -72,6 +72,13 @@ Resource-oriented Tutorials
 More applied Tutorials
 ----------------------
 
+.. card:: Using Functional Groups
+   :link: example_functional_groups
+   :link-type: ref
+
+   In this tutorial we will explore how to use functional groups to connect molecules together in BuildAMol.
+   We also cover how to create your own custom functional groups.
+
 .. card:: Building circular Molecules
    :link: example_building_circular
    :link-type: ref
@@ -115,15 +122,14 @@ More applied Tutorials
 
    In this tutorial we will build a solvation box around a molecule using BuildAMol.
 
-.. card:: Molecules from scratch - building a Nanotube
-   :link: example_nanotube
-   :link-type: ref
-
-   In this tutorial we will build a nanotube 100% from scratch, atom by atom, using numpy to build coordinates and BuildAMol to assemble a molecule.
-
 .. card:: Molecules from scratch - building PF5
    :link: example_geometry
    :link-type: ref
 
    In this tutorial we will build a PF5 molecule using BuildAMol's molecular geometries to automatically generate coordinates.
    
+.. card:: Molecules from scratch - building a Nanotube
+   :link: example_nanotube
+   :link-type: ref
+
+   In this tutorial we will build a nanotube 100% from scratch, atom by atom, using numpy to build coordinates and BuildAMol to assemble a molecule.
