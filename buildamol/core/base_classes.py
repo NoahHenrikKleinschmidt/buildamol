@@ -192,7 +192,13 @@ class Atom(ID, bio.Atom.Atom):
         self.level = "A"
 
     @classmethod
-    def new(cls, element_or_id: str, coord: "np.ndarray" = None, **kwargs) -> "Atom":
+    def new(
+        cls,
+        element_or_id: str,
+        coord: "np.ndarray" = None,
+        generate_id: bool = True,
+        **kwargs,
+    ) -> "Atom":
         """
         Create a blank atom with a given element and coordinates.
 
@@ -210,14 +216,19 @@ class Atom(ID, bio.Atom.Atom):
             (the + indicates multiple characters)
         coord : ndarray, optional
             The atom coordinates. The default is None.
+        generate_id : bool, optional
+            Whether to automatically generate a new id for the atom to avoid identically named atoms. The default is True.
+
         **kwargs
-            Additional keyword arguments to pass to the Atom
+            Additional keyword arguments to pass to the Atom initializer
 
         Returns
         -------
         Atom
             The blank atom.
         """
+        if not generate_id:
+            _id = element_or_id
         if coord is None:
             coord = np.zeros(3)
         if pt.elements.__dict__.get(element_or_id) or pt.elements.__dict__.get(
@@ -232,6 +243,8 @@ class Atom(ID, bio.Atom.Atom):
             id, element = Atom._infer_element_from_id(element_or_id)
 
         element = kwargs.pop("element", element)
+        if not generate_id:
+            id = _id
         return cls(id=id, coord=coord, element=element, **kwargs)
 
     @classmethod
@@ -244,7 +257,7 @@ class Atom(ID, bio.Atom.Atom):
         element : str
             The atom element.
         **kwargs
-            Additional keyword arguments to pass to the Atom
+            Additional keyword arguments to pass to the new Atom initializer.
         """
         return Atom.new(element, **kwargs)
 

@@ -478,10 +478,19 @@ __all__ = [
     "read_smiles",
     "molecule",
     "connect",
+    "react",
     "polymerize",
-    "phosphorylate",
     "make_smiles",
     "query_pubchem",
+    "phosphorylate",
+    "methylate",
+    "acetylate",
+    "amidate",
+    "hydroxylate",
+    "carboxylate",
+    "phenylate",
+    "benzylate",
+    "thiolate",
 ]
 
 
@@ -798,6 +807,60 @@ def connect(
     return new
 
 
+def react(
+    mol_a: "Molecule",
+    mol_b: "Molecule",
+    egroup: "FunctionalGroup",
+    ngroup: "FunctionalGroup",
+    a_is_electrophile: bool = True,
+    at_residue_a: Union[int, "bio.Residue.Residue"] = None,
+    at_residue_b: Union[int, "bio.Residue.Residue"] = None,
+    copy_a: bool = True,
+    copy_b: bool = True,
+) -> "Molecule":
+    """
+    Connect two molecules together by imitating a chemical reaction based on functional groups.
+
+    Parameters
+    ----------
+    mol_a : Molecule
+        The first (target) molecule
+    mol_b : Molecule
+        The second (source) molecule
+    egroup : FunctionalGroup
+        The functional group of the first molecule to connect to.
+    ngroup : FunctionalGroup
+        The functional group of the second molecule to connect to.
+    a_is_electrophile : bool
+        Whether the first molecule is the electrophile (True) or nucleophile (False)
+    at_residue_a : int or bio.PDB.Residue
+        The residue of the first molecule to connect to. If an integer is provided, the seqid must be used, starting at 1.
+    at_residue_b : int or bio.PDB.Residue
+        The residue of the second molecule to connect to. If an integer is provided, the seqid must be used, starting at 1.
+    copy_a : bool
+        Whether to copy the first molecule before connecting
+    copy_b : bool
+        Whether to copy the second molecule before connecting.
+        If False, all atoms of the second molecule will be added to the first molecule.
+
+    Returns
+    -------
+    Molecule
+        The connected molecule
+    """
+    new = mol_a.react_with(
+        mol_b,
+        egroup,
+        ngroup,
+        a_is_electrophile,
+        at_residue_a,
+        at_residue_b,
+        not copy_a,
+        not copy_b,
+    )
+    return new
+
+
 def phosphorylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
@@ -824,21 +887,20 @@ def phosphorylate(
     Molecule
         The phosphorylated molecule
     """
+    resources.load_small_molecules()
     phos = Molecule.from_compound("PO4")
     at_atom = mol.get_atom(at_atom)
-    delete = mol.get_atom(delete)
     at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete)
 
     l = Linkage.Linkage("PHOS", "a custom phosphorylation")
-    l.add_bond(at_atom.id, "P")
+    l.add_bond((at_atom.id, "P"))
     if delete:
         l.add_delete(delete.id, "target")
     l.add_delete("O2", "source")
 
-    if not inplace:
-        mol = mol.copy()
-
-    mol.attach(phos, l, at_residue=at_residue)
+    mol.attach(phos, l, at_residue=at_residue, inplace=inplace)
     return mol
 
 
@@ -864,18 +926,295 @@ def methylate(
     inplace : bool
         Whether to methylate the molecule in place or return a new molecule
     """
+    resources.load_small_molecules()
     methyl = Molecule.from_compound("CH3")
     at_atom = mol.get_atom(at_atom)
     at_residue = at_atom.get_parent()
-    delete = mol.get_atom(delete, residue=at_residue)
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
 
     l = Linkage.Linkage("METHYLATE")
-    l.add_bond(at_atom.id, "C")
+    l.add_bond((at_atom.id, "C"))
     l.add_delete("HC1", "source")
     if delete:
         l.add_delete(delete.id, "target")
 
     mol.attach(methyl, l, at_residue=at_residue, inplace=inplace)
+    return mol
+
+
+def acetylate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Acetylate a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to acetylate
+    at_atom : int or str or Atom
+        The atom to acetylate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to acetylate.
+        If not provided, any Hydrogen atom attached to the acetylated atom will be deleted.
+    inplace : bool
+        Whether to acetylate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    acetyl = Molecule.from_compound("ACY")
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("ACETYLATE")
+    l.add_bond((at_atom.id, "OXT"))
+    l.add_delete("HXT", "source")
+    if delete:
+        l.add_delete(delete.id, "target")
+
+    mol.attach(acetyl, l, at_residue=at_residue, inplace=inplace)
+    return mol
+
+
+def hydroxylate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Hydroxylate a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to hydroxylate
+    at_atom : int or str or Atom
+        The atom to hydroxylate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to hydroxylate.
+        If not provided, any Hydrogen atom attached to the hydroxylated atom will be deleted.
+    inplace : bool
+        Whether to hydroxylate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    hydroxyl = Molecule.from_compound("HOH")
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("HYDROXYLATE")
+    l.add_bond((at_atom.id, "O"))
+    l.add_delete("H1", "source")
+    if delete:
+        l.add_delete(delete.id, "target")
+
+    mol.attach(hydroxyl, l, at_residue=at_residue, inplace=inplace)
+    return mol
+
+
+def amidate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Amidate a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to amidate
+    at_atom : int or str or Atom
+        The atom to amidate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to amidate.
+        If not provided, any Hydrogen atom attached to the amidated atom will be deleted.
+    inplace : bool
+        Whether to amidate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    amide = Molecule.from_compound("NH3")
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("AMIDATE")
+    l.add_bond((at_atom.id, "N"))
+    l.add_delete("HN1", "source")
+    if delete:
+        l.add_delete(delete.id, "target")
+
+    mol.attach(amide, l, at_residue=at_residue, inplace=inplace)
+    return mol
+
+
+def carboxylate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Carboxylate a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to carboxylate
+    at_atom : int or str or Atom
+        The atom to carboxylate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to carboxylate.
+        If not provided, any Hydrogen atom attached to the carboxylated atom will be deleted.
+    inplace : bool
+        Whether to carboxylate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    carboxyl = Molecule.from_compound("CBX")
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("CARBOXYLATE")
+    l.add_bond((at_atom.id, "C"))
+    l.add_delete("H", "source")
+    if delete:
+        l.add_delete(delete.id, "target")
+
+    mol.attach(carboxyl, l, at_residue=at_residue, inplace=inplace)
+    return mol
+
+
+def benzylate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Add a benzyl group to a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to benzylate
+    at_atom : int or str or Atom
+        The atom to benzylate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to benzylate.
+        If not provided, any Hydrogen atom attached to the benzylated atom will be deleted.
+    inplace : bool
+        Whether to benzylate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    benzyl = Molecule.from_compound("BNZ")
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("BENZYLATE")
+    l.add_bond((at_atom.id, "C"))
+    l.add_delete("H1", "source")
+    if delete:
+        l.add_delete(delete.id, "target")
+
+    mol.attach(benzyl, l, at_residue=at_residue, inplace=inplace)
+    return mol
+
+
+def phenylate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Add a phenol group to a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to phenylate
+    at_atom : int or str or Atom
+        The atom to phenylate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to phenylate.
+        If not provided, any Hydrogen atom attached to the phenylated atom will be deleted.
+    inplace : bool
+        Whether to phenylate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    phenyl = Molecule.from_compound("PHN")
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("BNZ")
+    l.add_bond((at_atom.id, "C1"))
+    l.add_delete("H1", "source")
+    if delete:
+        l.add_delete(delete.id, "target")
+
+    mol.attach(phenyl, l, at_residue=at_residue, inplace=inplace)
+    return mol
+
+
+def thiolate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Add a thiol group to a molecule at a specific atom
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to thiolate
+    at_atom : int or str or Atom
+        The atom to thiolate. If an integer is provided, the atom seqid must be used, starting at 1.
+    delete : int or str or Atom
+        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
+        This atom needs to be in the same residue as the atom to thiolate.
+        If not provided, any Hydrogen atom attached to the thiolated atom will be deleted.
+    inplace : bool
+        Whether to thiolate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    thiol = Molecule.from_compound("HOH")
+    thiol.get_atom("O").set_element("S")  # change the oxygen to sulfur
+
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete, residue=at_residue)
+
+    l = Linkage.Linkage("THIOLATE")
+    l.add_bond((at_atom.id, "S"))
+    l.add_delete("H1", "source")
+    if delete:
+        l.add_delete(delete.id, "target")
+
+    mol.attach(thiol, l, at_residue=at_residue, inplace=inplace)
     return mol
 
 
@@ -941,7 +1280,13 @@ class Molecule(entity.BaseEntity):
         return new
 
     @classmethod
-    def new(self, id: str = None, resname: str = "UNK") -> "Molecule":
+    def new(
+        self,
+        id: str = None,
+        resname: str = "UNK",
+        atoms: list = None,
+        bonds: list = None,
+    ) -> "Molecule":
         """
         Create a new Molecule with a single residue
 
@@ -951,6 +1296,10 @@ class Molecule(entity.BaseEntity):
             The id of the Molecule. By default an id is inferred from the filename.
         resname : str
             The resname of the residue to add
+        atoms : list
+            A list of Atom objects to add to the residue
+        bonds : list
+            A list of bonds to add to the residue
 
         Returns
         -------
@@ -959,6 +1308,10 @@ class Molecule(entity.BaseEntity):
         """
         new = self.empty(id)
         new.add_residues(entity.base_classes.Residue(resname))
+        if atoms:
+            new.add_atoms(atoms)
+        if bonds:
+            new.add_bonds(bonds)
         return new
 
     @classmethod
@@ -1071,6 +1424,8 @@ class Molecule(entity.BaseEntity):
             new = cls.from_pybel(obj)
         if root_atom:
             new.set_root(root_atom)
+        if id is not None:
+            new.rename_residue(1, id[:3])
         return new
 
     @classmethod
@@ -1122,6 +1477,51 @@ class Molecule(entity.BaseEntity):
         new.id = _compound_2d.iupac_name
         if root_atom:
             new.set_root(root_atom)
+        return new
+
+    @classmethod
+    def from_geometry(
+        cls,
+        geometry: "structural.geometry.Geometry",
+        atoms: list,
+        id: str = None,
+        resname: str = "UNK",
+        direction: str = None,
+    ):
+        """
+        Create a new Molecule using a molecular geometry and a list of starting atoms.
+        This will place the atoms in the right spacial coordinates and fill up the provided starting atoms with hydrogens to match the geometry's defined number of atoms.
+
+        Parameters
+        ----------
+        geometry : Geometry
+            The geometry object
+        atoms : list
+            A list of Atom objects
+        id : str
+            The id of the Molecule.
+        resname : str
+            The resname of the residue to add
+        direction : str
+            The direction of the atoms (in case of a geometry that has planar and axial directions).
+            This can be either "planar" or "axial".
+
+        Returns
+        -------
+        Molecule
+            The Molecule object
+        """
+        if len(atoms) > geometry.max_points:
+            n = sum(1 for idx, atom in enumerate(atoms) if atom.coord.sum() != 0)
+            n = n or 1
+            _atoms = atoms[:n]
+            geometry.make_and_apply(_atoms, atoms, direction=direction)
+
+        if len(atoms) == geometry.size:
+            bonds = [entity.base_classes.Bond(atoms[0], a) for a in atoms[1:]]
+        else:
+            atoms, bonds = geometry.fill_hydrogens(*atoms, direction=direction)
+        new = cls.new(id=id, atoms=atoms, bonds=bonds, resname=resname)
         return new
 
     def to_smiles(self, isomeric: bool = True, write_hydrogens: bool = False) -> str:
@@ -1453,6 +1853,70 @@ class Molecule(entity.BaseEntity):
         self = p.merge()
         return self
 
+    def react_with(
+        self,
+        other: "Molecule",
+        egroup: "FunctionalGroup",
+        ngroup: "FunctionalGroup",
+        as_electrophile: bool = True,
+        at_residue: Union[int, "entity.base_classes.Residue"] = None,
+        other_residue: Union[int, "entity.base_classes.Residue"] = None,
+        inplace: bool = True,
+        other_inplace: bool = False,
+    ) -> "Molecule":
+        """
+        React this molecule with another molecule using functional groups to
+        automatically create a linkage.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to react with
+        egroup : FunctionalGroup
+            The electrophilic functional group to use
+        ngroup : FunctionalGroup
+            The nucleophilic functional group to use
+        as_electrophile : bool
+            Whether to use this molecule as the electrophile or the nucleophile
+        at_residue : int or Residue
+            The residue to attach the other molecule to. If None, the last residue of the molecule.
+        other_residue : int or Residue
+            The residue of the other molecule to attach. If None, the first residue of the other molecule.
+        inplace : bool
+            If True the molecule is directly modified, otherwise a copy of the molecule is returned.
+        other_inplace : bool
+            All atoms from the other molecule are integrated into this one. Hence, the other molecule is left empty. If False, a copy of the other molecule is used.
+            Thus leaving the original molecule intact.
+        Returns
+        -------
+        molecule
+            The modified molecule (either the original object or a copy)
+        """
+        if not inplace:
+            obj = self.copy()
+        else:
+            obj = self
+
+        if not other_inplace:
+            _other = other.copy()
+        else:
+            _other = other
+
+        _backup_attach_residue = obj.attach_residue
+        if at_residue is not None:
+            obj.set_attach_residue(at_residue)
+        if other_residue is not None:
+            _other.set_attach_residue(other_residue)
+
+        if as_electrophile:
+            link = Linkage.Linkage.from_functional_groups(obj, egroup, _other, ngroup)
+        else:
+            link = Linkage.Linkage.from_functional_groups(_other, egroup, obj, ngroup)
+
+        obj.stitch_attach(_other, link)
+        obj.set_attach_residue(_backup_attach_residue)
+        return obj
+
     def optimize(
         self,
         residue_graph: bool = None,
@@ -1484,6 +1948,7 @@ class Molecule(entity.BaseEntity):
             The rotatron to use. This can be one of the following:
             - "distance" for a distance-based rotatron (default)
             - "overlap" for an overlap-based rotatron
+            - "forcefield" for a force-field-based rotatron
         algorithm_kws : dict
             Keyword arguments to pass to the optimization algorithm
         rotatron_kws : dict

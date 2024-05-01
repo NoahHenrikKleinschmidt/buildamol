@@ -32,3 +32,4 @@ from buildamol.structural.neighbors import (
 )
 
 import buildamol.structural.geometry as geometry
+import buildamol.structural.groups as groups

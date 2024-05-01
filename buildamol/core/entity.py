@@ -264,6 +264,21 @@ class BaseEntity:
         return new
 
     @classmethod
+    def from_stk(cls, obj):
+        """
+        Load a Molecule from an stk ConstructedMolecule
+
+        Parameters
+        ----------
+        obj : stk.ConstructedMolecule
+            The stk ConstructedMolecule
+        """
+        conv = utils.convert.STKBuildAMolConverter()
+        conv.stk_to_pdbio(obj)
+        new = cls.from_pdb(conv.__fileio__)
+        return new
+
+    @classmethod
     def load(cls, filename: str):
         """
         Load a Molecule from a pickle file
@@ -746,37 +761,51 @@ class BaseEntity:
             1 for i in structural.find_clashes(self, clash_threshold, ignore_hydrogens)
         )
 
-    def copy(self):
+    def copy(self, n: int = 1) -> list:
         """
-        Create a deepcopy of the molecule
+        Create one or multiple deepcopy of the molecule
+
+        Parameters
+        ----------
+        n : int, optional
+            The number of copies to make, by default 1
+
+        Returns
+        -------
+        Molecule or list
+            The copied molecule(s)
         """
-        new = deepcopy(self)
-        new._base_struct._new_id()
-        new._AtomGraph.clear()
-        for model in new._base_struct.child_list:
-            new._base_struct.child_dict.pop(model.get_id())
-            model._new_id()
-            new._base_struct.child_dict[model.get_id()] = model
-            for chain in model.child_list:
-                model.child_dict.pop(chain.get_id())
-                chain._new_id()
-                model.child_dict[chain.get_id()] = chain
-                for residue in chain.child_list:
-                    chain.child_dict.pop(residue.get_id())
-                    residue._new_id()
-                    chain.child_dict[residue.get_id()] = residue
-                    for atom in residue.child_list:
-                        residue.child_dict.pop(atom.get_id())
-                        atom._new_id()
-                        residue.child_dict[atom.get_id()] = atom
-        new._AtomGraph.add_nodes_from(new.get_atoms())
-        new._AtomGraph.add_edges_from(new.get_bonds())
-        for b in new.get_bonds():
-            b.atom1 = new.get_atom(b.atom1.serial_number)
-            b.atom2 = new.get_atom(b.atom2.serial_number)
-            new._AtomGraph.edges[b]["bond_order"] = b.order
-            new._AtomGraph.edges[b]["bond_obj"] = b
-        return new
+        if n > 1:
+            return [self.copy() for i in range(n)]
+        else:
+            new = deepcopy(self)
+            new._base_struct._new_id()
+            new._AtomGraph.clear()
+            for model in new._base_struct.child_list:
+                new._base_struct.child_dict.pop(model.get_id())
+                model._new_id()
+                new._base_struct.child_dict[model.get_id()] = model
+                for chain in model.child_list:
+                    model.child_dict.pop(chain.get_id())
+                    chain._new_id()
+                    model.child_dict[chain.get_id()] = chain
+                    for residue in chain.child_list:
+                        chain.child_dict.pop(residue.get_id())
+                        residue._new_id()
+                        chain.child_dict[residue.get_id()] = residue
+                        for atom in residue.child_list:
+                            residue.child_dict.pop(atom.get_id())
+                            atom._new_id()
+                            residue.child_dict[atom.get_id()] = atom
+            new._AtomGraph.add_nodes_from(new.get_atoms())
+            new._AtomGraph.add_edges_from(new.get_bonds())
+            for b in new.get_bonds():
+                # I don't think this is necessary. Add again if it causes problems...
+                # b.atom1 = new.get_atom(b.atom1.serial_number)
+                # b.atom2 = new.get_atom(b.atom2.serial_number)
+                new._AtomGraph.edges[b]["bond_order"] = b.order
+                new._AtomGraph.edges[b]["bond_obj"] = b
+            return new
 
     def merge(self, other, adjust_indexing: bool = True):
         """
@@ -994,6 +1023,92 @@ class BaseEntity:
 
         return self
 
+    def superimpose_to_bond(
+        self,
+        ref_bond: Union[tuple, base_classes.Bond],
+        other_bond: Union[tuple, base_classes.Bond],
+    ):
+        """
+        Superimpose the molecule to another molecule based on two bonds.
+        This will move this molecule so that the atoms in ref_bond are superimposed to the atoms in other_bond.
+
+        Parameters
+        ----------
+        ref_bond : tuple or Bond
+            The bond to superimpose to
+        other_bond : tuple or Bond
+            The bond to superimpose from
+        """
+        if not isinstance(ref_bond[0], np.ndarray):
+            ref_bond = (ref_bond[0].get_coord(), ref_bond[1].get_coord())
+        if not isinstance(other_bond[0], np.ndarray):
+            other_bond = (other_bond[0].get_coord(), other_bond[1].get_coord())
+
+        new_coords = structural.superimpose_points(
+            self.get_coords(), ref_bond, other_bond
+        )
+        for adx, atom in enumerate(self.get_atoms()):
+            atom.coord = new_coords[adx]
+
+        return self
+
+    def superimpose_to_atom(
+        self,
+        ref_atom: Union[base_classes.Atom, int, str],
+        other_atom: Union[base_classes.Atom, np.ndarray],
+    ):
+        """
+        Superimpose the molecule to another molecule based on two atoms.
+        This will move this molecule so that the atom in ref_atom is superimposed to the atom in other_atom.
+
+        Parameters
+        ----------
+        ref_atom : Atom or int or str
+            The atom to superimpose in this molecule
+        other_atom : Atom or np.ndarray
+            The atom to superimpose to in the other molecule or an arbitrary coordinate
+        """
+        if not isinstance(other_atom, np.ndarray):
+            other_atom = other_atom.get_coord()
+        if not isinstance(ref_atom, np.ndarray):
+            if isinstance(ref_atom, (int, str)):
+                ref_atom = self.get_atom(ref_atom)
+            ref_atom = ref_atom.get_coord()
+
+        vec = other_atom - ref_atom
+        self.move(vec)
+        return self
+
+    def superimpose_to_triplet(self, ref_triplet: tuple, other_triplet: tuple):
+        """
+        Superimpose the molecule to another molecule based on two atom triplets.
+        This will move this molecule so that the atoms in ref_triplet are superimposed to the atoms in other_triplet.
+
+        Parameters
+        ----------
+        ref_triplet : tuple
+            The triplet to superimpose to. These may either be Atom objects or any input which can be used to get atoms in this molecule.
+        other_triplet : tuple
+            The triplet to superimpose from.. These must be either Atom objects or arbitrary coordinates (np.ndarray).
+        """
+        if not isinstance(ref_triplet[0], np.ndarray):
+            if isinstance(ref_triplet[0], (int, str)):
+                ref_triplet = (self.get_atom(a) for a in ref_triplet)
+            ref_triplet = tuple(a.get_coord() for a in ref_triplet)
+        if not isinstance(other_triplet[0], np.ndarray):
+            other_triplet = tuple(a.get_coord() for a in other_triplet)
+
+        if len(ref_triplet) != 3 or len(other_triplet) != 3:
+            raise ValueError("Both triplets must have exactly 3 elements")
+
+        new_coords = structural.superimpose_points(
+            self.get_coords(), ref_triplet, other_triplet
+        )
+        for adx, atom in enumerate(self.get_atoms()):
+            atom.coord = new_coords[adx]
+
+        return self
+
     def rotate_descendants(
         self,
         atom1: Union[str, int, base_classes.Atom],
@@ -1115,7 +1230,7 @@ class BaseEntity:
         self,
         atom1: Union[str, int, base_classes.Atom],
         atom2: Union[str, int, base_classes.Atom],
-    ):
+    ) -> set:
         """
         Get the atoms upstream of a bond. This will return the set
         of all atoms that are connected before the bond atom1-atom2 in the direction of atom1,
@@ -1156,7 +1271,7 @@ class BaseEntity:
         self,
         atom1: Union[str, int, base_classes.Atom],
         atom2: Union[str, int, base_classes.Atom],
-    ):
+    ) -> set:
         """
         Get the atoms downstream of a bond. This will return the set
         of all atoms that are connected after the bond atom1-atom2 in the direction of atom2,
@@ -1201,7 +1316,8 @@ class BaseEntity:
         atom: Union[int, str, tuple, base_classes.Atom],
         n: int = 1,
         mode: str = "upto",
-    ):
+        filter: callable = None,
+    ) -> set:
         """
         Get the neighbors of an atom.
 
@@ -1214,6 +1330,8 @@ class BaseEntity:
         mode
             The mode to use. Can be "upto" or "at". If `upto`, all neighbors that are at most `n` bonds away
             are returned. If `at`, only neighbors that are exactly `n` bonds away are returned.
+        filter
+            A filter function that is applied to the neighbors. If the filter returns True, the atom is included in the result.
 
         Returns
         -------
@@ -1239,9 +1357,14 @@ class BaseEntity:
         {"CH"}
         """
         atom = self.get_atom(atom)
-        return self._AtomGraph.get_neighbors(atom, n, mode)
+        out = self._AtomGraph.get_neighbors(atom, n, mode)
+        if filter:
+            return {a for a in out if filter(a)}
+        return out
 
-    def get_equatorial_neighbor(self, atom: Union[int, str, tuple, base_classes.Atom]):
+    def get_equatorial_neighbor(
+        self, atom: Union[int, str, tuple, base_classes.Atom]
+    ) -> base_classes.Atom:
         """
         Get the equatorial neighbor of an atom, if the atom is in a ring structure.
 
@@ -1258,7 +1381,9 @@ class BaseEntity:
         atom = self.get_atom(atom)
         return structural.get_equatorial_neighbor(self, atom)
 
-    def get_axial_neighbor(self, atom: Union[int, str, tuple, base_classes.Atom]):
+    def get_axial_neighbor(
+        self, atom: Union[int, str, tuple, base_classes.Atom]
+    ) -> base_classes.Atom:
         """
         Get the axial neighbor of an atom, if the atom is in a ring structure.
 
@@ -1275,7 +1400,9 @@ class BaseEntity:
         atom = self.get_atom(atom)
         return structural.get_axial_neighbor(self, atom)
 
-    def get_equatorial_hydrogen(self, atom: Union[int, str, tuple, base_classes.Atom]):
+    def get_equatorial_hydrogen(
+        self, atom: Union[int, str, tuple, base_classes.Atom]
+    ) -> base_classes.Atom:
         """
         Get the equatorial hydrogen neighbor of an atom, if the atom is in a ring structure.
 
@@ -1292,7 +1419,9 @@ class BaseEntity:
         atom = self.get_atom(atom)
         return structural.get_equatorial_hydrogen_neighbor(self, atom)
 
-    def get_axial_hydrogen(self, atom: Union[int, str, tuple, base_classes.Atom]):
+    def get_axial_hydrogen(
+        self, atom: Union[int, str, tuple, base_classes.Atom]
+    ) -> base_classes.Atom:
         """
         Get the axial hydrogen neighbor of an atom, if the atom is in a ring structure.
 
@@ -1308,6 +1437,99 @@ class BaseEntity:
         """
         atom = self.get_atom(atom)
         return structural.get_axial_hydrogen_neighbor(self, atom)
+
+    def get_left_hydrogen(
+        self, atom: Union[int, str, tuple, base_classes.Atom]
+    ) -> base_classes.Atom:
+        """
+        Get the "left-protruding" hydrogen neighbor of an atom with two hydrogens and two non-hydrogen neighbors.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The left hydrogen, if it exists, None otherwise
+
+        Example
+        -------
+        In a molecule:
+        ```
+                   H_B
+                   |
+            CH3 -- C -- CH2 -- OH
+                   |
+                   H_A
+        ```
+        We want to get the left and right hydrogens of the central C atom (labeled only C).
+        Using part of the logic behind R/S nomenclature for chiral centers, we prioritize the non-H neighbors
+        and then rotate the molecule such that the highest order non-H neighbor points toward the user and the other
+        non-H neighbor points away. The left and right hydrogens are then determined based on their orientation in this view.
+
+        In this case, the left hydrogen is H_A and the right hydrogen is H_B.
+        """
+        atom = self.get_atom(atom)
+        return structural.get_left_hydrogen_neighbor(self, atom)
+
+    def get_right_hydrogen(
+        self, atom: Union[int, str, tuple, base_classes.Atom]
+    ) -> base_classes.Atom:
+        """
+        Get the "right-protruding" hydrogen neighbor of an atom with two hydrogens and two non-hydrogen neighbors.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The right hydrogen, if it exists, None otherwise
+
+        Example
+        -------
+        In a molecule:
+        ```
+                   H_B
+                   |
+            CH3 -- C -- CH2 -- OH
+                   |
+                   H_A
+        ```
+        We want to get the left and right hydrogens of the central C atom (labeled only C).
+        Using part of the logic behind R/S nomenclature for chiral centers, we prioritize the non-H neighbors
+        and then rotate the molecule such that the highest order non-H neighbor points toward the user and the other
+        non-H neighbor points away. The left and right hydrogens are then determined based on their orientation in this view.
+
+        In this case, the left hydrogen is H_A and the right hydrogen is H_B.
+        """
+        atom = self.get_atom(atom)
+        return structural.get_right_hydrogen_neighbor(self, atom)
+
+    def get_hydrogen(
+        self, atom: Union[int, str, tuple, base_classes.Atom]
+    ) -> base_classes.Atom:
+        """
+        Get any hydrogen neighbor of an atom.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The hydrogen, if it exists, None otherwise
+        """
+        Hs = self.get_neighbors(atom, n=1, filter=lambda a: a.element == "H")
+        if len(Hs) == 0:
+            return None
+        return Hs.pop()
 
     def reindex(
         self, start_chainid: int = 1, start_resid: int = 1, start_atomid: int = 1
@@ -1558,7 +1780,13 @@ class BaseEntity:
         """
         return sum(1 for i in self._model.get_chains())
 
-    def get_atoms(self, *atoms: Union[int, str, tuple], by: str = None) -> list:
+    def get_atoms(
+        self,
+        *atoms: Union[int, str, tuple],
+        by: str = None,
+        keep_order: bool = False,
+        filter: callable = None,
+    ) -> list:
         """
         Get one or more atoms from the structure either based on their
         id, serial number or full_id. Note, if multiple atoms match the requested criteria,
@@ -1583,6 +1811,13 @@ class BaseEntity:
             If None is given, the parameter is inferred from the datatype of the atoms argument
             'serial' in case of `int`, 'id' in case of `str`, `full_id` in case of a tuple.
 
+        keep_order : bool
+            Whether to return the atoms in the order they were queried. If False, the atoms are returned in the order they appear in the structure.
+
+        filter : callable
+            A filter function that is applied to the atoms. If the filter returns True, the atom is included in the result.
+            The filter function must take an atom as its only argument and return a boolean.
+
         Returns
         -------
         atom : list or generator
@@ -1606,18 +1841,34 @@ class BaseEntity:
                 )
 
         if by == "id":
-            atoms = [i for i in self._model.get_atoms() if i.id in atoms]
+            _atoms = [i for i in self._model.get_atoms() if i.id in atoms]
         elif by == "serial":
-            atoms = [i for i in self._model.get_atoms() if i.serial_number in atoms]
+            _atoms = [i for i in self._model.get_atoms() if i.serial_number in atoms]
         elif by == "full_id":
-            atoms = [i for i in self._model.get_atoms() if i.full_id in atoms]
+            _atoms = [i for i in self._model.get_atoms() if i.full_id in atoms]
         elif by == "element":
-            atoms = [i.upper() for i in atoms]
-            atoms = [i for i in self._model.get_atoms() if i.element in atoms]
+            _atoms = [i.upper() for i in atoms]
+            _atoms = [i for i in self._model.get_atoms() if i.element in atoms]
         else:
             raise ValueError(
                 f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element' -> erroneous input: {atoms=}"
             )
+
+        # finally make sure that the order of the atoms is the same as the input
+        if keep_order:
+            if by == "id":
+                atoms = sorted(_atoms, key=lambda x: atoms.index(x.id))
+            elif by == "serial":
+                atoms = sorted(_atoms, key=lambda x: atoms.index(x.serial_number))
+            elif by == "full_id":
+                atoms = sorted(_atoms, key=lambda x: atoms.index(x.full_id))
+            elif by == "element":
+                atoms = sorted(_atoms, key=lambda x: atoms.index(x.element))
+        else:
+            atoms = _atoms
+
+        if filter:
+            return [a for a in atoms if filter(a)]
 
         return atoms
 
@@ -2071,6 +2322,9 @@ class BaseEntity:
             If True, the atoms are copied and then added to the structure.
             This will leave the original atoms (and their parent structures) untouched.
         """
+        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple)):
+            atoms = iter(atoms[0])
+
         if residue is not None:
             if isinstance(residue, int):
                 residue = self._chain.child_list[residue - 1]
@@ -2105,6 +2359,9 @@ class BaseEntity:
         list
             The removed atoms
         """
+        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple)):
+            atoms = iter(atoms[0])
+
         _atoms = []
         for atom in atoms:
             _atom = self.get_atoms(atom)
@@ -2121,6 +2378,8 @@ class BaseEntity:
                     )  # this is necessary to avoid a bug where atoms remain longer in the memory atoms list than they should
                 _atoms.append(atom)
 
+        # (same as in the _remove_atoms) I don't see why
+        # this is necessary, but it is in the original code
         # reindex the atoms
         adx = 0
         for atom in self._model.get_atoms():
@@ -2149,6 +2408,7 @@ class BaseEntity:
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
         self._add_bond(atom1, atom2, order)
+        return self
 
     def add_bonds(self, *bonds):
         """
@@ -2161,10 +2421,14 @@ class BaseEntity:
             Each atom may be specified directly (biopython object)
             or by providing the serial number, the full_id or the id of the atoms.
         """
+        if len(bonds) == 1 and isinstance(bonds[0], (list, tuple)):
+            bonds = iter(bonds[0])
+
         for bond in bonds:
             if isinstance(bond, base_classes.Bond):
                 bond = bond.to_tuple()
             self.add_bond(*bond)
+        return self
 
     def _add_bonds(self, *bonds):
         """
@@ -2174,6 +2438,7 @@ class BaseEntity:
             if isinstance(bond, base_classes.Bond):
                 bond = bond.to_tuple()
             self._add_bond(*bond)
+        return self
 
     def remove_bond(
         self,
@@ -2200,8 +2465,8 @@ class BaseEntity:
 
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
-
         self._remove_bond(atom1, atom2)
+        return self
 
     def purge_bonds(self, atom: Union[int, str, base_classes.Atom] = None):
         """
@@ -2220,6 +2485,7 @@ class BaseEntity:
 
         atom = self.get_atom(atom)
         self._purge_bonds(atom)
+        return self
 
     def get_degree(self, atom: Union[int, str, base_classes.Atom]):
         """
@@ -2239,6 +2505,22 @@ class BaseEntity:
         atom = self.get_atom(atom)
         return sum(b.order for b in self.bonds if atom in b)
 
+    def adjust_bond_length(self, atom1, atom2, length: float):
+        """
+        Adjust the bond length between two atoms
+
+        Parameters
+        ----------
+        atom1, atom2
+            The atoms to bond, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+        length : float
+            The new bond length
+        """
+        bond = self.get_bond(atom1, atom2)
+        structural.adjust_bond_length(bond, length)
+        return self
+
     def lock_all(self):  # , both_ways: bool = True):
         """
         Lock all bonds in the structure so they cannot be rotated around
@@ -2253,12 +2535,14 @@ class BaseEntity:
         self.locked_bonds = set(self.bonds)
         # if both_ways:
         #     self.locked_bonds.update(b[::-1] for b in self.bonds)
+        return self
 
     def unlock_all(self):
         """
         Unlock all bonds in the structure
         """
         self._AtomGraph.unlock_all()
+        return self
 
     def lock_bond(
         self,
@@ -2286,6 +2570,7 @@ class BaseEntity:
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
         self._AtomGraph.lock_edge(atom1, atom2)
+        return self
 
     def unlock_bond(
         self,
@@ -2315,6 +2600,7 @@ class BaseEntity:
             self._AtomGraph.unlock_edge(atom1, atom2)
         # if both_ways and (atom2, atom1) in self._AtomGraph.edges:
         #     self._AtomGraph.unlock_edge(atom2, atom1)
+        return self
 
     def is_locked(
         self,
@@ -2861,6 +3147,18 @@ class BaseEntity:
             mol.SetProp("_Name", self.id)
         return mol
 
+    def to_stk(self):
+        """
+        Convert the molecule to a STK molecule
+
+        Returns
+        -------
+        stk.BuildingBlock
+            The STK molecule
+        """
+        conv = utils.convert.STKBuildAMolConverter()
+        return conv.buildamol_to_stk(self)
+
     def to_biopython(self):
         """
         Convert the molecule to a Biopython structure
@@ -3093,6 +3391,9 @@ class BaseEntity:
             p.detach_child(atom.get_id())
             atom.set_parent(p)
 
+        # I think we should drop this because it's not really necessary...
+        # but it might cause problems down the line if we do so and I don't
+        # want to work it out now...
         # reindex the atoms
         adx = 0
         for atom in self._model.get_atoms():

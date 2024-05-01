@@ -366,6 +366,23 @@ bond_length_by_order = {
 }
 
 
+def atomic_number(element: str):
+    """
+    Get the atomic number of an element.
+
+    Parameters
+    ----------
+    element : str
+        The element symbol.
+
+    Returns
+    -------
+    int
+        The atomic number of the element.
+    """
+    return pt.elements.symbol(element.title()).number
+
+
 class AutoLabel:
     """
     A automatic atom labeller
@@ -1309,6 +1326,137 @@ def get_axial_neighbor(molecule, atom):
             return neighbor
 
     return None
+
+
+def get_left_hydrogen_neighbor(molecule, atom):
+    """
+    Get the "left-protruding" hydrogen neighbor of an atom
+    that has two hydrogen neighbors.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+    atom : Atom
+        The atom to search for
+
+    Returns
+    -------
+    Atom
+        The left hydrogen atom.
+        If the nomenclature does not apply to the atom (e.g. because it is completely symmetrical on both sides) any of the two hydrogen atoms is returned.
+        If the atom does not have two hydrogen neighbors, None may be returned if the only hydrogen neighbor is not in the correct orientation, otherwise the hydrogen neighbor is returned.
+
+    Example
+    -------
+    In a molecule:
+    ```
+               H_B
+               |
+        CH3 -- C -- CH2 -- OH
+               |
+               H_A
+    ```
+    We want to get the left and right hydrogens of the central C atom (labeled only C).
+    Using part of the logic behind R/S nomenclature for chiral centers, we prioritize the non-H neighbors
+    and then rotate the molecule such that the highest order non-H neighbor points toward the user and the other
+    non-H neighbor points away. The left and right hydrogens are then determined based on their orientation in this view.
+
+    In this case, the left hydrogen is H_A and the right hydrogen is H_B.
+    """
+    Hs, vec, H_vecs = _core_left_right_hydrogens(molecule, atom)
+
+    # get the cross product of the two vectors
+    cross = np.cross(vec, H_vecs[0])
+
+    # if the cross product is pointing in the same direction as the second hydrogen, return the first hydrogen
+    if np.dot(cross, H_vecs[1]) > 0:
+        return Hs[0]
+    return Hs[1]
+
+
+def get_right_hydrogen_neighbor(molecule, atom):
+    """
+    Get the "right-protruding" hydrogen neighbor of an atom
+    that has two hydrogen neighbors.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to search in
+    atom : Atom
+        The atom to search for
+
+    Returns
+    -------
+    Atom
+        The right hydrogen atom.
+        If the nomenclature does not apply to the atom (e.g. because it is completely symmetrical on both sides) any of the two hydrogen atoms is returned.
+        If the atom does not have two hydrogen neighbors, None may be returned if the only hydrogen neighbor is not in the correct orientation, otherwise the hydrogen neighbor is returned.
+
+    Example
+    -------
+    In a molecule:
+    ```
+               H_B
+               |
+        CH3 -- C -- CH2 -- OH
+               |
+               H_A
+    ```
+    We want to get the left and right hydrogens of the central C atom (labeled only C).
+    Using part of the logic behind R/S nomenclature for chiral centers, we prioritize the non-H neighbors
+    and then rotate the molecule such that the highest order non-H neighbor points toward the user and the other
+    non-H neighbor points away. The left and right hydrogens are then determined based on their orientation in this view.
+
+    In this case, the left hydrogen is H_A and the right hydrogen is H_B.
+    """
+    Hs, vec, H_vecs = _core_left_right_hydrogens(molecule, atom)
+
+    # get the cross product of the two vectors
+    cross = np.cross(vec, H_vecs[0])
+
+    # if the cross product is pointing in the same direction as the second hydrogen, return the second hydrogen
+    if np.dot(cross, H_vecs[1]) > 0:
+        return Hs[1]
+    return Hs[0]
+
+
+def _core_left_right_hydrogens(molecule, atom):
+    """The base function for finding left/right hydrogens"""
+    neighbors = molecule.get_neighbors(atom)
+    Hs = [i for i in neighbors if i.element == "H"]
+    if len(Hs) != 2:
+        return None
+
+    non_Hs = [i for i in neighbors if i.element != "H"]
+    if len(non_Hs) != 2:
+        Hs = (Hs[0], None)
+
+    # sort the non-H neighbors
+    a_num_A = atomic_number(non_Hs[0].element)
+    a_num_B = atomic_number(non_Hs[1].element)
+    if a_num_A > a_num_B:
+        non_Hs = (non_Hs[0], non_Hs[1])
+    elif a_num_A < a_num_B:
+        non_Hs = (non_Hs[1], non_Hs[0])
+    else:
+        non_Hs = sorted(non_Hs, key=lambda x: _neighbor_sort_key(molecule, x))
+
+    # get the vector between the two non-H neighbors
+    vec = non_Hs[0].get_coord() - non_Hs[1].get_coord()
+
+    # get the vector between the central atom and the two hydrogens
+    H_vecs = [i.get_coord() - atom.get_coord() for i in Hs]
+    return Hs, vec, H_vecs
+
+
+def _neighbor_sort_key(molecule, atom):
+    neighbors = molecule.get_neighbors(atom)
+    key = sum(
+        atomic_number(i.element) * molecule.get_bond(atom, i).order**2 for i in neighbors
+    )
+    return key
 
 
 def vet_structure(
