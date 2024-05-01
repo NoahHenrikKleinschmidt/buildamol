@@ -3479,7 +3479,12 @@ class BaseEntity:
         """
         Add a patch to the molecule using the % operator (i.e. mol % patch)
         """
-        self.set_linkage(patch)
+        # we also allow setting functional groups as patches
+        # using the operator
+        if patch.__class__.__name__ == "FunctionalGroup":
+            self._linkage = patch
+        else:
+            self.set_linkage(patch)
         return self
 
     def __xor__(self, atom):

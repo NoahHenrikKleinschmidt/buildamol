@@ -20,9 +20,15 @@ Making Molecules
 The easiest way to make a new molecule is to use the toplevel `molecule` function, which will automatically
 try to detect the type of user provided input and generate a molecule from it. Currently supported inputs are:
 - A biopython structure
+- An RDKit molecule
+- An OpenBabel molecule
+- An OpenMM topology
+- An STK molecule
 - A PDB id
 - A PDB file
 - A CIF file
+- A MOL file
+- A JSON file
 - A SMILES string
 - An InChI string
 - An IUPAC name or abbreviation, or any name that matches a known compound synonym that is associated with the PubChem database
@@ -473,6 +479,8 @@ __all__ = [
     "Molecule",
     "read_pdb",
     "write_pdb",
+    "read_molfile",
+    "write_molfile",
     "read_cif",
     "write_cif",
     "read_smiles",
@@ -558,6 +566,39 @@ def write_cif(mol: "Molecule", filename: str) -> None:
         The path to the CIF file
     """
     mol.to_cif(filename)
+
+
+def read_molfile(filename: str, id: str = None) -> "Molecule":
+    """
+    Read a MOL file and return a molecule.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the MOL file
+    id : str
+        The id of the molecule
+
+    Returns
+    -------
+    molecule : Molecule
+        The molecule
+    """
+    return Molecule.from_molfile(filename, id=id)
+
+
+def write_molfile(mol: "Molecule", filename: str) -> None:
+    """
+    Write a molecule to a MOL file.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to write
+    filename : str
+        The path to the MOL file
+    """
+    mol.to_molfile(filename)
 
 
 def read_smiles(smiles: str, id: str = None) -> "Molecule":
@@ -675,6 +716,8 @@ def molecule(mol=None) -> "Molecule":
         and hasattr(mol, "positions")
     ):
         return Molecule.from_openmm(mol.topology, mol.positions)
+    elif "stk" in str(type(mol).__mro__[0]):
+        return Molecule.from_stk(mol)
 
     if not isinstance(mol, str):
         raise ValueError("input must be a structure object or a string")
@@ -2024,6 +2067,13 @@ class Molecule(entity.BaseEntity):
                 raise RuntimeError(
                     "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 + mol2)"
                 )
+
+            # if linkages are functional groups instead, we use the react_with method
+            if self._linkage.__class__.__name__ == "FunctionalGroup" and other._linkage.__class__.__name__ == "FunctionalGroup":
+                new = self.react_with(other, self._linkage, other._linkage, inplace=False)
+                return new
+
+            # otherwise we use the attach method
             new = self.attach(other, patch, inplace=False, other_inplace=False)
             return new
 
@@ -2060,6 +2110,12 @@ class Molecule(entity.BaseEntity):
                     "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 += mol2)"
                 )
 
+            # if linkages are functional groups instead, we use the react_with method
+            if self._linkage.__class__.__name__ == "FunctionalGroup" and other._linkage.__class__.__name__ == "FunctionalGroup":
+                self.react_with(other, self._linkage, other._linkage)
+                return self
+            
+            # otherwise we use the attach method
             self.attach(other, patch)
             return self
 
