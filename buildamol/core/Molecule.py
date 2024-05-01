@@ -478,6 +478,7 @@ __all__ = [
     "read_smiles",
     "molecule",
     "connect",
+    "react",
     "polymerize",
     "make_smiles",
     "query_pubchem",
@@ -802,6 +803,60 @@ def connect(
         inplace=not copy_a,
         _topology=_topology,
         use_patch=use_patch,
+    )
+    return new
+
+
+def react(
+    mol_a: "Molecule",
+    mol_b: "Molecule",
+    egroup: "FunctionalGroup",
+    ngroup: "FunctionalGroup",
+    a_is_electrophile: bool = True,
+    at_residue_a: Union[int, "bio.Residue.Residue"] = None,
+    at_residue_b: Union[int, "bio.Residue.Residue"] = None,
+    copy_a: bool = True,
+    copy_b: bool = True,
+) -> "Molecule":
+    """
+    Connect two molecules together by imitating a chemical reaction based on functional groups.
+
+    Parameters
+    ----------
+    mol_a : Molecule
+        The first (target) molecule
+    mol_b : Molecule
+        The second (source) molecule
+    egroup : FunctionalGroup
+        The functional group of the first molecule to connect to.
+    ngroup : FunctionalGroup
+        The functional group of the second molecule to connect to.
+    a_is_electrophile : bool
+        Whether the first molecule is the electrophile (True) or nucleophile (False)
+    at_residue_a : int or bio.PDB.Residue
+        The residue of the first molecule to connect to. If an integer is provided, the seqid must be used, starting at 1.
+    at_residue_b : int or bio.PDB.Residue
+        The residue of the second molecule to connect to. If an integer is provided, the seqid must be used, starting at 1.
+    copy_a : bool
+        Whether to copy the first molecule before connecting
+    copy_b : bool
+        Whether to copy the second molecule before connecting.
+        If False, all atoms of the second molecule will be added to the first molecule.
+
+    Returns
+    -------
+    Molecule
+        The connected molecule
+    """
+    new = mol_a.react_with(
+        mol_b,
+        egroup,
+        ngroup,
+        a_is_electrophile,
+        at_residue_a,
+        at_residue_b,
+        not copy_a,
+        not copy_b,
     )
     return new
 
@@ -1431,6 +1486,7 @@ class Molecule(entity.BaseEntity):
         atoms: list,
         id: str = None,
         resname: str = "UNK",
+        direction: str = None,
     ):
         """
         Create a new Molecule using a molecular geometry and a list of starting atoms.
@@ -1446,13 +1502,25 @@ class Molecule(entity.BaseEntity):
             The id of the Molecule.
         resname : str
             The resname of the residue to add
+        direction : str
+            The direction of the atoms (in case of a geometry that has planar and axial directions).
+            This can be either "planar" or "axial".
 
         Returns
         -------
         Molecule
             The Molecule object
         """
-        atoms, bonds = geometry.fill_hydrogens(*atoms)
+        if len(atoms) > geometry.max_points:
+            n = sum(1 for idx, atom in enumerate(atoms) if atom.coord.sum() != 0)
+            n = n or 1
+            _atoms = atoms[:n]
+            geometry.make_and_apply(_atoms, atoms, direction=direction)
+
+        if len(atoms) == geometry.size:
+            bonds = [entity.base_classes.Bond(atoms[0], a) for a in atoms[1:]]
+        else:
+            atoms, bonds = geometry.fill_hydrogens(*atoms, direction=direction)
         new = cls.new(id=id, atoms=atoms, bonds=bonds, resname=resname)
         return new
 
@@ -1784,6 +1852,70 @@ class Molecule(entity.BaseEntity):
         )
         self = p.merge()
         return self
+
+    def react_with(
+        self,
+        other: "Molecule",
+        egroup: "FunctionalGroup",
+        ngroup: "FunctionalGroup",
+        as_electrophile: bool = True,
+        at_residue: Union[int, "entity.base_classes.Residue"] = None,
+        other_residue: Union[int, "entity.base_classes.Residue"] = None,
+        inplace: bool = True,
+        other_inplace: bool = False,
+    ) -> "Molecule":
+        """
+        React this molecule with another molecule using functional groups to
+        automatically create a linkage.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to react with
+        egroup : FunctionalGroup
+            The electrophilic functional group to use
+        ngroup : FunctionalGroup
+            The nucleophilic functional group to use
+        as_electrophile : bool
+            Whether to use this molecule as the electrophile or the nucleophile
+        at_residue : int or Residue
+            The residue to attach the other molecule to. If None, the last residue of the molecule.
+        other_residue : int or Residue
+            The residue of the other molecule to attach. If None, the first residue of the other molecule.
+        inplace : bool
+            If True the molecule is directly modified, otherwise a copy of the molecule is returned.
+        other_inplace : bool
+            All atoms from the other molecule are integrated into this one. Hence, the other molecule is left empty. If False, a copy of the other molecule is used.
+            Thus leaving the original molecule intact.
+        Returns
+        -------
+        molecule
+            The modified molecule (either the original object or a copy)
+        """
+        if not inplace:
+            obj = self.copy()
+        else:
+            obj = self
+
+        if not other_inplace:
+            _other = other.copy()
+        else:
+            _other = other
+
+        _backup_attach_residue = obj.attach_residue
+        if at_residue is not None:
+            obj.set_attach_residue(at_residue)
+        if other_residue is not None:
+            _other.set_attach_residue(other_residue)
+
+        if as_electrophile:
+            link = Linkage.Linkage.from_functional_groups(obj, egroup, _other, ngroup)
+        else:
+            link = Linkage.Linkage.from_functional_groups(_other, egroup, obj, ngroup)
+
+        obj.stitch_attach(_other, link)
+        obj.set_attach_residue(_backup_attach_residue)
+        return obj
 
     def optimize(
         self,

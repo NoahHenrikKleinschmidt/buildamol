@@ -221,9 +221,9 @@ def linkage(
 
     Parameters
     ----------
-    atom1 : str or tuple of str
+    atom1 : str
         The atom in the first (target) molecule to connect.
-    atom2 : str or tuple of str
+    atom2 : str
         The atom in the second (source) molecule to connect.
     delete_in_target : str or tuple of str, optional
         The atom(s) in the first molecule to delete.
@@ -256,15 +256,20 @@ def linkage(
     # make a new linkage
     new_linkage = Linkage(id=id, description=description)
 
+    atom1 = getattr(atom1, "id", atom1)
+    atom2 = getattr(atom2, "id", atom2)
+
     # add the bond
     new_linkage.add_bond(utils.abstract.AbstractBond(atom1, atom2))
 
     # add the atoms to delete
     if delete_in_target is not None:
         for i in delete_in_target:
+            i = getattr(i, "id", i)
             new_linkage.add_delete(i, "target")
     if delete_in_source is not None:
         for i in delete_in_source:
+            i = getattr(i, "id", i)
             new_linkage.add_delete(i, "source")
 
     # add the internal coordinates
@@ -333,6 +338,43 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         new.atom1 = bond.atom1
         new.atom2 = bond.atom2
         return new
+
+    @classmethod
+    def from_functional_groups(
+        cls,
+        emol: "Molecule",
+        egroup: "FunctionalGroup",
+        nmol: "Molecule",
+        ngroup: "FunctionalGroup",
+    ):
+        """
+        Create a new `Linkage` instance from two functional groups.
+
+        Parameters
+        ----------
+        emol : Molecule
+            The first (target) molecule that houses the electrophile.
+            The attach residue will be used as reference residue
+            to match atoms to the functional group.
+        egroup : FunctionalGroup
+            The electrophile functional group.
+        nmol : Molecule
+            The second (source) molecule that houses the nucleophile.
+            The attach residue will be used as reference residue
+            to match atoms to the functional group.
+        ngroup : FunctionalGroup
+            The nucleophile functional group.
+        """
+        # get the atoms from the functional groups
+        e_bonder, e_deletes = egroup.infer_electrophile_atoms(emol, emol.attach_residue)
+        n_bonder, n_deletes = ngroup.infer_nucleophile_atoms(nmol, nmol.attach_residue)
+        return linkage(
+            e_bonder.id,
+            n_bonder.id,
+            [i.id for i in e_deletes] if e_deletes else None,
+            [i.id for i in n_deletes] if n_deletes else None,
+            id=f"{egroup.id}_{ngroup.id}",
+        )
 
     @property
     def atom1(self) -> str:
