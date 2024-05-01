@@ -207,3 +207,17 @@ def test_to_rdkit5():
         assert bond.GetIsAromatic() == bond_ref.GetIsAromatic()
         assert bond.GetIsConjugated() == bond_ref.GetIsConjugated()
         assert bond.GetStereo() == bond_ref.GetStereo()
+
+
+def test_stk():
+    mol = bam.Molecule.from_pdb(bas.GALACTOSE)
+    mol.infer_bonds()
+
+    stk = mol.to_stk()
+    assert stk is not None
+
+    reverse = bam.Molecule.from_stk(stk)
+    assert reverse is not None
+
+    assert reverse.count_atoms() == mol.count_atoms()
+    assert reverse.count_bonds() == mol.count_bonds()

@@ -122,3 +122,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+__testing__/
+__archive__/
+__stuff__/
+__dev/
+__figure_makery__/
+__tutorials copy__/
+__vs_stk__/
