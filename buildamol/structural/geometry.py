@@ -131,7 +131,12 @@ class Geometry:
         bonds : list
             A list of Bonds of the same atoms as in 'atoms' that are bonded. Or None if 'make_bonds' is False.
         """
-        coords = self.make_coords(*atoms, **kwargs)
+        if len(atoms) > self.max_points:
+            _atoms = atoms[: self.max_points]
+        else:
+            _atoms = atoms
+
+        coords = self.make_coords(*(a.coord for a in _atoms), **kwargs)
 
         # # set the coordinates of the atoms
         # for i, atom in enumerate(atoms):
@@ -859,6 +864,10 @@ class TrigonalBipyramidal(Geometry):
                 return self.make_coords_from_three_mixed(*coords, length=length)
             else:
                 raise ValueError("Invalid direction for three points")
+        elif len(coords) > 3:
+            raise ValueError(
+                "Too many atoms for this geometry, provide at most 3 atoms"
+            )
 
     def make_coords_from_one(self, center, length: float = None):
         """
@@ -1186,6 +1195,9 @@ def _infer_point_relations(points, planar_angle, mixed_angle=np.pi / 2):
         raise ValueError("At least 3 points are required")
     if len(points) == 3:
 
+        if hasattr(points[0], "coord"):
+            points = [p.coord for p in points]
+
         a = points[0] - points[1]
         b = points[0] - points[2]
 
@@ -1201,7 +1213,7 @@ def _infer_point_relations(points, planar_angle, mixed_angle=np.pi / 2):
             return "axial"
 
         else:
-            return ValueError(
+            raise ValueError(
                 "Cannot infer point relationships. Specify 'direction' manually."
             )
 
@@ -1266,6 +1278,10 @@ class Octahedral(Geometry):
                 return self.make_coords_from_three_mixed(*coords, length=length)
             else:
                 raise ValueError("Invalid direction for three points")
+        elif len(coords) > 3:
+            raise ValueError(
+                "Too many atoms for this geometry, provide at most 3 atoms"
+            )
 
     def make_coords_from_one(self, center, length: float = None):
         """
@@ -1584,7 +1600,7 @@ tetrahedral = Tetrahedral()
 """
 The default tetrahedral geometry
 """
-trigonal_palar = TrigonalPlanar()
+trigonal_planar = TrigonalPlanar()
 """
 The default trigonal planar geometry
 """
