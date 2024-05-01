@@ -1932,6 +1932,16 @@ def test_from_geometry():
     assert len(mol2.atoms) == 6
     assert len(mol2.bonds) == 5
 
-    mol3 = bam.Molecule.from_geometry(bam.structural.geometry.trigonal_bipyramidal, [P, *Fs[:3]])
+    mol3 = bam.Molecule.from_geometry(
+        bam.structural.geometry.trigonal_bipyramidal, [P, *Fs[:3]]
+    )
 
     mol3.show()
+
+
+def test_add_with_functional_groups():
+    mol = bam.Molecule.from_compound("TYR")
+    mol1, mol2 = mol.copy(2)
+
+    out = mol1 % bam.structural.groups.carboxyl + mol2 % bam.structural.groups.amine
+    out.show()
