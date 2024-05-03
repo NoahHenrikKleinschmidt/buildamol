@@ -2663,7 +2663,7 @@ class BaseEntity:
         self,
         max_bond_length: float = None,
         restrict_residues: bool = True,
-        infer_bond_orders: bool = True,
+        infer_bond_orders: bool = False,
     ) -> list:
         """
         Infer bonds between atoms in the structure
@@ -2863,7 +2863,8 @@ class BaseEntity:
 
     def apply_standard_bonds(self, _compounds=None) -> list:
         """
-        Get the standard bonds for the structure
+        Use reference compounds to infer bonds in the structure. This will be exclusively based on the
+        residue and atom ids and not on the actual distances between atoms.
 
         Parameters
         ----------
@@ -3156,7 +3157,19 @@ class BaseEntity:
         -------
         openmm.app.PDBFile
         """
-        return utils.convert.OpenMMBioPythonConverter().buildamol_to_openmm(self)
+        # since we are lazy loading the modules it is possible that they raise an exception
+        # the first time they are accessed, so we try to catch that here
+        try:
+            return utils.convert.OpenMMBioPythonConverter().buildamol_to_openmm(self)
+        except:
+            try:
+                return utils.convert.OpenMMBioPythonConverter().buildamol_to_openmm(
+                    self
+                )
+            except Exception as e:
+                raise ValueError(
+                    "Could not convert the molecule to an OpenMM Topology."
+                ) from e
 
     def to_pybel(self):
         """
@@ -3198,8 +3211,19 @@ class BaseEntity:
         stk.BuildingBlock
             The STK molecule
         """
-        conv = utils.convert.STKBuildAMolConverter()
-        return conv.buildamol_to_stk(self)
+        # we use this setup because of the lazy loading of stk
+        # which may raise a ValueError the first time the module is accessed
+        try:
+            conv = utils.convert.STKBuildAMolConverter()
+            return conv.buildamol_to_stk(self)
+        except:
+            try:
+                conv = utils.convert.STKBuildAMolConverter()
+                return conv.buildamol_to_stk(self)
+            except Exception as e:
+                raise ValueError(
+                    "Could not convert the molecule to a STK molecule."
+                ) from e
 
     def to_biopython(self):
         """
