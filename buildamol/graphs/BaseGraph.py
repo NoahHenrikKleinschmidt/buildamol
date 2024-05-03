@@ -574,6 +574,11 @@ class BaseGraph(nx.Graph):
         ----------
         node_1, node_2
             The nodes to check
+
+        Returns
+        -------
+        bool
+            True if the nodes are in the same cycle, False otherwise
         """
         if not cycles:
             cycles = nx.cycle_basis(self)
@@ -581,6 +586,49 @@ class BaseGraph(nx.Graph):
             if node_1 in cycle and node_2 in cycle:
                 return True
         return False
+
+    def in_cycle(self, node, cycles=None) -> bool:
+        """
+        Check if a node is in a cycle
+
+        Parameters
+        ----------
+        node
+            The node to check
+
+        Returns
+        -------
+        bool
+            True if the node is in a cycle, False otherwise
+        """
+        if not cycles:
+            cycles = nx.cycle_basis(self)
+        for cycle in cycles:
+            if node in cycle:
+                return True
+        return False
+
+    def get_cycle(self, node, cycles=None) -> set:
+        """
+        Get the cycle that a node is in
+
+        Parameters
+        ----------
+        node
+            The node to check
+
+        Returns
+        -------
+        set
+            The nodes in the cycle that the node is in.
+            If the node is not in a cycle, None is returned.
+        """
+        if not cycles:
+            cycles = nx.cycle_basis(self)
+        for cycle in cycles:
+            if node in cycle:
+                return set(cycle)
+        return None
 
     def direct_edges(self, root_node=None, edges: list = None) -> list:
         """
