@@ -656,7 +656,7 @@ hydroxyl = FunctionalGroup(
 hydroxyl.set_reactivity(
     nucleophile_bonder=1,
     electrophile_bonder=0,
-    electrophile_deletes=_H_neighbor_of_assigned_atom(1),
+    electrophile_deletes=_assigned_atom_and_H_neighbor(1),
 )
 
 
@@ -674,7 +674,7 @@ amine = FunctionalGroup(
 amine.set_reactivity(
     nucleophile_bonder=1,
     electrophile_bonder=0,
-    electrophile_deletes=_H_neighbor_of_assigned_atom(1),
+    electrophile_deletes=_assigned_atom_and_H_neighbor(1),
 )
 
 
@@ -692,7 +692,7 @@ thiol = FunctionalGroup(
 thiol.set_reactivity(
     nucleophile_bonder=1,
     electrophile_bonder=0,
-    electrophile_deletes=_H_neighbor_of_assigned_atom(1),
+    electrophile_deletes=_assigned_atom_and_H_neighbor(1),
 )
 
 
