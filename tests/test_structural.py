@@ -1983,16 +1983,56 @@ def test_superimpose_triplet():
 
     v.show()
 
+
 def test_infer_reactivity_atoms_from_groups():
     bam.load_amino_acids()
     mol = bam.Molecule.from_compound("TYR")
-    
+
     carboxyl = bam.structural.groups.carboxyl
     amine = bam.structural.groups.amine
 
-    link = bam.Linkage.from_functional_groups(
-        mol, carboxyl, mol, amine
-    )
+    link = bam.Linkage.from_functional_groups(mol, carboxyl, mol, amine)
     out = mol % link + mol
     out.show()
-    
+
+
+def test_infer_bond_orders():
+    mols = [
+        "2-butene",
+        "NAG",
+        "TYR",
+        "acetylbenzene",
+    ]
+    for mol in mols:
+        mol = bam.molecule(mol)
+        for bond in mol.get_bonds():
+            mol.set_bond_order(*bond, 1)
+
+        bam.structural.infer_bond_orders(mol)
+        assert any(bond.is_double() for bond in mol.get_bonds()), (
+            "No double bonds found in molecule" + mol.id
+        )
+        mol.show()
+
+
+def test_match_aromatic():
+    aromatic = bam.structural.groups.aromatic
+
+    bam.load_small_molecules()
+    bam.load_amino_acids()
+
+    for mol in ["TYR", "BNZ", "acetophenone"]:
+        mol = bam.molecule(mol)
+
+        for bond in mol.bonds:
+            mol.set_bond_order(*bond, 1)
+
+        atoms = mol.atoms
+
+        matches = aromatic.find_matches(mol, atoms)
+        if len(matches) == 0:
+            raise ValueError("No matches found")
+
+        aromatic.apply_connectivity(mol, atoms)
+
+        mol.show()
