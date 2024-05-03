@@ -6,6 +6,7 @@ from typing import Union
 import numpy as np
 from scipy.spatial.distance import cdist
 
+
 import buildamol.structural.base as base
 import buildamol.structural.infer as infer
 import buildamol.structural.geometry as geometry
@@ -15,10 +16,25 @@ constraints = neighbors.constraints
 
 from copy import deepcopy
 
+
+def add_group(group: "FunctionalGroup"):
+    """
+    Add a functional group to the list of all functional groups.
+
+    Parameters
+    ----------
+    group : FunctionalGroup
+        The functional group to add.
+    """
+    all_functional_groups.append(group)
+    if any(i > 1 for i in group.connectivity):
+        higher_order_groups.append(group)
+
+
 __H_neighbor_funcs = {}
 
 
-def _H_neighbor_of_assigned_atom(n: int):
+def _assigned_atom_and_H_neighbor(n: int):
     if n in __H_neighbor_funcs:
         return __H_neighbor_funcs[n]
     __H_neighbor_funcs[n] = lambda mol, res, bonder, assignment: (
@@ -84,7 +100,7 @@ class FunctionalGroup:
         self.geometry = geometry
         self.atoms = atoms
         self.connectivity = connectivity
-        self._connectivity = [(0, i + 1) for i in range(len(connectivity))]
+        self._connectivity = tuple((0, i + 1) for i in range(len(connectivity)))
         self._assignment = None
         self._hist = self._element_hist(atoms)
         self._set_atoms = set(atoms)
@@ -97,8 +113,12 @@ class FunctionalGroup:
         self._nucleophile_deletes = None
         self._electrophile_deletes = None
 
+        self._assignment_cache = {}
+        self._applied_connectivity_cache = {}
+
     def with_reactivity(
         self,
+        id: str = None,
         nucleophile_bonder: int = None,
         electrophile_bonder: int = None,
         nucleophile_deletes: Union[list, callable] = None,
@@ -110,6 +130,8 @@ class FunctionalGroup:
 
         Parameters
         ----------
+        id : str
+            The identifier of the new FunctionalGroup.
         nucleophile_bonder : int
             The index of the nucleophile bonder.
         electrophile_bonder : int
@@ -127,6 +149,10 @@ class FunctionalGroup:
             A new FunctionalGroup with the new reactivity.
         """
         new = deepcopy(self)
+        if id is not None:
+            new.id = id
+        else:
+            new.id = self.id + "_copy"
         new.set_reactivity(
             nucleophile_bonder,
             electrophile_bonder,
@@ -216,7 +242,45 @@ class FunctionalGroup:
         """
         return self._assignment
 
-    def matches(self, molecule, atoms: list, connectivity: list) -> bool:
+    def find_matches(self, molecule, atoms: list):
+        """
+        Find all atoms in a molecule that match the functional group.
+
+        Parameters
+        ----------
+        molecule : Molecule
+            The molecule to search in.
+        atoms : list
+            The atoms to search for.
+
+        Returns
+        -------
+        list
+            A list of tuples with the indices of the atoms that match the functional group.
+        """
+        matches = []
+        self._assignment_cache.setdefault(molecule, [])
+        if self._assignment_cache[molecule]:
+            matches.extend(self._assignment_cache[molecule])
+
+        ref = self.atoms[0]
+        n = sum(1 for i in self._connectivity if 0 in i)
+        for a in atoms:
+            if any(a == assignment[0] for assignment in matches):
+                continue
+            if a.element != ref:
+                continue
+            neighs = molecule.get_neighbors(a)
+            if len(neighs) < n - 1:
+                continue
+            assignment = self._assign_atoms(molecule, [a, *neighs])
+            if len(assignment) == self.n:
+                matches.append(assignment)
+
+        self._assignment_cache[molecule].extend(matches)
+        return matches
+
+    def matches(self, molecule, atoms: list) -> bool:
         """
         Check if the atoms match the functional group.
 
@@ -224,9 +288,6 @@ class FunctionalGroup:
         ----------
         atoms : list
             The atoms to check. The first atom must be the center atom.
-        connectivity : list
-            The connectivity of the atoms. This list contains tuples with the indices
-            of the atoms that are connected.
 
         Returns
         -------
@@ -237,7 +298,7 @@ class FunctionalGroup:
             return False
         elif atoms[0].element != self.atoms[0]:
             return False
-        elif not self._match_connectivity(connectivity):
+        elif not self._match_connectivity([(0, i + 1) for i in range(len(atoms) - 1)]):
             return False
         elif not self._match_elements(atoms):
             return False
@@ -253,12 +314,16 @@ class FunctionalGroup:
         assignment = self._assign_atoms(molecule, atoms)
         if len(assignment) != self.n:
             return False
-        self._assignment = assignment
+
+        self._assignment_cache.setdefault(molecule, [])
+        self._assignment_cache[molecule].append(assignment)
         return True
 
     def apply_connectivity(self, molecule, atoms: list):
         """
         Apply the connectivity of the functional group to a set of atoms in a molecule.
+        All matching atoms will be identified from the list, so this method can apply connectivity
+        to multiple instances of the functional group.
 
         Parameters
         ----------
@@ -267,33 +332,52 @@ class FunctionalGroup:
         atoms : list
             The atoms to apply the bonds to.
         """
+        for assignment in self.find_matches(molecule, atoms):
+            self._assignment = assignment
+            self._apply_connectivity(molecule, atoms)
+
+    def _apply_connectivity(self, molecule, atoms: list):
         if self._assignment is None:
             self._assignment = self._assign_atoms(molecule, atoms)
 
         a = self._assignment[0]
         bonds_a = molecule._get_bonds((a,), None)
-        _bonds = {}
-        assigned = set()
+        self._applied_connectivity_cache.setdefault(molecule, set())
+        assigned = self._applied_connectivity_cache[molecule]
+        newly_assigned = 0
         for cdx, c in enumerate(self.connectivity):
-            b = self._assignment[cdx + 1]
-            bonds_b = molecule._get_bonds((b,), None)
-            _bonds[b] = bonds_b
-            if infer.has_free_valence(
-                a, bonds_a, needed=c - 1
-            ) and infer.has_free_valence(b, bonds_b, needed=c - 1):
-                molecule.get_bond(a, b).order = c
-                assigned.add((a, b))
 
-        if self.invertable and len(assigned) < len(self.connectivity):
+            b = self._assignment[cdx + 1]
+            if molecule._AtomGraph.edges[a, b]["bond_order"] == c:
+                # assigned.add((a, b))
+                newly_assigned += 1
+                continue
+            elif self.invertable and ((a, b) in assigned or (b, a) in assigned):
+                newly_assigned += 1
+                continue
+
+            bonds_b = molecule._get_bonds((b,), None)
+            a_is_free = infer.has_free_valence(a, bonds_a, needed=c - 1)
+            b_is_free = infer.has_free_valence(b, bonds_b, needed=c - 1)
+            if a_is_free and b_is_free:
+                molecule.set_bond_order(a, b, c)
+                assigned.add((a, b))
+                newly_assigned += 1
+
+        if self.invertable and newly_assigned < len(self.connectivity):
             for cdx, c in enumerate(reversed(self.connectivity)):
-                if (a, b) in assigned:
-                    continue
                 b = self._assignment[cdx + 1]
-                bonds_b = _bonds[b]
-                if infer.has_free_valence(
-                    a, bonds_a, needed=c - 1
-                ) and infer.has_free_valence(b, bonds_b, needed=c - 1):
-                    molecule.get_bond(a, b).order = c
+                if (a, b) in assigned or (b, a) in assigned:
+                    continue
+                if molecule._AtomGraph.edges[a, b]["bond_order"] == c:
+                    continue
+
+                bonds_b = molecule._get_bonds((b,), None)
+                a_is_free = infer.has_free_valence(a, bonds_a, needed=c - 1)
+                b_is_free = infer.has_free_valence(b, bonds_b, needed=c - 1)
+                if a_is_free and b_is_free:
+                    molecule.set_bond_order(a, b, c)
+                    assigned.add((a, b))
 
         self._assignment = None
 
@@ -433,6 +517,12 @@ class FunctionalGroup:
                 return False
         return True
 
+    def __repr__(self) -> str:
+        return f"FunctionalGroup({self.id})"
+
+    def __str__(self) -> str:
+        return f"Functional group '{self.id}'"
+
 
 carbonyl = FunctionalGroup(
     "carbonyl",
@@ -466,10 +556,12 @@ carboxyl = FunctionalGroup(
         ),
     ),
 )
-carboxyl.set_bonders(2, 0)
-carboxyl.set_deletes(
-    electrophile=_H_neighbor_of_assigned_atom(2),
+carboxyl.set_reactivity(
+    nucleophile_bonder=2,
+    electrophile_bonder=0,
+    electrophile_deletes=_assigned_atom_and_H_neighbor(2),
 )
+
 
 amide = FunctionalGroup(
     "amide",
@@ -483,9 +575,10 @@ amide = FunctionalGroup(
         constraints.extended_neighbors_all(2, "C", "O"),
     ),
 )
-amide.set_bonders(2, 0)
-amide.set_deletes(
-    electrophile=_H_neighbor_of_assigned_atom(2),
+amide.set_reactivity(
+    nucleophile_bonder=2,
+    electrophile_bonder=0,
+    electrophile_deletes=_assigned_atom_and_H_neighbor(2),
 )
 
 
@@ -496,8 +589,8 @@ alkene = FunctionalGroup(
     ("C", "C"),
     (2,),
     (
-        constraints.neighbors_not("O", "N", "S"),
-        constraints.neighbors_not("O", "N", "S"),
+        constraints.neighbors_not("O", "N", "S", "P"),
+        constraints.neighbors_not("O", "N", "S", "P"),
     ),
 )
 
@@ -513,19 +606,58 @@ alkyne = FunctionalGroup(
     ),
 )
 
+nitro = FunctionalGroup(
+    "nitro",
+    2,
+    geometry.linear,
+    ("N", "O", "O"),
+    (1, 1),
+    (
+        constraints.neighbors_all("N"),
+        constraints.neighbors_all("O"),
+        constraints.neighbors_all("O"),
+    ),
+)
+nitro.set_reactivity(
+    electrophile_bonder=0,
+    electrophile_deletes=_assigned_atom_and_H_neighbor(2),
+)
+
+
+def _aromatic_constraint(G, a):
+
+    # first check if we have a circle of 6 carbons
+    neighbors = G.get_cycle(a)
+    if not neighbors:
+        return False
+
+    carbons = [i for i in neighbors if i.element == "C"]
+    if len(carbons) != 6:
+        return False
+
+    coords = np.array([i.coord for i in carbons])
+    part_a, part_b = np.split(coords, 2)
+    plane_a = base.plane_vector(part_a[1] - part_a[0], part_a[2] - part_a[0])
+    plane_b = base.plane_vector(part_b[1] - part_b[0], part_b[2] - part_b[0])
+
+    if abs((plane_a + plane_b).sum()) < 0.05:
+        return True
+    elif abs((plane_a - plane_b).sum()) < 0.05:
+        return True
+
+    return False
+
+
 aromatic = FunctionalGroup(
     "aromatic",
     3,
     geometry.trigonal_planar,
     ("C", "C", "C"),
     (2, 1),
-    (
-        constraints.neighbors_all("C", "C"),
-        constraints.neighbors_all("C", "C"),
-        constraints.neighbors_all("C", "C"),
-    ),
+    (_aromatic_constraint,) * 3,
     invertable=True,
 )
+
 
 hydroxyl = FunctionalGroup(
     "hydroxyl",
@@ -538,10 +670,12 @@ hydroxyl = FunctionalGroup(
         constraints.neighbors_all("C", "H"),
     ),
 )
-hydroxyl.set_bonders(1, 0)
-hydroxyl.set_deletes(
-    electrophile=_H_neighbor_of_assigned_atom(1),
+hydroxyl.set_reactivity(
+    nucleophile_bonder=1,
+    electrophile_bonder=0,
+    electrophile_deletes=_H_neighbor_of_assigned_atom(1),
 )
+
 
 amine = FunctionalGroup(
     "amine",
@@ -554,10 +688,12 @@ amine = FunctionalGroup(
         constraints.neighbors_all("C", "H"),
     ),
 )
-amine.set_bonders(1, 0)
-amine.set_deletes(
-    electrophile=_H_neighbor_of_assigned_atom(1),
+amine.set_reactivity(
+    nucleophile_bonder=1,
+    electrophile_bonder=0,
+    electrophile_deletes=_H_neighbor_of_assigned_atom(1),
 )
+
 
 thiol = FunctionalGroup(
     "thiol",
@@ -570,9 +706,10 @@ thiol = FunctionalGroup(
         constraints.neighbors_all("C", "H"),
     ),
 )
-thiol.set_bonders(1, 0)
-thiol.set_deletes(
-    electrophile=_H_neighbor_of_assigned_atom(1),
+thiol.set_reactivity(
+    nucleophile_bonder=1,
+    electrophile_bonder=0,
+    electrophile_deletes=_H_neighbor_of_assigned_atom(1),
 )
 
 
@@ -588,24 +725,53 @@ higher_order_groups = [
 Functional groups that contain bonds with a higher order than only single bonds.
 """
 
+all_functional_groups = [
+    hydroxyl,
+    amine,
+    thiol,
+    *higher_order_groups,
+]
+"""
+All registered functional groups.
+"""
+
 if __name__ == "__main__":
 
     import buildamol as bam
 
-    bam.load_amino_acids()
-    tyr = bam.get_compound("TYR")
-    tyr1, tyr2 = tyr.copy(2)
+    # bam.load_amino_acids()
+    # tyr = bam.get_compound("TYR")
+    # tyr1, tyr2 = tyr.copy(2)
 
-    b1, d1 = carboxyl.infer_electrophile_atoms(tyr1)
-    b2, d2 = amine.infer_nucleophile_atoms(tyr2)
-    link = bam.linkage(
-        b1.id,
-        b2.id,
-        [i.id for i in d1] if d1 else None,
-        [i.id for i in d2] if d2 else None,
-    )
-    mol = tyr1 % link + tyr2
-    mol.show()
+    # b1, d1 = carboxyl.infer_electrophile_atoms(tyr1)
+    # b2, d2 = amine.infer_nucleophile_atoms(tyr2)
+    # link = bam.linkage(
+    #     b1.id,
+    #     b2.id,
+    #     [i.id for i in d1] if d1 else None,
+    #     [i.id for i in d2] if d2 else None,
+    # )
+    # mol = tyr1 % link + tyr2
+    # mol.show()
+
+    bam.load_small_molecules()
+    bam.load_amino_acids()
+
+    for mol in ["TYR", "BNZ", "acetophenone"]:
+        mol = bam.molecule(mol)
+
+        for bond in mol.bonds:
+            mol.set_bond_order(*bond, 1)
+
+        atoms = mol.atoms
+
+        # matches = aromatic.find_matches(mol, atoms)
+        # if len(matches) == 0:
+        #     raise ValueError("No matches found")
+
+        aromatic.apply_connectivity(mol, atoms)
+
+        mol.show()
 
     # b, d = carboxyl.infer_linkage(mol)
     # v = mol.draw()

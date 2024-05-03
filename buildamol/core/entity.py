@@ -1962,12 +1962,27 @@ class BaseEntity:
             The second atom
         add_if_not_present : bool
             Whether to add the bond if it is not present
+
+        Returns
+        -------
+        bond : Bond
+            The bond object. If the bond is not present and add_if_not_present is False, None is returned.
         """
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
+        return self._get_bond(atom1, atom2, add_if_not_present)
 
-        if add_if_not_present and not self._AtomGraph.has_edge(atom1, atom2):
+    def _get_bond(self, atom1, atom2, add_if_not_present=True):
+        """
+        Get/make a bond between two atoms.
+        This is the core method that is used to get bonds between atoms.
+        It expects the atoms to be Atom objects which are present in the molecule.
+        """
+        has_edge = self._AtomGraph.has_edge(atom1, atom2)
+        if add_if_not_present and not has_edge:
             self.add_bond(atom1, atom2)
+        elif not has_edge:
+            return None
         return self._AtomGraph.edges[atom1, atom2]["bond_obj"]
 
     def get_bonds(
@@ -2024,6 +2039,23 @@ class BaseEntity:
             atom2 = self.get_atoms(atom2)
 
         return self._get_bonds(atom1, atom2, either_way)
+
+    def set_bond_order(self, atom1, atom2, order: int):
+        """
+        Set the order of a bond between two atoms
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+        order : int
+            The order of the bond
+        """
+        bond = self.get_bond(atom1, atom2)
+        self._AtomGraph.edges[atom1, atom2]["bond_order"] = order
+        bond.order = order
 
     def get_residue(
         self,
@@ -2628,7 +2660,10 @@ class BaseEntity:
         return bond in self.locked_bonds
 
     def infer_bonds(
-        self, max_bond_length: float = None, restrict_residues: bool = True
+        self,
+        max_bond_length: float = None,
+        restrict_residues: bool = True,
+        infer_bond_orders: bool = True,
     ) -> list:
         """
         Infer bonds between atoms in the structure
@@ -2641,6 +2676,9 @@ class BaseEntity:
         restrict_residues : bool
             Whether to restrict bonds to only those in the same residue.
             If False, bonds between atoms in different residues are also inferred.
+        infer_bond_orders : bool
+            Whether to infer the bond orders (double and tripple bonds) based on registered functional groups.
+            This will slow the inference down, however.
 
         Returns
         -------
@@ -2651,6 +2689,10 @@ class BaseEntity:
             self._base_struct, max_bond_length, restrict_residues
         )
         self._add_bonds(*bonds)
+
+        if infer_bond_orders:
+            structural.infer_bond_orders(self)
+
         return bonds
 
     def get_residue_connections(

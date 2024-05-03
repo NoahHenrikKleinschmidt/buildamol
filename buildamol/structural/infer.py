@@ -1454,7 +1454,8 @@ def _core_left_right_hydrogens(molecule, atom):
 def _neighbor_sort_key(molecule, atom):
     neighbors = molecule.get_neighbors(atom)
     key = sum(
-        atomic_number(i.element) * molecule.get_bond(atom, i).order**2 for i in neighbors
+        atomic_number(i.element) * molecule.get_bond(atom, i).order ** 2
+        for i in neighbors
     )
     return key
 
@@ -1821,6 +1822,36 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
     ]
     bonds = _prune_H_triplets(bonds)
     return bonds
+
+
+def infer_bond_orders(molecule):
+    """
+    Infer the bond orders using the registered higher order functional groups (i.e. functional groups with bonds of order > 1).
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to infer the bond orders for.
+    """
+    import buildamol.structural.groups as groups
+
+    group_matches = {}
+    for atom in molecule.get_atoms():
+        neighbors = molecule.get_neighbors(atom)
+        atoms = (atom, *neighbors)
+        connectivity = [(0, i + 1) for i in range(len(neighbors))]
+
+        for group in groups.higher_order_groups:
+            if group.matches(molecule, atoms):
+                if atoms in group_matches:
+                    if group_matches[atoms][0].rank < group.rank:
+                        group_matches[atoms] = (group, group._assignment)
+                else:
+                    group_matches[atoms] = (group, group._assignment)
+
+    for atoms, (group, assignment) in group_matches.items():
+        group._assignment = assignment
+        group.apply_connectivity(molecule, atoms)
 
 
 def _atom_from_residue(id, residue):
