@@ -194,7 +194,7 @@ def plane_vector(vec1, vec2):
     Returns
     -------
     vector : numpy.ndarray
-        The vector in the plane of the two vectors
+        The norm-vector of the plane of the two vectors
     """
     v = np.cross(vec1, vec2)
     return v / np.linalg.norm(v)
