@@ -606,23 +606,6 @@ alkyne = FunctionalGroup(
     ),
 )
 
-nitro = FunctionalGroup(
-    "nitro",
-    2,
-    geometry.linear,
-    ("N", "O", "O"),
-    (1, 1),
-    (
-        constraints.neighbors_all("N"),
-        constraints.neighbors_all("O"),
-        constraints.neighbors_all("O"),
-    ),
-)
-nitro.set_reactivity(
-    electrophile_bonder=0,
-    electrophile_deletes=_assigned_atom_and_H_neighbor(2),
-)
-
 
 def _aromatic_constraint(G, a):
 
