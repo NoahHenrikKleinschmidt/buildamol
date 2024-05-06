@@ -1933,6 +1933,8 @@ class BaseEntity:
         if by == "id":
             _atom = (i for i in atom_gen() if i.id == atom)
         elif by == "serial":
+            if atom < 0:
+                atom = self.count_atoms() + atom + 1
             _atom = (i for i in atom_gen() if i.serial_number == atom)
         elif by == "full_id":
             _atom = (i for i in atom_gen() if i.full_id == atom)
