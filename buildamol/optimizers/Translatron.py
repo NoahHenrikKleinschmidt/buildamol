@@ -30,8 +30,9 @@ class Translatron(gym.Env):
     bounds : tuple
         The bounds for the minimal and maximal translation and rotation values.
         If a tuple of length two this is interpreted as the low and high bounds for translation only.
-        Otherwise provide a tuple of length 6 for the bounds of translation and rotation, in which case
-        the values are interpreted as the high bounds with symmetrically opposite low bounds (implicit).
+        Otherwise provide a tuple of length 6 for the bounds of translation and rotation. In this case values can be either
+        singular (int/float) in which case they are interpreted as symmetric extrama (min=-value, max=+value) or as tuples with (min=value[0], max=value[1]).
+        Mixed inputs are allowed.
     """
 
     def __init__(
@@ -39,7 +40,7 @@ class Translatron(gym.Env):
         graph,
         constraint_func: callable,
         finish_func: callable = None,
-        bounds: tuple = (-10,10),
+        bounds: tuple = (-10, 10),
     ):
         self.graph = graph
         self.constraint_func = constraint_func
@@ -49,22 +50,27 @@ class Translatron(gym.Env):
             low = [bounds[0], bounds[0], bounds[0], -np.pi, -np.pi, -np.pi]
             high = [bounds[1], bounds[1], bounds[1], np.pi, np.pi, np.pi]
         elif len(bounds) == 6:
+            bounds = [(-i, i) if isinstance(i, (int, float)) else i for i in bounds]
             low = [
-                -bounds[0],
-                -bounds[1],
-                -bounds[2],
-                -bounds[3],
-                -bounds[4],
-                -bounds[5],
+                bounds[0][0],
+                bounds[1][0],
+                bounds[2][0],
+                bounds[3][0],
+                bounds[4][0],
+                bounds[5][0],
             ]
             high = [
-                bounds[0],
-                bounds[1],
-                bounds[2],
-                bounds[3],
-                bounds[4],
-                bounds[5],
+                bounds[0][1],
+                bounds[1][1],
+                bounds[2][1],
+                bounds[3][1],
+                bounds[4][1],
+                bounds[5][1],
             ]
+        else:
+            raise ValueError(
+                f"Expected 'bounds' to be of length 2 (only translation min/max) or length 6 (min/max for translation and rotations), but got length {len(bounds)}"
+            )
 
         self.action_space = spaces.Box(
             low=np.array(low),
