@@ -381,11 +381,17 @@ class Atom(ID, bio.Atom.Atom):
         adjust_id : bool, optional
             Whether to adjust the atom id to the new element. The default is True.
         """
-        if adjust_id:
-            current = self.element
+        current = self.element
         self.element = element.upper()
         self.mass = pt.elements.symbol(element).mass
         if adjust_id:
+            count = __global_element_counters__.get(self.element, None)
+            if not count:
+                __global_element_counters__[self.element] = 1
+                count = 0
+            count += 1
+            self.id = self.element + str(count)
+        else:
             self.id = self.id.replace(current, self.element)
         return self
 
