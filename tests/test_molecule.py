@@ -1945,3 +1945,13 @@ def test_add_with_functional_groups():
 
     out = mol1 % bam.structural.groups.carboxyl + mol2 % bam.structural.groups.amine
     out.show()
+
+
+def test_adjust_length_with_descendants():
+    mol = bam.molecule("CC")
+    bam.acetylate(mol, "C1")
+
+    mol.adjust_bond_length("C", "C1", 4, True)
+    mol.show()
+
+

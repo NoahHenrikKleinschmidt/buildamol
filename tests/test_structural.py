@@ -2036,3 +2036,15 @@ def test_match_aromatic():
         aromatic.apply_connectivity(mol, atoms)
 
         mol.show()
+
+
+def test_plane_from_points():
+    from buildamol.extensions import polymers
+
+    c = polymers.cyclic_alkane(10)
+
+    vec = bam.structural.plane_of_points(c.get_coords())
+
+    v = c.draw()
+    v.draw_vector("vec", c.center_of_geometry, c.center_of_geometry + vec, color="red")
+    v.show()
