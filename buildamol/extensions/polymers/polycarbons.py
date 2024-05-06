@@ -74,7 +74,8 @@ def linear_alkane(n: int, include_hydrogens: bool = True) -> core.Molecule:
         # add terminal hydrogens
         v = structural.norm_vector(*molecule.get_atoms("C1", "C2"))
 
-        v[-1] *= -1
+        if n % 2 == 0:
+            v[-1] *= -1
         H = core.Atom(
             f"H{n}3",
             coord=(molecule.get_atom(f"C{n}").coord + v * _length_C_H),
@@ -83,7 +84,8 @@ def linear_alkane(n: int, include_hydrogens: bool = True) -> core.Molecule:
         molecule.add_atoms(H)
         molecule.add_bond(f"H{n}3", f"C{n}")
 
-        v[-1] *= -1
+        if n % 2 == 0:
+            v[-1] *= -1
         v[0] *= -1
         H = core.Atom(
             "H13",
@@ -186,9 +188,10 @@ def linear_alkene(n: int, include_hydrogens: bool = True) -> core.Molecule:
         molecule.add_bonds(*bonds)
 
         # add terminal hydrogens
-        v = core.structural.norm_vector(*molecule.get_atoms("C1", "C2"))
+        v = structural.norm_vector(*molecule.get_atoms("C1", "C2"))
 
-        v[-1] *= -1
+        if n % 2 == 0:
+            v[-1] *= -1
         H = core.Atom(
             f"H{n}B",
             coord=(molecule.get_atom(f"C{n}").coord + v * _length_C_H),
@@ -197,7 +200,8 @@ def linear_alkene(n: int, include_hydrogens: bool = True) -> core.Molecule:
         molecule.add_atoms(H)
         molecule.add_bond(f"H{n}B", f"C{n}")
 
-        v[-1] *= -1
+        if n % 2 == 0:
+            v[-1] *= -1
         v[0] *= -1
         H = core.Atom(
             "H1B",
@@ -264,8 +268,9 @@ def _make_carbons(coords_x, coords_y, coords_z) -> list:
 
 
 if __name__ == "__main__":
-    alkane = linear_alkene(20)
-    alkane.to_pdb("alkane.pdb")
+    alkane = linear_alkene(25)
+    alkane.show()
+    # alkane.to_pdb("alkane.pdb")
     # v = alkane.draw()
     # v.viewbox(None, 20, 20)
     # v.show()
