@@ -17,8 +17,6 @@ __all__ = ["linear_alkane", "cyclic_alkane", "linear_alkene"]
 _length_C_C = structural.single_bond_lengths["C"]["C"]
 _length_C_H = structural.single_bond_lengths["C"]["H"]
 
-_hydrogenator = structural.Hydrogenator()
-
 
 def linear_alkane(n: int, include_hydrogens: bool = True) -> core.Molecule:
     """
@@ -136,6 +134,7 @@ def cyclic_alkane(n: int, include_hydrogens: bool = True) -> core.Molecule:
     molecule.add_bonds(*bonds)
 
     if include_hydrogens:
+        _hydrogenator = structural.Hydrogenator()
         _hydrogenator.infer_hydrogens(molecule, bond_length=_length_C_H)
 
     return molecule
