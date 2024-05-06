@@ -1,4 +1,5 @@
 import buildamol.core as core
+import buildamol.structural as structural
 import buildamol.optimizers as optimizers
 
 from typing import List
@@ -192,7 +193,7 @@ class RotaxaneBuilder:
         self.main_axis = axis
 
         # get some anchor atom of the axle
-        anchor = next(axle.get_atoms())
+        anchor = next(self.axle.get_atoms()).get_coord()
 
         # get the maximum distance along the axis
         max_distance = np.max(cdist(self.axle_coords, axis.reshape(1, -1)))
@@ -200,10 +201,7 @@ class RotaxaneBuilder:
         # Generate the broad anchor positions for the cycles
         self.cycle_anchors = np.array(
             [
-                (
-                    anchor.get_coord()
-                    + (i + 1) * max_distance / (len(self.cycles) + 1) * axis
-                )
+                (anchor + (i + 1) * max_distance / (len(self.cycles) + 1) * axis)
                 for i in range(len(self.cycles))
             ]
         )
@@ -211,13 +209,25 @@ class RotaxaneBuilder:
             cycle.move_to(pos)
 
     def _rotate_cycles_perpendicular_to_main_axis(self):
-        # compute the perpendicular axis
-        perpendicular_axis = np.cross(self.main_axis, [1, 0, 0])
-        if np.linalg.norm(perpendicular_axis) == 0:
-            perpendicular_axis = np.cross(self.main_axis, [0, 1, 0])
+        for anchor, cycle in zip(self.cycle_anchors, self.cycles):
 
-        for cycle in self.cycles:
-            cycle.rotate(90, perpendicular_axis)
+            cycle_coords = cycle.get_coords()
+            cycle_plane_vector = structural.plane_of_points(cycle_coords)
+
+            # compute the angle between the plane vector and longest axis
+            angle = np.pi / 2 + np.dot(self.main_axis, cycle_plane_vector)
+
+            # compute the axis to rotate around perpendicularly to the other two vectors
+            axis = np.cross(self.main_axis, cycle_plane_vector)
+            axis /= np.linalg.norm(axis)
+
+            # now rotate the cycle coords by the angle around the axis
+            cycle_coords = (
+                structural.rotate_coords(cycle_coords - anchor, angle, axis) + anchor
+            )
+
+            for atom, coord in zip(cycle.get_atoms(), cycle_coords):
+                atom.coord = coord
 
     def _find_longest_axis(self):
 
@@ -238,12 +248,24 @@ if __name__ == "__main__":
 
     import buildamol.extensions.polymers as p
 
-    axle = p.linear_alkane(20)
-    cycle = p.cyclic_alkane(10)
+    # make the ring
+    ring = p.cyclic_alkane(10)
+
+    # make the axle basis and then modify the atoms
+    N = 35
+    axle = p.linear_alkane(N)
+    axle.get_hydrogen("C1").set_element("Br")
+    axle.get_hydrogen(f"C{N}").set_element("Br")
+    i = 4
+    while i < 35:
+        # here we need to use change_element as the hydrogen count changes
+        axle.change_element(f"C{i}", "N")
+        i += 5
+
     # cycle.rotate(90, "y")
 
     builder = RotaxaneBuilder()
-    builder.distribute_along_axle(axle, cycle.copy(2))
+    builder.distribute_along_axle(axle, ring.copy(2))
     # builder.optimize()
 
     builder.merge().to_pdb("rotaxane_builder.pdb")
