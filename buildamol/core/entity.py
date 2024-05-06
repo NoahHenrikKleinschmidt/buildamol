@@ -888,7 +888,7 @@ class BaseEntity:
         vector = pos - self.center_of_geometry
         self.move(vector)
         return self
-    
+
     place = move_to
 
     def move(self, vector: np.ndarray):
@@ -2322,7 +2322,12 @@ class BaseEntity:
         #     p.child_dict[name] = atom
         return self
 
-    def change_element(self, atom: Union[int, base_classes.Atom], element: str):
+    def change_element(
+        self,
+        atom: Union[int, base_classes.Atom],
+        element: str,
+        adjust_bond_length: bool = True,
+    ):
         """
         Change the element of an atom. This will automatically add or remove hydrogens
         if the new element has a different valency.
@@ -2333,9 +2338,23 @@ class BaseEntity:
             The atom to rename, either the object itself or its serial number
         element : str
             The new element
+        adjust_bond_length : bool
+            If True, adjust the bond length to match the new element. This may slow down the process if the atom is central in a very large molecule.
         """
         atom = self.get_atom(atom)
+
+        current_element = atom.element
+
         structural.change_element(atom, element, self)
+
+        if adjust_bond_length:
+            neighbor = self.get_neighbors(atom).pop()
+            dist = structural.single_bond_lengths.get(neighbor.element.title(), {}).get(
+                atom.element.title(), None
+            )
+            if dist:
+                self.adjust_bond_length(neighbor, atom, dist, move_descendants=current_element!="H")
+
         return self
 
     def add_atoms(self, *atoms: base_classes.Atom, residue=None, _copy: bool = False):
@@ -2541,20 +2560,33 @@ class BaseEntity:
         atom = self.get_atom(atom)
         return sum(b.order for b in self.bonds if atom in b)
 
-    def adjust_bond_length(self, atom1, atom2, length: float):
+    def adjust_bond_length(
+        self, atom1, atom2, length: float, move_descendants: bool = False
+    ):
         """
         Adjust the bond length between two atoms
 
         Parameters
         ----------
         atom1, atom2
-            The atoms to bond, which can either be directly provided (biopython object)
+            The atoms to bond, which can either be directly provided (Atom object)
             or by providing the serial number, the full_id or the id of the atoms.
         length : float
             The new bond length
+        move_descendants : bool
+            If True, this method will infer all descendant atoms and move them accordingly to preserve the overall geometry of the
+            molecule. It will make things slower, however!
         """
-        bond = self.get_bond(atom1, atom2)
-        structural.adjust_bond_length(bond, length)
+        atom1, atom2 = self.get_atom(atom1), self.get_atom(atom2)
+
+        diff = length - (atom1 - atom2)
+        structural.adjust_bond_length((atom1, atom2), length)
+        if move_descendants:
+            vec = structural.norm_vector(atom1, atom2)
+            descendants = self.get_descendants(atom1, atom2)
+            for d in descendants:
+                d.coord += vec * diff
+
         return self
 
     def lock_all(self):  # , both_ways: bool = True):
