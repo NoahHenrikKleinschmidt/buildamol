@@ -936,12 +936,18 @@ def phosphorylate(
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["P"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        phos.adjust_bond_length("P", "O2", dist)
 
     l = Linkage.Linkage("PHOS", "a custom phosphorylation")
     l.add_bond((at_atom.id, "P"))
-    if delete:
-        l.add_delete(delete.id, "target")
     l.add_delete("O2", "source")
+    l.add_delete(delete.id, "target")
 
     mol.attach(phos, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -975,12 +981,18 @@ def methylate(
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete, residue=at_residue)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        methyl.adjust_bond_length("C", "HC1", dist)
 
     l = Linkage.Linkage("METHYLATE")
     l.add_bond((at_atom.id, "C"))
     l.add_delete("HC1", "source")
-    if delete:
-        l.add_delete(delete.id, "target")
+    l.add_delete(delete.id, "target")
 
     mol.attach(methyl, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1009,17 +1021,23 @@ def acetylate(
         Whether to acetylate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
-    acetyl = Molecule.from_compound("ACY")
+    acetyl = Molecule.from_compound("ACE")
     at_atom = mol.get_atom(at_atom)
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete, residue=at_residue)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        acetyl.adjust_bond_length("C", "H", dist)
 
     l = Linkage.Linkage("ACETYLATE")
-    l.add_bond((at_atom.id, "OXT"))
-    l.add_delete("HXT", "source")
-    if delete:
-        l.add_delete(delete.id, "target")
+    l.add_bond((at_atom.id, "C"))
+    l.add_delete("H", "source")
+    l.add_delete(delete.id, "target")
 
     mol.attach(acetyl, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1053,12 +1071,18 @@ def hydroxylate(
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete, residue=at_residue)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["O"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        hydroxyl.adjusts_bond_length("O", "H1", dist)
 
     l = Linkage.Linkage("HYDROXYLATE")
     l.add_bond((at_atom.id, "O"))
     l.add_delete("H1", "source")
-    if delete:
-        l.add_delete(delete.id, "target")
+    l.add_delete(delete.id, "target")
 
     mol.attach(hydroxyl, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1092,12 +1116,18 @@ def amidate(
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete, residue=at_residue)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["N"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        amide.adjust_bond_length("N", "HN1", dist)
 
     l = Linkage.Linkage("AMIDATE")
     l.add_bond((at_atom.id, "N"))
     l.add_delete("HN1", "source")
-    if delete:
-        l.add_delete(delete.id, "target")
+    l.add_delete(delete.id, "target")
 
     mol.attach(amide, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1131,12 +1161,18 @@ def carboxylate(
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete, residue=at_residue)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        carboxyl.adjust_bond_length("C", "H", dist)
 
     l = Linkage.Linkage("CARBOXYLATE")
     l.add_bond((at_atom.id, "C"))
     l.add_delete("H", "source")
-    if delete:
-        l.add_delete(delete.id, "target")
+    l.add_delete(delete.id, "target")
 
     mol.attach(carboxyl, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1170,12 +1206,18 @@ def benzylate(
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete, residue=at_residue)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        benzyl.adjust_bond_length("C", "H1", dist)
 
     l = Linkage.Linkage("BENZYLATE")
     l.add_bond((at_atom.id, "C"))
     l.add_delete("H1", "source")
-    if delete:
-        l.add_delete(delete.id, "target")
+    l.add_delete(delete.id, "target")
 
     mol.attach(benzyl, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1209,12 +1251,18 @@ def phenylate(
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete, residue=at_residue)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        phenyl.adjust_bond_length("C1", "H1", dist)
 
     l = Linkage.Linkage("BNZ")
     l.add_bond((at_atom.id, "C1"))
     l.add_delete("H1", "source")
-    if delete:
-        l.add_delete(delete.id, "target")
+    l.add_delete(delete.id, "target")
 
     mol.attach(phenyl, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1250,12 +1298,18 @@ def thiolate(
     at_residue = at_atom.get_parent()
     if delete:
         delete = mol.get_atom(delete, residue=at_residue)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    dist = structural.single_bond_lengths["S"].get(at_atom.element, None)
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        thiol.adjust_bond_length("S", "H1", dist)
 
     l = Linkage.Linkage("THIOLATE")
     l.add_bond((at_atom.id, "S"))
     l.add_delete("H1", "source")
-    if delete:
-        l.add_delete(delete.id, "target")
+    l.add_delete(delete.id, "target")
 
     mol.attach(thiol, l, at_residue=at_residue, inplace=inplace)
     return mol
