@@ -110,11 +110,18 @@ More applied Tutorials
 
    In this tutorial we will generate multiple conformers of a molecule using BuildAMol's optimization methods.
 
-.. card:: Building a Rotaxane - Multi-Molecule Systems
-   :link: example_multisystem
+.. card:: Building a Rotaxane - The easy way
+   :link: example_rotaxane_easy
    :link-type: ref
 
-   In this tutorial we will build a multi-molecule system using BuildAMol. Specifically, we will build a rotaxane.
+   In this tutorial we will build a rotaxane using BuildAMol and learn how to combine multiple molecules into one system by aligning and merging them.
+
+.. card:: Building a Rotaxane - The hard way
+   :link: example_rotaxane_hard
+   :link-type: ref
+
+   In this tutorial we will build the same rotaxane as above but create our own optimization setup to spacially arrange the ring around the axle molecule.
+
 
 .. card:: Building a Solvation Box
    :link: example_solvationbox
