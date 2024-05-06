@@ -960,7 +960,7 @@ def find_equatorial_substituents(molecule):
     list
         A list of atoms that are equatorial to some ring.
     """
-    rings = molecule._AtomGraph.find_rings()
+    rings = molecule._AtomGraph.find_cycles()
     equatorial_atoms = []
 
     for ring in rings:
@@ -1006,7 +1006,7 @@ def find_axial_substituents(molecule):
     list
         A list of atoms that are axial to some ring.
     """
-    rings = molecule._AtomGraph.find_rings()
+    rings = molecule._AtomGraph.find_cycles()
     axial_atoms = []
 
     for ring in rings:
@@ -1052,7 +1052,7 @@ def find_equatorial_hydrogens(molecule):
     list
         The equatorial hydrogen atoms.
     """
-    rings = molecule._AtomGraph.find_rings()
+    rings = molecule._AtomGraph.find_cycles()
     equatorial_Hs = []
 
     # v = molecule.draw()
@@ -1105,7 +1105,7 @@ def find_axial_hydrogens(molecule):
     list
         The axial hydrogen atoms.
     """
-    rings = molecule._AtomGraph.find_rings()
+    rings = molecule._AtomGraph.find_cycles()
     axial_Hs = []
 
     # v = molecule.draw()
@@ -1160,7 +1160,7 @@ def get_equatorial_hydrogen_neighbor(molecule, atom):
     Atom
         The equatorial hydrogen atom (if present, or None if not present)
     """
-    ring = next((i for i in molecule._AtomGraph.find_rings() if atom in i), None)
+    ring = next((i for i in molecule._AtomGraph.find_cycles() if atom in i), None)
     if ring is None:
         return None
 
@@ -1206,7 +1206,7 @@ def get_axial_hydrogen_neighbor(molecule, atom):
     Atom
         The axial hydrogen atom (if present, or None if not present)
     """
-    ring = next((i for i in molecule._AtomGraph.find_rings() if atom in i), None)
+    ring = next((i for i in molecule._AtomGraph.find_cycles() if atom in i), None)
     if ring is None:
         return None
 
@@ -1252,7 +1252,7 @@ def get_equatorial_neighbor(molecule, atom):
     Atom
         The equatorial atom (if present, or None if not present)
     """
-    ring = next((i for i in molecule._AtomGraph.find_rings() if atom in i), None)
+    ring = next((i for i in molecule._AtomGraph.find_cycles() if atom in i), None)
     if ring is None:
         return None
 
@@ -1298,7 +1298,7 @@ def get_axial_neighbor(molecule, atom):
     Atom
         The axial atom (if present, or None if not present)
     """
-    ring = next((i for i in molecule._AtomGraph.find_rings() if atom in i), None)
+    ring = next((i for i in molecule._AtomGraph.find_cycles() if atom in i), None)
     if ring is None:
         return None
 
