@@ -888,6 +888,8 @@ class BaseEntity:
         vector = pos - self.center_of_geometry
         self.move(vector)
         return self
+    
+    place = move_to
 
     def move(self, vector: np.ndarray):
         """
