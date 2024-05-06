@@ -1898,6 +1898,7 @@ def change_element(atom, new_element: str, _molecule):
             for neighbor in neighbors:
                 if neighbor.element == "H":
                     to_remove.append(neighbor)
+                    neighbors.remove(neighbor)
                     new_connectivity += 1
                     break
         _molecule.remove_atoms(*to_remove)
