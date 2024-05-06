@@ -182,7 +182,7 @@ def norm_vector(atom1, atom2):
 
 def plane_vector(vec1, vec2):
     """
-    Compute the vector in the plane of two vectors.
+    Compute the vector of the plane of two vectors.
 
     Parameters
     ----------
@@ -632,6 +632,27 @@ def superimpose_points(
     # new_coords += bond1[0]
 
     # return new_coords
+
+
+def plane_of_points(points) -> np.ndarray:
+    """
+    Compute the plane vector that best describes the plane defined by a set of points
+
+    Parameters
+    ----------
+    points : array-like
+        The points that define the plane
+
+    Returns
+    -------
+    plane : np.ndarray
+        The plane vector
+    """
+    points = np.array(points)
+    centroid = np.mean(points, axis=0)
+    points -= centroid
+    _, _, v = np.linalg.svd(points)
+    return v[2]
 
 
 @aux.njit
