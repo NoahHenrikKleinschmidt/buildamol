@@ -2069,8 +2069,13 @@ class Molecule(entity.BaseEntity):
                 )
 
             # if linkages are functional groups instead, we use the react_with method
-            if self._linkage.__class__.__name__ == "FunctionalGroup" and other._linkage.__class__.__name__ == "FunctionalGroup":
-                new = self.react_with(other, self._linkage, other._linkage, inplace=False)
+            if (
+                self._linkage.__class__.__name__ == "FunctionalGroup"
+                and other._linkage.__class__.__name__ == "FunctionalGroup"
+            ):
+                new = self.react_with(
+                    other, self._linkage, other._linkage, inplace=False
+                )
                 return new
 
             # otherwise we use the attach method
@@ -2111,10 +2116,13 @@ class Molecule(entity.BaseEntity):
                 )
 
             # if linkages are functional groups instead, we use the react_with method
-            if self._linkage.__class__.__name__ == "FunctionalGroup" and other._linkage.__class__.__name__ == "FunctionalGroup":
+            if (
+                self._linkage.__class__.__name__ == "FunctionalGroup"
+                and other._linkage.__class__.__name__ == "FunctionalGroup"
+            ):
                 self.react_with(other, self._linkage, other._linkage)
                 return self
-            
+
             # otherwise we use the attach method
             self.attach(other, patch)
             return self
