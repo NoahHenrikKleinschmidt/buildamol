@@ -49,7 +49,7 @@ def linear_alkane(n: int, include_hydrogens: bool = True) -> core.Molecule:
     molecule.add_bonds(*bonds)
 
     if include_hydrogens:
-        angle = structural.geometry.Tetrahedral.dihedral / 2
+        angle = structural.geometry.Tetrahedral.dihedral / 2 + 0.2 * np.pi
 
         hydrogen_ys1 = np.zeros(n, dtype=np.float64)
         hydrogen_ys1 -= np.sin(angle) * _length_C_H
@@ -267,8 +267,8 @@ def _make_carbons(coords_x, coords_y, coords_z) -> list:
 
 
 if __name__ == "__main__":
-    alkane = linear_alkene(25)
-    alkane.show()
+    alkane = linear_alkane(25)
+    alkane.to_pdb("alkane.pdb")
     # alkane.to_pdb("alkane.pdb")
     # v = alkane.draw()
     # v.viewbox(None, 20, 20)
