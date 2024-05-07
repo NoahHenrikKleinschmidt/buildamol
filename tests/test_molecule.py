@@ -1955,3 +1955,7 @@ def test_adjust_length_with_descendants():
     mol.show()
 
 
+def test_get_atoms_generator_implementation():
+    mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/test_(2S)-2-amino-3-(4-hydroxyphenyl)propanoic acid.pdb")
+    out = mol.get_atoms("C", by="element", residue=1, filter= lambda x: int(x.id[1:]) % 2 == 0, keep_order = True )
+    assert len(out) != 0
