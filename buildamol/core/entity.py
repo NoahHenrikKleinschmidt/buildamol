@@ -1787,6 +1787,7 @@ class BaseEntity:
         *atoms: Union[int, str, tuple],
         by: str = None,
         keep_order: bool = False,
+        residue: Union[int, base_classes.Residue] = None,
         filter: callable = None,
     ) -> list:
         """
@@ -1794,7 +1795,7 @@ class BaseEntity:
         id, serial number or full_id. Note, if multiple atoms match the requested criteria,
         for instance there are multiple 'C1' from different residues all of them are returned in a list.
         It is a safer option to use the full_id or serial number to retrieve a specific atom.
-        If no search parameters are provided, the underlying iterator of the structure is returned.
+        If no search parameters are provided, the underlying atom-generator of the structure is returned.
 
         Note
         ----
@@ -1815,6 +1816,9 @@ class BaseEntity:
 
         keep_order : bool
             Whether to return the atoms in the order they were queried. If False, the atoms are returned in the order they appear in the structure.
+
+        residue: int or Residue
+            A specific residue to search in. If None, the entire structure is searched.
 
         filter : callable
             A filter function that is applied to the atoms. If the filter returns True, the atom is included in the result.
@@ -1842,37 +1846,45 @@ class BaseEntity:
                     f"Unknown search parameter, must be either 'id', 'serial' or 'full_id' -> erroneous input: {atoms=}"
                 )
 
+        # these used to be list-comprehensions. Revert to them if it causes problems
+        # that the generators are used here...
         if by == "id":
-            _atoms = [i for i in self._model.get_atoms() if i.id in atoms]
+            _atoms = (i for i in self._model.get_atoms() if i.id in atoms)
         elif by == "serial":
-            _atoms = [i for i in self._model.get_atoms() if i.serial_number in atoms]
+            _atoms = (i for i in self._model.get_atoms() if i.serial_number in atoms)
         elif by == "full_id":
-            _atoms = [i for i in self._model.get_atoms() if i.full_id in atoms]
+            _atoms = (i for i in self._model.get_atoms() if i.full_id in atoms)
         elif by == "element":
-            _atoms = [i.upper() for i in atoms]
-            _atoms = [i for i in self._model.get_atoms() if i.element in atoms]
+            atoms = [i.upper() for i in atoms]
+            _atoms = (i for i in self._model.get_atoms() if i.element in atoms)
         else:
             raise ValueError(
                 f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element' -> erroneous input: {atoms=}"
             )
 
+        if residue is not None:
+            _residue = self.get_residue(residue)
+            if residue is None:
+                raise ValueError(f"Residue '{residue}' not found")
+            _atoms = (a for a in _atoms if a.get_parent() is _residue)
+
+        if filter:
+            _atoms = (a for a in _atoms if filter(a))
+
         # finally make sure that the order of the atoms is the same as the input
         if keep_order:
             if by == "id":
-                atoms = sorted(_atoms, key=lambda x: atoms.index(x.id))
+                _atoms = sorted(_atoms, key=lambda x: atoms.index(x.id))
             elif by == "serial":
-                atoms = sorted(_atoms, key=lambda x: atoms.index(x.serial_number))
+                _atoms = sorted(_atoms, key=lambda x: atoms.index(x.serial_number))
             elif by == "full_id":
-                atoms = sorted(_atoms, key=lambda x: atoms.index(x.full_id))
+                _atoms = sorted(_atoms, key=lambda x: atoms.index(x.full_id))
             elif by == "element":
-                atoms = sorted(_atoms, key=lambda x: atoms.index(x.element))
-        else:
-            atoms = _atoms
+                _atoms = sorted(_atoms, key=lambda x: atoms.index(x.element))
 
-        if filter:
-            return [a for a in atoms if filter(a)]
-
-        return atoms
+        if not isinstance(_atoms, list):
+            _atoms = list(_atoms)
+        return _atoms
 
     def get_atom(
         self,
@@ -2353,7 +2365,9 @@ class BaseEntity:
                 atom.element.title(), None
             )
             if dist:
-                self.adjust_bond_length(neighbor, atom, dist, move_descendants=current_element!="H")
+                self.adjust_bond_length(
+                    neighbor, atom, dist, move_descendants=current_element != "H"
+                )
 
         return self
 
