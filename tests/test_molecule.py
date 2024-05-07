@@ -1828,6 +1828,12 @@ def test_phosphorylate():
     mol.show()
 
 
+def test_hydroxylate():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.hydroxylate(mol, "C1")
+    mol.show()
+
+
 def test_methylate():
     mol = bam.Molecule.from_smiles("CC")
     bam.methylate(mol, "C1")
@@ -1843,6 +1849,35 @@ def test_acetylate():
 def test_amidate():
     mol = bam.Molecule.from_smiles("CC")
     bam.amidate(mol, "C1")
+    mol.show()
+
+
+def test_carboxylate():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.carboxylate(mol, "C1")
+    mol.show()
+
+
+def test_benzylate():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.benzylate(mol, "C1")
+    mol.show()
+
+
+def test_phenolate():
+    mol = bam.Molecule.from_smiles("CCC")
+    bam.phenolate(mol, "C1", how="ortho")
+    bam.phenolate(mol, "C2", how="meta")
+    bam.phenolate(mol, "C3", how="para")
+    mol.show()
+
+
+def test_carboxylate_multiple():
+    mol = bam.Molecule.from_smiles("CCCCC")
+    carbons = mol.get_atoms("C3", "C2", "C4")
+    hydrogens = [mol.get_left_hydrogen(i) for i in carbons]
+    hydrogens[0] = None
+    bam.carboxylate(mol, carbons, hydrogens)
     mol.show()
 
 
@@ -1956,6 +1991,14 @@ def test_adjust_length_with_descendants():
 
 
 def test_get_atoms_generator_implementation():
-    mol = bam.read_pdb("/Users/noahhk/GIT/biobuild/test_(2S)-2-amino-3-(4-hydroxyphenyl)propanoic acid.pdb")
-    out = mol.get_atoms("C", by="element", residue=1, filter= lambda x: int(x.id[1:]) % 2 == 0, keep_order = True )
+    mol = bam.read_pdb(
+        "/Users/noahhk/GIT/biobuild/test_(2S)-2-amino-3-(4-hydroxyphenyl)propanoic acid.pdb"
+    )
+    out = mol.get_atoms(
+        "C",
+        by="element",
+        residue=1,
+        filter=lambda x: int(x.id[1:]) % 2 == 0,
+        keep_order=True,
+    )
     assert len(out) != 0

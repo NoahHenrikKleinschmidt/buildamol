@@ -496,7 +496,7 @@ __all__ = [
     "amidate",
     "hydroxylate",
     "carboxylate",
-    "phenylate",
+    "phenolate",
     "benzylate",
     "thiolate",
 ]
@@ -904,6 +904,87 @@ def react(
     return new
 
 
+def _modify(
+    mol: "Molecule",
+    modifier: "Molecule",
+    at_atom,
+    delete,
+    modifier_at_atom: "str",
+    modifier_deletes: list[str],
+    inplace: bool = True,
+):
+    """
+    The core function of all modification functions. This function is used to modify a molecule by attaching a modifier (e.g. a functional group) molecule to it.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to modify
+    modifier : Molecule
+        The modifier molecule
+    at_atom
+        The atom of the molecule to modify. This can be any identifier that will allow to get an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
+    delete
+        The atom to delete in the molecule. This can be any identifier that will allow to get an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well. If a list is provided as at_atom, use either None to specify no deleters
+        or a list of equal length to specify the deleters for each atom in at_atom. None is allowed for individual entries in the list but the list
+        needs the same length as at_atom.
+    modifier_at_atom : str
+        The atom of the modifier molecule to attach to the molecule
+    modifier_deletes : list[str]
+        The atoms to delete in the modifier molecule. The first entry needs to be a direct neighbor of the modifier_at_atom.
+    inplace : bool
+        Whether to modify the molecule in place or return a new molecule
+    """
+    if isinstance(at_atom, list):
+        if delete is None:
+            delete = (None for i in at_atom)
+        elif isinstance(delete, list) and len(delete) != len(at_atom):
+            raise ValueError(
+                f"delete must be a list of same length if at_atom is a list. at_atom has length {len(at_atom)} but delete has length {len(delete)}"
+            )
+        elif not isinstance(delete, list):
+            raise ValueError(
+                f"delete must be a list if at_atom is a list, got {type(delete)} instead"
+            )
+
+        if not inplace:
+            mol = mol.copy()
+        for a, d in zip(at_atom, delete):
+            _modify(
+                mol,
+                modifier,
+                a,
+                d,
+                modifier_at_atom,
+                modifier_deletes,
+                inplace=True,
+            )
+        return mol
+
+    at_atom = mol.get_atom(at_atom)
+    at_residue = at_atom.get_parent()
+    if delete:
+        delete = mol.get_atom(delete)
+    else:
+        delete = mol.get_hydrogen(at_atom)
+
+    modifier_at_atom = modifier.get_atom(modifier_at_atom)
+
+    dist = structural.single_bond_lengths[modifier_at_atom.element].get(
+        at_atom.element, None
+    )
+    if dist:
+        mol.adjust_bond_length(at_atom, delete, dist)
+        modifier.adjust_bond_length(modifier_at_atom, modifier_deletes[0], dist)
+
+    l = Linkage.linkage(
+        at_atom.id, modifier_at_atom.id, [delete.id], modifier_deletes, id="MODIFY"
+    )
+    mol.attach(modifier, l, at_residue=at_residue, inplace=inplace)
+
+
 def phosphorylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
@@ -918,10 +999,12 @@ def phosphorylate(
     mol : Molecule
         The molecule to phosphorylate
     at_atom : int or str or Atom
-        The atom to phosphorylate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to phosphorylate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        If not provided, any Hydrogen atom attached to the phosphorylated atom will be deleted.
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to phosphorylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
     inplace : bool
         Whether to phosphorylate the molecule in place or return a new molecule
 
@@ -932,25 +1015,7 @@ def phosphorylate(
     """
     resources.load_small_molecules()
     phos = Molecule.from_compound("PO4")
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete)
-    else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["P"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        phos.adjust_bond_length("P", "O2", dist)
-
-    l = Linkage.Linkage("PHOS", "a custom phosphorylation")
-    l.add_bond((at_atom.id, "P"))
-    l.add_delete("O2", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(phos, l, at_residue=at_residue, inplace=inplace)
-    return mol
+    return _modify(mol, phos, at_atom, delete, "P", ["O2"], inplace)
 
 
 def methylate(
@@ -967,35 +1032,18 @@ def methylate(
     mol : Molecule
         The molecule to methylate
     at_atom : int or str or Atom
-        The atom to methylate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to methylate.This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        This atom needs to be in the same residue as the atom to methylate.
-        If not provided, any Hydrogen atom attached to the methylated atom will be deleted.
+       The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to methylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
     inplace : bool
         Whether to methylate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
     methyl = Molecule.from_compound("CH3")
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete, residue=at_residue)
-    else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        methyl.adjust_bond_length("C", "HC1", dist)
-
-    l = Linkage.Linkage("METHYLATE")
-    l.add_bond((at_atom.id, "C"))
-    l.add_delete("HC1", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(methyl, l, at_residue=at_residue, inplace=inplace)
-    return mol
+    return _modify(mol, methyl, at_atom, delete, "C", ["HC1"], inplace)
 
 
 def acetylate(
@@ -1012,35 +1060,18 @@ def acetylate(
     mol : Molecule
         The molecule to acetylate
     at_atom : int or str or Atom
-        The atom to acetylate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to acetylate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        This atom needs to be in the same residue as the atom to acetylate.
-        If not provided, any Hydrogen atom attached to the acetylated atom will be deleted.
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to acetylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
     inplace : bool
         Whether to acetylate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
     acetyl = Molecule.from_compound("ACE")
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete, residue=at_residue)
-    else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        acetyl.adjust_bond_length("C", "H", dist)
-
-    l = Linkage.Linkage("ACETYLATE")
-    l.add_bond((at_atom.id, "C"))
-    l.add_delete("H", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(acetyl, l, at_residue=at_residue, inplace=inplace)
-    return mol
+    return _modify(mol, acetyl, at_atom, delete, "C", ["H"], inplace)
 
 
 def hydroxylate(
@@ -1057,35 +1088,18 @@ def hydroxylate(
     mol : Molecule
         The molecule to hydroxylate
     at_atom : int or str or Atom
-        The atom to hydroxylate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to hydroxylate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        This atom needs to be in the same residue as the atom to hydroxylate.
-        If not provided, any Hydrogen atom attached to the hydroxylated atom will be deleted.
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to hydroxylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
     inplace : bool
         Whether to hydroxylate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
     hydroxyl = Molecule.from_compound("HOH")
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete, residue=at_residue)
-    else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["O"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        hydroxyl.adjusts_bond_length("O", "H1", dist)
-
-    l = Linkage.Linkage("HYDROXYLATE")
-    l.add_bond((at_atom.id, "O"))
-    l.add_delete("H1", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(hydroxyl, l, at_residue=at_residue, inplace=inplace)
-    return mol
+    return _modify(mol, hydroxyl, at_atom, delete, "O", ["H1"], inplace)
 
 
 def amidate(
@@ -1102,35 +1116,18 @@ def amidate(
     mol : Molecule
         The molecule to amidate
     at_atom : int or str or Atom
-        The atom to amidate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to amidate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        This atom needs to be in the same residue as the atom to amidate.
-        If not provided, any Hydrogen atom attached to the amidated atom will be deleted.
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to amidate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
     inplace : bool
         Whether to amidate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
     amide = Molecule.from_compound("NH3")
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete, residue=at_residue)
-    else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["N"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        amide.adjust_bond_length("N", "HN1", dist)
-
-    l = Linkage.Linkage("AMIDATE")
-    l.add_bond((at_atom.id, "N"))
-    l.add_delete("HN1", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(amide, l, at_residue=at_residue, inplace=inplace)
-    return mol
+    return _modify(mol, amide, at_atom, delete, "N", ["HN1"], inplace)
 
 
 def carboxylate(
@@ -1147,35 +1144,18 @@ def carboxylate(
     mol : Molecule
         The molecule to carboxylate
     at_atom : int or str or Atom
-        The atom to carboxylate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to carboxylate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        This atom needs to be in the same residue as the atom to carboxylate.
-        If not provided, any Hydrogen atom attached to the carboxylated atom will be deleted.
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to carboxylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
     inplace : bool
         Whether to carboxylate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
     carboxyl = Molecule.from_compound("CBX")
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete, residue=at_residue)
-    else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        carboxyl.adjust_bond_length("C", "H", dist)
-
-    l = Linkage.Linkage("CARBOXYLATE")
-    l.add_bond((at_atom.id, "C"))
-    l.add_delete("H", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(carboxyl, l, at_residue=at_residue, inplace=inplace)
-    return mol
+    return _modify(mol, carboxyl, at_atom, delete, "C", ["H"], inplace)
 
 
 def benzylate(
@@ -1192,41 +1172,25 @@ def benzylate(
     mol : Molecule
         The molecule to benzylate
     at_atom : int or str or Atom
-        The atom to benzylate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to benzylate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        This atom needs to be in the same residue as the atom to benzylate.
-        If not provided, any Hydrogen atom attached to the benzylated atom will be deleted.
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to benzylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
     inplace : bool
         Whether to benzylate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
     benzyl = Molecule.from_compound("BNZ")
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete, residue=at_residue)
-    else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        benzyl.adjust_bond_length("C", "H1", dist)
-
-    l = Linkage.Linkage("BENZYLATE")
-    l.add_bond((at_atom.id, "C"))
-    l.add_delete("H1", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(benzyl, l, at_residue=at_residue, inplace=inplace)
-    return mol
+    return _modify(mol, benzyl, at_atom, delete, "C1", ["H1"], inplace)
 
 
-def phenylate(
+def phenolate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    how: str = "para",
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1235,37 +1199,32 @@ def phenylate(
     Parameters
     ----------
     mol : Molecule
-        The molecule to phenylate
+        The molecule to phenolate
     at_atom : int or str or Atom
-        The atom to phenylate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to phenolate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        This atom needs to be in the same residue as the atom to phenylate.
-        If not provided, any Hydrogen atom attached to the phenylated atom will be deleted.
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to phenolate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
+    how: str
+        The position of the hydroxyl group on the phenol. Can be one of "ortho", "meta", or "para".
     inplace : bool
-        Whether to phenylate the molecule in place or return a new molecule
+        Whether to phenolate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
-    phenyl = Molecule.from_compound("PHN")
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete, residue=at_residue)
+    phenol = Molecule.from_compound("MBN")
+    if how == "ortho":
+        a, d = "C2", "H2"
+    elif how == "meta":
+        a, d = "C3", "H3"
+    elif how == "para":
+        a, d = "C4", "H4"
     else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["C"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        phenyl.adjust_bond_length("C1", "H1", dist)
-
-    l = Linkage.Linkage("BNZ")
-    l.add_bond((at_atom.id, "C1"))
-    l.add_delete("H1", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(phenyl, l, at_residue=at_residue, inplace=inplace)
-    return mol
+        raise ValueError(
+            "Invalid value for 'how'. Must be one of 'ortho', 'meta', or 'para'"
+        )
+    return _modify(mol, phenol, at_atom, delete, a, [d], inplace)
 
 
 def thiolate(
@@ -1282,37 +1241,19 @@ def thiolate(
     mol : Molecule
         The molecule to thiolate
     at_atom : int or str or Atom
-        The atom to thiolate. If an integer is provided, the atom seqid must be used, starting at 1.
+        The atom to thiolate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
     delete : int or str or Atom
-        The atom to delete. If an integer is provided, the atom seqid must be used, starting at 1.
-        This atom needs to be in the same residue as the atom to thiolate.
-        If not provided, any Hydrogen atom attached to the thiolated atom will be deleted.
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to thiolate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
     inplace : bool
         Whether to thiolate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
     thiol = Molecule.from_compound("HOH")
     thiol.get_atom("O").set_element("S")  # change the oxygen to sulfur
-
-    at_atom = mol.get_atom(at_atom)
-    at_residue = at_atom.get_parent()
-    if delete:
-        delete = mol.get_atom(delete, residue=at_residue)
-    else:
-        delete = mol.get_hydrogen(at_atom)
-
-    dist = structural.single_bond_lengths["S"].get(at_atom.element, None)
-    if dist:
-        mol.adjust_bond_length(at_atom, delete, dist)
-        thiol.adjust_bond_length("S", "H1", dist)
-
-    l = Linkage.Linkage("THIOLATE")
-    l.add_bond((at_atom.id, "S"))
-    l.add_delete("H1", "source")
-    l.add_delete(delete.id, "target")
-
-    mol.attach(thiol, l, at_residue=at_residue, inplace=inplace)
-    return mol
+    return _modify(mol, thiol, at_atom, delete, "S", ["H1"], inplace)
 
 
 class Molecule(entity.BaseEntity):
