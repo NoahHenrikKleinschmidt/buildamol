@@ -992,7 +992,7 @@ def phosphorylate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Phosphorylate a molecule at a specific atom
+    Phosphorylate a molecule at one or more specific atoms
 
     Parameters
     ----------
@@ -1025,7 +1025,7 @@ def methylate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Methylate a molecule at a specific atom
+    Methylate a molecule at one or more specific atoms
 
     Parameters
     ----------
@@ -1053,7 +1053,7 @@ def acetylate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Acetylate a molecule at a specific atom
+    Acetylate a molecule at one or more specific atoms
 
     Parameters
     ----------
@@ -1081,7 +1081,7 @@ def hydroxylate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Hydroxylate a molecule at a specific atom
+    Hydroxylate a molecule at one or more specific atoms
 
     Parameters
     ----------
@@ -1109,7 +1109,7 @@ def amidate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Amidate a molecule at a specific atom
+    Amidate a molecule at one or more specific atoms
 
     Parameters
     ----------
@@ -1137,7 +1137,7 @@ def carboxylate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Carboxylate a molecule at a specific atom
+    Carboxylate a molecule at one or more specific atoms
 
     Parameters
     ----------
@@ -1165,7 +1165,7 @@ def benzylate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Add a benzyl group to a molecule at a specific atom
+    Add a benzyl group to a molecule at one or more specific atoms
 
     Parameters
     ----------
@@ -1194,7 +1194,7 @@ def phenolate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Add a phenol group to a molecule at a specific atom
+    Add a phenol group to a molecule at one or more specific atoms
 
     Parameters
     ----------
@@ -1234,7 +1234,7 @@ def thiolate(
     inplace: bool = True,
 ) -> "Molecule":
     """
-    Add a thiol group to a molecule at a specific atom
+    Add a thiol group to a molecule at one or more specific atoms
 
     Parameters
     ----------
