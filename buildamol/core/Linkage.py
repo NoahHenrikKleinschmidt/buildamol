@@ -532,9 +532,10 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         if target is not None:
             target_residue = target_residue or target.attach_residue
             if len(self.deletes[0]) == 0:
-                atom = target.get_neighbors(
-                    target.get_atom(self.bond[0], residue=target_residue)
-                )
+                a = self.bond[0]
+                if a[0] in ("1", "2"):
+                    a = a[1:]
+                atom = target.get_neighbors(target.get_atom(a, residue=target_residue))
                 atom = next((a for a in atom if a.element == "H"), None)
                 if atom is not None:
                     target.remove_atoms(atom)
@@ -551,9 +552,10 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         if source is not None:
             source_residue = source_residue or source.attach_residue
             if len(self.deletes[1]) == 0:
-                atom = source.get_neighbors(
-                    source.get_atom(self.bond[1], residue=source_residue)
-                )
+                b = self.bond[1]
+                if b[0] in ("1", "2"):
+                    b = b[1:]
+                atom = source.get_neighbors(source.get_atom(b, residue=source_residue))
                 atom = next((a for a in atom if a.element == "H"), None)
                 if atom is not None:
                     source.remove_atoms(atom)
@@ -591,24 +593,24 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             The residue in the source molecule that will be patched into the target molecule.
             By default, the attach_residue in the source molecule will be used.
         """
+        a = self.bond[0]
+        b = self.bond[1]
+
+        if a[0] in ("1", "2"):
+            a = a[1:]
+        if b[0] in ("1", "2"):
+            b = b[1:]
+
         target.add_bond(
-            target.get_atom(
-                self.bond[0], residue=target_residue or target.attach_residue
-            ),
-            source.get_atom(
-                self.bond[1], residue=source_residue or source.attach_residue
-            ),
+            target.get_atom(a, residue=target_residue or target.attach_residue),
+            source.get_atom(b, residue=source_residue or source.attach_residue),
         )
         if target is source:
             return
 
         source.add_bond(
-            source.get_atom(
-                self.bond[1], residue=source_residue or source.attach_residue
-            ),
-            target.get_atom(
-                self.bond[0], residue=target_residue or target.attach_residue
-            ),
+            source.get_atom(b, residue=source_residue or source.attach_residue),
+            target.get_atom(a, residue=target_residue or target.attach_residue),
         )
 
     @property
