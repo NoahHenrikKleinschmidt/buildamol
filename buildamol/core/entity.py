@@ -627,7 +627,7 @@ class BaseEntity:
         """
         utils.save_pickle(self, filename)
 
-    def show(self, residue_graph: bool = False, show_atoms: bool = True):
+    def show(self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"):
         """
         Open a browser window to view the molecule in 3D using Plotly
 
@@ -635,10 +635,12 @@ class BaseEntity:
         ----------
         residue_graph : bool
             If True, a residue graph is shown instead of the full structure.
-        show_atoms : bool
-            Whether to show the atoms (default: True)
+        atoms : bool
+            Whether to draw the atoms (default: True)
+        line_color : str
+            The line color to use when drawing bonds.
         """
-        v = self.draw(residue_graph, show_atoms)
+        v = self.draw(residue_graph, atoms, line_color)
         v.show()
 
     def nglview(self):
@@ -662,7 +664,7 @@ class BaseEntity:
     def draw(
         self,
         residue_graph: bool = False,
-        show_atoms: bool = True,
+        atoms: bool = True,
         line_color: str = "black",
     ):
         """
@@ -673,8 +675,8 @@ class BaseEntity:
         ----------
         residue_graph : bool
             If True, a residue graph is shown instead of the full structure.
-        show_atoms : bool
-            Whether to show the atoms (default: True)
+        atoms : bool
+            Whether to draw the atoms (default: True)
         line_color : str
             The color of the lines connecting the atoms
 
@@ -689,7 +691,7 @@ class BaseEntity:
             v = utils.visual.MoleculeViewer3D()
             v.bond_color = line_color
             v.link(self)
-            v.setup(show_atoms)
+            v.setup(atoms)
 
             return v
 
