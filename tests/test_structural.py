@@ -1946,7 +1946,7 @@ def test_superimpose_bonds():
     mol2 = mol.copy()
     mol2.transpose([0, 2, 12], 45, [1, 0, 0])
 
-    v = mol.draw() + mol2.draw(show_atoms=False, line_color="red")
+    v = mol.draw() + mol2.draw(atoms=False, line_color="red")
 
     a, b = "C2", "C3"
     bond1 = tuple(i.coord for i in mol.get_bond(a, b))
@@ -1957,7 +1957,7 @@ def test_superimpose_bonds():
     for idx, atom in enumerate(mol2.get_atoms()):
         atom.coord = new_coords[idx]
 
-    v += mol2.draw(show_atoms=False, line_color="green")
+    v += mol2.draw(atoms=False, line_color="green")
 
     v.show()
 
@@ -1968,7 +1968,7 @@ def test_superimpose_triplet():
     mol2 = mol.copy()
     mol2.transpose([0, 2, 12], 45, [1, 0, 0])
 
-    v = mol.draw() + mol2.draw(show_atoms=False, line_color="red")
+    v = mol.draw() + mol2.draw(atoms=False, line_color="red")
 
     points = "C2", "C3", "C1"
     points1 = tuple(i.coord for i in (mol.get_atom(i) for i in points))
@@ -1979,7 +1979,7 @@ def test_superimpose_triplet():
     for idx, atom in enumerate(mol2.get_atoms()):
         atom.coord = new_coords[idx]
 
-    v += mol2.draw(show_atoms=False, line_color="green")
+    v += mol2.draw(atoms=False, line_color="green")
 
     v.show()
 

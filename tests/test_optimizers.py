@@ -528,8 +528,8 @@ def test_translatron_optimize():
 
     assert out.count_clashes() == mol.count_clashes()
 
-    v = mol.draw(show_atoms=False)
-    v += out.draw(show_atoms=False, line_color="red")
+    v = mol.draw(atoms=False)
+    v += out.draw(atoms=False, line_color="red")
     v.show()
 
 

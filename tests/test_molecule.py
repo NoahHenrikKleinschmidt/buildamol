@@ -1903,28 +1903,28 @@ def test_superimpose():
     mol3 = mol2.copy()
     mol4 = mol2.copy()
 
-    v = mol.draw() + mol2.draw(show_atoms=False, line_color="red")
+    v = mol.draw() + mol2.draw(atoms=False, line_color="red")
 
     mol2.superimpose_to_atom(
         mol2.get_atom("C1"),
         mol.get_atom("C1"),
     )
 
-    v += mol2.draw(show_atoms=False, line_color="blue")
+    v += mol2.draw(atoms=False, line_color="blue")
 
     mol3.superimpose_to_bond(
         mol3.get_bond("C1", "C2"),
         mol.get_bond("C1", "C2"),
     )
 
-    v += mol3.draw(show_atoms=False, line_color="green")
+    v += mol3.draw(atoms=False, line_color="green")
 
     mol4.superimpose_to_triplet(
         ("C1", "O1", "HO1"),
         mol.get_atoms("C1", "O1", "HO1"),
     )
 
-    v += mol4.draw(show_atoms=False, line_color="purple")
+    v += mol4.draw(atoms=False, line_color="purple")
 
     v.show()
 
