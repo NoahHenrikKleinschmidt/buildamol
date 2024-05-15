@@ -7,136 +7,172 @@
 Tutorials
 =========
 
-On this page you will find some tutorials on how to use buildamol. Feel free to browse through them to learn more.
+On this page you will find some tutorials on how to use BuildAMol. Feel free to browse through them to learn more.
 
-.. _cards-clickable::
+Basic Usage
+-----------
 
-.. card:: Getting Started
-   :link: example_getting_started
-   :link-type: ref
+.. nbgallery::
+   examples/getting_started
+   examples/building_workflow
+   examples/drawing
+   examples/syntax_flavours
+   examples/optimization
+   examples/functional_groups
+   examples/converting_formats
 
-   This tutorial covers the fundamentals of buildamol. It is slightly more detailed than the "Basic Usage" page, however, and covers topics that the other tutorials elaborate on.
-
-
-.. card:: A typical workflow
-   :link: example_building_workflow
-   :link-type: ref
-
-   In this tutorial we will build a molecule to get the hang of a "typical" BuildAMol workflow.
-
-
-.. card:: Syntax Flavors
-   :link: example_syntax
-   :link-type: ref
-
-   This tutorial covers the different syntax flavors that BuildAMol supports.
-
-
-.. card:: Visualizing Molecules
-   :link: example_visualizing_molecules
-   :link-type: ref
-
-   This tutorial covers how to visualize molecules using buildamol.
-
-
-.. card:: Optimizing Molecules
-   :link: example_optimization
-   :link-type: ref
-
-   This tutorial covers how to optimize molecular conformations in buildamol.
-
-
-.. card:: Other Libraries and Formats
-   :link: example_converting_formats
-   :link-type: ref
-
-   This tutorial covers how to convert between different file formats and how to use other libraries with buildamol.
-
-
-Resource-oriented Tutorials
+Resource-oriented tutorials
 ---------------------------
 
-.. card:: Built-in Resources
-   :link: example_built_in_resources
-   :link-type: ref
+.. nbgallery::
+   examples/built-in
+   examples/default_settings
 
-   This tutorial covers how to use the built-in resources of buildamol.
+More applied tutorials
+-----------------------
 
-.. card:: Adding Resources
-   :link: example_defaults
-   :link-type: ref
+.. nbgallery::
 
-   This tutorial covers how to add your own resources to BuildAMol so they are available to all your projects.
+   examples/geometry_scratch
+   examples/building_circular
+   examples/building_polyphenylene
+   examples/irregular_dendrimer
+   examples/glycosylation
+   examples/molecular_dynamics
+   examples/conformation_sampling
+   examples/rotaxane_easy
+   examples/rotaxane_hard
+   examples/nanotube
+   examples/solvation_box
 
+.. .. _cards-clickable::
 
-More applied Tutorials
-----------------------
+.. .. card:: Getting Started
+..    :link: example_getting_started
+..    :link-type: ref
 
-.. card:: Using Functional Groups
-   :link: example_functional_groups
-   :link-type: ref
-
-   In this tutorial we will explore how to use functional groups to connect molecules together in BuildAMol.
-   We also cover how to create your own custom functional groups.
-
-.. card:: Building circular Molecules
-   :link: example_building_circular
-   :link-type: ref
-
-   This tutorial covers how to build circular molecules in BuildAMol together with RDKit.
-
-.. card:: Building Polyphenylene
-   :link: example_building_polyphenylene
-   :link-type: ref
-
-   In this tutorial we will build a polyphenylene dendrimer using some automization.
-
-.. card:: Glycosylation
-   :link: example_glycosylation
-   :link-type: ref
-
-   In this tutorial we will glycosylate a protein.
+..    This tutorial covers the fundamentals of buildamol. It is slightly more detailed than the "Basic Usage" page, however, and covers topics that the other tutorials elaborate on.
 
 
-.. card:: Molecular Dynamics
-   :link: example_md
-   :link-type: ref
+.. .. card:: A typical workflow
+..    :link: example_building_workflow
+..    :link-type: ref
 
-   In this tutorial we will build a molecule and run a molecular dynamics simulation on it.
-
-.. card:: Conformation Sampling
-   :link: example_conformation_sampling
-   :link-type: ref
-
-   In this tutorial we will generate multiple conformers of a molecule using BuildAMol's optimization methods.
-
-.. card:: Building a Rotaxane - The easy way
-   :link: example_rotaxane_easy
-   :link-type: ref
-
-   In this tutorial we will build a rotaxane using BuildAMol and learn how to combine multiple molecules into one system by aligning and merging them.
-
-.. card:: Building a Rotaxane - The hard way
-   :link: example_rotaxane_hard
-   :link-type: ref
-
-   In this tutorial we will build the same rotaxane as above but create our own optimization setup to spacially arrange the ring around the axle molecule.
+..    In this tutorial we will build a molecule to get the hang of a "typical" BuildAMol workflow.
 
 
-.. card:: Building a Solvation Box
-   :link: example_solvationbox
-   :link-type: ref
+.. .. card:: Syntax Flavors
+..    :link: example_syntax
+..    :link-type: ref
 
-   In this tutorial we will build a solvation box around a molecule using BuildAMol.
+..    This tutorial covers the different syntax flavors that BuildAMol supports.
 
-.. card:: Molecules from scratch - building PF5
-   :link: example_geometry
-   :link-type: ref
 
-   In this tutorial we will build a PF5 molecule using BuildAMol's molecular geometries to automatically generate coordinates.
+.. .. card:: Visualizing Molecules
+..    :link: example_visualizing_molecules
+..    :link-type: ref
+
+..    This tutorial covers how to visualize molecules using buildamol.
+
+
+.. .. card:: Optimizing Molecules
+..    :link: example_optimization
+..    :link-type: ref
+
+..    This tutorial covers how to optimize molecular conformations in buildamol.
+
+
+.. .. card:: Other Libraries and Formats
+..    :link: example_converting_formats
+..    :link-type: ref
+
+..    This tutorial covers how to convert between different file formats and how to use other libraries with buildamol.
+
+
+.. Resource-oriented Tutorials
+.. ---------------------------
+
+.. .. card:: Built-in Resources
+..    :link: example_built_in_resources
+..    :link-type: ref
+
+..    This tutorial covers how to use the built-in resources of buildamol.
+
+.. .. card:: Adding Resources
+..    :link: example_defaults
+..    :link-type: ref
+
+..    This tutorial covers how to add your own resources to BuildAMol so they are available to all your projects.
+
+
+.. More applied Tutorials
+.. ----------------------
+
+.. .. card:: Using Functional Groups
+..    :link: example_functional_groups
+..    :link-type: ref
+
+..    In this tutorial we will explore how to use functional groups to connect molecules together in BuildAMol.
+..    We also cover how to create your own custom functional groups.
+
+.. .. card:: Building circular Molecules
+..    :link: example_building_circular
+..    :link-type: ref
+
+..    This tutorial covers how to build circular molecules in BuildAMol together with RDKit.
+
+.. .. card:: Building Polyphenylene
+..    :link: example_building_polyphenylene
+..    :link-type: ref
+
+..    In this tutorial we will build a polyphenylene dendrimer using some automization.
+
+.. .. card:: Glycosylation
+..    :link: example_glycosylation
+..    :link-type: ref
+
+..    In this tutorial we will glycosylate a protein.
+
+
+.. .. card:: Molecular Dynamics
+..    :link: example_md
+..    :link-type: ref
+
+..    In this tutorial we will build a molecule and run a molecular dynamics simulation on it.
+
+.. .. card:: Conformation Sampling
+..    :link: example_conformation_sampling
+..    :link-type: ref
+
+..    In this tutorial we will generate multiple conformers of a molecule using BuildAMol's optimization methods.
+
+.. .. card:: Building a Rotaxane - The easy way
+..    :link: example_rotaxane_easy
+..    :link-type: ref
+
+..    In this tutorial we will build a rotaxane using BuildAMol and learn how to combine multiple molecules into one system by aligning and merging them.
+
+.. .. card:: Building a Rotaxane - The hard way
+..    :link: example_rotaxane_hard
+..    :link-type: ref
+
+..    In this tutorial we will build the same rotaxane as above but create our own optimization setup to spacially arrange the ring around the axle molecule.
+
+
+.. .. card:: Building a Solvation Box
+..    :link: example_solvationbox
+..    :link-type: ref
+
+..    In this tutorial we will build a solvation box around a molecule using BuildAMol.
+
+.. .. card:: Molecules from scratch - building PF5
+..    :link: example_geometry
+..    :link-type: ref
+
+..    In this tutorial we will build a PF5 molecule using BuildAMol's molecular geometries to automatically generate coordinates.
    
-.. card:: Molecules from scratch - building a Nanotube
-   :link: example_nanotube
-   :link-type: ref
+.. .. card:: Molecules from scratch - building a Nanotube
+..    :link: example_nanotube
+..    :link-type: ref
 
-   In this tutorial we will build a nanotube 100% from scratch, atom by atom, using numpy to build coordinates and BuildAMol to assemble a molecule.
+..    In this tutorial we will build a nanotube 100% from scratch, atom by atom, using numpy to build coordinates and BuildAMol to assemble a molecule.
