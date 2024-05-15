@@ -160,8 +160,8 @@ if __name__ == "__main__":
 
     constraint_rotatron = ConstraintRotatron(rotatron, constraint, finisher)
 
-    v = mol.draw(show_atoms=False)
+    v = mol.draw(atoms=False)
     out = bam.optimize(mol.copy(), constraint_rotatron, algorithm="scipy")
-    v += out.draw(show_atoms=False, line_color="red")
+    v += out.draw(atoms=False, line_color="red")
     v.show()
     pass

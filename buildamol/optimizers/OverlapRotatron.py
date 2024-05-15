@@ -199,7 +199,7 @@ class OverlapRotatron(Rotatron):
         bounds: tuple = (-np.pi, np.pi),
         **kwargs,
     ):
-        self._hyperparameters = {
+        self.hyperparameters = {
             "artificial_spread": artificial_spread,
             "clash_distance": clash_distance,
             "crop_nodes_further_than": crop_nodes_further_than,

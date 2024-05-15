@@ -126,7 +126,7 @@ if __name__ == "__main__":
         unfold=4.0,
     )
 
-    v = mol.draw(show_atoms=False)
+    v = mol.draw(atoms=False)
     v.draw_points(mol.get_coords(*targets), colors="limegreen")
     v.show()
 
@@ -134,7 +134,7 @@ if __name__ == "__main__":
 
     out.remove_atoms(targets[1])
     out.add_bond(targets[0], mol.get_atom("OXT", residue=-1))
-    v += out.draw(line_color="red", show_atoms=False)
+    v += out.draw(line_color="red", atoms=False)
 
     out.to_pdb("circular.pdb")
     v.show()

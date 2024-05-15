@@ -154,7 +154,7 @@ if __name__ == "__main__":
 
     sol, eval = bam.optimizers.swarm_optimize(env, n_particles=50)
 
-    v = mol.draw(show_atoms=False)
+    v = mol.draw(atoms=False)
 
     mol2.move(sol[:3])
     mol2.rotate(sol[3], "x")

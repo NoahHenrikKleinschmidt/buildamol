@@ -65,7 +65,7 @@ class ForceFieldRotatron(Rotatron):
             raise ImportError(
                 "ForceFieldRotatron requires RDKit to be installed. Please install RDKit to use this rotatron."
             )
-        self._hyperparameters = {
+        self.hyperparameters = {
             "clash_distance": clash_distance,
             "crop_nodes_further_than": crop_nodes_further_than,
             "mmff_variant": mmff_variant,
