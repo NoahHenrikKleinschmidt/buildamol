@@ -61,8 +61,8 @@ def apply_rotatron_solution(
         # things faster, assuming that the serial number was not altered in some way
         # outside of the molecule object.
         a, b = bond
-        a = mol.get_atom(a.serial_number)
-        b = mol.get_atom(b.serial_number)
+        a = mol.get_atom(a.full_id)
+        b = mol.get_atom(b.full_id)
         if a is None or b is None:
             raise ValueError(
                 f"Object and environment do not match (bond mismatch): {bond}"
@@ -235,10 +235,10 @@ def split_environment(
 
     # create the sub-environments
     sub_envs = []
+    hyperparams = dict(env.hyperparameters)
     for i in range(n):
         mask = labels == i
         edges = _all_edges[mask].tolist()
-        hyperparams = dict(env._hyperparameters)
 
         sub_env = env.__class__(env.graph, edges, setup=False, **hyperparams)
 
