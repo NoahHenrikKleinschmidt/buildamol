@@ -44,6 +44,8 @@ More applied tutorials
    examples/rotaxane_hard
    examples/nanotube
    examples/solvation_box
+   examples/fragment_library
+   examples/ligand_design
 
 .. .. _cards-clickable::
 
