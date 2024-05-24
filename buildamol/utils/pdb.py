@@ -74,14 +74,46 @@ def write_pdb(mol, filename, symmetric: bool = True):
                 f.write(f"MODEL {model.id}\n")
                 mol.set_model(model)
                 f.write(make_atoms_table(mol))
-                f.write("\n")
-                f.write(make_connect_table(mol, symmetric))
-                f.write("\nEND\n")
+                f.write("\nENDMDL\n")
+            f.write(make_connect_table(mol, symmetric))
+            f.write("\nEND\n")
         else:
             f.write(make_atoms_table(mol))
             f.write("\n")
             f.write(make_connect_table(mol, symmetric))
             f.write("\nEND\n")
+
+
+def encode_pdb(mol, symmetric: bool = True) -> str:
+    """
+    Encode a molecule to a PDB file without actually writing it to disk.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to write.
+    symmetric : bool, optional
+        Whether to write the molecule in a symmetric way, by default True.
+
+    Returns
+    -------
+    str
+        The PDB file contents.
+    """
+    lines = []
+    if len(mol.models) > 1:
+        for model in mol.get_models():
+            lines.append(f"MODEL {model.id}")
+            mol.set_model(model)
+            lines.append(make_atoms_table(mol))
+            lines.append("ENDMDL")
+        lines.append(make_connect_table(mol, symmetric))
+        lines.append("END")
+    else:
+        lines.append(make_atoms_table(mol))
+        lines.append(make_connect_table(mol, symmetric))
+        lines.append("END")
+    return "\n".join(lines)
 
 
 def write_connect_lines(mol, filename):
@@ -179,8 +211,8 @@ def _split_atom_line(line) -> tuple:
         "x": line[30:38].strip(),
         "y": line[38:46].strip(),
         "z": line[46:54].strip(),
-        "occ": line[54:60].strip(),
-        "temp": line[60:66].strip(),
+        "occ": float(line[54:60].strip()),
+        "temp": float(line[60:66].strip()),
         "element": line[76:78].strip(),
         "charge": line[78:80].strip(),
     }
@@ -259,7 +291,7 @@ def make_atoms_table(mol):
         # else:
         #     neg_adj = " "
         # altloc_len = 1
-        if atom.pqr_charge is None:
+        if atom.pqr_charge is None or atom.pqr_charge == 0:
             charge = ""
         else:
             charge = str(int(atom.pqr_charge)) + ("-" if atom.pqr_charge < 0 else "+")
@@ -341,6 +373,14 @@ def left_adjust(s, n):
 
 
 if __name__ == "__main__":
-    f = "/Users/noahhk/GIT/biobuild/ligtestaux.pdb"
-    c = parse_atoms_table(f, 0)
+    import buildamol as bam
+
+    mol = bam.molecule("GLC")
+    mol.add_model(0)
+    mol.set_model(1)
+    mol.move([5, 0, 0])
+    mol.add_model(1)
+    mol.set_model(2)
+    mol.move([10, 0, 0])
+    write_pdb(mol, "test.pdb")
     pass
