@@ -1461,7 +1461,7 @@ def _neighbor_sort_key(molecule, atom):
 
 
 def vet_structure(
-    molecule, clash_range: tuple = (0.6, 1.7), angle_range: tuple = (90, 180)
+    molecule, clash_range: tuple = (0.6, 2.7), angle_range: tuple = (90, 180)
 ) -> bool:
     """
     Check for basic structure integrity.
@@ -1488,7 +1488,7 @@ def vet_structure(
         d = base.compute_distance(a, b)
         if not clash_range[0] <= d <= clash_range[1]:
             return False
-    for angle in molecule.angles.values():
+    for angle in molecule.compute_angles().values():
         if not angle_range[0] <= angle <= angle_range[1]:
             return False
     for a in molecule.get_atoms():
