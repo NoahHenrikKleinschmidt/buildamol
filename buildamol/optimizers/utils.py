@@ -52,6 +52,7 @@ def apply_rotatron_solution(
             f"Solution and environment do not match (size mismatch): {len(sol)} != {len(bonds)}"
         )
 
+    mol._AtomGraph.clear_cache()
     for i, bond in enumerate(bonds):
         angle = sol[i]
         # used to be full_id to account for the fact that the bond might
@@ -61,15 +62,13 @@ def apply_rotatron_solution(
         # things faster, assuming that the serial number was not altered in some way
         # outside of the molecule object.
         a, b = bond
-        a = mol.get_atom(a.full_id)
-        b = mol.get_atom(b.full_id)
+        a = mol.get_atom(a)
+        b = mol.get_atom(b)
         if a is None or b is None:
             raise ValueError(
                 f"Object and environment do not match (bond mismatch): {bond}"
             )
-
-        mol._rotate_around_bond(a, b, angle, descendants_only=True)
-
+        mol._AtomGraph.rotate_around_edge(a, b, angle, descendants_only=True)
     return mol
 
 
