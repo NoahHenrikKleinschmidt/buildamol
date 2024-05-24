@@ -2,14 +2,14 @@
 Visualization auxiliary functions
 """
 
-import plotly.graph_objects as go
-import plotly.express as px
 import pandas as pd
 import networkx as nx
+import plotly.graph_objects as go
+import plotly.express as px
 import matplotlib.colors as colors
 
+import buildamol.utils as utils
 import buildamol.utils.auxiliary as aux
-
 
 Draw = aux.Draw
 Chem = aux.Chem
@@ -158,7 +158,6 @@ class Py3DmolViewer:
     ) -> None:
         try:
             import py3Dmol
-            from tempfile import NamedTemporaryFile
         except ImportError:
             py3Dmol = None
 
@@ -181,16 +180,12 @@ class Py3DmolViewer:
                 f"Unsupported molecule type: {molecule.__class__.__name__}. The input has to be a Py3DmolViewer or Molecule."
             )
 
-        tmp = NamedTemporaryFile(delete=True, suffix=".pdb")
-        molecule.to_pdb(tmp.name)
-        molecule = Chem.MolFromPDBFile(tmp.name)
+        self.pdb = utils.pdb.encode_pdb(molecule)
 
         self.style = dict(Py3DmolViewer.default_style)
         if style:
             self.style.update(style)
 
-        self.pdb = open(tmp.name, "r").read()
-        tmp.close()
         self.view = py3Dmol.view(width=width, height=height)
         self.view.addModel(self.pdb, "pdb")
         self.view.setStyle(self.style)
@@ -225,13 +220,8 @@ class Py3DmolViewer:
         if isinstance(other, Py3DmolViewer):
             self.view.addModel(other.pdb, "pdb")
         elif hasattr(other, "to_pdb"):
-            from tempfile import NamedTemporaryFile
-
-            tmp = NamedTemporaryFile(delete=True, suffix=".pdb")
-            other.to_pdb(tmp.name)
-            pdb = open(tmp.name, "r").read()
+            pdb = utils.pdb.encode_pdb(other)
             self.view.addModel(pdb, "pdb")
-            tmp.close()
         else:
             raise ValueError(
                 f"Unsupported molecule type: {other.__class__.__name__}. The input has to be a Py3DmolViewer or Molecule."
