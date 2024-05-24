@@ -611,6 +611,7 @@ class AutoLabel:
 
     def _parse_hydrogen_labels(self):
         _neighbor_connect_dict = {}
+        _hydrogen_unique_label_dict = {}
         hydrogens = self._df[self._df.element == "H"]
         for hydrogen in hydrogens.atom:
             neighbors = self.graph.neighbors(hydrogen)
@@ -632,13 +633,32 @@ class AutoLabel:
             if element == "C":
                 element = ""
             label = element + neighbors.label.iloc[-1]
-            self._df.loc[self._df.atom == hydrogen, "label"] = label
-        for _hydrogens in _neighbor_connect_dict.values():
+            mask = self._df.atom == hydrogen
+            self._df.loc[mask, "label"] = label
+        for neighbor, _hydrogens in _neighbor_connect_dict.items():
+            if len(_hydrogens) == 1:
+                continue
             idx = 1
-            if len(_hydrogens) > 1:
-                for h in _hydrogens:
-                    self._df.loc[self._df.atom == h, "label"] += str(idx)
-                    idx += 1
+            for h in _hydrogens:
+                mask = self._df.atom == h
+                if len(self._df.loc[mask, "label"].values[0]) >= 2:
+                    ref = str(self._df.loc[mask, "label"].str[:2].values[0])
+                    _hydrogen_unique_label_dict[ref] = (
+                        _hydrogen_unique_label_dict.get(ref, 0) + 1
+                    )
+                    self._df.loc[mask, "label"] = ref + chr(
+                        64 + _hydrogen_unique_label_dict[ref]
+                    )
+                else:
+                    self._df.loc[mask, "label"] += str(idx)
+
+                # new = self._df.loc[mask, "label"] + str(idx)
+                # self._df.loc[mask, "label"] += str(idx)
+
+                #     self._df.loc[mask, "label"] = self._df.loc[mask, "label"].str[
+                #         :2
+                #     ] + chr(64 + idx)
+                idx += 1
 
     def _final_vet(self):
         _label_counts = self._df.label.value_counts()
@@ -1894,6 +1914,7 @@ def change_element(atom, new_element: str, _molecule):
     if _molecule.get_degree(atom) > new_connectivity:
         neighbors = _molecule.get_neighbors(atom)
         to_remove = []
+        loops = 0
         while _molecule.get_degree(atom) > new_connectivity:
             for neighbor in neighbors:
                 if neighbor.element == "H":
@@ -1901,6 +1922,12 @@ def change_element(atom, new_element: str, _molecule):
                     neighbors.remove(neighbor)
                     new_connectivity += 1
                     break
+            loops += 1
+            if loops > 100:
+                raise ValueError(
+                    f"Could not change element of atom {atom} to {new_element}. Not enough hydrogen atoms available to remove."
+                )
+
         _molecule.remove_atoms(*to_remove)
     elif _molecule.get_degree(atom) < new_connectivity:
         hydrogenator = Hydrogenator()
