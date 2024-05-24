@@ -32,6 +32,29 @@ __amino_acids = set(
 )
 
 
+def find_models(filename):
+    """
+    Get the models from a PDB file.
+
+    Parameters
+    ----------
+    filename : str
+        The filename to read.
+
+    Returns
+    -------
+    list
+        A list of models.
+    """
+    with open(filename, "r") as f:
+        lines = f.readlines()
+    models = []
+    for line in lines:
+        if line.startswith("MODEL"):
+            models.append(line.replace("MODEL", "").strip())
+    return models
+
+
 def write_pdb(mol, filename, symmetric: bool = True):
     """
     Write a molecule to a PDB file.
@@ -121,6 +144,47 @@ def parse_connect_lines(filename):
                 bonds[b] += 1
                 known_bonds.add(b)
     return [(*k, v) for k, v in bonds.items()]
+
+
+def parse_atom_lines(filename, model=None):
+    atoms = {-1: []}
+    _model = -1
+    _skip_lines = False
+    with open(filename, "r") as f:
+        for line in f:
+            if line.startswith("MODEL"):
+                _model = int(line.split()[-1])
+                if model is not None and not _model == model:
+                    _skip_lines = True
+                else:
+                    _skip_lines = False
+                    atoms[_model] = []
+                continue
+            if _skip_lines:
+                continue
+            if line.startswith("ATOM") or line.startswith("HETATM"):
+                atoms[_model].append(_split_atom_line(line))
+    return atoms
+
+
+def _split_atom_line(line) -> tuple:
+    info = {
+        "serial": int(line[6:11].strip()),
+        "id": line[12:16].strip(),
+        "alt_loc": line[16].strip(),
+        "residue": line[17:20].strip(),
+        "chain": line[21].strip(),
+        "res_seq": int(line[22:26].strip()),
+        "icode": line[26].strip(),
+        "x": line[30:38].strip(),
+        "y": line[38:46].strip(),
+        "z": line[46:54].strip(),
+        "occ": line[54:60].strip(),
+        "temp": line[60:66].strip(),
+        "element": line[76:78].strip(),
+        "charge": line[78:80].strip(),
+    }
+    return info
 
 
 def make_connect_table(mol, symmetric=True):
@@ -274,3 +338,9 @@ def left_adjust(s, n):
         The adjusted string.
     """
     return " " * (n - len(s)) + s
+
+
+if __name__ == "__main__":
+    f = "/Users/noahhk/GIT/biobuild/ligtestaux.pdb"
+    c = parse_atoms_table(f, 0)
+    pass

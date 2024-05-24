@@ -88,8 +88,45 @@ class BaseEntity:
         """
         if id is None:
             id = utils.filename_to_id(filename)
-        struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
-        new = cls(struct)
+        atoms = utils.pdb.parse_atom_lines(filename)
+
+        structure = base_classes.Structure(id)
+        if len(atoms) == 1:
+            atoms[0] = atoms[-1]
+        if 0 not in atoms:
+            atoms[0] = next(iter(atoms.values()))
+        atoms.pop(-1)
+
+        chains = {}
+        residues = {}
+        for model, _atoms in atoms.items():
+            model = base_classes.Model(model)
+            structure.add(model)
+            chains.clear()
+            residues.clear()
+            for atom_info in _atoms:
+                if atom_info["chain"] not in chains:
+                    chains[atom_info["chain"]] = base_classes.Chain(atom_info["chain"])
+                    model.add(chains[atom_info["chain"]])
+
+                if atom_info["res_seq"] not in residues:
+                    residues[atom_info["res_seq"]] = base_classes.Residue(
+                        atom_info["residue"], " ", atom_info["res_seq"]
+                    )
+                    chains[atom_info["chain"]].add(residues[atom_info["res_seq"]])
+
+                atom = base_classes.Atom.new(
+                    atom_info["id"],
+                    altloc=atom_info["alt_loc"],
+                    serial_number=atom_info["serial"],
+                    coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
+                    occupancy=atom_info["occ"],
+                    pqr_charge=eval(f"{atom_info['charge']}+0"),
+                    element=atom_info["element"],
+                )
+                residues[atom_info["res_seq"]].add(atom)
+
+        new = cls(structure)
         bonds = utils.pdb.parse_connect_lines(filename)
         if len(bonds) != 0:
             for b in bonds:
@@ -627,7 +664,9 @@ class BaseEntity:
         """
         utils.save_pickle(self, filename)
 
-    def show(self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"):
+    def show(
+        self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"
+    ):
         """
         Open a browser window to view the molecule in 3D using Plotly
 
@@ -649,11 +688,28 @@ class BaseEntity:
         """
         return utils.visual.NglViewer(self).show()
 
-    def py3dmol(self):
+    def py3dmol(self, style: str = "stick", color: str = None, size: tuple = None):
         """
         View the molecule in 3D through py3Dmol
+
+        Parameters
+        ----------
+        style : str
+            The style to use for the visualization. Can be
+            "line", "stick", "sphere", "cartoon", "surface", or "label"
+        color : str
+            A specific color to use for the visualization
+        size : tuple
+            The size of the view as a tuple of (width, height) in pixels.
         """
-        return utils.visual.Py3DmolViewer(self).view
+        size = size or (600, 500)
+        viewer = utils.visual.Py3DmolViewer(self, *size)
+        if color:
+            color = {"color": color}
+        else:
+            color = {}
+        viewer.view.setStyle({style: color})
+        return viewer
 
     def chem2dview(self):
         """
@@ -827,6 +883,16 @@ class BaseEntity:
         self.add_chains(*other.chains)
         self._add_bonds(*other.get_bonds())
         return self
+
+    def clear(self):
+        """
+        Clear the molecule of all models, chains, residues, and atoms.
+        """
+        self._base_struct.child_dict.clear()
+        self._base_struct.child_list.clear()
+        self._AtomGraph.clear()
+        self._AtomGraph.clear_cache()
+        self._bonds.clear()
 
     def squash(self, chain_id: str = "A", resname: str = "UNK"):
         """
@@ -1553,29 +1619,30 @@ class BaseEntity:
         start_atomid : int
             The starting atom id
         """
-        cdx = start_chainid - 1
-        rdx = start_resid
-        adx = start_atomid
+        _m = self._model
+        for model in self.get_models():
 
-        chains = list(self.chains)
-        for chain in chains:
-            chain._id = utils.auxiliary.chain_id_maker(cdx)
-            cdx += 1
+            self.set_model(model)
 
-            for residue in chain.child_list:
-                # chain.child_dict.pop(residue.id)
-                residue.serial_number = rdx
-                # residue.id = (residue.id[0], rdx, *residue.id[2:])
-                rdx += 1
-                # chain.child_dict[residue._id] = residue
+            cdx = start_chainid - 1
+            rdx = start_resid
+            adx = start_atomid
 
-                for atom in residue.child_list:
-                    atom.serial_number = adx
-                    adx += 1
+            chains = list(self.chains)
+            for chain in chains:
+                chain._id = utils.auxiliary.chain_id_maker(cdx)
+                cdx += 1
 
-        # update the atom graph
-        # let's see iff all breaks if we don't do this
-        # self.update_atom_graph()
+                for residue in chain.child_list:
+                    residue.serial_number = rdx
+                    rdx += 1
+
+                    for atom in residue.child_list:
+                        atom.serial_number = adx
+                        adx += 1
+
+        self.set_model(_m)
+        return self
 
     def adjust_indexing(self, mol):
         """
@@ -1589,13 +1656,28 @@ class BaseEntity:
         cdx = len(self.chains)
         rdx = len(self.residues)
         adx = sum(1 for i in self._model.get_atoms())
-        mol.reindex(cdx + 1, rdx + 1, adx + 1)
+        return mol.reindex(cdx + 1, rdx + 1, adx + 1)
 
     def get_chains(self):
         return self._model.get_chains()
 
     def get_models(self):
         return self._base_struct.get_models()
+
+    def split_models(self) -> list:
+        """
+        Split the molecule into multiple molecules, each containing one of the models.
+        """
+        models = []
+        for model in self.get_models():
+            new = self.__class__.empty(id=self.id)
+            new._base_struct.child_list.clear()
+            new._base_struct.child_dict.clear()
+            model.parent = new._base_struct
+            model.id = 0
+            new.add_model(model)
+            models.append(new)
+        return models
 
     def set_model(self, model: int):
         """
@@ -1615,6 +1697,7 @@ class BaseEntity:
                 raise ValueError(
                     f"Model {model} not in molecule. Available models: {self.get_models()}. First add the model to the molecule to set it as the active model!"
                 )
+        return self
 
     def get_model(self, model: int):
         """
@@ -1657,6 +1740,22 @@ class BaseEntity:
             raise ValueError(f"Unknown model type {type(model)}")
 
         self._base_struct.add(new)
+        return self
+
+    def remove_model(self, model: Union[int, base_classes.Model]):
+        """
+        Remove a model from the molecule
+
+        Parameters
+        ----------
+        model : int or Model
+            The model to remove
+        """
+        if isinstance(model, int):
+            model = self.get_model(model)
+        self._base_struct.child_list.remove(model)
+        self._base_struct.child_dict.pop(model.get_id())
+        return self
 
     def get_residues(
         self,
