@@ -502,7 +502,7 @@ __all__ = [
 ]
 
 
-def read_pdb(filename: str, id: str = None) -> "Molecule":
+def read_pdb(filename: str, id: str = None, multimodel: bool = True) -> "Molecule":
     """
     Read a PDB file and return a molecule.
 
@@ -512,12 +512,21 @@ def read_pdb(filename: str, id: str = None) -> "Molecule":
         The path to the PDB file
     id : str
         The id of the molecule
+    multimodel : bool
+        Whether to read all models into a single molecule.
 
     Returns
     -------
     molecule : Molecule
         The molecule
     """
+    if multimodel:
+        models = utils.pdb.find_models(filename)
+        mol = Molecule.empty()
+        for model in models:
+            new = Molecule.from_pdb(filename, id=id, model=model)
+            mol.add_model(new.get_model())
+        return mol
     return Molecule.from_pdb(filename, id=id)
 
 
@@ -1352,46 +1361,46 @@ class Molecule(entity.BaseEntity):
             new.add_bonds(bonds)
         return new
 
-    @classmethod
-    def from_pdb(
-        cls,
-        filename: str,
-        root_atom: Union[str, int] = None,
-        id: str = None,
-        model: int = 0,
-        chain: str = None,
-    ) -> "Molecule":
-        """
-        Read a Molecule from a PDB file
+    # @classmethod
+    # def from_pdb(
+    #     cls,
+    #     filename: str,
+    #     root_atom: Union[str, int] = None,
+    #     id: str = None,
+    #     model: int = 0,
+    #     chain: str = None,
+    # ) -> "Molecule":
+    #     """
+    #     Read a Molecule from a PDB file
 
-        Parameters
-        ----------
-        filename : str
-            Path to the PDB file
-        root_atom : str or int
-            The id or the serial number of the root atom (optional)
-        id : str
-            The id of the Molecule. By default an id is inferred from the filename.
-        model : int
-            The model to use from the structure. Defaults to 0. This may be any
-            valid identifier for a model in the structure, such as an integer or string.
-        chain : str
-            The chain to use from the structure. Defaults to the first chain in the structure.
+    #     Parameters
+    #     ----------
+    #     filename : str
+    #         Path to the PDB file
+    #     root_atom : str or int
+    #         The id or the serial number of the root atom (optional)
+    #     id : str
+    #         The id of the Molecule. By default an id is inferred from the filename.
+    #     model : int
+    #         The model to use from the structure. Defaults to 0. This may be any
+    #         valid identifier for a model in the structure, such as an integer or string.
+    #     chain : str
+    #         The chain to use from the structure. Defaults to the first chain in the structure.
 
-        Returns
-        -------
-        Molecule
-            The Molecule object
-        """
-        if id is None:
-            id = utils.filename_to_id(filename)
-        struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
-        new = cls(struct, root_atom, model=model, chain=chain)
-        bonds = utils.pdb.parse_connect_lines(filename)
-        if len(bonds) != 0:
-            for b in bonds:
-                new.add_bond(*b)
-        return new
+    #     Returns
+    #     -------
+    #     Molecule
+    #         The Molecule object
+    #     """
+    #     if id is None:
+    #         id = utils.filename_to_id(filename)
+    #     struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
+    #     new = cls(struct, root_atom, model=model, chain=chain)
+    #     bonds = utils.pdb.parse_connect_lines(filename)
+    #     if len(bonds) != 0:
+    #         for b in bonds:
+    #             new.add_bond(*b)
+    #     return new
 
     @classmethod
     def from_compound(
@@ -2000,7 +2009,7 @@ class Molecule(entity.BaseEntity):
             The optimized molecule (either the original object or a copy)
         """
         if residue_graph is None:
-            residue_graph = self.count_atoms() > 100
+            residue_graph = self.count_atoms() > 300
 
         if not algorithm_kws:
             algorithm_kws = {}
@@ -2011,8 +2020,8 @@ class Molecule(entity.BaseEntity):
         algorithm = algorithm or optimizers.auto_algorithm(self)
 
         if algorithm == "rdkit":
-            obj = self.copy() if not inplace else self
-            out = optimizers.rdkit_optimize(obj)
+            new = self.copy() if not inplace else self
+            out = optimizers.rdkit_optimize(new)
             out.id = self.id
             return out
         elif algorithm not in ("scipy", "genetic", "swarm", "anneal"):
@@ -2028,21 +2037,25 @@ class Molecule(entity.BaseEntity):
         else:
             raise ValueError(f"Unknown rotatron {rotatron}")
 
-        obj = self.copy() if not inplace else self
+        if not inplace:
+            new = self.copy()
+        else:
+            new = self
 
         if residue_graph:
-            graph = obj.make_residue_graph(detailed=True)
+            graph = new.make_residue_graph(detailed=True)
         else:
-            graph = obj.make_atom_graph(_copy=False)
+            graph = new.make_atom_graph(_copy=False)
 
         edges = graph.find_rotatable_edges(
             graph.central_node, min_ancestors=1, min_descendants=1
         )
+        if len(edges) > 150:
+            edges = graph.sample_edges(edges, edges // 5)
 
         env = rotatron(graph, edges, **rotatron_kws)
 
-        out = optimizers.optimize(obj, env, algorithm, **algorithm_kws)
-        return out
+        return optimizers.optimize(new, env, algorithm, **algorithm_kws)
 
     def __add__(self, other) -> "Molecule":
         """
