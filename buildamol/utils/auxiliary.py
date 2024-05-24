@@ -90,7 +90,7 @@ if HAS_NUMBA:
 
                 from numba import njit as __njit__
 
-                self.__functions__[name] = __njit__(func)
+                self.__functions__[name] = __njit__(func, fastmath=True, cache=True)
 
             return self.__functions__[name]
 
