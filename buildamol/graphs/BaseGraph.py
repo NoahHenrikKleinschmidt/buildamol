@@ -8,7 +8,9 @@ import warnings
 import Bio.PDB as bio
 import networkx as nx
 import numpy as np
-from scipy.spatial.transform import Rotation
+
+# from scipy.spatial.transform import Rotation
+import buildamol.structural.base as base
 
 
 class BaseGraph(nx.Graph):
@@ -25,6 +27,7 @@ class BaseGraph(nx.Graph):
         self._locked_edges = set()
         self._structure_was_searched = False
         self.__descendent_cache = {}
+        self.__last_cache_size = len(self.nodes)
 
     @property
     def structure(self):
@@ -134,7 +137,7 @@ class BaseGraph(nx.Graph):
         """
         raise NotImplementedError
 
-    def get_descendants(self, node_1, node_2):
+    def get_descendants(self, node_1, node_2, use_cache: bool = True):
         """
         Get all descendant nodes that come after a specific edge
         defined in the direction from node1 to node2 (i.e. get all
@@ -146,6 +149,11 @@ class BaseGraph(nx.Graph):
         ----------
         node_1, node_2
             The nodes that define the edge
+        use_cache: bool, optional
+            Whether to use the cache for the descendants, by default True.
+            If True and the graph has not received new nodes since the last time 
+            the cache was updated, a simple lookup is performed. Otherwise the descendant
+            nodes are recursively calculated again. 
 
         Returns
         -------
@@ -182,15 +190,21 @@ class BaseGraph(nx.Graph):
         if node_1 is node_2:
             raise KeyError("Cannot get descendants of a node with itself!")
 
-        _seen = self.__descendent_cache.get((node_1, node_2))
-        if _seen:
-            return _seen
+        if use_cache:
+            _seen = self.__descendent_cache.get((node_1, node_2))
+            if _seen:
+                size, _seen = _seen
+                if size == len(self.nodes):
+                    return _seen
 
         __all_nodes = set(self.nodes)
 
-        _seen = self.__descendent_cache.get((node_2, node_1))
-        if _seen:
-            return __all_nodes - _seen - {node_1, node_2}
+        # if use_cache:
+        #     _seen = self.__descendent_cache.get((node_2, node_1))
+        #     if _seen:
+        #         size, _seen = _seen
+        #         if size == len(self.nodes):
+        #             return __all_nodes - _seen - {node_1, node_2}
 
         _seen = set((node_1, node_2))
         _new_neighs = {node_2}
@@ -205,6 +219,7 @@ class BaseGraph(nx.Graph):
                     continue
                 _desc_from_cache = self.__descendent_cache.get((neigh, d))
                 if _desc_from_cache:
+                    _desc_from_cache = _desc_from_cache[1]
                     _seen.add(d)
                     _seen.update(_desc_from_cache)
                 else:
@@ -215,8 +230,8 @@ class BaseGraph(nx.Graph):
 
         _seen.difference_update((node_1, node_2))
 
-        self.__descendent_cache[(node_1, node_2)] = _seen
-        self.__descendent_cache[(node_2, node_1)] = (
+        self.__descendent_cache[(node_1, node_2)] = len(self.nodes), _seen
+        self.__descendent_cache[(node_2, node_1)] = len(self.nodes), (
             __all_nodes - _seen - {node_1, node_2}
         )
 
@@ -229,7 +244,7 @@ class BaseGraph(nx.Graph):
 
         return _seen
 
-    def get_ancestors(self, node_1, node_2):
+    def get_ancestors(self, node_1, node_2, use_cache: bool = True):
         """
         Get all ancestor nodes that come before a specific edge
         defined in the direction from node1 to node2 (i.e. get all
@@ -241,6 +256,11 @@ class BaseGraph(nx.Graph):
         ----------
         node_1, node_2
             The nodes that define the edge
+        use_cache: bool, optional
+            Whether to use the cache for the ancestors, by default True.
+            If True and the graph has not received new nodes since the last time
+            the cache was updated, a simple lookup is performed. Otherwise the ancestor
+            nodes are recursively calculated again.
 
         Returns
         -------
@@ -274,7 +294,7 @@ class BaseGraph(nx.Graph):
         >>> graph.get_ancestors("A", "B")
         set() # because in this direction there are no other nodes
         """
-        return self.get_descendants(node_2, node_1)
+        return self.get_descendants(node_2, node_1, use_cache)
 
     def find_cycles(self) -> list:
         """
@@ -663,6 +683,12 @@ class BaseGraph(nx.Graph):
 
         return _directed
 
+    def clear_cache(self):
+        """
+        Clear the descendant cache
+        """
+        self.__descendent_cache.clear()
+
     def lock_edge(self, node_1, node_2):
         """
         Lock an edge, preventing it from being rotated.
@@ -786,7 +812,7 @@ class BaseGraph(nx.Graph):
         edge_vector /= np.linalg.norm(edge_vector)
 
         # create the rotation matrix
-        r = Rotation.from_rotvec(angle * edge_vector)
+        # r = Rotation.from_rotvec(angle * edge_vector)
 
         # create a numpy array of the node coordinates
         if descendants_only:
@@ -802,11 +828,15 @@ class BaseGraph(nx.Graph):
         idx_2 = next(idx for idx, i in enumerate(nodes.keys()) if i is node_2)
 
         # apply the rotation matrix to the node coordinates
-        node_coords_rotated = r.apply(node_coords)
+        # node_coords_rotated = r.apply(node_coords)
+        node_coords_rotated = base.rotate_coords(
+            node_coords - node_coords[idx_2], angle, edge_vector
+        )
+        node_coords_rotated += node_coords[idx_2]
 
-        # now adjust for the translatisonal shift around the axis
-        _diff = node_coords_rotated[idx_2] - node_coords[idx_2]
-        node_coords_rotated -= _diff
+        # # now adjust for the translatisonal shift around the axis
+        # _diff = node_coords_rotated[idx_2] - node_coords[idx_2]
+        # node_coords_rotated -= _diff
 
         # update the node coordinates in the graph
         new_coords = {i: node_coords_rotated[idx] for idx, i in enumerate(nodes.keys())}
