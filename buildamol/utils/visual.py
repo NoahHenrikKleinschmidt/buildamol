@@ -10,16 +10,6 @@ import matplotlib.colors as colors
 
 import buildamol.utils.auxiliary as aux
 
-try:
-    import nglview
-except:
-    nglview = None
-
-try:
-    import py3Dmol
-except:
-    py3Dmol = None
-
 
 Draw = aux.Draw
 Chem = aux.Chem
@@ -152,33 +142,120 @@ class Py3DmolViewer:
     Parameters
     ----------
     molecule
-        The molecule to view. This may be any object that holds
-        a biopython structure e.g. a Molecule, AtomGraph, or ResidueGraph.
+        The molecule to view.
     width : int
         The width of the viewer in pixels.
     height : int
         The height of the viewer in pixels.
+    style : dict
+        The style to apply to the visualization.
     """
 
-    def __init__(self, molecule, width: int = 500, height: int = 500) -> None:
+    default_style = {"stick": {}}
+
+    def __init__(
+        self, molecule, width: int = 500, height: int = 500, style: dict = None
+    ) -> None:
+        try:
+            import py3Dmol
+            from tempfile import NamedTemporaryFile
+        except ImportError:
+            py3Dmol = None
+
         if py3Dmol is None or Chem is None:
             raise ImportError(
                 "py3Dmol and/or rdkit are not available. Please install them and be sure to use a compatible (Jupyter) environment."
             )
-        if hasattr(molecule, "to_rdkit"):
-            mol = molecule.to_rdkit()
-        elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
-            mol = molecule._molecule.to_rdkit()
-        elif "Chem" in str(molecule.__class__.mro()[0]):
-            mol = molecule
-        else:
+        # if hasattr(molecule, "to_rdkit"):
+        #     mol = molecule.to_rdkit()
+        # elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+        #     mol = molecule._molecule.to_rdkit()
+        # elif "Chem" in str(molecule.__class__.mro()[0]):
+        #     mol = molecule
+        # else:
+        #     raise ValueError(
+        #         f"Unsupported molecule type: {molecule.__class__.__name__}"
+        #     )
+        if not hasattr(molecule, "to_pdb"):
             raise ValueError(
-                f"Unsupported molecule type: {molecule.__class__.__name__}"
+                f"Unsupported molecule type: {molecule.__class__.__name__}. The input has to be a Py3DmolViewer or Molecule."
             )
 
+        tmp = NamedTemporaryFile(delete=True, suffix=".pdb")
+        molecule.to_pdb(tmp.name)
+        molecule = Chem.MolFromPDBFile(tmp.name)
+
+        self.style = dict(Py3DmolViewer.default_style)
+        if style:
+            self.style.update(style)
+
+        self.pdb = open(tmp.name, "r").read()
+        tmp.close()
         self.view = py3Dmol.view(width=width, height=height)
-        self.view.addModel(Chem.MolToMolBlock(mol), "sdf")
-        self.view.setStyle({"stick": {}})
+        self.view.addModel(self.pdb, "pdb")
+        self.view.setStyle(self.style)
+        self.view.zoomTo()
+
+    def set_style(self, style: dict, model=None) -> None:
+        """
+        Set the visualization style.
+
+        Parameters
+        ----------
+        style : dict
+            The style to add.
+        model : int
+            A specific model to apply the style to.
+        """
+        if model:
+            self.view.setStyle({"model": model}, style)
+        else:
+            self.view.setStyle(style)
+        return self
+
+    def add(self, other, style=None):
+        """
+        Add a second molecule to the viewer.
+
+        Parameters
+        ----------
+        other
+            This may either be another Py3DmolViewer, a molecule object that can be converted to an RDKit molecule.
+        """
+        if isinstance(other, Py3DmolViewer):
+            self.view.addModel(other.pdb, "pdb")
+        elif hasattr(other, "to_pdb"):
+            from tempfile import NamedTemporaryFile
+
+            tmp = NamedTemporaryFile(delete=True, suffix=".pdb")
+            other.to_pdb(tmp.name)
+            pdb = open(tmp.name, "r").read()
+            self.view.addModel(pdb, "pdb")
+            tmp.close()
+        else:
+            raise ValueError(
+                f"Unsupported molecule type: {other.__class__.__name__}. The input has to be a Py3DmolViewer or Molecule."
+            )
+
+        # if isinstance(other, Py3DmolViewer):
+        #     self.view.addModel(Chem.MolToMolBlock(other.mol), "sdf")
+        # elif hasattr(other, "to_rdkit"):
+        #     self.view.addModel(Chem.MolToMolBlock(other.to_rdkit()), "sdf")
+        # elif "Chem" in str(other.__class__.mro()[0]):
+        #     self.view.addModel(Chem.MolToMolBlock(other), "sdf")
+        # else:
+        #     raise ValueError(f"Unsupported molecule type: {other.__class__.__name__}")
+        if not style:
+            style = self.style
+
+        self.view.setStyle({"model": -1}, self.style)
+        return self
+
+    def __iadd__(self, other):
+        return self.add(other)
+
+    def __add__(self, other):
+        return self.add(other)
 
     def show(self):
         """
@@ -200,6 +277,11 @@ class NglViewer:
     """
 
     def __init__(self, molecule):
+        try:
+            import nglview
+        except ImportError:
+            nglview = None
+
         if nglview is None:
             raise ImportError(
                 "NGLView is not available. Please install it with `pip install nglview` and be sure to use a compatible environment."
