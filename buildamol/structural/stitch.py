@@ -329,7 +329,19 @@ class Stitcher(base.Connector):
             graph.add_nodes_from(bystanders.get_atoms())
             graph._residues[bystanders.id] = bystanders
 
-        edges = graph.find_rotatable_edges()
+        # edges = graph.find_rotatable_edges()
+        edges = [(self._anchors[0], self._anchors[1])]
+        other = next(
+            (
+                i
+                for i in graph.adj[self._anchors[0]]
+                if i not in self._anchors and i.level == "A"
+            ),
+            None,
+        )
+        if other:
+            edges.append((other, self._anchors[0]))
+
         env = optimizers.DistanceRotatron(
             graph,
             edges,
@@ -448,9 +460,7 @@ class Stitcher(base.Connector):
                 #     color="orange",
                 # )
 
-                self.target.rotate_around_bond(
-                    *_bond, angle, descendants_only=True, angle_is_degrees=False
-                )
+                self.target._rotate_around_bond(*_bond, angle, descendants_only=True)
 
             self._policy = None, None
 
