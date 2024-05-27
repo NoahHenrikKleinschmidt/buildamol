@@ -846,22 +846,27 @@ class BaseEntity:
             new = deepcopy(self)
             new._base_struct._new_id()
             new._AtomGraph.clear()
+
+            new._base_struct.child_dict.clear()
             for model in new._base_struct.child_list:
-                new._base_struct.child_dict.pop(model.get_id())
                 model._new_id()
                 new._base_struct.child_dict[model.get_id()] = model
+
+                model.child_dict.clear()
                 for chain in model.child_list:
-                    model.child_dict.pop(chain.get_id())
                     chain._new_id()
                     model.child_dict[chain.get_id()] = chain
+
+                    chain.child_dict.clear()
                     for residue in chain.child_list:
-                        chain.child_dict.pop(residue.get_id())
                         residue._new_id()
                         chain.child_dict[residue.get_id()] = residue
+
+                        residue.child_dict.clear()
                         for atom in residue.child_list:
-                            residue.child_dict.pop(atom.get_id())
                             atom._new_id()
                             residue.child_dict[atom.get_id()] = atom
+
             new._AtomGraph.add_nodes_from(new.get_atoms())
             new._AtomGraph.add_edges_from(new.get_bonds())
             for b in new.get_bonds():
