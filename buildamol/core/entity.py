@@ -73,6 +73,8 @@ class BaseEntity:
         cls,
         filename: str,
         id: str = None,
+        model: int = 0,
+        has_atom_ids: bool = True,
     ):
         """
         Read a Molecule from a PDB file
@@ -85,18 +87,22 @@ class BaseEntity:
             The id or the serial number of the root atom (optional)
         id : str
             The id of the Molecule. By default an id is inferred from the filename.
+        model : int
+            The index of the model to use (default: 0)
+        has_atom_ids : bool
+            If the PDB file provides no atom ids, set this to False in order to autolabel the atoms.
         """
         if id is None:
             id = utils.filename_to_id(filename)
-        atoms = utils.pdb.parse_atom_lines(filename)
+        atoms = utils.pdb.parse_atom_lines(filename, model=model)
 
-        structure = base_classes.Structure(id)
         if len(atoms) == 1:
             atoms[0] = atoms[-1]
         if 0 not in atoms:
             atoms[0] = next(iter(atoms.values()))
         atoms.pop(-1)
 
+        structure = base_classes.Structure(id)
         chains = {}
         residues = {}
         for model, _atoms in atoms.items():
@@ -117,6 +123,7 @@ class BaseEntity:
 
                 atom = base_classes.Atom.new(
                     atom_info["id"],
+                    generate_id=not has_atom_ids,
                     altloc=atom_info["alt_loc"],
                     serial_number=atom_info["serial"],
                     coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
