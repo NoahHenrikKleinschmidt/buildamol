@@ -188,6 +188,7 @@ class Py3DmolViewer:
 
         self.view = py3Dmol.view(width=width, height=height)
         self.view.addModel(self.pdb, "pdb")
+        self.n_models = 1
         self.view.setStyle(self.style)
         self.view.zoomTo()
 
@@ -203,6 +204,10 @@ class Py3DmolViewer:
             A specific model to apply the style to.
         """
         if model:
+            if model > self.n_models:
+                raise ValueError(
+                    f"Model {model} does not exist. The viewer contains {self.n_models} models."
+                )
             self.view.setStyle({"model": model}, style)
         else:
             self.view.setStyle(style)
@@ -219,26 +224,20 @@ class Py3DmolViewer:
         """
         if isinstance(other, Py3DmolViewer):
             self.view.addModel(other.pdb, "pdb")
+            if style is None:
+                style = other.style
         elif hasattr(other, "to_pdb"):
             pdb = utils.pdb.encode_pdb(other)
             self.view.addModel(pdb, "pdb")
+            if not style:
+                style = self.style
         else:
             raise ValueError(
                 f"Unsupported molecule type: {other.__class__.__name__}. The input has to be a Py3DmolViewer or Molecule."
             )
 
-        # if isinstance(other, Py3DmolViewer):
-        #     self.view.addModel(Chem.MolToMolBlock(other.mol), "sdf")
-        # elif hasattr(other, "to_rdkit"):
-        #     self.view.addModel(Chem.MolToMolBlock(other.to_rdkit()), "sdf")
-        # elif "Chem" in str(other.__class__.mro()[0]):
-        #     self.view.addModel(Chem.MolToMolBlock(other), "sdf")
-        # else:
-        #     raise ValueError(f"Unsupported molecule type: {other.__class__.__name__}")
-        if not style:
-            style = self.style
-
-        self.view.setStyle({"model": -1}, self.style)
+        self.n_models += 1
+        self.view.setStyle({"model": self.n_models}, self.style)
         return self
 
     def __iadd__(self, other):
