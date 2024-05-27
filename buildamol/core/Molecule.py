@@ -502,7 +502,9 @@ __all__ = [
 ]
 
 
-def read_pdb(filename: str, id: str = None, multimodel: bool = True) -> "Molecule":
+def read_pdb(
+    filename: str, id: str = None, multimodel: bool = False, has_atom_ids: bool = True
+) -> "Molecule":
     """
     Read a PDB file and return a molecule.
 
@@ -513,20 +515,24 @@ def read_pdb(filename: str, id: str = None, multimodel: bool = True) -> "Molecul
     id : str
         The id of the molecule
     multimodel : bool
-        Whether to read all models into a single molecule.
+        Whether to read all models and return a list of molecules.
+    has_atom_ids : bool
+        Whether the PDB file contains atom ids. If the file does not, the atom ids can be auto-generated if this is set to false.
 
     Returns
     -------
-    molecule : Molecule
-        The molecule
+    molecule : Molecule or list
+        The molecule or a list of molecules if multimodel is True
     """
     if multimodel:
         models = utils.pdb.find_models(filename)
-        mol = Molecule.empty()
+        molecules = []
         for model in models:
-            new = Molecule.from_pdb(filename, id=id, model=model)
-            mol.add_model(new.get_model())
-        return mol
+            new = Molecule.from_pdb(
+                filename, id=id, model=model, has_atom_ids=has_atom_ids
+            )
+            molecules.append(new)
+        return molecules
     return Molecule.from_pdb(filename, id=id)
 
 
