@@ -214,7 +214,7 @@ def _split_atom_line(line) -> tuple:
         "occ": float(line[54:60].strip()),
         "temp": float(line[60:66].strip()),
         "element": line[76:78].strip(),
-        "charge": line[78:80].strip(),
+        "charge": eval(line[78:80].strip() + ".0"),
     }
     return info
 
@@ -327,7 +327,7 @@ def make_atoms_table(mol):
                 # temp=left_adjust("0.00", 6),
                 temp=left_adjust(f"{atom.bfactor:.2f}", 6),
                 seg=right_adjust("", 3),
-                element=left_adjust(atom.element.upper(), 2),
+                element=right_adjust(atom.element.upper(), 2),
                 charge=left_adjust(charge, 2),
             )
         )
@@ -375,12 +375,8 @@ def left_adjust(s, n):
 if __name__ == "__main__":
     import buildamol as bam
 
-    mol = bam.molecule("GLC")
-    mol.add_model(0)
-    mol.set_model(1)
-    mol.move([5, 0, 0])
-    mol.add_model(1)
-    mol.set_model(2)
-    mol.move([10, 0, 0])
-    write_pdb(mol, "test.pdb")
+    out = parse_atom_lines(
+        "/Users/noahhk/GIT/biobuild/docs/examples/files/DRD2_ligand.pdb"
+    )
+    out
     pass
