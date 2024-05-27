@@ -237,7 +237,7 @@ class Py3DmolViewer:
             )
 
         self.n_models += 1
-        self.view.setStyle({"model": self.n_models}, self.style)
+        self.view.setStyle({"model": self.n_models-1}, self.style)
         return self
 
     def __iadd__(self, other):
