@@ -237,7 +237,7 @@ class Py3DmolViewer:
             )
 
         self.n_models += 1
-        self.view.setStyle({"model": self.n_models-1}, self.style)
+        self.view.setStyle({"model": self.n_models - 1}, self.style)
         return self
 
     def __iadd__(self, other):
@@ -275,10 +275,10 @@ class NglViewer:
             raise ImportError(
                 "NGLView is not available. Please install it with `pip install nglview` and be sure to use a compatible environment."
             )
-        if hasattr(molecule, "to_biopython"):
-            self.structure = molecule.to_biopython()
+        if hasattr(molecule, "to_pdb"):
+            self.pdb = utils.pdb.encode_pdb(molecule)
         elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
-            self.structure = molecule.structure.to_biopython()
+            self.pdb = utils.pdb.encode_pdb(molecule._molecule)
         else:
             raise ValueError(
                 f"Unsupported molecule type: {molecule.__class__.__name__}"
@@ -288,7 +288,12 @@ class NglViewer:
         """
         Show the molecule in a Jupyter notebook
         """
-        fig = nglview.show_biopython(self.structure)
+        import nglview
+        import io
+
+        f = io.StringIO(self.pdb)
+        f.seek(0)
+        fig = nglview.show_file(f, ext="pdb")
         return fig
 
 

@@ -2,8 +2,6 @@
 Auxiliary tools for PDB files.
 """
 
-from tabulate import tabulate
-
 __amino_acids = set(
     (
         "ALA",
@@ -214,7 +212,7 @@ def _split_atom_line(line) -> tuple:
         "occ": float(line[54:60].strip()),
         "temp": float(line[60:66].strip()),
         "element": line[76:78].strip(),
-        "charge": eval(line[78:80].strip() + ".0"),
+        "charge": eval(line[78:80] + "0"),
     }
     return info
 
