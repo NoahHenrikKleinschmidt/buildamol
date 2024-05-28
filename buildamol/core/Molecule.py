@@ -56,6 +56,12 @@ offers already a number of convenient methods to easily generate molecules direc
 - `Molecule.from_pubchem` to generate a molecule from a PubChem entry
 - `Molecule.from_compound` to generate a molecule from a PDBECompounds entry
 - `Molecule.from_rdkit` to generate a molecule from an RDKit molecule object
+- `Molecule.from_openmm` to generate a molecule from an OpenMM topology object
+- `Molecule.from_stk` to generate a molecule from an STK molecule object
+- `Molecule.from_molfile` to generate a molecule from a MOL file
+- `Molecule.from_json` to generate a molecule from a JSON file
+- `Molecule.empty` to generate an empty molecule
+
 
 Hence, if we know that "glucose" is already available in our local PDBECompounds database, we can generate the molecule also as follows:
 
@@ -228,24 +234,6 @@ They work exactly like their `add_` counterparts, but instead of adding, they re
 
     # remove the bond between the first and second atom
     glc.remove_bond(1, 2)
-
-
-.. warning::
-
-    When adding and removing atoms and residues, the `Molecule` object will not automatically update the `biopython.Structure` object as well as its internal
-    connectivity graph (the `AtomGraph`). However, if the user chooses to edit the biopython structure directly, the `AtomGraph` will **not** be updated automatically!
-    In this case, the user must call the `update_atom_graph` method to update the `AtomGraph` manually. 
-
-    .. code-block:: python
-
-        # add a new residue to the molecule
-        glc.add_residues(new_residue)
-
-        # now add atoms into the residue directly instead of via `add_atoms`
-        new_residue.add(new_atom)
-    
-        # now update the graph
-        glc.update_atom_graph()
 
 
 Adjusting labelling
