@@ -14,7 +14,7 @@ setuptools.setup(
     package_data={
         "buildamol.resources": ["*.pkl", "*.json", "*.cif"],
     },
-    url="https://github.com/NoahHenrikKleinschmidt/biobuild",
+    url="https://github.com/NoahHenrikKleinschmidt/buildamol",
     packages=[
         "buildamol",
         "buildamol.core",
@@ -27,6 +27,8 @@ setuptools.setup(
         "buildamol.extensions.complexes",
         "buildamol.extensions.polymers",
         "buildamol.extensions.nanotubes",
+        "buildamol.extensions.bio",
+        "buildamol.extensions.bio.proteins",
     ],
     install_requires=[
         "numpy",
