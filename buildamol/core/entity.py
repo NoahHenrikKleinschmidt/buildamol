@@ -693,7 +693,7 @@ class BaseEntity:
         """
         View the molecule in 3D through nglview
         """
-        return utils.visual.NglViewer(self).show()
+        return utils.visual.NglViewer(self)
 
     def py3dmol(self, style: str = "stick", color: str = None, size: tuple = None):
         """
