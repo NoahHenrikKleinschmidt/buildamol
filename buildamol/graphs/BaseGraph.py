@@ -296,6 +296,24 @@ class BaseGraph(nx.Graph):
         """
         return self.get_descendants(node_2, node_1, use_cache)
 
+    def search_by_constraints(self, constraints: list) -> list:
+        """
+        Search for neighboring nodes that match a set of constraints.
+
+        Parameters
+        ----------
+        constraints : list
+            A list of constraint functions, where each entry represents the constraints for a specific node.
+            All constraints must be satisfied for all nodes in the neighborhood to be considered a match.
+
+        Returns
+        -------
+        list
+            A list of dictionaries where each dictionary contains nodes that match the constraints. The keys represent
+            the constraint index which the nodes satisfy and the values are the nodes themselves.
+        """
+        raise NotImplementedError
+
     def find_cycles(self) -> list:
         """
         Find all cycles in the graph

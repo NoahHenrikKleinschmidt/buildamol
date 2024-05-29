@@ -28,6 +28,7 @@ class Neighborhood:
 
     def __init__(self, graph):
         self._src = graph
+        self.adj = graph.adj
 
         # each implementation may call this method before the super init
         # self._validate_getters()
@@ -100,6 +101,45 @@ class Neighborhood:
                     neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
                 self._seen.add(neighbor)
             return neighbors
+
+    def search_by_constraints(self, constraints: list):
+        """
+        Search for nodes that satisfy a set of constraints
+
+        Parameters
+        ----------
+        constraints : list
+            A list of constraint functions. Each function should take
+            a graph and a node as arguments and return a boolean.
+
+        Returns
+        -------
+        nodes : set
+            The nodes that satisfy the constraints
+        """
+        matches = []
+        if len(constraints) == 1:
+            node_factory = lambda node: {node}
+        else:
+            node_factory = lambda node: {
+                node,
+                *self.get_neighbors(node, n=len(constraints) - 1),
+            }
+
+        for node in self._src.nodes:
+            _nodes = node_factory(node)
+            m = {}
+            for i, constraint in enumerate(constraints):
+                for n in _nodes:
+                    if constraint is None or constraint(self, n):
+                        m[i] = n
+                        _nodes.remove(n)
+                        break
+            if len(m) == len(constraints):
+                if m in matches:
+                    continue
+                matches.append(m)
+        return matches
 
 
 class AtomNeighborhood(Neighborhood):
@@ -597,6 +637,52 @@ class constraints:
     none = lambda graph, node: True
     """
     No constraints
+    """
+
+    has_element = lambda element: (
+        lambda graph, node: node.element.lower() == element.lower()
+    )
+    """
+    The node has the specified element
+    """
+
+    has_any_element = lambda *args: (
+        lambda graph, node: node.element.lower() in (i.lower() for i in args)
+    )
+    """
+    The node has any of the specified elements
+    """
+
+    has_not_element = lambda element: (
+        lambda graph, node: node.element.lower() != element.lower()
+    )
+    """
+    The node does not have the specified element
+    """
+
+    has_id = lambda id: lambda graph, node: node.id == id
+    """
+    The node has the specified id
+    """
+
+    has_any_id = lambda *args: lambda graph, node: node.id in args
+    """
+    The node has any of the specified ids
+    """
+
+    has_not_id = lambda id: lambda graph, node: node.id != id
+    """
+    The node does not have the specified id
+    """
+
+    is_residue = lambda graph, node: hasattr(node, "resname")
+    """
+    The node is a residue
+    """
+
+    is_atom = lambda graph, node: hasattr(node, "element")
+    """
+    The node is an atom
     """
 
     alone = lambda graph, node: len(graph.adj[node]) == 0

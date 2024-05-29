@@ -1613,6 +1613,48 @@ class BaseEntity:
             return None
         return Hs.pop()
 
+    def search_by_constraints(self, constraints: list) -> list:
+        """
+        Search for atoms based on a list of constraints. The constraints must be constraint functions
+        from `structural.neighbors.constraints`. Each entry in the constraints list represents the constraints for one specific atom.
+        Constraints apply to atom neighborhoods not the atom graph as a whole! This means that constraints are applied to the neighbors of the atoms when searching!
+
+        Parameters
+        ----------
+        constraints : list
+            A list of constraint functions
+        
+        Returns
+        -------
+        list
+            A list of matching atoms. Each entry in this list will be a dictionary mapping the atoms (values) to the constraint function index for which they match (key).
+
+        Examples
+        --------
+        For a molecule
+        ```
+                     OH
+                    /
+        (1)CH3 --- CH 
+                    \\
+                    CH2 --- (2)CH3
+        ```
+        we can search for the metyhl groups by using the following constraints:
+        
+        >>> from buildamol.core.structural.neighbors import constraints
+        >>> constraints = [
+        ...     # the first atom must be a carbon and have three hydrogen neighbors
+        ...     # we only search for the methyl-carbons...
+        ...     constraints.multi_constraint(
+        ...         constraints.has_element("C"),
+        ...         constraints.has_neighbor_hist({"H": 3}),
+        ...     ),
+        ...     ]
+        >>> mol.search_by_constraints(constraints)
+        [{0: (1)C}, {0: (2)C}]
+        """
+        return self._AtomGraph.search_by_constraints(constraints)
+
     def reindex(
         self, start_chainid: int = 1, start_resid: int = 1, start_atomid: int = 1
     ):

@@ -13,8 +13,8 @@ class ResidueGraph(BaseGraph):
     A graph representation of residues bonded together as an abstraction of a large contiguous molecule.
     """
 
-    __idx_method__ = (
-        lambda x: x.serial_number if hasattr(x, "serial_number") else x.id[1]
+    __idx_method__ = lambda x: (
+        x.serial_number if hasattr(x, "serial_number") else x.id[1]
     )
 
     def __init__(self, id, bonds: list):
@@ -451,6 +451,11 @@ class ResidueGraph(BaseGraph):
         if not self._neighborhood:
             self._neighborhood = struct.ResidueNeighborhood(self)
         return self._neighborhood.get_neighbors(residue, n, mode)
+
+    def search_by_constraints(self, constraints: list) -> list:
+        if not self._neighborhood:
+            self._neighborhood = struct.ResidueNeighborhood(self)
+        return self._neighborhood.search_by_constraints(constraints)
 
     def centers_of_mass(self):
         """

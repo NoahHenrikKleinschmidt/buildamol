@@ -632,3 +632,16 @@ def test_sample_edges():
     edges = graph.sample_edges(edges, n=5, m=2)
     assert len(edges) == 10
     assert all(i in all_edges for i in edges)
+
+
+def test_search_by_constraints():
+    mol = bam.Molecule.from_smiles("CC(=O)NC")
+    graph = mol.get_atom_graph()
+    c = bam.structural.neighbors.constraints
+    constraints = [
+        c.has_element("C"),
+        c.multi_constraint(c.has_element("O"), c.has_n_neighbors(1)),
+    ]
+    matches = graph.search_by_constraints(constraints)
+    assert len(matches) == 1
+    assert len(matches[0]) == 2

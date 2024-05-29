@@ -140,6 +140,11 @@ class AtomGraph(BaseGraph):
             self._neighborhood = struct.AtomNeighborhood(self)
         return self._neighborhood.get_neighbors(atom, n, mode)
 
+    def search_by_constraints(self, constraints: list) -> list:
+        if not self._neighborhood:
+            self._neighborhood = struct.AtomNeighborhood(self)
+        return self._neighborhood.search_by_constraints(constraints)
+
     @staticmethod
     def _make_bonds(
         structure,

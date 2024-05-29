@@ -2139,3 +2139,33 @@ def test_sampler():
         )
         v.show()
 
+
+def test_search_by_constraints():
+    mol = bam.read_smiles("CC(O)=CC")
+    constraints = bam.structural.neighbors.constraints
+    out = mol.search_by_constraints(
+        [
+            constraints.multi_constraint(
+                constraints.has_element("C"),
+                constraints.has_neighbor_hist({"H": 3}),
+            ),
+        ]
+    )
+    assert len(out) == 2
+
+
+def test_search_by_constraints2():
+    mol = bam.read_smiles("CC(O)=CC")
+    constraints = bam.structural.neighbors.constraints
+    out = mol.search_by_constraints(
+        [
+            constraints.multi_constraint(
+                constraints.has_element("C"),
+                constraints.has_neighbor_hist({"O": 1, "C": 2}),
+            ),
+            constraints.has_element("O"),
+        ]
+    )
+    assert len(out) == 1
+
+    pass
