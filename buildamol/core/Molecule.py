@@ -1309,7 +1309,7 @@ class Molecule(entity.BaseEntity):
         Parameters
         ----------
         id : str
-            The id of the Molecule. By default an id is inferred from the filename.
+            An id of the Molecule.
 
         Returns
         -------
