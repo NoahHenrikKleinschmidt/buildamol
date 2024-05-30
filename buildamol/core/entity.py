@@ -689,6 +689,8 @@ class BaseEntity:
         v = self.draw(residue_graph, atoms, line_color)
         v.show()
 
+    show3d = show
+
     def nglview(self):
         """
         View the molecule in 3D through nglview
@@ -715,7 +717,8 @@ class BaseEntity:
             color = {"color": color}
         else:
             color = {}
-        viewer.view.setStyle({style: color})
+        viewer.style = {style: color}
+        viewer.view.setStyle(viewer.style)
         return viewer
 
     def chem2dview(self):
@@ -723,6 +726,15 @@ class BaseEntity:
         View the molecule in 2D through RDKit
         """
         return utils.visual.Chem2DViewer(self)
+
+    draw2d = chem2dview
+
+    def show2d(self):
+        """
+        View the molecule in 2D through RDKit
+        """
+        viewer = self.chem2dview()
+        viewer.show()
 
     def draw(
         self,
@@ -757,6 +769,9 @@ class BaseEntity:
             v.setup(atoms)
 
             return v
+
+    draw3d = draw
+    plotly = draw
 
     # def vet(
     #     self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)

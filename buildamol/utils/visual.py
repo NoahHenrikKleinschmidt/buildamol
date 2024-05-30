@@ -229,15 +229,15 @@ class Py3DmolViewer:
         elif hasattr(other, "to_pdb"):
             pdb = utils.pdb.encode_pdb(other)
             self.view.addModel(pdb, "pdb")
-            if not style:
+            if style is None:
                 style = self.style
         else:
             raise ValueError(
                 f"Unsupported molecule type: {other.__class__.__name__}. The input has to be a Py3DmolViewer or Molecule."
             )
 
+        self.view.setStyle({"model": self.n_models}, style)
         self.n_models += 1
-        self.view.setStyle({"model": self.n_models - 1}, self.style)
         return self
 
     def __iadd__(self, other):
