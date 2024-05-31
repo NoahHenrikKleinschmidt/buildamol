@@ -1,7 +1,120 @@
-.. title:: BuildAMol
-    
-.. gallery
+.. <gallery>
 
+.. raw:: html
+
+    <div class="slideshow-container">
+        
+    <div class="mySlides fade">
+        <img src="_static/gallery/sampling.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/complex.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/linear-polymer.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/polyphenylene.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/nanotube.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/xwing.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/prot-glyco.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/ring.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/rotaxan-linear.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/rotaxan-small.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/peptide.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/drd2-ligand.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/his20-2.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/his20.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/glyco-membrane.png" style="width:100%">
+    </div>
+
+    </div>
+
+.. raw:: html
+
+    <style>
+    .slideshow-container {
+      max-width: 1000px;
+      position: relative;
+      margin: auto;
+    }
+
+   img {
+      background-color: transparent !important;
+   }
+
+    .mySlides {
+      display: none;
+    }
+
+    .fade {
+      animation: fade 5000ms infinite;
+    }
+
+    @keyframes fade {
+      from {opacity: .7} 
+      to {opacity: 1}
+    }
+    </style>
+
+.. raw:: html
+
+    <script>
+    var slideIndex = 0;
+    showSlides();
+
+    function showSlides() {
+      var i;
+      var slides = document.getElementsByClassName("mySlides");
+      for (i = 0; i < slides.length; i++) {
+        slides[i].style.display = "none";  
+      }
+      slideIndex++;
+      if (slideIndex > slides.length) {slideIndex = 1}    
+      slides[slideIndex-1].style.display = "block";  
+      setTimeout(showSlides, 5000); // Change image every N seconds
+    }
+    </script>
+
+.. <gallery>
+.. title:: BuildAMol
+   
 .. image:: _resources/logo_large.png
    :width: 80%
    :align: center

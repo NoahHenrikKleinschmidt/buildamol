@@ -60,6 +60,9 @@ def gallery(directory):
     """
     images = [directory + f for f in os.listdir(directory) if f.endswith(".png")]
     return f"""
+
+.. <gallery>
+
 .. raw:: html
 
     <div class="slideshow-container">
@@ -67,6 +70,8 @@ def gallery(directory):
     </div>
 
 {style()}
+
+.. <gallery>
 """.strip()
 
 

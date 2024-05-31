@@ -233,11 +233,19 @@ def build_docs():
     os.chdir(DOCS_DIR)
     g = add_example_gallery.gallery("_static/gallery/")
     with open(DOCS_DIR + "/index.rst", "r") as f:
-        contents = f.read()
-    with open(DOCS_DIR + "/index.rstb", "w") as f:
-        f.write(contents)
+        contents = []
+        keep_line = True
+        for line in f:
+            if line == ".. <gallery>\n":
+                keep_line = not keep_line
+            if keep_line:
+                contents.append(line)
+
+    contents = "".join(contents)
     with open(DOCS_DIR + "/index.rst", "w") as f:
-        f.write(contents.replace(".. gallery", g))
+        f.write(g)
+        f.write("\n")
+        f.write(contents)
 
     subprocess.run("make clean", shell=True)
     subprocess.run("make html", shell=True)
