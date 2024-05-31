@@ -11,29 +11,74 @@ Basic structural operations
 
 The `base` module contains the basic structural operations that are used by the other modules.
 
-.. automodule:: buildamol.structural.base
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. dropdown:: Basic structural operations
+      
+   .. automodule:: buildamol.structural.base
+      :members:
+      :undoc-members:
+      :show-inheritance:
 
-Inferring structural properties
+Inferring Structural Properties
 -------------------------------
 
 The `infer` module contains methods for inferring structural properties from a molecule's atoms and connectivity.
 Among these are connections, or atom labels.
 
-.. automodule:: buildamol.structural.infer
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. dropdown:: Inferential structural operations
+      
+   .. automodule:: buildamol.structural.infer
+      :members:
+      :undoc-members:
+      :show-inheritance:
 
-.. automodule:: buildamol.structural.smiles
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. dropdown:: SMILES
+      
+      .. automodule:: buildamol.structural.smiles
+         :members:
+         :undoc-members:
+         :show-inheritance:
+
+Functional Groups
+-----------------
+
+The `groups` module contains methods for describing functional groups in a molecule in order to guide connectivity between fragments.
+
+.. dropdown:: Functional Groups
+      
+   .. automodule:: buildamol.structural.groups
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+Molecular Geometries
+--------------------
+
+The `geometry` module contains methods to place atoms in a molecule in a specific geometry.
+Defined are the basic geometries: linear, trigonal planar, tetrahedral, trigonal bipyramidal, and octahedral.
+
+.. dropdown:: Molecular Geometries
+      
+   .. automodule:: buildamol.structural.geometry
+      :members:
+      :undoc-members:
+      :show-inheritance:
 
 
-Assembling molecules
+Graph Neighborhood in Molecular Structures
+------------------------------------------
+
+In order to infer the neighborhoods from connectivity information in molecules, the `neighbors` module defines a `Neighborhood` class that can be used to infer the neighborhoods of atoms in a molecule.
+
+.. dropdown:: Graph Neighborhood in Molecular Structures
+      
+   .. automodule:: buildamol.structural.neighbors
+      :members:
+      :undoc-members:
+      :show-inheritance:
+
+
+
+Assembling Molecules
 --------------------
 
 In order to assemble two molecules together there are two modules that are used: `stitch` and `patch`.
@@ -64,16 +109,4 @@ a `patch` (i.e. a `Linkage` with internal coordinates). The `stitch` module defi
          :members:
          :undoc-members:
          :show-inheritance:
-
-
-Graph neighborhood in molecular structures
-------------------------------------------
-
-In order to infer the neighborhoods from connectivity information in molecules, the `neighbors` module defines a `Neighborhood` class that can be used to infer the neighborhoods of atoms in a molecule.
-
-
-.. automodule:: buildamol.structural.neighbors
-   :members:
-   :undoc-members:
-   :show-inheritance:
 

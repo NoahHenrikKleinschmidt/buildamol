@@ -9,7 +9,7 @@
 project = "buildamol"
 copyright = "2024, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "1.1.30"
+release = "1.1.31"
 
 
 import plotly.io as pio
@@ -39,9 +39,9 @@ extensions = [
 #     "gallery_dirs": "./examples",  # path to where to save gallery generated output
 # }
 
-nbsphinx_thumbnails = {
-    "examples/building_circular": "examples/_thumbnails/polyhis.jpg",
-}
+# nbsphinx_thumbnails = {
+#     "examples/building_circular": "examples/_thumbnails/polyhis.jpg",
+# }
 
 
 napoleon_numpy_docstring = True

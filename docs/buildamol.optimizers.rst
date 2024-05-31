@@ -43,6 +43,20 @@ that can be used for optimization heads-on. These are:
          :undoc-members:
          :show-inheritance:
 
+   .. tab-item:: The Circulatron
+
+         .. automodule:: buildamol.optimizers.Circulatron
+            :members:
+            :undoc-members:
+            :show-inheritance:
+   
+   .. tab-item:: The ConstraintRotatron
+
+         .. automodule:: buildamol.optimizers.ConstraintRotatron
+            :members:
+            :undoc-members:
+            :show-inheritance:
+
    .. tab-item:: The Base Rotatron
          
          .. automodule:: buildamol.optimizers.Rotatron
@@ -50,6 +64,19 @@ that can be used for optimization heads-on. These are:
             :undoc-members:
             :show-inheritance:
             
+
+The Translatron
+---------------
+
+The Translatron is a special environment that is used to to optimize the spatial position of a molecule by optimizing
+its translation and global translation around the x, y and z axis. This is useful when you want to optimize the position of a molecule in a 3D space.
+
+.. dropdown:: The Translatron
+      
+   .. automodule:: buildamol.optimizers.Translatron
+      :members:
+      :undoc-members:
+      :show-inheritance:
 
 Optimization algorithms
 -----------------------

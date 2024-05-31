@@ -1,6 +1,7 @@
 """
 Make a new version of biobuild
 """
+
 import argparse
 import os
 import re
@@ -227,9 +228,21 @@ def build_docs():
     """
     Build the documentation
     """
+    import add_example_gallery
+
     os.chdir(DOCS_DIR)
+    g = add_example_gallery.gallery("_static/gallery/")
+    with open(DOCS_DIR + "/index.rst", "r") as f:
+        contents = f.read()
+    with open(DOCS_DIR + "/index.rstb", "w") as f:
+        f.write(contents)
+    with open(DOCS_DIR + "/index.rst", "w") as f:
+        f.write(contents.replace(".. gallery", g))
+
     subprocess.run("make clean", shell=True)
     subprocess.run("make html", shell=True)
+    os.remove(DOCS_DIR + "/index.rst")
+    os.rename(DOCS_DIR + "/index.rstb", DOCS_DIR + "/index.rst")
 
 
 def install():

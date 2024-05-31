@@ -6,13 +6,26 @@
 API Documentation
 =================
 
+This is the API documentation for the main BuildAMol library.
+
 .. toctree::
    :maxdepth: 3
 
    buildamol.core
    buildamol.resources
    buildamol.optimizers
+   buildamol.structural
    buildamol.visuals
    buildamol.graphs
-   buildamol.structural
    buildamol.utils
+
+
+Extensions
+==========
+
+This is the API documentation for the BuildAMol extensions.
+
+.. toctree::
+   :maxdepth: 3
+
+   buildamol.extensions

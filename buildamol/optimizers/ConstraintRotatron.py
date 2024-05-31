@@ -1,3 +1,7 @@
+"""
+The ConstraintRotatron allows for the optimization of a molecule's conformation while also accepting an additional constraint function that will also contribute to the evaluation. 
+"""
+
 import buildamol.optimizers.Rotatron as Rotatron
 
 
