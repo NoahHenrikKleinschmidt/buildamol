@@ -6,162 +6,33 @@
 Overview
 ========
 
-Most of the functionality is provided through a simple toplevel functional API, with a much more extended
-method-based API available for both simple and more complex operations. To facilitate user-friendliness most of the 
-BuildAMol functionality has been integrated into methods that are attached to the `Molecule` class, which is the
-main class of BuildAMol. The `Molecule` class is a wrapper around the `Bio.PDB.Structure.Structure` class which handles
-all atomic data. 
+BuildAMol is a python library to create, modify, and visualize molecular structures in a simple and intuitive way.
+Complex structures can be built from simple building blocks, and the library is designed to be user-friendly, extendible, and highly flexible.
+BuildAMol is not designed for any specifc type or class of molecule. Whether it's small protein ligands, metal complexes, or large polymers, BuildAMol can handle it all.
+BuildAMol is designed to be an expert-driven library, meaning that it is designed to be used by people who are already familiar with molecular structures and their properties.
+However, BuildAMol can be used in automated frameworks to generate molecular structures without human intervention (check out our tutorial on automated ligand generation to see how this might be done).
+Also, to faciliate the workflow of the user, BuildAMol provides easy interfaces with other popular libraries such as `Bio.PDB`, `RDKit`, and `OpenBabel` to allow for direct interconversion
+between these libraries and BuildAMol.
 
-.. note::
+Here are a few things that BuildAMol can do:
+- assemble two benzene rings together to form a biphenyl
+- polymerize a glucose molecule to form cellulose
+- change the elements in a carboxylic acid to form an amide
+- create a metal complex with three ligands
+- optimize a molecular structure
+- search for substructures to identify functional groups
+- visualize a protein-ligand complex
+- compute the bond angles in a molecule
+- sample 10 different conformations of a molecule
+- and much more!
 
-   The `Molecule` class is **not** a subclass of `Bio.PDB.Structure.Structure` - it is a wrapper around it. This means that
-   it does not inherit any methods of the `Structure` class directly. However, the `Molecule` class has a `structure` attribute
-   which is the `Structure` object that it wraps. Also, the `Molecule` class is equipped with many equivalent methods to the `Structure`
-   class that can be used to access the structure in more convenient ways.
+Most of the functionality of BuildAMol is based on the `Molecule` class, which is equipped with a large number of methods to manipulate the structure.
+However, BuildAMol also provides a top-level functional API as well as an operator-based API to allow for more concise and intuitive code depending on the user's preferences!
+What is more, BuildAMol comes with a built-in database of small molecules, amino acids, sugars, and lipids from the PDB Component Dictionary, which offers thousands of fragments to be 
+usable off-line directly in BuildAMol. However, if you need more molecules, BuildAMol will retrieve any unknown molecule automatically from PubChem so you have access to 50 million potential fragment molecules without leaving your Jupyter Notebook or Python script!
 
-The `Molecule` class is the main class of BuildAMol and is used to create, modify, and visualize molecular structures. The `Molecule` class can:
-
-- read structures from PDB and mmCIF files
-- write structures to PDB and mmCIF files
-- convert structural data between formats
-- add and remove atoms, residues, and chains
-- rotate parts of the structure around bonds
-- connect multiple molecules together
-- visualize structures in 3D
-- provide structural data such as bond angles
-
-.. code-block:: python
-
-   import buildamol as bam
-
-   # make a molecule from a PDB file
-   mol = bam.molecule("my_structure.pdb")
-
-   # rotate part of the molecule 
-   # around the bond between atoms C4 and C5 by 45°
-   # rotating only atoms after C5 (i.e. descendants)
-   mol.rotate_around_bond("C4", "C5", 45, descendants_only=True)
-
-   # write the molecule to a mmCIF file
-   mol.to_cif("my_structure.cif")
-
-
-.. admonition:: Did you know?
-
-   The toplevel ``molecule`` function can be fed with a variety of inputs and will automatically try to discern the correct processing
-   in order to produce a ``Molecule`` object. Namely, the following inputs are all valid:
-
-   - a PDB or CIF filename
-   - a PDB id
-   - a molecule name (e.g. "alpha-d-glucose")
-   - a SMILES string
-   - an InChI string or key
-   - a `Structure` object from `Bio.PDB`
-   - an `openbabel.OBMol` object
-   - an `rdkit.Chem.Mol` object
-
-Functional API
---------------
-
-The toplevel functional API is the most straightforward one, and is for many operations the easiest one.
-Functions such as ``read_pdb`` or ``polymerize`` are intuitive and easy to use. However, the functional API is 
-not as extensive as the method-based API, since it simply calls the method-based API under the hood. Many other 
-operations are therefore not available in the functional API - for instance, removing atoms from a molecule is only available
-in the method-based API.
-
-.. code-block:: python
-
-   import buildamol as bam
-
-   # load sugar data repository
-   bam.load_sugars()
-
-   # make a molecule from a 
-   # defined chemical compound
-   glc = bam.molecule("alpha-d-glucose")
-
-   # polymerize the glucose molecule
-   # to make cellulose
-   cellulose = bam.polymerize(glc, 100, linkage="14bb")
-
-   # write the cellulose to a PDB file
-   bam.write_pdb(cellulose, "cellulose.pdb")
-
-
-Method-based API
-----------------
-
-The method-based API allows for more flexibility. At the heart of BuildAMol is the `Molecule` class, which
-has a great number of methods to modify the structure or add/remove parts of it. Methods such as ``get_atom``,
-``add_bond``, or ``remove_residue`` are basic operations to modify a structure in-place, while methods such as ``attach``
-allow to expand the structure by adding new parts to it.
-
-.. code-block:: python
-
-   import buildamol as bam
-   bam.load_sugars()
-
-   # make a molecule from a 
-   # defined chemical compound
-   glc = bam.Molecule.from_compound("alpha-d-glucose")
-
-   # polymerize the glucose molecule
-   # to make cellulose
-   cellulose = glc.repeat(100, linkage="14bb")
-
-   # write the cellulose to a PDB file
-   cellulose.to_pdb("cellulose.pdb")
-
-Operator-based API
-------------------
-
-The operator-based API is a short-hand proxy to the method-based API (just as the functional API is a proxy).
-It is essentially restricted to operations that regard connecting two molecules together. However, it is the most
-condensed way to write BuildAMol code - sometimes at the expense of readability. Available operators are:
-
-- `+` for connecting two molecules together
-- `*` for polymerizing a molecule
-- `%` for specifying the linkage between two molecules
-- `@` for specifying the residue at which to create a connection between two molecules
-- `^` for specifying the atom to use for a connection (more detailed than `@`)
-
-.. note::
-
-   In-place versions of the operators are also available, e.g. `+=` for connecting two molecules in-place, or `*=` for in-place polymerization.
-
-.. code-block:: python
-
-   import buildamol as bam
-   bam.load_sugars()
-
-   glc = bam.Molecule.from_compound("alpha-d-glucose")
-
-   # polymerize the glucose molecule into cellulose
-   cellulose = glc % "14bb" * 100
-
-   # write the cellulose to a PDB file
-   cellulose.to_pdb("cellulose.pdb")
-
-
-
-Built-in-resources
+Quicklook Examples
 ==================
-
-BuildAMol comes with a number of built-in data resources. Namely, BuildAMol integrates the `PDBE component library <https://www.ebi.ac.uk/pdbe/pdb-component-library/#:~:text=The%20PDB%20Component%20Library%20is,and%20related%20protein%20structural%20data.>`_ for
-components up to 40 atoms in size by default - naturally, the full library can be loaded if desired. This enables molecule creation through the ``from_compounds`` method that can be queried using `PDB id`, `chemical name`, `SMILES`, `InChI` and `InChIKey`.
-Furthermore, BuildAMol integrates parts of the `CHARMM force field <https://www.charmm.org/>`_ for
-references of molecular connections. You may have noticed that in the above examples, the `1->4 beta` glycosyidic linkage was used a lot, but only referred to as ``"14bb"``.
-This is because the CHARMM force field has the geometric data stored under this identifier. 
-Finally, BuildAMol integrates `pubchempy` for the direct retrieval of molecules from PubChem (requires internet connection).
-
-Toplevel functions exist to access these resources, e.g. ``buildamol.available_linkages()`` to get a list of pre-defined linkages,
-or ``buildamol.has_compound("alpha-mannose")`` to check if a particular compound is available in the loaded PDBE component library. Also,
-in order to make BuildAMol more useful to the respective user, it is possible to add custom data to the standard resources and set new default settings 
-using functions such as ``set_default_topology`` or ``add_linkage``. 
-
-
-Example
-=======
 
 Building a simple polymer
 -------------------------
@@ -178,6 +49,7 @@ Let's make a simple polymer with a repeating unit composed of a benzene ring and
    bam.load_small_molecules()
    bam.load_amino_acids()  
 
+   # now get the molecules we want to use
    benzene = bam.molecule("benzene")
    glycine = bam.molecule("glycine")
    tyrosine = bam.molecule("tyrosine")
@@ -225,9 +97,11 @@ Let's make a simple polymer with a repeating unit composed of a benzene ring and
 Building a glycan
 -----------------
 
-BuildAMol was originally conceptualized with the aim of creating glycan structures - so, in the example let's make a glycan. The following example demonstrates
-how we can create a larger structure from single monosaccharides using BuildAMol. We are also going to showcase the three different syntaxes that can be used to achieve this.
-Note, if you want to build glycans specifically, you should check out `Glycosylator`, which is a glycan-specific extension of BuildAMol!
+Glycans are complex carbohydrates that are often found in biological systems such as in glycoproteins.
+Since they are structurally highly diverse and can be quite large, they are a good example to showcase the capabilities of BuildAMol.
+Due to their flexibility, glycans can be tricky to predict and model with fully automated deep-learning methods but they are easy to build manually using the monoscaccharides:
+
+Actually, BuildAMol not only includes the monsaccharides in its database, but also the most common glycosidic linkages, so building a glycan is as simple as connecting the monosaccharides together!
 
 .. code-block:: python
 
@@ -242,15 +116,18 @@ Note, if you want to build glycans specifically, you should check out `Glycosyla
    man = bam.molecule("MAN") # alpha-mannose
 
    # start by connecting two NAGs together
-   # 'beta 1->4' glycosydic linkage is pre-defined
-   # in the CHARMM force field and can be used by its name '14bb' directly
+   # the % operator specifies which linkage to use when
+   # connecting the two molecules using the + operator
+   # btw. the 'beta 1->4' glycosydic linkage is pre-defined
+   # in the database as '14bb' and can be accessed using its ID
    glycan = nag % "14bb" + nag
 
    # add a beta-mannose to the last NAG
+   # (where + makes a copy, += will modify the molecule in place)
    glycan += bma
 
    # add an alpha-mannose to the beta-mannose
-   # using an 'alpha 1->3' linkage ('13ab' in CHARMM)
+   # using an 'alpha 1->3' linkage ('13ab' in the database)
    glycan.attach(man, "13ab")
 
    # add another alpha-mannose
@@ -258,6 +135,7 @@ Note, if you want to build glycans specifically, you should check out `Glycosyla
    glycan.attach(man, "16ab", at_residue=-2)
 
    # add one final alpha-mannose
+   # (this time using the connect function instead of the attach method or the + operator)
    glycan = bam.connect(glycan, man, "16ab")
 
    # save the glycan to a PDB file
