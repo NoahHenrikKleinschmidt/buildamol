@@ -940,14 +940,14 @@ def _modify(
     inplace : bool
         Whether to modify the molecule in place or return a new molecule
     """
-    if isinstance(at_atom, list):
+    if isinstance(at_atom, (list, tuple)):
         if delete is None:
             delete = (None for i in at_atom)
-        elif isinstance(delete, list) and len(delete) != len(at_atom):
+        elif isinstance(delete, (list, tuple)) and len(delete) != len(at_atom):
             raise ValueError(
                 f"delete must be a list of same length if at_atom is a list. at_atom has length {len(at_atom)} but delete has length {len(delete)}"
             )
-        elif not isinstance(delete, list):
+        elif not isinstance(delete, (list, tuple)):
             raise ValueError(
                 f"delete must be a list if at_atom is a list, got {type(delete)} instead"
             )
@@ -985,7 +985,8 @@ def _modify(
     l = Linkage.linkage(
         at_atom.id, modifier_at_atom.id, [delete.id], modifier_deletes, id="MODIFY"
     )
-    mol.attach(modifier, l, at_residue=at_residue, inplace=inplace)
+    mol = mol.attach(modifier, l, at_residue=at_residue, inplace=inplace)
+    return mol
 
 
 def phosphorylate(
