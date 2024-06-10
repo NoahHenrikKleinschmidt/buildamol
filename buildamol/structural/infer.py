@@ -862,7 +862,7 @@ class Hydrogenator:
         for b in bonds:
             base.adjust_bond_length(b, length)
 
-        self._molecule.add_atoms(*Hs)
+        self._molecule.add_atoms(*Hs, residue=atom.parent)
         self._molecule.add_bonds(*bonds)
 
 
