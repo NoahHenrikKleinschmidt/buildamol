@@ -238,6 +238,7 @@ def build_docs():
         for line in f:
             if line == ".. <gallery>\n":
                 keep_line = not keep_line
+                continue
             if keep_line:
                 contents.append(line)
 
@@ -249,8 +250,6 @@ def build_docs():
 
     subprocess.run("make clean", shell=True)
     subprocess.run("make html", shell=True)
-    os.remove(DOCS_DIR + "/index.rst")
-    os.rename(DOCS_DIR + "/index.rstb", DOCS_DIR + "/index.rst")
 
 
 def install():
