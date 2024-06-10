@@ -1016,7 +1016,7 @@ class PDBECompounds:
         _dict = self._get(query, by)
         return len(_dict.keys()) > 0
 
-    def translate_ids_3_to_1(self, ids: list) -> list:
+    def translate_ids_3_to_1(self, ids: list, ignore_unknown: bool = False) -> list:
         """
         Translate a list of 3-letter compound ids to 1-letter ids.
         Any ids that cannot be translated are returned as "X".
@@ -1025,6 +1025,8 @@ class PDBECompounds:
         ----------
         ids : list
             A list of 3-letter compound ids.
+        ignore_unknown: bool
+            If set to True, unknown ids are ignored and not replaced with "X".
 
         Returns
         -------
@@ -1034,13 +1036,20 @@ class PDBECompounds:
         new = []
         for i in ids:
             i = self.get(i, "id", "dict")
+            if not i:
+                if ignore_unknown:
+                    continue
+                new.append("X")
+                continue
             i = i.get("one_letter_code", None)
             if i is None:
+                if ignore_unknown:
+                    continue
                 i = "X"
             new.append(i)
         return new
 
-    def translate_ids_1_to_3(self, ids: list) -> list:
+    def translate_ids_1_to_3(self, ids: list, ignore_unknown: bool = False) -> list:
         """
         Translate a list of 1-letter compound ids to 3-letter ids.
         Any unknown ids are replaced with "XXX".
@@ -1049,6 +1058,8 @@ class PDBECompounds:
         ----------
         ids : list
             A list of 1-letter compound ids.
+        ignore_unknown: bool
+            If set to True, unknown ids are ignored and not replaced with "XXX".
 
         Returns
         -------
@@ -1058,8 +1069,15 @@ class PDBECompounds:
         new = []
         for i in ids:
             i = self.get(i, "id", "dict")
+            if i is None:
+                if ignore_unknown:
+                    continue
+                new.append("XXX")
+                continue
             i = i.get("three_letter_code", None)
             if i is None:
+                if ignore_unknown:
+                    continue
                 i = "XXX"
             new.append(i)
             return new
