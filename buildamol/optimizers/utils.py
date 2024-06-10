@@ -205,7 +205,7 @@ def auto_applier(env):
 
 
 def split_environment(
-    env: "Rotatron.Rotatron", n: int = None, radius: float = None
+    env: "Rotatron.Rotatron", n: int = None
 ) -> list["Rotatron.Rotatron"]:
     """
     Split an environment into n sub-environments which are smaller and thus easier to optimize.
@@ -242,7 +242,7 @@ def split_environment(
         sub_env = env.__class__(env.graph, edges, setup=False, **hyperparams)
 
         sub_env.edge_masks = env.edge_masks[mask]
-        sub_env.edge_masks = env.edge_masks[mask]
+        sub_env.edge_lengths = env.edge_lengths[mask]
         sub_envs.append(sub_env)
 
     return sub_envs
