@@ -1523,43 +1523,109 @@ def vet_structure(
 
 def find_clashes(molecule, min_dist: float = 1.0, ignore_hydrogens: bool = False):
     """
-    Find all clashing atoms within a molecule.
+    Find all clashing atoms in a molecule.
 
     Parameters
     ----------
     molecule : Molecule
-        A BuildAMol Molecule
+        The molecule to check for clashes.
     min_dist : float
         The minimal allowed distance between atoms (in Angstrom).
     ignore_hydrogens : bool
         If set to True, hydrogen atoms are ignored.
 
     Yields
-    -------
+    ------
     tuple
         A tuple of clashing atoms.
     """
-    if ignore_hydrogens:
-        atoms = [a for a in molecule.get_atoms() if a.element != "H"]
-    else:
-        atoms = list(molecule.get_atoms())
+    warnings.deprecation.warn(
+        "find_clashes is deprecated and will be removed in a future version. Use find_clashes_between instead.",
+        DeprecationWarning,
+    )
+    yield from find_clashes_between(
+        molecule, molecule, min_dist, ignore_hydrogens, False
+    )
 
-    atom_coords = np.array([atom.get_coord() for atom in atoms])
-    dists = cdist(atom_coords, atom_coords)
-    edge_mask = np.zeros(dists.shape, dtype=bool)
-    for a, b in molecule.get_bonds():
-        if ignore_hydrogens and (a.element == "H" or b.element == "H"):
-            continue
-        i = atoms.index(a)
-        j = atoms.index(b)
-        edge_mask[i, j] = True
-        edge_mask[j, i] = True
-    dists[edge_mask] = np.inf
-    np.fill_diagonal(dists, np.inf)
-    dists = np.triu(dists)
-    xs, ys = np.where((0 < dists) * (dists < min_dist))
-    for i, j in zip(xs, ys):
-        yield atoms[i], atoms[j]
+
+def find_clashes_between(
+    mol_a,
+    mol_b,
+    min_dist: float = 1.0,
+    ignore_hydrogens: bool = False,
+    coarse_precheck: bool = True,
+):
+    """
+    Find all clashing atoms between two sets of atoms.
+
+    Parameters
+    ----------
+    mol_a, mol_b : Molecule
+        Two molecules to check for clashes.
+    min_dist : float
+        The minimal allowed distance between atoms (in Angstrom).
+    ignore_hydrogens : bool
+        If set to True, hydrogen atoms are ignored.
+    coarse_precheck : bool
+        If set to True, a coarse-grain precheck is performed on residue-level before checking for clashes on atom-level.
+        This will speed up the process for large molecules but may miss clashes if individual residues are particularly large (e.g. lipids with long tails).
+
+    Yields
+    ------
+    tuple
+        A tuple of clashing atoms.
+    """
+    # first make a rough distance matrix on residue-level
+    residues_a = list(mol_a.get_residues())
+    residues_b = list(mol_b.get_residues())
+    r_a = np.empty((len(residues_a)), dtype=object)
+    r_b = np.empty((len(residues_b)), dtype=object)
+    r_a[:] = residues_a
+    r_b[:] = residues_b
+    residues_a = r_a
+    residues_b = r_b
+
+    if coarse_precheck:
+
+        residue_coords_a = np.array([r.center_of_mass() for r in residues_a])
+        residue_coords_b = np.array([r.center_of_mass() for r in residues_b])
+
+        residue_dists = cdist(residue_coords_a, residue_coords_b)
+        np.fill_diagonal(residue_dists, np.inf)
+        residue_edge_mask = np.zeros(residue_dists.shape, dtype=bool)
+        for i in range(len(residues_a)):
+            for j in range(len(residues_b)):
+                if residue_dists[i, j] < 12:
+                    residue_edge_mask[i, j] = True
+    else:
+
+        residue_edge_mask = np.ones((len(residues_a), len(residues_b)), dtype=bool)
+
+    for i in range(len(residues_a)):
+        residue_a = residues_a[i]
+        close_by_residues = residues_b[residue_edge_mask[i]]
+
+        if ignore_hydrogens:
+            atoms_a = [a for a in residue_a.get_atoms() if a.element != "H"]
+            atoms_b = []
+            for residue_b in close_by_residues:
+                atoms_b.extend([a for a in residue_b.get_atoms() if a.element != "H"])
+        else:
+            atoms_a = list(residue_a.get_atoms())
+            atoms_b = []
+            for residue_b in close_by_residues:
+                atoms_b.extend(residue_b.get_atoms())
+
+        atoms_a = np.array(atoms_a, dtype=object)
+        atoms_b = np.array(atoms_b, dtype=object)
+        coords_a = np.array([a.get_coord() for a in atoms_a])
+        coords_b = np.array([a.get_coord() for a in atoms_b])
+        dists = cdist(coords_a, coords_b)
+        np.fill_diagonal(dists, np.inf)
+
+        xs, ys = np.where((0 < dists) * (dists < min_dist))
+        for x, y in zip(xs, ys):
+            yield atoms_a[x], atoms_b[y]
 
 
 def sample_atoms_around_reference(

@@ -799,7 +799,10 @@ class BaseEntity:
     #     return structural.vet_structure(self, clash_range, angle_range)
 
     def find_clashes(
-        self, clash_threshold: float = 1.0, ignore_hydrogens: bool = True
+        self,
+        clash_threshold: float = 1.0,
+        ignore_hydrogens: bool = True,
+        coarse_precheck: bool = True,
     ) -> list:
         """
         Find all clashes in the molecule.
@@ -810,6 +813,10 @@ class BaseEntity:
             The minimal allowed distance between two atoms (in Angstrom).
         ignore_hydrogens : bool, optional
             Whether to ignore clashes with hydrogen atoms (default: True)
+        coarse_precheck : bool, optional
+            If set to True a coarse-grained pre-screening on residue-level is done
+            to speed up the computation. This may cause the sytem to overlook clashes if
+            individual residues are particularly large, however (e.g. lipids with long carbon chains).
 
         Returns
         -------
@@ -817,11 +824,52 @@ class BaseEntity:
             A list of tuples of atoms that clash.
         """
         return [
-            i for i in structural.find_clashes(self, clash_threshold, ignore_hydrogens)
+            i
+            for i in structural.find_clashes_between(
+                self, self, clash_threshold, ignore_hydrogens, coarse_precheck
+            )
+        ]
+
+    def find_clashes_with(
+        self,
+        other,
+        clash_threshold: float = 1.0,
+        ignore_hydrogens: bool = True,
+        coarse_precheck: bool = True,
+    ) -> list:
+        """
+        Find all clashes between this molecule and another one.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to compare with
+        clash_threshold : float, optional
+            The minimal allowed distance between two atoms (in Angstrom).
+        ignore_hydrogens : bool, optional
+            Whether to ignore clashes with hydrogen atoms (default: True)
+        coarse_precheck : bool, optional
+            If set to True a coarse-grained pre-screening on residue-level is done
+            to speed up the computation. This may cause the sytem to overlook clashes if
+            individual residues are particularly large, however (e.g. lipids with long carbon chains).
+
+        Returns
+        -------
+        list
+            A list of tuples of atoms that clash.
+        """
+        return [
+            i
+            for i in structural.find_clashes_between(
+                self, other, clash_threshold, ignore_hydrogens, coarse_precheck
+            )
         ]
 
     def count_clashes(
-        self, clash_threshold: float = 1.0, ignore_hydrogens: bool = True
+        self,
+        clash_threshold: float = 1.0,
+        ignore_hydrogens: bool = True,
+        coarse_precheck: bool = True,
     ) -> int:
         """
         Count all clashes in the molecule.
@@ -832,6 +880,10 @@ class BaseEntity:
             The minimal allowed distance between two atoms (in Angstrom).
         ignore_hydrogens : bool, optional
             Whether to ignore clashes with hydrogen atoms (default: True)
+        coarse_precheck : bool, optional
+            If set to True a coarse-grained pre-screening on residue-level is done
+            to speed up the computation. This may cause the sytem to overlook clashes if
+            individual residues are particularly large, however (e.g. lipids with long carbon chains).
 
         Returns
         -------
@@ -839,7 +891,10 @@ class BaseEntity:
             The number of clashes.
         """
         return sum(
-            1 for i in structural.find_clashes(self, clash_threshold, ignore_hydrogens)
+            1
+            for i in structural.find_clashes_between(
+                self, self, clash_threshold, ignore_hydrogens, coarse_precheck
+            )
         )
 
     def copy(self, n: int = 1) -> list:
