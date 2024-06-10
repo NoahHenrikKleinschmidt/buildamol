@@ -299,36 +299,35 @@ def make_atoms_table(mol):
         else:
             prefix = "HETATM"
 
-        lines.append(
-            atom_line.format(
-                prefix=prefix,
-                serial=left_adjust(str(atom.serial_number), 5),
-                neg_adj=neg_adj,
-                id=right_adjust(atom.id.upper(), 4),
-                # id=right_adjust(
-                #     atom.id.replace(atom.element.upper(), "").replace(
-                #         atom.element.title(), ""
-                #     ),
-                #     2,
-                # ),
-                altloc=right_adjust(atom.altloc, 1),
-                residue=left_adjust(atom.get_parent().resname, 3),
-                chain=atom.get_parent().get_parent().id,
-                # resseq=left_adjust(" ", 3),
-                res_serial=left_adjust(str(atom.get_parent().serial_number), 3),
-                icode=" ",  # atom.get_parent().id[2],
-                x=left_adjust(f"{atom.coord[0]:.3f}", 8),
-                y=left_adjust(f"{atom.coord[1]:.3f}", 8),
-                z=left_adjust(f"{atom.coord[2]:.3f}", 8),
-                # occ=left_adjust("1.00", 6),
-                occ=left_adjust(f"{atom.occupancy:.2f}", 6),
-                # temp=left_adjust("0.00", 6),
-                temp=left_adjust(f"{atom.bfactor:.2f}", 6),
-                seg=right_adjust("", 3),
-                element=right_adjust(atom.element.upper(), 2),
-                charge=left_adjust(charge, 2),
-            )
+        new_line = atom_line.format(
+            prefix=prefix,
+            serial=left_adjust(str(atom.serial_number), 5),
+            neg_adj=neg_adj,
+            id=right_adjust(atom.id.upper(), 4),
+            # id=right_adjust(
+            #     atom.id.replace(atom.element.upper(), "").replace(
+            #         atom.element.title(), ""
+            #     ),
+            #     2,
+            # ),
+            altloc=right_adjust(atom.altloc, 1),
+            residue=left_adjust(atom.get_parent().resname, 3),
+            chain=atom.get_parent().get_parent().id or " ",
+            # resseq=left_adjust(" ", 3),
+            res_serial=left_adjust(str(atom.get_parent().serial_number), 4),
+            icode="",  # atom.get_parent().id[2],
+            x=left_adjust(f"{atom.coord[0]:.3f}", 8),
+            y=left_adjust(f"{atom.coord[1]:.3f}", 8),
+            z=left_adjust(f"{atom.coord[2]:.3f}", 8),
+            # occ=left_adjust("1.00", 6),
+            occ=left_adjust(f"{atom.occupancy:.2f}", 6),
+            # temp=left_adjust("0.00", 6),
+            temp=left_adjust(f"{atom.bfactor:.2f}", 6),
+            seg=right_adjust("", 3),
+            element=right_adjust(atom.element.upper(), 2),
+            charge=left_adjust(charge, 2),
         )
+        lines.append(new_line)
     return "\n".join(lines)
 
 
@@ -373,8 +372,6 @@ def left_adjust(s, n):
 if __name__ == "__main__":
     import buildamol as bam
 
-    out = parse_atom_lines(
-        "/Users/noahhk/GIT/biobuild/docs/examples/files/DRD2_ligand.pdb"
-    )
+    out = parse_atom_lines("/Users/noahhk/GIT/glycosylator/__projects__/SOLF/solf.pdb")
     out
     pass
