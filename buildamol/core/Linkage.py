@@ -485,6 +485,206 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 )
         return new
 
+    def identify_atoms(self, target, source, target_residue=None, source_residue=None):
+        """
+        Identify the atoms in the two molecules that are part of the linkage. If any of the
+        binder or deleter atoms could not be identified, this method will raise a ValueError.
+
+        Parameters
+        ----------
+        target : Molecule
+            The first molecule.
+        source : Molecule
+            The second molecule.
+        target_residue : Residue, optional
+            The residue in the target molecule to which the source molecule will be patched.
+            By default, the attach_residue in the target molecule will be used.
+        source_residue : Residue, optional
+            The residue in the source molecule that will be patched into the target molecule.
+            By default, the attach_residue in the source molecule will be used.
+
+        Returns
+        -------
+        atom1 : Atom
+            The first atom in the bond.
+        atom2 : Atom
+            The second atom in the bond.
+        delete_in_target : list of Atom
+            The atoms to delete in the target molecule.
+        delete_in_source : list of Atom
+            The atoms to delete in the source molecule.
+        """
+        atom1 = target.get_atom(self._stitch_ref_atoms[0], residue=target_residue)
+        source_residue = source_residue or source.attach_residue
+
+        target_residue = target_residue or target.attach_residue
+        atom2 = source.get_atom(self._stitch_ref_atoms[1], residue=source_residue)
+
+        if atom1 is None:
+            raise ValueError(
+                f"The atom with ID '{self._stitch_ref_atoms[0]}' could not be found in the target molecule."
+            )
+
+        if atom2 is None:
+            raise ValueError(
+                f"The atom with ID '{self._stitch_ref_atoms[1]}' could not be found in the source molecule."
+            )
+
+        delete_in_target = []
+        if len(self.deletes[0]) == 0:
+            h = target.get_hydrogen(atom1)
+            if h is not None:
+                delete_in_target.append(h)
+            else:
+                raise ValueError(
+                    f"No atom to delete in the target molecule was provided and no Hydrogen atom was found bound to the first atom in the bond."
+                )
+        else:
+
+            for i in self.deletes[0]:
+                atom = target.get_atom(i, residue=target_residue)
+                if atom is None:
+                    raise ValueError(
+                        f"The atom with ID '{i}' could not be found in the target molecule."
+                    )
+                delete_in_target.append(atom)
+
+            if len(delete_in_target) != len(self.deletes[0]):
+                raise ValueError(
+                    "Not all atoms to delete in the target molecule could be found."
+                )
+
+        delete_in_source = []
+        if len(self.deletes[1]) == 0:
+            h = source.get_hydrogen(atom2)
+            if h is not None:
+                delete_in_source.append(h)
+            else:
+                raise ValueError(
+                    f"No atom to delete in the source molecule was provided and no Hydrogen atom was found bound to the second atom in the bond."
+                )
+        else:
+            for i in self.deletes[1]:
+                atom = source.get_atom(i, residue=source_residue)
+                if atom is None:
+                    raise ValueError(
+                        f"The atom with ID '{i}' could not be found in the source molecule."
+                    )
+                delete_in_source.append(atom)
+
+            if len(delete_in_source) != len(self.deletes[1]):
+                raise ValueError(
+                    "Not all atoms to delete in the source molecule could be found."
+                )
+
+        return atom1, atom2, delete_in_target, delete_in_source
+
+    def can_be_target(self, molecule, residue=None):
+        """
+        Check if the linkage can be applied to the molecule as the target.
+
+        Parameters
+        ----------
+        molecule : Molecule
+            The molecule to check.
+        residue : Residue, optional
+            The residue in the molecule to which the source molecule will be patched.
+            By default, the attach_residue in the molecule will be used.
+
+        Returns
+        -------
+        bool
+            True if the linkage can be applied to the molecule, False otherwise.
+        """
+        if residue is None:
+            residue = molecule.attach_residue
+        else:
+            residue = molecule.get_residue(residue)
+
+        atom1 = molecule.get_atom(self._stitch_ref_atoms[0], residue=residue)
+
+        if atom1 is None:
+            return False
+
+        if len(self.deletes[0]) == 0:
+            h = molecule.get_hydrogen(atom1)
+            if h is None:
+                return False
+        else:
+            for i in self.deletes[0]:
+                atom = molecule.get_atom(i, residue=residue)
+                if atom is None:
+                    return False
+
+        return True
+
+    def can_be_source(self, molecule, residue=None):
+        """
+        Check if the linkage can be applied to the molecule as the source.
+
+        Parameters
+        ----------
+        molecule : Molecule
+            The molecule to check.
+        residue : Residue, optional
+            The residue in the molecule to which the source molecule will be patched.
+            By default, the attach_residue in the molecule will be used.
+
+        Returns
+        -------
+        bool
+            True if the linkage can be applied to the molecule, False otherwise.
+        """
+        if residue is None:
+            residue = molecule.attach_residue
+        else:
+            residue = molecule.get_residue(residue)
+
+        atom2 = molecule.get_atom(self._stitch_ref_atoms[1], residue=residue)
+
+        if atom2 is None:
+            return False
+
+        if len(self.deletes[1]) == 0:
+            h = molecule.get_hydrogen(atom2)
+            if h is None:
+                return False
+        else:
+            for i in self.deletes[1]:
+                atom = molecule.get_atom(i, residue=residue)
+                if atom is None:
+                    return False
+
+        return True
+
+    def can_apply(
+        self, target, source, target_residue=None, source_residue=None
+    ) -> bool:
+        """
+        Check if the linkage can be applied to the two molecules.
+
+        Parameters
+        ----------
+        target : Molecule
+            The first molecule.
+        source : Molecule
+            The second molecule.
+        target_residue : Residue, optional
+            The residue in the target molecule to which the source molecule will be patched.
+            By default, the attach_residue in the target molecule will be used.
+        source_residue : Residue, optional
+            The residue in the source molecule that will be patched into the target molecule.
+            By default, the attach_residue in the source molecule will be used.
+
+        Returns
+        -------
+        bool
+            True if the linkage can be applied, False otherwise.
+        """
+        return self.can_be_target(target, target_residue) and self.can_be_source(
+            source, source_residue
+        )
+
     def apply(self, target, source, target_residue=None, source_residue=None):
         """
         Apply the linkage to the two molecules. This will delete the atoms that should be deleted and form the bond between the two molecules.
