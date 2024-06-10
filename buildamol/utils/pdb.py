@@ -303,7 +303,7 @@ def make_atoms_table(mol):
             prefix=prefix,
             serial=left_adjust(str(atom.serial_number), 5),
             neg_adj=neg_adj,
-            id=right_adjust(atom.id.upper(), 4),
+            id=right_adjust(atom.id.upper()[:4], 4),
             # id=right_adjust(
             #     atom.id.replace(atom.element.upper(), "").replace(
             #         atom.element.title(), ""
@@ -372,6 +372,8 @@ def left_adjust(s, n):
 if __name__ == "__main__":
     import buildamol as bam
 
-    out = parse_atom_lines("/Users/noahhk/GIT/glycosylator/__projects__/SOLF/solf.pdb")
+    out = parse_atom_lines(
+        "/Users/noahhk/GIT/glycosylator/__projects__/solf2/solf2_man5_glycosylated_raw.pdb"
+    )
     out
     pass
