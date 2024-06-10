@@ -115,11 +115,12 @@ class BaseEntity:
                     chains[atom_info["chain"]] = base_classes.Chain(atom_info["chain"])
                     model.add(chains[atom_info["chain"]])
 
-                if atom_info["res_seq"] not in residues:
-                    residues[atom_info["res_seq"]] = base_classes.Residue(
+                res_seq = (atom_info["chain"], atom_info["res_seq"])
+                if res_seq not in residues:
+                    residues[res_seq] = base_classes.Residue(
                         atom_info["residue"], " ", atom_info["res_seq"]
                     )
-                    chains[atom_info["chain"]].add(residues[atom_info["res_seq"]])
+                    chains[atom_info["chain"]].add(residues[res_seq])
 
                 atom = base_classes.Atom.new(
                     atom_info["id"],
@@ -131,7 +132,7 @@ class BaseEntity:
                     pqr_charge=eval(f"{atom_info['charge']}+0"),
                     element=atom_info["element"],
                 )
-                residues[atom_info["res_seq"]].add(atom)
+                residues[res_seq].add(atom)
 
         new = cls(structure)
         bonds = utils.pdb.parse_connect_lines(filename)
@@ -2273,7 +2274,7 @@ class BaseEntity:
             The residue
         """
         if isinstance(residue, base_classes.Residue):
-            if residue in self.residues:
+            if residue in self.get_residues():
                 return residue
             else:
                 return self.get_residue(residue.id[1], by="seqid", chain=chain)
@@ -2304,7 +2305,7 @@ class BaseEntity:
             )
         if chain is not None:
             chain = self.get_chain(chain)
-            _residue = (i for i in _residue if i.get_parent() == chain)
+            _residue = (i for i in _residue if i.parent == chain)
         return next(_residue, None)
 
     def get_chain(self, chain: str):
@@ -2649,15 +2650,39 @@ class BaseEntity:
         self._add_bond(atom1, atom2, order)
         return self
 
+    def set_bond(
+        self,
+        atom1: Union[int, str, tuple, base_classes.Atom],
+        atom2: Union[int, str, tuple, base_classes.Atom],
+        order: int = 1,
+    ):
+        """
+        Specify a bond between two atoms. The difference between this method and `add_bond` is that
+        the latter can be used to incrementally add bond orders (i.e. make a double bond out of a single bond
+        by calling the method twice). This method will always set the bond order to the provided value.
+
+        Parameters
+        ----------
+        atom1, atom2
+            The atoms to bond, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+
+        order : int
+            The order of the bond, i.e. 1 for single, 2 for double, 3 for triple, etc.
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+        self._set_bond(atom1, atom2, order)
+
     def add_bonds(self, *bonds):
         """
-        Add multiple bonds at once
+        Add multiple bonds at once.
 
         Parameters
         ----------
         bonds
             The bonds to add, each bond is a tuple of two atoms.
-            Each atom may be specified directly (biopython object)
+            Each atom may be specified directly (BuildAMol object)
             or by providing the serial number, the full_id or the id of the atoms.
         """
         if len(bonds) == 1 and isinstance(bonds[0], (list, tuple)):
@@ -2669,6 +2694,26 @@ class BaseEntity:
             self.add_bond(*bond)
         return self
 
+    def set_bonds(self, *bonds):
+        """
+        Specify multiple bonds at once. The difference between this method and `add_bonds` is that
+        the latter can be used to incrementally add bond orders (i.e. make a double bond out of a single bond
+        by calling the method twice or certain bonds are specified multiple times in the arguments).
+        This method will always set the bond order to the provided value.
+
+        Parameters
+        ----------
+        bonds
+            The bonds to add, each bond is a tuple of two atoms.
+            Each atom may be specified directly (BuildAMol object)
+            or by providing the serial number, the full_id or the id of the atoms.
+        """
+        for bond in bonds:
+            if isinstance(bond, base_classes.Bond):
+                bond = bond.to_tuple()
+            self.set_bond(*bond)
+        return self
+
     def _add_bonds(self, *bonds):
         """
         Add multiple bonds at once. This requires that the tuple objects are indeed Atoms in the structure!
@@ -2677,6 +2722,20 @@ class BaseEntity:
             if isinstance(bond, base_classes.Bond):
                 bond = bond.to_tuple()
             self._add_bond(*bond)
+        return self
+
+    def _set_bonds(self, *bonds):
+        """
+        Specify multiple bonds at once. This requires that the tuple objects are indeed Atoms in the structure!
+        The difference between this method and `add_bonds` is that
+        the latter can be used to incrementally add bond orders (i.e. make a double bond out of a single bond
+        by calling the method twice or certain bonds are specified multiple times in the arguments).
+        This method will always set the bond order to the provided value.
+        """
+        for bond in bonds:
+            if isinstance(bond, base_classes.Bond):
+                bond = bond.to_tuple()
+            self._set_bond(*bond)
         return self
 
     def remove_bond(
@@ -3050,7 +3109,7 @@ class BaseEntity:
         Returns
         -------
         list
-            A list of tuples of atom pairs that are bonded and considered residue connections.
+            A list of bonds that link atoms from different residues.
 
         Examples
         --------
@@ -3077,7 +3136,7 @@ class BaseEntity:
         bonds = structural.infer_residue_connections(
             self._base_struct, bond_length, triplet
         )
-        self._bonds.extend(b for b in bonds if b not in self._bonds)
+        self._bonds.extend(base_classes.Bond(*b) for b in bonds if b not in self._bonds)
         self._AtomGraph.add_edges_from(bonds)
         return bonds
 
@@ -3129,6 +3188,13 @@ class BaseEntity:
         """
         H = structural.infer.Hydrogenator()
         H.infer_hydrogens(self, bond_length=1.05)
+        return self
+
+    def remove_hydrogens(self):
+        """
+        Remove all hydrogens in the structure.
+        """
+        self._remove_atoms(*self.get_atoms("H", by="element"))
         return self
 
     def get_quartets(self):
@@ -3643,6 +3709,18 @@ class BaseEntity:
             )
             self._AtomGraph.edges[atom1, atom2]["bond_obj"].order += 1
 
+    def _set_bond(self, atom1, atom2, order=1):
+        """
+        The core function of `set_bond` which expects atoms to be provided as Atom objects.
+        """
+        if not self._AtomGraph.has_edge(atom1, atom2):
+            bond = base_classes.Bond(atom1, atom2, order)
+            self._AtomGraph.add_edge(atom1, atom2, bond_order=order, bond_obj=bond)
+            self._bonds.append(bond)
+        else:
+            self._AtomGraph.edges[atom1, atom2]["bond_order"] = order
+        return self
+
     def _remove_bond(self, atom1, atom2):  # , either_way: bool = False):
         """
         The core function of `remove_bond` which expects atoms to be provided as Atom objects.
@@ -3819,8 +3897,8 @@ def should_invert(bond, direct_connecting_atoms):
 
 
 if __name__ == "__main__":
-    # f = "/Users/noahhk/GIT/biobuild/support/examples/4tvp.prot.pdb"
-    # e = BaseEntity.from_pdb(f)
+    f = "/Users/noahhk/GIT/biobuild/__figure_makery__/e8_opt.pdb"
+    e = BaseEntity.from_pdb(f)
     # e.infer_bonds(restrict_residues=False)
     # e.get_residue_connections()
     # pass
