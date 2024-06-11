@@ -627,6 +627,13 @@ class Residue(ID, bio.Residue.Residue):
             verdict = verdict and self.serial_number == other.serial_number
         return verdict
 
+    def link(self, atom):
+        """
+        Softlink an atom into this residue's child_list without touching the atom's own parent references.
+        """
+        self.child_dict[atom.get_id()] = atom
+        self.child_list.append(atom)
+
     # def add(self, atom):
     #     if atom.get_id() not in self.child_dict:
     #         self.child_list.append(atom)
@@ -700,7 +707,7 @@ class Residue(ID, bio.Residue.Residue):
             The copied residue.
         """
         new = ID.copy(self)
-        for atom in self.get_atoms():
+        for atom in new.get_atoms():
             ID._new_id(atom)
         return new
 
@@ -882,11 +889,18 @@ class Chain(ID, bio.Chain.Chain):
             The copied chain.
         """
         new = ID.copy(self)
-        for residue in self.get_residues():
+        for residue in new.get_residues():
             ID._new_id(residue)
             for atom in residue.get_atoms():
                 ID._new_id(atom)
         return new
+
+    def link(self, residue):
+        """
+        Softlink a residue into this chain's child_list without touching the residue's own parent references.
+        """
+        self.child_dict[residue.get_id()] = residue
+        self.child_list.append(residue)
 
     def __repr__(self):
         return f"Chain({self._id})"
@@ -1037,7 +1051,7 @@ class Model(bio.Model.Model, ID):
             The copied model.
         """
         new = ID.copy(self)
-        for chain in self.get_chains():
+        for chain in new.get_chains():
             ID._new_id(chain)
             for residue in chain.get_residues():
                 ID._new_id(residue)
@@ -1078,6 +1092,13 @@ class Model(bio.Model.Model, ID):
         for chain in self.get_chains():
             new.add(chain.to_biopython(with_children=True))
         return new
+
+    def link(self, chain):
+        """
+        Softlink a chain into this model's child_list without touching the chain's own parent references.
+        """
+        self.child_dict[chain.get_id()] = chain
+        self.child_list.append(chain)
 
     def __repr__(self):
         return f"Model({self._id})"
@@ -1187,7 +1208,7 @@ class Structure(ID, bio.Structure.Structure):
             The copied structure.
         """
         new = ID.copy(self)
-        for model in self.get_models():
+        for model in new.get_models():
             ID._new_id(model)
             for chain in model.get_chains():
                 ID._new_id(chain)
@@ -1300,6 +1321,13 @@ class Structure(ID, bio.Structure.Structure):
         """
         for model in self.get_models():
             model.move(vector)
+
+    def link(self, model):
+        """
+        Softlink a model into this structure's child_list without touching the model's own parent references.
+        """
+        self.child_dict[model.get_id()] = model
+        self.child_list.append(model)
 
     def __repr__(self):
         return f"Structure({self._id})"
