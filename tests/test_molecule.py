@@ -551,6 +551,9 @@ def test_infer_bonds():
 def test_find_clashes():
     mol = bam.molecule("GLC")
     mol = mol.repeat(10, "14bb")
+    clashes = mol.find_clashes()
+    assert len(clashes) == 0
+
     edges = mol.get_residue_connections()
     for edge in edges:
         mol.rotate_around_bond(
