@@ -737,7 +737,7 @@ class BaseEntity:
         viewer = self.chem2dview()
         viewer.show()
 
-    def draw(
+    def plotly(
         self,
         residue_graph: bool = False,
         atoms: bool = True,
@@ -771,8 +771,8 @@ class BaseEntity:
 
             return v
 
-    draw3d = draw
-    plotly = draw
+    draw3d = plotly
+    draw = plotly
 
     # def vet(
     #     self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
@@ -966,7 +966,7 @@ class BaseEntity:
         self.add_chains(*other.chains)
         self._add_bonds(*other.get_bonds())
         return self
-
+    
     def clear(self):
         """
         Clear the molecule of all models, chains, residues, and atoms.
@@ -3023,10 +3023,34 @@ class BaseEntity:
             self._base_struct, max_bond_length, restrict_residues
         )
         self._add_bonds(*bonds)
-
         if infer_bond_orders:
             structural.infer_bond_orders(self)
 
+        return bonds
+
+    def infer_bonds_for(self, residues: list, max_bond_length: float = None):
+        """
+        Infer bonds between atoms in the structure for a specific set of residues
+
+        Parameters
+        ----------
+        residues : list
+            The residues to consider
+        max_bond_length : float
+            The maximum distance between atoms to consider them bonded.
+            If None, the default value is 1.6 Angstroms.
+
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded
+        """
+        bonds = []
+        for res in self.get_residues(residues):
+            bonds.extend(
+                structural.infer_bonds(res, max_bond_length, restrict_residues=False)
+            )
+        self._add_bonds(*bonds)
         return bonds
 
     def get_residue_connections(
