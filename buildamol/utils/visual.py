@@ -231,6 +231,15 @@ class Py3DmolViewer:
             self.view.addModel(pdb, "pdb")
             if style is None:
                 style = self.style
+        elif hasattr(other, "get_atoms"):
+            pdb = utils.pdb.make_atoms_table(other)
+            self.view.addModel(pdb, "pdb")
+            if style is None:
+                style = self.style
+        elif isinstance(other, str):
+            self.view.addModel(other, "pdb")
+            if style is None:
+                style = self.style
         else:
             raise ValueError(
                 f"Unsupported molecule type: {other.__class__.__name__}. The input has to be a Py3DmolViewer or Molecule."
