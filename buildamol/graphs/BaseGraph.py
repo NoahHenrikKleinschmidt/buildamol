@@ -579,7 +579,7 @@ class BaseGraph(nx.Graph):
 
         from sklearn.cluster import KMeans
 
-        kmeans = KMeans(n_clusters=min(n, len(rotatable_edges)))
+        kmeans = KMeans(n_clusters=min(n, len(rotatable_edges)), n_init="auto")
         kmeans.fit(data)
         labels = kmeans.predict(data)
         _rotatable_edges = []
