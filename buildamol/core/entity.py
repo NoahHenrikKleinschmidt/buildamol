@@ -966,7 +966,7 @@ class BaseEntity:
         self.add_chains(*other.chains)
         self._add_bonds(*other.get_bonds())
         return self
-    
+
     def clear(self):
         """
         Clear the molecule of all models, chains, residues, and atoms.
@@ -3028,13 +3028,13 @@ class BaseEntity:
 
         return bonds
 
-    def infer_bonds_for(self, residues: list, max_bond_length: float = None):
+    def infer_bonds_for(self, *residues, max_bond_length: float = None):
         """
         Infer bonds between atoms in the structure for a specific set of residues
 
         Parameters
         ----------
-        residues : list
+        residues
             The residues to consider
         max_bond_length : float
             The maximum distance between atoms to consider them bonded.
@@ -3046,7 +3046,7 @@ class BaseEntity:
             A list of tuples of atom pairs that are bonded
         """
         bonds = []
-        for res in self.get_residues(residues):
+        for res in self.get_residues(*residues):
             bonds.extend(
                 structural.infer_bonds(res, max_bond_length, restrict_residues=False)
             )
@@ -3235,6 +3235,29 @@ class BaseEntity:
             A list of tuples of atom pairs that are bonded
         """
         bonds = structural.apply_reference_bonds(self._base_struct, _compounds)
+        self._add_bonds(*bonds)
+        return bonds
+
+    def apply_standard_bonds_for(self, *residues, _compounds=None) -> list:
+        """
+        Use reference compounds to infer bonds in the structure for specific residues. This will be exclusively based on the
+        residue and atom ids and not on the actual distances between atoms.
+
+        Parameters
+        ----------
+        residues
+            The residues to consider
+        _compounds
+            The compounds to use for the standard bonds. If None, the default compounds are used.
+
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded
+        """
+        bonds = []
+        for res in self.get_residues(*residues):
+            bonds.extend(structural.apply_reference_bonds(res, _compounds))
         self._add_bonds(*bonds)
         return bonds
 
