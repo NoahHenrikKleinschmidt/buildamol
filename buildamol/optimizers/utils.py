@@ -228,7 +228,7 @@ def split_environment(
     # cluster the edges into n clusters
     from sklearn.cluster import KMeans
 
-    kmeans = KMeans(n_clusters=n)
+    kmeans = KMeans(n_clusters=n, n_init="auto")
     kmeans.fit(all_edges)
     labels = kmeans.predict(all_edges)
 
