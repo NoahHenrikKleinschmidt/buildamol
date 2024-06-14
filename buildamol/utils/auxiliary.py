@@ -42,6 +42,7 @@ HAS_PYBEL = has_package("openbabel")
 HAS_OPENMM = has_package("openmm")
 HAS_NUMBA = has_package("numba")
 HAS_STK = has_package("stk")
+HAS_ALIVE_PROGRESS = has_package("alive_progress")
 
 if HAS_RDKIT:
     # rdkit is fast to load, so we can just load it here
@@ -110,6 +111,17 @@ else:
 
 USE_NUMBA = False
 USE_ALL_NUMBA = False
+
+if HAS_ALIVE_PROGRESS:
+    from alive_progress import alive_bar
+
+    def progress_bar(*args, **kwargs):
+        return alive_bar(*args, **kwargs)
+
+else:
+
+    def progress_bar(*args, **kwargs):
+        return DummyBar(*args, **kwargs)
 
 
 # =================================================================
