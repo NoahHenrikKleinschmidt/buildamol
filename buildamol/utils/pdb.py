@@ -151,7 +151,10 @@ def parse_connect_lines(filename):
         A list of tuples of atom serial numbers that are bonded.
     """
     with open(filename, "r") as f:
-        lines = f.readlines()
+        return _parse_connect_lines(f)
+
+
+def _parse_connect_lines(lines):
     bonds = {}
     known_bonds = set()
     for line in lines:
@@ -177,23 +180,27 @@ def parse_connect_lines(filename):
 
 
 def parse_atom_lines(filename, model=None):
+    with open(filename, "r") as f:
+        return _parse_atom_lines(f, model)
+
+
+def _parse_atom_lines(lines, model=None):
     atoms = {-1: []}
     _model = -1
     _skip_lines = False
-    with open(filename, "r") as f:
-        for line in f:
-            if line.startswith("MODEL"):
-                _model = int(line.split()[-1])
-                if model is not None and not _model == model:
-                    _skip_lines = True
-                else:
-                    _skip_lines = False
-                    atoms[_model] = []
-                continue
-            if _skip_lines:
-                continue
-            if line.startswith("ATOM") or line.startswith("HETATM"):
-                atoms[_model].append(_split_atom_line(line))
+    for line in lines:
+        if line.startswith("MODEL"):
+            _model = int(line.split()[-1])
+            if model is not None and not _model == model:
+                _skip_lines = True
+            else:
+                _skip_lines = False
+                atoms[_model] = []
+            continue
+        if _skip_lines:
+            continue
+        if line.startswith("ATOM") or line.startswith("HETATM"):
+            atoms[_model].append(_split_atom_line(line))
     return atoms
 
 
@@ -372,7 +379,7 @@ def left_adjust(s, n):
 if __name__ == "__main__":
     import buildamol as bam
 
-    out = parse_atom_lines(
+    out = parse_connect_lines(
         "/Users/noahhk/GIT/glycosylator/__projects__/solf2/solf2_man5_glycosylated_raw.pdb"
     )
     out
