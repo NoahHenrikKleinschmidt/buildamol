@@ -1,5 +1,5 @@
 """
-The base class for classes storing and manipulating biopython structures
+The base class for classes storing and manipulating molecular structures
 This houses most of the essential functionality of the library for most users. 
 The ``Molecule`` class adds additional features on top. 
 """
@@ -21,12 +21,13 @@ import buildamol.core.base_classes as base_classes
 
 class BaseEntity:
     """
-    The Base class for all classes that store and handle biopython structures, namely the Molecule class.
+    The Base class for all classes that store and handle molecular structures.
+    This class is not meant to be used directly but serves as the base for the Molecule class.
 
     Parameters
     ----------
     structure : Structure or Bio.PDB.Structure
-        The biopython structure
+        A BuildAMol or Biopython structure
     model : int
         The index of the model to use (default: 0)
     """
@@ -94,7 +95,23 @@ class BaseEntity:
         """
         if id is None:
             id = utils.filename_to_id(filename)
-        atoms = utils.pdb.parse_atom_lines(filename, model=model)
+        content = open(filename).read()
+        return cls._from_pdb_string(content, id=id)
+
+    @classmethod
+    def _from_pdb_string(cls, string, id: str = None):
+        """
+        Read a Molecule from a PDB string
+
+        Parameters
+        ----------
+        string : str
+            The PDB string
+        id : str
+            The id of the Molecule. By default an id is inferred from the filename.
+        """
+        content = string.split("\n")
+        atoms = utils.pdb._parse_atom_lines(content)
 
         if len(atoms) == 1:
             atoms[0] = atoms[-1]
@@ -124,7 +141,7 @@ class BaseEntity:
 
                 atom = base_classes.Atom.new(
                     atom_info["id"],
-                    generate_id=not has_atom_ids,
+                    generate_id=False,
                     altloc=atom_info["alt_loc"],
                     serial_number=atom_info["serial"],
                     coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
@@ -135,7 +152,7 @@ class BaseEntity:
                 residues[res_seq].add(atom)
 
         new = cls(structure)
-        bonds = utils.pdb.parse_connect_lines(filename)
+        bonds = utils.pdb._parse_connect_lines(content)
         if len(bonds) != 0:
             for b in bonds:
                 new.add_bond(*b)
@@ -1882,6 +1899,9 @@ class BaseEntity:
         self._base_struct.child_dict.pop(model.get_id())
         return self
 
+    def get_structure(self) -> base_classes.Structure:
+        return self._base_struct
+
     def get_residues(
         self,
         *residues: Union[int, str, tuple, base_classes.Residue],
@@ -1919,11 +1939,11 @@ class BaseEntity:
         _residues = []
         for residue in residues:
             if isinstance(residue, base_classes.Residue):
-                if residue in self.residues:
+                if residue in self._model.get_residues():
                     _residues.append(residue)
                     continue
                 else:
-                    residues.append(
+                    _residues.append(
                         self.get_residue(residue.id[1], by="seqid", chain=chain)
                     )
                     continue
@@ -2621,11 +2641,7 @@ class BaseEntity:
             atoms = iter(atoms[0])
 
         if residue is not None:
-            if isinstance(residue, int):
-                residue = self._chain.child_list[residue - 1]
-            elif isinstance(residue, str):
-                residue = next(i for i in self._chain.child_list if i.resname == i)
-            target = residue
+            target = self.get_residue(residue)
         else:
             target = self._chain.child_list[-1]
 
@@ -3022,7 +3038,7 @@ class BaseEntity:
         bonds = structural.infer_bonds(
             self._base_struct, max_bond_length, restrict_residues
         )
-        self._add_bonds(*bonds)
+        self._set_bonds(*bonds)
         if infer_bond_orders:
             structural.infer_bond_orders(self)
 
@@ -3050,7 +3066,7 @@ class BaseEntity:
             bonds.extend(
                 structural.infer_bonds(res, max_bond_length, restrict_residues=False)
             )
-        self._add_bonds(*bonds)
+        self._set_bonds(*bonds)
         return bonds
 
     def get_residue_connections(
