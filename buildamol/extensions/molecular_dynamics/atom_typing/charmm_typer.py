@@ -46,6 +46,18 @@ class CHARMMTyper(AtomTyper):
                     }
         return typer
 
+    @property
+    def residue_names(self) -> list:
+        """
+        Get the residue names in the CHARMM Topology file
+
+        Returns
+        -------
+        list
+            The residue names
+        """
+        return list(sorted(set([key.split(":")[0] for key in self._dict.keys()])))
+
 
 if __name__ == "__main__":
     import buildamol as bam

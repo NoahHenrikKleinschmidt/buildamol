@@ -17,8 +17,10 @@ class AtomTyper:
     def from_file(cls, filename: str):
         raise NotImplementedError("This method needs to be implemented in a subclass")
 
-    def update(self, _dict):
-        self._dict.update(_dict)
+    def update(self, _dict_or_typer):
+        if isinstance(_dict_or_typer, AtomTyper):
+            _dict_or_typer = _dict_or_typer._dict
+        self._dict.update(_dict_or_typer)
 
     def get(self, key):
         return self._dict.get(key, None)
@@ -54,7 +56,7 @@ class AtomTyper:
         atom_type : str
             The atom type
         """
-        data = self.get_type_data(atom)
+        data = self.get_data(atom)
         data["type"] = atom_type
 
     def get_data(self, atom: base_classes.Atom) -> dict:
@@ -91,7 +93,7 @@ class AtomTyper:
         str
             The atom type
         """
-        return self.get_type_data(atom)["type"]
+        return self.get_data(atom)["type"]
 
     def get_types(self, residue_or_higher) -> dict:
         """
@@ -118,11 +120,43 @@ class AtomTyper:
         atom_or_higher : Atom or Residue or Chain or Model or Structure
             Any object that is an Atom or has a `get_atoms` method
         """
-        if atom_or_higher.level == "A":
-            atom_or_higher.type = self.get_type(atom_or_higher)
-        else:
+        if hasattr(atom_or_higher, "get_atoms"):
             for atom in atom_or_higher.get_atoms():
                 atom.type = self.get_type(atom)
+        else:
+            atom_or_higher.type = self.get_type(atom_or_higher)
+
+    def assign_charges(self, atom_or_higher):
+        """
+        Assign the "pqr_charge" attribute on one or more atoms based on the atom type data
+
+        Parameters
+        ----------
+        atom_or_higher : Atom or Residue or Chain or Model or Structure
+            Any object that is an Atom or has a `get_atoms` method
+        """
+        if hasattr(atom_or_higher, "get_atoms"):
+            for atom in atom_or_higher.get_atoms():
+                atom.pqr_charge = self.get_data(atom)["charge"]
+        else:
+            atom_or_higher.pqr_charge = self.get_data(atom_or_higher)["charge"]
+
+    def assign_attribute(self, atom_or_higher, attribute: str):
+        """
+        Assign an attribute on one or more atoms based on the atom type data
+
+        Parameters
+        ----------
+        atom_or_higher : Atom or Residue or Chain or Model or Structure
+            Any object that is an Atom or has a `get_atoms` method
+        attribute : str
+            The attribute to assign
+        """
+        if hasattr(atom_or_higher, "get_atoms"):
+            for atom in atom_or_higher.get_atoms():
+                setattr(atom, attribute, self.get_data(atom)[attribute])
+        else:
+            setattr(atom_or_higher, attribute, self.get_data(atom_or_higher)[attribute])
 
     def prepare_dict_for(self, atom_or_higher) -> dict:
         """
@@ -132,18 +166,18 @@ class AtomTyper:
         -------
         dict
         """
-        if atom_or_higher.level == "A":
+        if getattr(atom_or_higher, "get_atoms", None) is None:
             return {
                 self.atom_key(atom_or_higher): {
                     "type": getattr(atom_or_higher, "type"),
-                    "charge": (getattr(atom_or_higher, "charge")),
+                    "charge": (getattr(atom_or_higher, "pqr_charge")),
                 }
             }
         return {
             atom: {
                 self.atom_key(atom): {
                     "type": getattr(atom, "type"),
-                    "charge": (getattr(atom, "charge")),
+                    "charge": (getattr(atom, "pqr_charge")),
                 }
             }
             for atom in atom_or_higher.get_atoms()

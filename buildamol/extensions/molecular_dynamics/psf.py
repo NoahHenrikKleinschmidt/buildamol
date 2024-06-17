@@ -100,23 +100,21 @@ class PSFMaker:
                 raise ValueError("Atom type is not set and no atom typer is provided")
             type_getter = lambda atom: atom.type
         else:
-            type_getter = lambda atom: self.atom_typer.get_type_data(atom)["type"]
+            type_getter = lambda atom: self.atom_typer.get_data(atom)["type"]
 
         if self.atom_typer is None:
             if not hasattr(atom, "mass") or getattr(atom, "mass") is None:
                 raise ValueError("Atom mass is not set and no atom typer is provided")
             mass_getter = lambda atom: atom.mass
         else:
-            type_getter = lambda atom: self.atom_typer.get_type_data(atom)["type"]
+            mass_getter = lambda atom: self.atom_typer.get_data(atom).get("mass", 0)
 
         if self.atom_typer is None:
             if not hasattr(atom, "pqr_charge") or getattr(atom, "pqr_charge") is None:
                 raise ValueError("Atom charge is not set and no atom typer is provided")
             charge_getter = lambda atom: atom.pqr_charge
         else:
-            charge_getter = lambda atom: self.atom_typer.get_type_data(atom).get(
-                "charge", 0
-            )
+            charge_getter = lambda atom: self.atom_typer.get_data(atom).get("charge", 0)
 
         for i, atom in enumerate(molecule.get_atoms()):
             atom_type = type_getter(atom)
