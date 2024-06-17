@@ -2530,8 +2530,7 @@ class BaseEntity:
         name : str
             The new name
         """
-        if isinstance(chain, str):
-            chain = next(i for i in self._model.get_chains() if i.id == chain)
+        chain = self.get_chain(chain)
         chain._id = name
         return self
 
@@ -2546,8 +2545,7 @@ class BaseEntity:
         name : str
             The new name
         """
-        if isinstance(residue, int):
-            residue = self._chain.child_list[residue - 1]
+        residue = self.get_residue(residue)
         residue.resname = name
         return self
 
@@ -2571,13 +2569,45 @@ class BaseEntity:
             Useful when giving a possibly redundant id as identifier in multi-residue molecules.
         """
         atom = self.get_atom(atom, residue=residue)
-        # p = atom.get_parent()
-        # _old = atom.id
         atom.id = name
         atom.name = name
-        # if p:
-        #     p.child_dict.pop(_old)
-        #     p.child_dict[name] = atom
+        return self
+
+    def rename_residues(self, old_name: str, new_name: str):
+        """
+        Rename multiple residues to the same name
+
+        Parameters
+        ----------
+        old_name : str
+            The name of the residues to rename
+        new_name : str
+
+        """
+        for residue in self.get_residues(old_name):
+            residue.resname = new_name
+        return self
+
+    def rename_atoms(self, old_name: str, new_name: str, residue_name: str = None):
+        """
+        Rename multiple atoms to the same name
+
+        Parameters
+        ----------
+        old_name : str
+            The name of the atoms to rename
+        new_name : str
+            The new name
+        residue_name : str
+            The name of the residue of the atoms to rename (if only atoms from a specific type of residue should be renamed).
+        """
+        if residue_name:
+            filter = lambda x: x.parent.resname == residue_name
+        else:
+            filter = None
+        for atom in self.get_atoms(old_name, by="id", filter=filter):
+            atom.name = new_name
+            atom.id = new_name
         return self
 
     def change_element(
