@@ -1094,16 +1094,27 @@ class BaseEntity:
         angle_is_degrees : bool
             Whether the angle is given in degrees (default) or radians
         """
-        if not isinstance(axis, np.ndarray):
-            if isinstance(axis, str):
-                if axis.lower() == "x":
-                    axis = np.array([1, 0, 0])
-                elif axis.lower() == "y":
-                    axis = np.array([0, 1, 0])
-                elif axis.lower() == "z":
-                    axis = np.array([0, 0, 1])
+        if isinstance(axis, (list, tuple)):
+            axis = np.array(axis)
+        if isinstance(axis, np.ndarray):
+            axis = axis / np.linalg.norm(axis)
+        elif isinstance(axis, str):
+            axis = axis.lower().strip()
+            sign = None
+            if len(axis) == 2:
+                sign, axis = axis[0], axis[1]
+            if axis == "x":
+                axis = structural.x_axis
+            elif axis == "y":
+                axis = structural.y_axis
+            elif axis == "z":
+                axis = structural.z_axis
             else:
-                axis = np.array(axis)
+                raise ValueError(f"Unknown axis input: {axis=}")
+            if sign == "-":
+                axis = -axis
+        else:
+            raise ValueError(f"Unknown axis type {type(axis)}")
 
         if center is None:
             center = self.center_of_geometry
@@ -1205,9 +1216,9 @@ class BaseEntity:
         Parameters
         ----------
         ref_bond : tuple or Bond
-            The bond to superimpose to
+            The bond to reference in this molecule
         other_bond : tuple or Bond
-            The bond to superimpose from
+            The bond to superimpose to in the other molecule
         """
         if not isinstance(ref_bond[0], np.ndarray):
             ref_bond = (ref_bond[0].get_coord(), ref_bond[1].get_coord())
@@ -1217,6 +1228,34 @@ class BaseEntity:
         new_coords = structural.superimpose_points(
             self.get_coords(), ref_bond, other_bond
         )
+        for adx, atom in enumerate(self.get_atoms()):
+            atom.coord = new_coords[adx]
+
+        return self
+
+    def superimpose_to_pair(self, pair1, pair2):
+        """
+        Superimpose the molecule to another molecule based on two atom pairs (they do not need to be bonded).
+        This will move this molecule so that the atoms in pair1 are superimposed to the atoms in pair2.
+
+        Parameters
+        ----------
+        pair1 : tuple
+            The pair to superimpose in this molecule. These may either be Atom objects or any input which can be used to get atoms in this molecule.
+        pair2 : tuple
+            The pair to superimpose to. These must be either Atom objects or arbitrary coordinates (np.ndarray).
+        """
+        if not isinstance(pair1[0], np.ndarray):
+            if isinstance(pair1[0], (int, str)):
+                pair1 = (self.get_atom(a) for a in pair1)
+            pair1 = tuple(a.get_coord() for a in pair1)
+        if not isinstance(pair2[0], np.ndarray):
+            pair2 = tuple(a.get_coord() for a in pair2)
+
+        if len(pair1) != 2 or len(pair2) != 2:
+            raise ValueError("Both pairs must have exactly 2 elements")
+
+        new_coords = structural.superimpose_points(self.get_coords(), pair1, pair2)
         for adx, atom in enumerate(self.get_atoms()):
             atom.coord = new_coords[adx]
 
@@ -1275,6 +1314,192 @@ class BaseEntity:
             self.get_coords(), ref_triplet, other_triplet
         )
         for adx, atom in enumerate(self.get_atoms()):
+            atom.coord = new_coords[adx]
+
+        return self
+
+    def stack(self, axis: Union[str, np.ndarray], n: int, pad: float = 0):
+        """
+        Stack the molecule along an axis. This will create n copies of the molecule along the axis with a padding of pad between them.
+        This method is a convenience wrapper for `move` and `merge` and will not perform any kind of alignment or rotation.
+
+        Parameters
+        ----------
+        axis : str or np.ndarray
+            The axis to stack along. This can be either a unit vector or one of the strings "x", "y", or "z" to stack along the respective axes.
+        n : int
+            The number of copies to stack
+        pad : float
+            The padding between the copies
+        """
+        if isinstance(axis, (list, tuple)):
+            axis = np.array(axis)
+        if isinstance(axis, np.ndarray):
+            axis = axis / np.linalg.norm(axis)
+        elif isinstance(axis, str):
+            axis = axis.lower().strip()
+            sign = None
+            if len(axis) == 2:
+                sign, axis = axis[0], axis[1]
+            if axis == "x":
+                axis = structural.x_axis
+            elif axis == "y":
+                axis = structural.y_axis
+            elif axis == "z":
+                axis = structural.z_axis
+            else:
+                raise ValueError(f"Unknown axis input: {axis=}")
+            if sign == "-":
+                axis = -axis
+        else:
+            raise ValueError(f"Unknown axis type {type(axis)}")
+
+        _self = self.copy()
+        length = self.compute_length_along_axis(axis)
+        for i in range(1, n + 1):
+            incoming = _self.copy()
+            incoming.move(i * axis * (length + pad))
+            self.merge(incoming)
+        del _self
+        return self
+
+    def align_to(self, axis: Union[str, np.ndarray]):
+        """
+        Align the structure (via it's primary axis, i.e. the axis perpendicular to the main plane) to some other axis.
+        This will rotate the molecule so that the primary axis is aligned with the given axis. This only works for (more or less) planar molecules.
+
+        Parameters
+        ----------
+        axis : str or np.ndarray
+            The axis to align to. This can be either a unit vector or one of the strings "x", "y", or "z" to align to the respective axes.
+        """
+        if isinstance(axis, (list, tuple)):
+            axis = np.array(axis)
+        if isinstance(axis, np.ndarray):
+            axis = axis / np.linalg.norm(axis)
+        elif isinstance(axis, str):
+            axis = axis.lower().strip()
+            sign = None
+            if len(axis) == 2:
+                sign, axis = axis[0], axis[1]
+            if axis == "x":
+                axis = structural.x_axis
+            elif axis == "y":
+                axis = structural.y_axis
+            elif axis == "z":
+                axis = structural.z_axis
+            else:
+                raise ValueError(f"Unknown axis input: {axis=}")
+            if sign == "-":
+                axis = -axis
+        else:
+            raise ValueError(f"Unknown axis type {type(axis)}")
+
+        # compute the main plane of the
+        plane = self.compute_primary_axis()
+
+        # compute the rotation axis
+        rot_axis = np.cross(plane, axis)
+        rot_angle = np.arccos(np.dot(plane, axis))
+
+        # rotate the molecule
+        self.rotate(rot_angle, rot_axis, angle_is_degrees=False)
+
+        return self
+
+    def compute_primary_axis(self) -> np.ndarray:
+        """
+        Compute the primary axis of the molecule. This is the axis that is perpendicular to the main plane of the molecule.
+        This can be computed on any molecule but will only be meaningful for (more or less) planar molecules.
+        """
+        return structural.plane_of_points(self.get_coords())
+
+    def compute_length_along_axis(self, axis: Union[str, np.ndarray]) -> float:
+        """
+        Compute the length of the molecule along a specific axis. This can be computed on any molecule but may not be meaningful in all cases (e.g. circular or branched molecules).
+
+        Parameters
+        ----------
+        axis : str or np.ndarray
+            The axis to compute the length along. This can be either a unit vector or one of the strings "x", "y", or "z" to align to the respective axes.
+        """
+        if isinstance(axis, (list, tuple)):
+            axis = np.array(axis)
+        if isinstance(axis, np.ndarray):
+            axis = axis / np.linalg.norm(axis)
+        elif isinstance(axis, str):
+            axis = axis.lower().strip()
+            sign = None
+            if len(axis) == 2:
+                sign, axis = axis[0], axis[1]
+            if axis == "x":
+                axis = structural.x_axis
+            elif axis == "y":
+                axis = structural.y_axis
+            elif axis == "z":
+                axis = structural.z_axis
+            else:
+                raise ValueError(f"Unknown axis input: {axis=}")
+            if sign == "-":
+                axis = -axis
+        else:
+            raise ValueError(f"Unknown axis type {type(axis)}")
+        return structural.length_along_axis(self.get_coords(), axis)
+
+    def bend_at_bond(
+        self,
+        atom1: Union[str, int, base_classes.Atom],
+        atom2: Union[str, int, base_classes.Atom],
+        angle: float,
+        neighbor: Union[str, int, base_classes.Atom] = None,
+        angle_is_degrees: bool = True,
+    ):
+        """
+        Bend the molecule at a specific bond. This will rotate the atoms downstream of the bond in direction atom1->atom2 by the given angle.
+        The axis of rotation will be the plane vector specified by the two atoms and one neighboring atom. A specific neighbor can be provided
+        to ensure a specific plane is used (recommended), otherwise a random neighbor of atom1 will be used
+        (preference is given to non-Hydrogens but a Hydrogen will be used if no other neighbor is found).
+
+        Parameters
+        ----------
+        atom1 : Union[str, int, base_classes.Atom]
+            The first atom of the bond
+        atom2 : Union[str, int, base_classes.Atom]
+            The second atom of the bond
+        angle : float
+            The angle to bend by
+        neighbor : Union[str, int, base_classes.Atom], optional
+            The atom to use as a neighbor for the plane vector, by default None, in which case a random neighbor of atom1 will be used.
+            It is recommended to specify this to ensure a specific plane is used.
+        angle_is_degrees : bool, optional
+            Whether the angle is given in degrees (default) or radians
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+        if neighbor is not None:
+            neighbor = self.get_atom(neighbor)
+        else:
+            H = self.get_hydrogen(atom1)
+            neighbor = self.get_neighbors(atom1) - {atom2, H}
+            if len(neighbor) == 0:
+                if H is None:
+                    raise ValueError(
+                        "No neighbor found and no Hydrogen available to construct a plane vector! Specify a neighbor manually."
+                    )
+                neighbor = H
+            else:
+                neighbor = neighbor.pop()
+
+        if angle_is_degrees:
+            angle = np.radians(angle)
+
+        descendants = list(self.get_descendants(atom1, atom2)) + [atom2]
+        plane = structural.plane_of_points([a.coord for a in [neighbor, atom1, atom2]])
+        coords = np.array([a.coord for a in descendants])
+        coords -= atom1.coord
+        new_coords = structural.rotate_coords(coords, angle, plane)
+        new_coords += atom1.coord
+        for adx, atom in enumerate(descendants):
             atom.coord = new_coords[adx]
 
         return self
@@ -1784,6 +2009,19 @@ class BaseEntity:
                         adx += 1
 
         self.set_model(_m)
+        return self
+
+    def index_by_chain(self):
+        """
+        Reindex the residues in the structure by chain. This will let each chain start with a residue 1.
+        This will not reindex the atoms, only the residues.
+        """
+        for model in self.get_models():
+            for chain in model.child_list:
+                rdx = 1
+                for residue in chain.child_list:
+                    residue.serial_number = rdx
+                    rdx += 1
         return self
 
     def adjust_indexing(self, mol):
@@ -2505,14 +2743,14 @@ class BaseEntity:
         _residues = []
         for residue in residues:
             if isinstance(residue, int):
-                residue = self._chain.child_list[residue - 1]
+                residue = self.get_residue(residue)
 
             for atom in residue.child_list:
                 self._AtomGraph.remove_node(atom)
                 self._purge_bonds(atom)
 
             # keep the memory of the parent in the residue that is removed...
-            chain = residue.get_parent()
+            chain = residue.parent
             chain.detach_child(residue.get_id())
             residue.set_parent(chain)
 
@@ -3828,12 +4066,12 @@ class BaseEntity:
         The core function of `purge_bonds` which expects atoms to be provided as Atom objects.
         """
         # the full_id thing seems to prevent some memory leaky-ness
-        bonds = [
+        bonds = (
             i
             for i in self._bonds
             if atom is i[0] or atom is i[1]
             # if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
-        ]
+        )
         for bond in bonds:
             self._remove_bond(*bond)
 
@@ -3875,8 +4113,8 @@ class BaseEntity:
         """
         if self._AtomGraph.has_edge(atom1, atom2):
             bond_obj = self._AtomGraph[atom1][atom2]["bond_obj"]
+            self._bonds.remove(bond_obj)
             if self._AtomGraph[atom1][atom2].get("bond_order", 1) == 1:
-                self._bonds.remove(bond_obj)
                 self._AtomGraph._locked_edges.discard(bond_obj)
                 self._AtomGraph.remove_edge(atom1, atom2)
             else:
@@ -3884,6 +4122,9 @@ class BaseEntity:
                     self._AtomGraph[atom1][atom2].get("bond_order", 1) - 1
                 )
                 bond_obj.order -= 1
+        else:
+            bond_obj = base_classes.Bond(atom1, atom2)
+            self._bonds.remove(bond_obj)
 
         # if either_way:
         #     if bond_obj[::-1] in self._bonds:
