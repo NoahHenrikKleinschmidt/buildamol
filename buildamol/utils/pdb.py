@@ -114,6 +114,28 @@ def encode_pdb(mol, symmetric: bool = True) -> str:
     return "\n".join(lines)
 
 
+def decode_pdb(pdb: str):
+    """
+    Decode the contents of a PDB file.
+
+    Parameters
+    ----------
+    pdb : str
+        The PDB file contents.
+
+    Returns
+    -------
+    atoms_table: dict
+        The per-model atom tables
+    connect_table: list
+        A list of tuples of atom serial numbers that are bonded.
+    """
+    lines = pdb.split("\n")
+    atoms_table = _parse_atom_lines(lines)
+    connect_table = _parse_connect_lines(lines)
+    return atoms_table, connect_table
+
+
 def write_connect_lines(mol, filename):
     """
     Write "CONECT" lines to a PDB file.
@@ -299,7 +321,9 @@ def make_atoms_table(mol):
         if atom.pqr_charge is None or atom.pqr_charge == 0:
             charge = ""
         else:
-            charge = str(int(atom.pqr_charge)) + ("-" if atom.pqr_charge < 0 else "+")
+            charge = str(abs(int(atom.pqr_charge))) + (
+                "-" if atom.pqr_charge < 0 else "+"
+            )
 
         if atom.get_parent().resname in __amino_acids:
             prefix = "ATOM  "
