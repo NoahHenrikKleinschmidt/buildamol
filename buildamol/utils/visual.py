@@ -165,22 +165,15 @@ class Py3DmolViewer:
             raise ImportError(
                 "py3Dmol and/or rdkit are not available. Please install them and be sure to use a compatible (Jupyter) environment."
             )
-        # if hasattr(molecule, "to_rdkit"):
-        #     mol = molecule.to_rdkit()
-        # elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
-        #     mol = molecule._molecule.to_rdkit()
-        # elif "Chem" in str(molecule.__class__.mro()[0]):
-        #     mol = molecule
-        # else:
-        #     raise ValueError(
-        #         f"Unsupported molecule type: {molecule.__class__.__name__}"
-        #     )
-        if not hasattr(molecule, "to_pdb"):
+        if not hasattr(molecule, "get_atoms"):
             raise ValueError(
-                f"Unsupported molecule type: {molecule.__class__.__name__}. The input has to be a Py3DmolViewer or Molecule."
+                f"Unsupported molecule type: {molecule.__class__.__name__}. The input has to be a Py3DmolViewer, Molecule, or any other class with an 'get_atoms' method that can be converted to PDB."
             )
 
-        self.pdb = utils.pdb.encode_pdb(molecule)
+        if hasattr(molecule, "to_pdb"):
+            self.pdb = utils.pdb.encode_pdb(molecule)
+        else:
+            self.pdb = utils.pdb.make_atoms_table(molecule)
 
         self.style = dict(Py3DmolViewer.default_style)
         if style:
