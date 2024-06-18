@@ -655,6 +655,25 @@ def plane_of_points(points) -> np.ndarray:
     return v[2]
 
 
+def length_along_axis(coords, axis) -> float:
+    """
+    Compute the length of a set of coordinates along an axis.
+
+    Parameters
+    ----------
+    coords : array-like
+        The coordinates of the atoms
+    axis : array-like
+        The axis to compute the length along
+
+    Returns
+    -------
+    length : float
+        The length of the coordinates along the axis
+    """
+    return np.dot(coords, axis).ptp()
+
+
 @aux.njit
 def _numba_wrapper_rotate_coords(
     coords: np.ndarray,
