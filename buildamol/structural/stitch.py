@@ -324,7 +324,7 @@ class Stitcher(base.Connector):
         tmp._add_bond(self._anchors[0], self._anchors[1])
 
         graph = tmp.make_residue_graph(False)
-        graph.make_detailed(n_samples=0.5)
+        graph.make_detailed(include_clashes=False, n_samples=0.5)
         if include_bystanders:
             graph.add_nodes_from(bystanders.get_atoms())
             graph._residues[bystanders.id] = bystanders
