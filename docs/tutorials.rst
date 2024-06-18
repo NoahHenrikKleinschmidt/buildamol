@@ -43,6 +43,7 @@ More applied tutorials
    examples/rotaxane_easy
    examples/rotaxane_hard
    examples/nanotube
+   examples/metal_organic_framework
    examples/solvation_box
    examples/fragment_library
    examples/ligand_design
