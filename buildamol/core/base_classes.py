@@ -43,6 +43,7 @@ then all atoms, residues, chains and models will be converted to their BuildAMol
 """
 
 from copy import deepcopy
+from typing import Union
 
 # from uuid import uuid4
 import Bio.PDB as bio
@@ -604,6 +605,27 @@ class Residue(ID, bio.Residue.Residue):
         """
         return np.array([atom.coord for atom in self.get_atoms()])
 
+    def get_atom(self, atom: Union[str, int]) -> Atom:
+        """
+        Get an atom by its name or serial number.
+
+        Parameters
+        ----------
+        atom : str or int
+            The atom name or serial number.
+
+        Returns
+        -------
+        Atom
+            The atom.
+        """
+        if isinstance(atom, int):
+            return next((i for i in self.child_list if i.serial_number == atom), None)
+        elif isinstance(atom, str):
+            return next((i for i in self.child_list if i.id == atom), None)
+        else:
+            raise TypeError(f"atom must be either a string or an integer, not {atom=}")
+
     def matches(self, other) -> bool:
         """
         Check if the residue matches another residue.
@@ -799,6 +821,61 @@ class Chain(ID, bio.Chain.Chain):
         if not isinstance(residue, Residue):
             residue = Residue.from_biopython(residue)
         bio.Chain.Chain.add(self, residue)
+
+    def get_residue(self, residue: Union[str, int]) -> Residue:
+        """
+        Get a residue by its name or serial number.
+
+        Note
+        ----
+        If there are multiple residues with the same name, the first one will be returned.
+
+        Parameters
+        ----------
+        residue : str or int
+            The residue name or serial number.
+
+        Returns
+        -------
+        Residue
+            The residue.
+        """
+        if isinstance(residue, int):
+            return next(
+                (i for i in self.child_list if i.serial_number == residue), None
+            )
+        elif isinstance(residue, str):
+            return next((i for i in self.child_list if i.resname == residue), None)
+        else:
+            raise TypeError(
+                f"residue must be either a string or an integer, not {residue=}"
+            )
+
+    def get_residues(self, residue: Union[str, int] = None) -> "list[Residue]":
+        """
+        Get all residues in the chain.
+
+        Parameters
+        ----------
+        residue : str or int, optional
+            The residue name or serial number to filter by. The default is None (normal behavior returns a generator of all residues)
+
+        Returns
+        -------
+        list[Residue]
+            The list of residues. If no residue argument is specified the default generator is returned.
+        """
+        if residue:
+            if isinstance(residue, str):
+                return [i for i in self.child_list if i.resname == residue]
+            # makes no sense but for consistency
+            elif isinstance(residue, int):
+                return [i for i in self.child_list if i.serial_number == residue]
+            else:
+                raise TypeError(
+                    f"residue must be either a string or an integer, not {residue=}"
+                )
+        return super().get_residues()
 
     def get_coords(self) -> "np.ndarray":
         """
