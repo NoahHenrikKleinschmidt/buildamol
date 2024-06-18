@@ -49,9 +49,18 @@ class ResidueGraph(BaseGraph):
             The ResidueGraph representation of the molecule
         """
         if len(mol.residues) < 2:
-            raise ValueError(
-                "Molecule must have at least 2 residues to make a ResidueGraph"
-            )
+            new = cls(mol.id, [])
+            new._AtomGraph = mol._AtomGraph
+            new._structure = mol.structure
+            new._molecule = mol
+            res = mol.residues[0]
+            new.add_node(res)
+
+            if detailed:
+                for node in res.child_list:
+                    new.add_edge(node, res)
+
+            return new
 
         try:
             connections = mol.get_residue_connections(triplet=True)
