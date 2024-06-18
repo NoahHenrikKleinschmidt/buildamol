@@ -37,6 +37,14 @@
     </div>
 
     <div class="mySlides fade">
+        <img src="_static/gallery/MOF-top.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/MOF-angle.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
         <img src="_static/gallery/rotaxan-linear.png" style="width:100%">
     </div>
 
@@ -50,6 +58,10 @@
 
     <div class="mySlides fade">
         <img src="_static/gallery/drd2-ligand.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/MOF-detail.png" style="width:100%">
     </div>
 
     <div class="mySlides fade">
