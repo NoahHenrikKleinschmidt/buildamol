@@ -655,6 +655,26 @@ def plane_of_points(points) -> np.ndarray:
     return v[2]
 
 
+def principal_axis(coords: np.ndarray) -> np.ndarray:
+    """
+    Compute the principle axis of a set of coordinates
+    The principle axis is the eigenvector of the covariance matrix with the largest eigenvalue
+
+    Parameters
+    ----------
+    coords : array-like
+        The coordinates of the atoms
+
+    Returns
+    -------
+    axis : np.ndarray
+        The principle axis
+    """
+    coords = coords - np.mean(coords, axis=0)
+    _, _, v = np.linalg.svd(coords)
+    return v[0]
+
+
 def length_along_axis(coords, axis) -> float:
     """
     Compute the length of a set of coordinates along an axis.

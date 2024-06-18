@@ -1395,8 +1395,8 @@ class BaseEntity:
         else:
             raise ValueError(f"Unknown axis type {type(axis)}")
 
-        # compute the main plane of the
-        plane = self.compute_primary_axis()
+        # compute the main plane of the molecule
+        plane = self.compute_normal_axis()
 
         # compute the rotation axis
         rot_axis = np.cross(plane, axis)
@@ -1407,12 +1407,19 @@ class BaseEntity:
 
         return self
 
-    def compute_primary_axis(self) -> np.ndarray:
+    def compute_normal_axis(self) -> np.ndarray:
         """
-        Compute the primary axis of the molecule. This is the axis that is perpendicular to the main plane of the molecule.
+        Compute the normal axis of the molecule. This is the axis that is perpendicular to the main plane of the molecule.
         This can be computed on any molecule but will only be meaningful for (more or less) planar molecules.
         """
         return structural.plane_of_points(self.get_coords())
+
+    def compute_principal_axis(self) -> np.ndarray:
+        """
+        Compute the principal axis of the molecule. This is the axis that shows the most variance in the coordinates.
+        This can be computed on any molecule but will only be meaningful for (more or less) linear molecules.
+        """
+        return structural.principal_axis(self.get_coords())
 
     def compute_length_along_axis(self, axis: Union[str, np.ndarray]) -> float:
         """
