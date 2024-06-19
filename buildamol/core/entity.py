@@ -46,9 +46,7 @@ class BaseEntity:
 
     def __init__(self, structure, model: int = 0):
         if not isinstance(structure, base_classes.Structure):
-            if isinstance(
-            structure, bio.Structure.Structure
-        ):
+            if isinstance(structure, bio.Structure.Structure):
                 structure = base_classes.Structure.from_biopython(structure)
             else:
                 raise TypeError(
@@ -161,8 +159,10 @@ class BaseEntity:
         new = cls(structure)
         bonds = utils.pdb._parse_connect_lines(content)
         if len(bonds) != 0:
-            for b in bonds:
-                new.add_bond(*b)
+            atom_mapping = {a.serial_number: a for a in new.get_atoms()}
+            for a1, a2, o in bonds:
+                new._set_bond(atom_mapping[a1], atom_mapping[a2], o)
+            del atom_mapping
         return new
 
     @classmethod
@@ -263,14 +263,13 @@ class BaseEntity:
             if model.get_attribute("id", int) != 0:
                 new_model = _model.copy()
                 new_model.id = model.get_attribute("id", int)
-                # new_model._atom_index_mapping = {
-                #     i.serial_number: i for i in new_model.get_atoms()
-                # }
                 new.structure.add(new_model)
                 new._model = new_model
 
             for atom in model.children:
-                _atom = new._model._atom_index_mapping[atom.get_attribute("serial", int)]
+                _atom = new._model._atom_index_mapping[
+                    atom.get_attribute("serial", int)
+                ]
                 _atom.coord = np.array(
                     [
                         atom.get_attribute("x", float),
@@ -336,11 +335,14 @@ class BaseEntity:
             parent.add(atom)
 
         new = cls(_struct)
+        atom_mapping = {a.serial_number: a for a in new.get_atoms()}
         for bond, order in zip(
             structure_dict["bonds"]["serial"], structure_dict["bonds"]["order"]
         ):
             for i in range(order):
-                new.add_bond(bond[0], bond[1])
+                new._set_bond(atom_mapping[bond[0]], atom_mapping[bond[1]], order)
+
+        del atom_mapping
         return new
 
     @classmethod
@@ -375,11 +377,12 @@ class BaseEntity:
         new = conv.pybel_molecule_to_biopython(mol)
         new = base_classes.Structure.from_biopython(new)
         new = cls(new)
+        atom_mapping = {a.serial_number: a for a in new.get_atoms()}
         for i in range(mol.OBMol.NumBonds()):
             bond = mol.OBMol.GetBondById(i)
-            new.add_bond(
-                bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), bond.GetBondOrder()
-            )
+            a = atom_mapping[bond.GetBeginAtomIdx()]
+            b = atom_mapping[bond.GetEndAtomIdx()]
+            new._set_bond(a, b, bond.GetBondOrder())
         return new
 
     @classmethod
@@ -2073,17 +2076,13 @@ class BaseEntity:
         start_atomid : int
             The starting atom id
         """
-        _m = self._model
         for model in self.get_models():
-
-            self.set_model(model)
 
             cdx = start_chainid - 1
             rdx = start_resid
             adx = start_atomid
 
-            chains = list(self.chains)
-            for chain in chains:
+            for chain in model.child_list:
                 chain._id = utils.auxiliary.chain_id_maker(cdx)
                 cdx += 1
 
@@ -2094,8 +2093,6 @@ class BaseEntity:
                     for atom in residue.child_list:
                         atom.serial_number = adx
                         adx += 1
-
-        self.set_model(_m)
         return self
 
     def index_by_chain(self):
@@ -2171,8 +2168,8 @@ class BaseEntity:
                 )
         # we have to update the bond references to the new model
         # since each model stores copies of the atoms
-        atom_mapping = {i.serial_number : i for i in new_model.get_atoms()}
-        for bond in self.get_bonds(): 
+        atom_mapping = {i.serial_number: i for i in new_model.get_atoms()}
+        for bond in self.get_bonds():
             bond.atom1 = atom_mapping[bond.atom1.serial_number]
             bond.atom2 = atom_mapping[bond.atom2.serial_number]
         del atom_mapping
@@ -2857,8 +2854,8 @@ class BaseEntity:
                 residue = self.get_residue(residue)
 
             for atom in residue.child_list:
-                self._AtomGraph.remove_node(atom)
                 self._purge_bonds(atom)
+                self._AtomGraph.remove_node(atom)
 
             # keep the memory of the parent in the residue that is removed...
             chain = residue.parent
@@ -4193,15 +4190,15 @@ class BaseEntity:
         The core function of `purge_bonds` which expects atoms to be provided as Atom objects.
         """
         # the full_id thing seems to prevent some memory leaky-ness
-        bonds = (
-            i
-            for i in self._bonds
+        bonds = [
+            idx
+            for idx, i in enumerate(self._bonds)
             if atom is i[0] or atom is i[1]
             # if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
-        )
+        ]
         for bond in bonds:
-            self._remove_bond(*bond)
-
+            del self._bonds[bond]
+            
     def _add_bond(self, atom1, atom2, order=1):
         """
         Add a bond between two atoms
