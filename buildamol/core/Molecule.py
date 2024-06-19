@@ -732,7 +732,7 @@ def molecule(mol=None) -> "Molecule":
         return resources.get_compound(mol)
 
     if os.path.isfile(mol):
-        _mol = mol.lower()
+        _mol = mol.lower().strip()
         if _mol.endswith(".pdb"):
             return Molecule.from_pdb(mol)
         elif _mol.endswith(".cif"):
@@ -741,6 +741,8 @@ def molecule(mol=None) -> "Molecule":
             return Molecule.load(mol)
         elif _mol.endswith(".json"):
             return Molecule.from_json(mol)
+        elif _mol.endswith(".xml"):
+            return Molecule.from_xml(mol)
         elif (
             _mol.endswith(".mol")
             or _mol.endswith(".mol2")
