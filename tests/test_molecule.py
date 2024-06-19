@@ -1255,6 +1255,7 @@ def test_to_rdkit():
     assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
     assert sum(1 for i in rdkit_mol.GetBonds()) == 24
 
+
 def test_to_and_from_xml():
     glc = bam.Molecule.from_compound("GLC")
 
@@ -1279,6 +1280,12 @@ def test_to_and_from_xml():
     assert glc.count_atoms() == glc2.count_atoms()
     assert glc.count_bonds() == glc2.count_bonds()
     assert glc.to_biopython() == glc2.to_biopython()
+
+    v = glc2.draw()
+    for model in glc2.get_models():
+        glc2.set_model(model)
+        v.draw_edges(*glc2.bonds, color="red", opacity=0.5)
+    v.show()
 
 
 def test_work_with_pubchem():

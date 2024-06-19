@@ -45,8 +45,15 @@ class BaseEntity:
     )
 
     def __init__(self, structure, model: int = 0):
-        if isinstance(structure, bio.Structure.Structure):
-            structure = base_classes.Structure.from_biopython(structure)
+        if not isinstance(structure, base_classes.Structure):
+            if isinstance(
+            structure, bio.Structure.Structure
+        ):
+                structure = base_classes.Structure.from_biopython(structure)
+            else:
+                raise TypeError(
+                    f"structure must be a Structure object, got {type(structure)}"
+                )
         self._base_struct = structure
         self._id = structure.id
 
@@ -218,6 +225,7 @@ class BaseEntity:
         _struct = base_classes.Structure(tree.attributes["id"])
         _model = base_classes.Model(0)
         _struct.add(_model)
+        _model._atom_index_mapping = {}
         for chain in tree.get_child("structure").children:
             _chain = base_classes.Chain(chain.get_attribute("id"))
             _model.add(_chain)
@@ -239,12 +247,15 @@ class BaseEntity:
                         if attr not in ["id", "serial", "element"]:
                             setattr(_atom, attr, atom.get_attribute(attr))
                     _residue.add(_atom)
+                    _model._atom_index_mapping[_atom.serial_number] = _atom
         new = cls(_struct)
 
         for bond in tree.get_child("connectivity").children:
-            new.set_bond(
-                bond.get_attribute("atom1", int),
-                bond.get_attribute("atom2", int),
+            atom1 = new._model._atom_index_mapping[bond.get_attribute("atom1", int)]
+            atom2 = new._model._atom_index_mapping[bond.get_attribute("atom2", int)]
+            new._set_bond(
+                atom1,
+                atom2,
                 bond.get_attribute("order", int),
             )
 
@@ -252,11 +263,15 @@ class BaseEntity:
             if model.get_attribute("id", int) != 0:
                 new_model = _model.copy()
                 new_model.id = model.get_attribute("id", int)
+                # new_model._atom_index_mapping = {
+                #     i.serial_number: i for i in new_model.get_atoms()
+                # }
                 new.structure.add(new_model)
                 new._model = new_model
 
             for atom in model.children:
-                new.get_atom(atom.get_attribute("serial", int)).coord = np.array(
+                _atom = new._model._atom_index_mapping[atom.get_attribute("serial", int)]
+                _atom.coord = np.array(
                     [
                         atom.get_attribute("x", float),
                         atom.get_attribute("y", float),
@@ -265,6 +280,8 @@ class BaseEntity:
                 )
 
         new.set_model(0)
+        for model in new.get_models():
+            del model._atom_index_mapping
         return new
 
     @classmethod
@@ -2139,14 +2156,27 @@ class BaseEntity:
             The id of the model to set as active
         """
         if isinstance(model, int):
-            self._model = self._base_struct.child_list[model]
+            if model < len(self._base_struct.child_list):
+                new_model = self._base_struct.child_list[model]
+            else:
+                raise IndexError(
+                    f"Model {model} not in molecule. Available models: {self.models}. First add the model to the molecule to set it as the active model!"
+                )
         elif isinstance(model, base_classes.Model):
             if model in self._base_struct.child_list:
-                self._model = model
+                new_model = model
             else:
                 raise ValueError(
-                    f"Model {model} not in molecule. Available models: {self.get_models()}. First add the model to the molecule to set it as the active model!"
+                    f"Model {model} not in molecule. Available models: {self.models}. First add the model to the molecule to set it as the active model!"
                 )
+        # we have to update the bond references to the new model
+        # since each model stores copies of the atoms
+        atom_mapping = {i.serial_number : i for i in new_model.get_atoms()}
+        for bond in self.get_bonds(): 
+            bond.atom1 = atom_mapping[bond.atom1.serial_number]
+            bond.atom2 = atom_mapping[bond.atom2.serial_number]
+        del atom_mapping
+        self._model = new_model
         return self
 
     def get_model(self, model: int):
