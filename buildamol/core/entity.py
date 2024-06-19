@@ -205,6 +205,69 @@ class BaseEntity:
         return cls._from_dict(_dict)
 
     @classmethod
+    def from_xml(cls, filename: str):
+        """
+        Make a Molecule from an XML file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the XML file
+        """
+        tree = utils.xml.read_xml(filename)
+        _struct = base_classes.Structure(tree.attributes["id"])
+        _model = base_classes.Model(0)
+        _struct.add(_model)
+        for chain in tree.get_child("structure").children:
+            _chain = base_classes.Chain(chain.get_attribute("id"))
+            _model.add(_chain)
+            for residue in chain.children:
+                _residue = base_classes.Residue(
+                    residue.get_attribute("name"),
+                    " ",
+                    residue.get_attribute("serial", int),
+                )
+                _chain.add(_residue)
+                for atom in residue.children:
+                    _atom = base_classes.Atom(
+                        atom.get_attribute("id"),
+                        coord=np.zeros(3),
+                        serial_number=atom.get_attribute("serial", int),
+                        element=atom.get_attribute("element"),
+                    )
+                    for attr in atom.attributes:
+                        if attr not in ["id", "serial", "element"]:
+                            setattr(_atom, attr, atom.get_attribute(attr))
+                    _residue.add(_atom)
+        new = cls(_struct)
+
+        for bond in tree.get_child("connectivity").children:
+            new.set_bond(
+                bond.get_attribute("atom1", int),
+                bond.get_attribute("atom2", int),
+                bond.get_attribute("order", int),
+            )
+
+        for model in tree.get_child("coordinates").children:
+            if model.get_attribute("id", int) != 0:
+                new_model = _model.copy()
+                new_model.id = model.get_attribute("id", int)
+                new.structure.add(new_model)
+                new._model = new_model
+
+            for atom in model.children:
+                new.get_atom(atom.get_attribute("serial", int)).coord = np.array(
+                    [
+                        atom.get_attribute("x", float),
+                        atom.get_attribute("y", float),
+                        atom.get_attribute("z", float),
+                    ]
+                )
+
+        new.set_model(0)
+        return new
+
+    @classmethod
     def from_molfile(cls, filename: str):
         """
         Make a Molecule from a molfile
@@ -2273,6 +2336,17 @@ class BaseEntity:
         """
         return sum(1 for i in self._model.get_chains())
 
+    def count_models(self) -> int:
+        """
+        Count the number of models in the structure
+
+        Returns
+        -------
+        int
+            The number of models
+        """
+        return sum(1 for i in self.get_models())
+
     def get_atoms(
         self,
         *atoms: Union[int, str, tuple],
@@ -3827,6 +3901,22 @@ class BaseEntity:
             one_letter_code=one_letter_code,
             three_letter_code=three_letter_code,
         )
+
+    def to_xml(self, filename: str, atom_attributes: list = None):
+        """
+        Write the molecule to an XML file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the XML file
+        atom_attributes : list
+            A list of attributes to include in the XML file. Always included are:
+                - serial_number
+                - id
+                - element
+        """
+        utils.xml.write_xml(self, filename, atom_attributes)
 
     def to_openmm(self):
         """

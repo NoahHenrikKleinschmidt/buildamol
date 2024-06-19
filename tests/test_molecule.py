@@ -1255,6 +1255,31 @@ def test_to_rdkit():
     assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
     assert sum(1 for i in rdkit_mol.GetBonds()) == 24
 
+def test_to_and_from_xml():
+    glc = bam.Molecule.from_compound("GLC")
+
+    glc.to_xml("glc.xml")
+    glc2 = bam.Molecule.from_xml("glc.xml")
+    assert (glc2.get_coords()).sum() != 0
+    assert glc.count_atoms() == glc2.count_atoms()
+    assert glc.count_bonds() == glc2.count_bonds()
+    assert glc.to_biopython() == glc2.to_biopython()
+
+    glc.add_model(0)
+    glc.set_model(1)
+    glc.move([10, 0, 0])
+    glc.add_model(1)
+    glc.set_model(2)
+    glc.move([0, 10, 0])
+    glc.to_xml("glc.xml")
+    glc2 = bam.Molecule.from_xml("glc.xml")
+
+    assert glc.count_models() == glc2.count_models()
+    assert (glc2.get_coords()).sum() != 0
+    assert glc.count_atoms() == glc2.count_atoms()
+    assert glc.count_bonds() == glc2.count_bonds()
+    assert glc.to_biopython() == glc2.to_biopython()
+
 
 def test_work_with_pubchem():
     phprop = bam.Molecule.from_pubchem("2-[4-(2-methylpropyl)phenyl]propanal")
