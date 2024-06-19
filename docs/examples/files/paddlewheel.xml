@@ -1,0 +1,76 @@
+<molecule id="tmp8p34ripf">
+	<structure atoms="20">
+		<chain id="A">
+			<residue serial="1" name="UNL">
+				<atom serial="1" id="FEA" element="FE"/>
+				<atom serial="2" id="FEB" element="FE"/>
+				<atom serial="3" id="O11" element="O"/>
+				<atom serial="4" id="C1" element="C"/>
+				<atom serial="5" id="O12" element="O"/>
+				<atom serial="6" id="O21" element="O"/>
+				<atom serial="7" id="C2" element="C"/>
+				<atom serial="8" id="O22" element="O"/>
+				<atom serial="9" id="O41" element="O"/>
+				<atom serial="10" id="C4" element="C"/>
+				<atom serial="11" id="O42" element="O"/>
+				<atom serial="12" id="O31" element="O"/>
+				<atom serial="13" id="C3" element="C"/>
+				<atom serial="14" id="O32" element="O"/>
+				<atom serial="15" id="H3" element="H"/>
+				<atom serial="16" id="H2" element="H"/>
+				<atom serial="17" id="H4" element="H"/>
+				<atom serial="18" id="H1" element="H"/>
+				<atom serial="19" id="NA" element="N"/>
+				<atom serial="20" id="NB" element="N"/>
+			</residue>
+		</chain>
+	</structure>
+	<connectivity bonds="22">
+		<bond atom1="2" atom2="8" order="1"/>
+		<bond atom1="2" atom2="11" order="1"/>
+		<bond atom1="9" atom2="10" order="1"/>
+		<bond atom1="10" atom2="11" order="1"/>
+		<bond atom1="3" atom2="4" order="1"/>
+		<bond atom1="1" atom2="12" order="1"/>
+		<bond atom1="1" atom2="3" order="1"/>
+		<bond atom1="4" atom2="5" order="1"/>
+		<bond atom1="2" atom2="14" order="1"/>
+		<bond atom1="13" atom2="14" order="1"/>
+		<bond atom1="2" atom2="5" order="1"/>
+		<bond atom1="7" atom2="8" order="1"/>
+		<bond atom1="6" atom2="7" order="1"/>
+		<bond atom1="12" atom2="13" order="1"/>
+		<bond atom1="1" atom2="6" order="1"/>
+		<bond atom1="17" atom2="10" order="1"/>
+		<bond atom1="16" atom2="7" order="1"/>
+		<bond atom1="18" atom2="4" order="1"/>
+		<bond atom1="15" atom2="13" order="1"/>
+		<bond atom1="19" atom2="1" order="1"/>
+		<bond atom1="20" atom2="2" order="1"/>
+		<bond atom1="9" atom2="1" order="1"/>
+	</connectivity>
+	<coordinates models="1">
+		<model id="0">
+			<atomcoord serial="1" x="0.0612" y="-0.0246" z="-1.2596"/>
+			<atomcoord serial="2" x="-0.015" y="-0.0248" z="1.2656"/>
+			<atomcoord serial="3" x="1.595" y="0.0736" z="-1.1677"/>
+			<atomcoord serial="4" x="2.3912" y="0.0446" z="-0.0406"/>
+			<atomcoord serial="5" x="1.5665" y="0.0651" z="1.0751"/>
+			<atomcoord serial="6" x="-0.0097" y="1.5661" z="-1.1254"/>
+			<atomcoord serial="7" x="0.0007" y="2.3732" z="-0.0051"/>
+			<atomcoord serial="8" x="-0.0382" y="1.5576" z="1.1184"/>
+			<atomcoord serial="9" x="-1.5578" y="0.0375" z="-1.1829"/>
+			<atomcoord serial="10" x="-2.3833" y="0.0579" z="-0.0763"/>
+			<atomcoord serial="11" x="-1.5863" y="0.0289" z="1.0599"/>
+			<atomcoord serial="12" x="0.0394" y="-1.5845" z="-1.1288"/>
+			<atomcoord serial="13" x="0.0005" y="-2.4002" z="-0.0153"/>
+			<atomcoord serial="14" x="0.0109" y="-1.5931" z="1.114"/>
+			<atomcoord serial="15" x="0.0005" y="-3.4001" z="-0.0175"/>
+			<atomcoord serial="16" x="0.0008" y="3.3732" z="-0.003"/>
+			<atomcoord serial="17" x="-3.3833" y="0.0607" z="-0.0837"/>
+			<atomcoord serial="18" x="3.3911" y="0.0419" z="-0.0332"/>
+			<atomcoord serial="19" x="0.0612" y="-0.0246" z="-2.7596"/>
+			<atomcoord serial="20" x="-0.015" y="-0.0248" z="2.7656"/>
+		</model>
+	</coordinates>
+</molecule>
