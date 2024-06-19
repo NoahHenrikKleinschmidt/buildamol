@@ -267,6 +267,18 @@ def test_remove_atoms():
     assert len(glc.bonds) == 18
 
 
+def test_remove_residues():
+    glc = bam.Molecule.from_compound("GLC")
+    glc = glc % "14bb" * 6
+    b = glc.get_bonds(glc.get_residue(3))
+    b_before = glc.count_bonds()
+    before = glc.count_atoms()
+    r = glc.remove_residues(3)
+    assert glc.count_residues() == 5
+    assert glc.count_atoms() == before - len(r[0].child_list)
+    assert glc.count_bonds() == b_before - len(b) - 2
+
+
 def test_add_residues():
     mol = bam.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
