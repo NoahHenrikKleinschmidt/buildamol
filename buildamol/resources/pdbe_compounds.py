@@ -36,16 +36,17 @@ For future sessions the pre-parsed object can be directly loaded using the `load
     # or (read_compounds also supports loading)
     compounds = bam.read_compounds("path/to/pdbe-compounds.pkl")
 
-In order to export data from the PDBE compounds library, the `PDBECompounds` class also implements a `to_json` method to export the data as a JSON file.
-The JSON file can be loaded again using the `from_json` class method (or using `read_compounds` function). This is useful for sharing compound data with others
+In order to export data from the PDBE compounds library, the `PDBECompounds` class also implements a `to_json` and a `to_xml` method to export the data to an agnostic data format.
+Exported data can be loaded by `from_json` or `from_xml` respectively (or using `read_compounds` function which supports both formats). This is useful for sharing compound data with others
 who may use different versions of BuildAMol and thus may have issues with pickeled objects, or for sharing data with other programs.
 
 .. code-block:: python
 
     # save an existing PDBECompounds object
     compounds.to_json("path/to/pdbe-compounds.json")
-    # or
-    bam.export_compounds("path/to/pdbe-compounds.json", compounds)
+    
+    # or to XML with the toplevel function 
+    bam.export_compounds("path/to/pdbe-compounds.xml", compounds)
 
     
 Working with PDBECompounds

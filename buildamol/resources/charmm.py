@@ -58,16 +58,17 @@ and both also have a functional equivalent called `save_topology` and `read_topo
     top = CHARMMTopology.load("top_all36_prot.pkl")
 
     
-Topologies also support an encoding agnosting export to JSON format using the `to_json` method (function `export_topology`). This is 
+Topologies also support an encoding agnosting export to JSON format using the `to_json` method or XML format using the `to_xml` method (both formats work for the function `export_topology`). This is 
 useful for sharing topologies with other users who may be using a different version of BuildAMol and therefore could potentially have issues
-with pickled objects, or for programmatic creation of new topologies (since JSON is an easier format to work with than the CHARMM topology file format itself).
+with pickled objects, or for programmatic creation of new topologies (since especially XML is an easier format to work with than the CHARMM topology file format itself).
 
 .. code-block:: python
 
     # export a CHARMM topology file to JSON
     top.to_json("top_all36_prot.json")
-    # or
-    bam.export_topology(top, "top_all36_prot.json")
+
+    # or to an XML file with the function
+    bam.export_topology("top_all36_prot.xml", top)
     
     
 Working with CHARMM objects

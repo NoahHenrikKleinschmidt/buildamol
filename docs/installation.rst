@@ -49,7 +49,8 @@ Updating BuildAMol
    before updating, as the update will overwrite the pickle files where defaults are stored. You can re-set the custom settings after the update.
 
 In order to export the custom data it is recommended not to pickle the objects (as a pickled object may not be compatbile with a newer version of BuildAMol).
-Instead, you can export the data as a JSON file using the `to_json` method of the `PDBECompounds` and `CHARMMTopology` classes or the `export_custom_resources` function:
+Instead we recommend to export your data to an agnostic format before updating. BuildAMol offers quick-exports to JSON and XML formats for such purposes.
+Both the `PDBECompounds` and `CHARMMTopology` classes have methods to export their data to JSON and XML formats. Alternatively, to export all custom resources at once, you can use the following functions:
 
 .. code-block:: python
 
