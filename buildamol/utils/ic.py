@@ -71,6 +71,26 @@ class InternalCoordinates:
         return new
 
     @classmethod
+    def _from_xml(cls, xml):
+        """
+        Make an InternalCoordinate from an XML element
+        """
+        new = cls(
+            xml.attributes["atom1"],
+            xml.attributes["atom2"],
+            xml.attributes["atom3"],
+            xml.attributes["atom4"],
+            bond_length_12=eval(xml.attributes["length12"]),
+            bond_length_34=float(xml.attributes["length34"]),
+            bond_angle_123=float(xml.attributes["angle123"]),
+            bond_angle_234=float(xml.attributes["angle234"]),
+            dihedral=float(xml.attributes["dihedral"]),
+            bond_length_13=eval(xml.attributes["length13"]),
+            improper=eval(xml.attributes["improper"]),
+        )
+        return new
+
+    @classmethod
     def from_quartet(cls, quartet):
         """
         Make an InternalCoordinate from a Quartet

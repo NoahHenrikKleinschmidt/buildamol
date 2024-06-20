@@ -451,6 +451,42 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         return cls._from_dict(_dict)
 
     @classmethod
+    def from_xml(cls, filename: str):
+        """
+        Make a new `Linkage` instance from an XML file.
+
+        Parameters
+        ----------
+        filename : str
+            The XML filename.
+        """
+        xml = utils.xml.read_xml(filename)
+        return cls._from_xml(xml)
+
+    @classmethod
+    def _from_xml(cls, xml):
+        """
+        Make a new `Linkage` instance from an XML element.
+
+        Parameters
+        ----------
+        xml : Element
+            The XML element.
+        """
+        new = cls(id=xml["id"], description=xml["descr"])
+        new.atom1 = xml["atom1"]
+        new.atom2 = xml["atom2"]
+        for i in eval(xml["deletes1"]):
+            new.add_delete(i, "target")
+        for i in eval(xml["deletes2"]):
+            new.add_delete(i, "source")
+        for i in xml["ics"]:
+            new.add_internal_coordinates(
+                utils.ic.InternalCoordinates._from_xml(i),
+            )
+        return new
+
+    @classmethod
     def _from_dict(cls, _dict):
         """
         Make a new `Linkage` instance from a JSON dictionary.
@@ -917,6 +953,18 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             The JSON filename.
         """
         utils.json.write_linkage(self, filename)
+
+    def to_xml(self, filename: str):
+        """
+        Write the `Linkage` instance to an XML file.
+
+        Parameters
+        ----------
+        filename : str
+            The XML filename.
+        """
+        xml = utils.xml.encode_linkage(self)
+        utils.xml.write_xml(filename, xml)
 
     def __getitem__(self, index):
         if len(self.bonds) == 0:

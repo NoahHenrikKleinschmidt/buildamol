@@ -148,7 +148,7 @@ import buildamol.utils.defaults as _defaults
 
 def read_topology(filename: str, set_default: bool = True) -> "CHARMMTopology":
     """
-    Make a CHARMMTopology from a CHARMM topology file, a JSON file or a pickle file.
+    Make a CHARMMTopology from a CHARMM topology file, a JSON, an XML, or a pickle file.
 
     Parameters
     ----------
@@ -166,6 +166,8 @@ def read_topology(filename: str, set_default: bool = True) -> "CHARMMTopology":
         top = CHARMMTopology.load(filename)
     elif filename.endswith(".json"):
         top = CHARMMTopology.from_json(filename)
+    elif filename.endswith(".xml"):
+        top = CHARMMTopology.from_xml(filename)
     else:
         top = CHARMMTopology.from_file(filename)
     if set_default:
@@ -191,7 +193,7 @@ def save_topology(filename: str, topology: "CHARMMTopology" = None):
 
 def export_topology(filename: str, topology: "CHARMMTopology" = None):
     """
-    Export a CHARMM topology to a JSON file.
+    Export a CHARMM topology to a JSON or XML file.
 
     Parameters
     ----------
@@ -202,7 +204,12 @@ def export_topology(filename: str, topology: "CHARMMTopology" = None):
     """
     if topology is None:
         topology = get_default_topology()
-    topology.to_json(filename)
+    if filename.endswith(".xml"):
+        topology.to_xml(filename)
+    elif filename.endswith(".json"):
+        topology.to_json(filename)
+    else:
+        raise ValueError("Strange file extension. Please use .xml or .json")
 
 
 def set_default_topology(obj, overwrite: bool = False):
@@ -587,6 +594,46 @@ class CHARMMTopology(CHARMMParser):
             if not filename.endswith(".json"):
                 filename += ".json"
         utils.json.write_charmm_topology(self, filename)
+
+    @classmethod
+    def from_xml(cls, filename: str) -> "CHARMMTopology":
+        """
+        Make a CHARMMTopology from a previously exported XML file.
+
+        Parameters
+        ----------
+        filename: str
+            The path to the XML file
+        """
+        xml = utils.xml.read_xml(filename)
+        new = cls()
+        for patch in xml["patches"]:
+            new.add_patch(Linkage._from_xml(patch))
+        new.id = xml["id"]
+        new._file = filename
+        return new
+
+    def to_xml(self, filename: str = None):
+        """
+        Export the topology as XML file.
+
+        Parameters
+        ----------
+        filename: str
+            The path to the XML file to save in. By default, this will be
+            the same filename as the one from which the data was loaded or
+            parsed (adding the file-suffix `.xml`)
+        """
+        if not filename:
+            if not self._file:
+                raise ValueError(
+                    "No filename was given and no filename from a source file is available!"
+                )
+            filename = self._file
+            if not filename.endswith(".xml"):
+                filename += ".xml"
+        xml = utils.xml.encode_topology(self)
+        utils.xml.write_xml(filename, xml)
 
     def get_patch(self, id):
         """

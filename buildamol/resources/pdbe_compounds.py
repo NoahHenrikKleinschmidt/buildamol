@@ -140,6 +140,7 @@ from Bio import SVDSuperimposer
 import buildamol.utils.json as json
 import buildamol.utils.defaults as defaults
 import buildamol.utils.auxiliary as aux
+import buildamol.utils as utils
 import buildamol.core.base_classes as base_classes
 import buildamol.core.Molecule as Molecule
 
@@ -223,7 +224,7 @@ Map of bond order numbers to names.
 
 def read_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
     """
-    Reads a PDBECompounds object from a CIF, JSON, or pickle file.
+    Reads a PDBECompounds object from a CIF, JSON, XML, or pickle file.
 
     Parameters
     ----------
@@ -244,6 +245,8 @@ def read_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
         compounds = PDBECompounds.from_json(filename)
     elif filename.endswith(".pkl") or filename.endswith(".pickle"):
         compounds = PDBECompounds.load(filename)
+    elif filename.endswith(".xml"):
+        compounds = PDBECompounds.from_xml(filename)
     else:
         raise ValueError(
             "Unsupported file format. Only CIF, JSON and pickle (.pkl or .pickle) files are supported."
@@ -273,12 +276,12 @@ def save_compounds(filename: str, compounds: "PDBECompounds" = None):
 
 def export_compounds(filename: str, compounds: "PDBECompounds" = None):
     """
-    Export the PDBECompounds object to a JSON file.
+    Export the PDBECompounds object to a JSON or XML file.
 
     Parameters
     ----------
     filename : str
-        The path to the JSON file to save to.
+        The path to the file to save to.
 
     compounds : PDBECompounds, optional
         The PDBECompounds object to save. If not provided, the default
@@ -286,7 +289,14 @@ def export_compounds(filename: str, compounds: "PDBECompounds" = None):
     """
     if compounds is None:
         compounds = get_default_compounds()
-    compounds.to_json(filename)
+    if filename.endswith(".json"):
+        compounds.to_json(filename)
+    elif filename.endswith(".xml"):
+        compounds.to_xml(filename)
+    else:
+        raise ValueError(
+            "Unsupported file format. Only JSON and XML files are supported."
+        )
 
 
 def has_compound(compound: str, search_by: str = None) -> bool:
@@ -757,6 +767,87 @@ class PDBECompounds:
         return new
 
     @classmethod
+    def from_xml(cls, filename: str) -> "PDBECompounds":
+        """
+        Make a PDBECompounds object from an `xml` file.
+
+        Parameters
+        ----------
+        filename : str
+            The path to the file.
+
+        Returns
+        -------
+        PDBECompounds
+            The PDBECompounds object.
+        """
+        xml = utils.xml.read_xml(filename)
+        new = cls({}, id=xml["id"])
+        for compound in xml["metadata"]:
+            comp_dict = {
+                "id": compound["id"],
+                "name": compound["name"],
+                "type": compound["type"],
+                "formula": compound["formula"],
+                "one_letter_code": (
+                    None if compound["oneletter"] == "None" else compound["oneletter"]
+                ),
+                "three_letter_code": (
+                    None
+                    if compound["threeletter"] == "None"
+                    else compound["threeletter"]
+                ),
+                "names": [i["value"] for i in compound["names"]],
+                "descriptors": [i["value"] for i in compound["descriptors"]],
+            }
+            new._compounds[compound["id"]] = comp_dict
+
+        for compound in xml["pdbdata"]:
+
+            pdb_dict = {
+                "id": compound["id"],
+                "residues": {"serials": [], "names": []},
+                "atoms": {
+                    "serials": [],
+                    "ids": [],
+                    "coords": [],
+                    "elements": [],
+                    "charges": [],
+                    "residue": [],
+                },
+                "bonds": {"bonds": [], "parents": [], "orders": []},
+            }
+
+            for residue in compound["residues"]:
+                pdb_dict["residues"]["serials"].append(int(residue["serial"]))
+                pdb_dict["residues"]["names"].append(residue["name"])
+
+            for atom in compound["atoms"]:
+                pdb_dict["atoms"]["serials"].append(int(atom["serial"]))
+                pdb_dict["atoms"]["ids"].append(atom["id"])
+                pdb_dict["atoms"]["elements"].append(atom["element"])
+                pdb_dict["atoms"]["charges"].append(eval(atom["charge"]))
+                pdb_dict["atoms"]["residue"].append(int(atom["residue"]))
+                coord = [
+                    float(atom["x"]),
+                    float(atom["y"]),
+                    float(atom["z"]),
+                ]
+                pdb_dict["atoms"]["coords"].append(coord)
+            for bond in compound["bonds"]:
+                pdb_dict["bonds"]["bonds"].append((bond["atom1"], bond["atom2"]))
+                pdb_dict["bonds"]["parents"].append(
+                    (int(bond["residue1"]), int(bond["residue1"]))
+                )
+                pdb_dict["bonds"]["orders"].append(bond["order"])
+
+            pdb_dict["atoms"]["coords"] = np.array(pdb_dict["atoms"]["coords"])
+            pdb_dict["atoms"]["full_ids"] = pdb_dict["atoms"]["ids"]
+            new._pdb[compound["id"]] = pdb_dict
+
+        return new
+
+    @classmethod
     def _from_dict(cls, _dict: dict) -> "PDBECompounds":
         """
         Make a PDBECompounds object from a dictionary.
@@ -857,6 +948,28 @@ class PDBECompounds:
             filename = aux.change_suffix(filename, ".json")
 
         json.write_pdbe_compounds(self, filename)
+
+    def to_xml(self, filename: str = None) -> None:
+        """
+        Export the PDBECompounds object to an `xml` file.
+
+        Parameters
+        ----------
+        filename : str
+            The path to the file. By default the same file used to load the object is used.
+            If no file is available, a `ValueError` is raised.
+        """
+        if filename is None:
+            if self._filename is None:
+                raise ValueError("No filename specified.")
+
+            filename = self._filename
+
+        if not filename.endswith(".xml"):
+            filename = aux.change_suffix(filename, ".xml")
+
+        xml = utils.xml.encode_pdbe_compounds(self)
+        utils.xml.write_xml(filename, xml)
 
     def merge(self, other: "PDBECompounds") -> None:
         """

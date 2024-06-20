@@ -1,3 +1,6 @@
+import re
+
+
 class XMLEntry:
     def __init__(self, name: str):
         self.name = name
@@ -5,21 +8,32 @@ class XMLEntry:
         self.attributes = {}
         self.indent = 0
         self.has_children = False
+        self.has_parent = False
 
     @classmethod
     def from_string(cls, string: str):
         if not string.startswith("<"):
             raise ValueError("Invalid XML string")
         string = string[1:-1]
+
         has_children = True
         if string[-1] == "/":
             has_children = False
             string = string[:-1]
-        name, *attrs = string.split(" ")
-        entry = cls(name)
-        for attr in attrs:
-            key, value = attr.split("=")
-            entry.attributes[key] = value.strip('"')
+
+        if "=" not in string:
+            name = string
+            entry = cls(name)
+        else:
+            idx = string.find(" ")
+            name = string[:idx]
+            entry = cls(name)
+
+            attrs = string[idx:]
+            attrs = re.findall(r'(\w+)=("[^"]*")', attrs)
+            for key, value in attrs:
+                entry.attributes[key] = value.strip('"')
+
         entry.has_children = has_children
         return entry
 
@@ -38,8 +52,16 @@ class XMLEntry:
         indent = "\t" * self.indent
         return f"{indent}</{self.name}>"
 
+    def adjust_indent(self):
+        if not self.has_parent:
+            self.indent = 0
+        for child in self.children:
+            child.indent = self.indent + 1
+            child.adjust_indent()
+
     def add_child(self, child):
         child.indent = self.indent + 1
+        child.has_parent = True
         self.has_children = True
         self.children.append(child)
 
@@ -79,7 +101,10 @@ class XMLEntry:
     def __getitem__(self, key):
         if isinstance(key, int):
             return self.children[key]
-        return self.get_child(key)
+        value = self.attributes.get(key, None)
+        if not value:
+            value = self.get_child(key)
+        return value
 
     def __str__(self):
         return self.to_string()
@@ -88,7 +113,7 @@ class XMLEntry:
         return f"XMLEntry('{self.name}', n_attributes={len(self.attributes)}, n_children={len(self.children)})"
 
 
-def encode_xml(mol: "Molecule", atom_attributes: list = None) -> XMLEntry:
+def encode_molecule(mol: "Molecule", atom_attributes: list = None) -> XMLEntry:
     """
     Encode a Molecule as an XML tree
 
@@ -164,6 +189,180 @@ def encode_xml(mol: "Molecule", atom_attributes: list = None) -> XMLEntry:
     return root
 
 
+def encode_linkage(linkage: "Linkage") -> XMLEntry:
+    """
+    Encode a Linkage as an XML tree
+
+    Parameters
+    ----------
+    linkage : Linkage
+        The linkage to encode
+
+    Returns
+    -------
+    XMLEntry
+        The root of the XML tree
+    """
+    root = XMLEntry("linkage")
+    root.attributes["id"] = linkage.id
+    root.attributes["descr"] = linkage.description
+    root.attributes["atom1"] = linkage._stitch_ref_atoms[0]
+    root.attributes["atom2"] = linkage._stitch_ref_atoms[1]
+    root.attributes["deletes1"] = linkage.deletes[0]
+    root.attributes["deletes2"] = linkage.deletes[1]
+    ic = XMLEntry("ics")
+    root.add_child(ic)
+    for i in linkage.internal_coordinates:
+        ic.add_child(encode_ic(i))
+    return root
+
+
+def encode_ic(ic: "InternalCoordinates") -> XMLEntry:
+    """
+    Encode an InternalCoordinates object as an XML tree
+
+    Parameters
+    ----------
+    ic : InternalCoordinates
+        The internal coordinates to encode
+
+    Returns
+    -------
+    XMLEntry
+        The root of the XML tree
+    """
+    root = XMLEntry("ic")
+    root.attributes["atom1"] = ic.atom1
+    root.attributes["atom2"] = ic.atom2
+    root.attributes["atom3"] = ic.atom3
+    root.attributes["atom4"] = ic.atom4
+    root.attributes["improper"] = ic.improper
+    root.attributes["length12"] = ic.bond_length_12
+    root.attributes["length13"] = ic.bond_length_13
+    root.attributes["length34"] = ic.bond_length_34
+    root.attributes["angle123"] = ic.bond_angle_123
+    root.attributes["angle234"] = ic.bond_angle_234
+    root.attributes["dihedral"] = ic.dihedral
+    return root
+
+
+def encode_topology(topology: "CHARMMTopology") -> XMLEntry:
+    """
+    Encode a CHARMMTopology object as an XML tree
+
+    Parameters
+    ----------
+    topology : CHARMMTopology
+        The topology to encode
+
+    Returns
+    -------
+    XMLEntry
+        The root of the XML tree
+    """
+    root = XMLEntry("topology")
+    root.attributes["id"] = topology.id
+    patches = XMLEntry("patches")
+    root.add_child(patches)
+    for patch in topology.patches:
+        patches.add_child(encode_linkage(patch))
+    root.adjust_indent()
+    return root
+
+
+def encode_pdbe_compounds(compounds: "PDBECompounds") -> XMLEntry:
+    """
+    Encode a PDBECompounds object as an XML tree
+
+    Parameters
+    ----------
+    compounds : PDBECompounds
+        The compounds to encode
+
+    Returns
+    -------
+    XMLEntry
+        The root of the XML tree
+    """
+    root = XMLEntry("pdbe_compounds")
+    root.attributes["id"] = compounds.id
+    metadata = XMLEntry("metadata")
+    root.add_child(metadata)
+    for compound in compounds._compounds:
+        c = compounds._compounds[compound]
+        c["id"] = compound
+        metadata.add_child(_encode_meta_data_compound(c))
+
+    pdbdata = XMLEntry("pdbdata")
+    root.add_child(pdbdata)
+    for compound in compounds._pdb:
+        c = compounds._pdb[compound]
+        c["id"] = compound
+        pdbdata.add_child(_encode_pdb_data_compound(c))
+
+    root.adjust_indent()
+    return root
+
+
+def _encode_pdb_data_compound(_dict):
+    root = XMLEntry("compound")
+    root.attributes["id"] = _dict["id"]
+    residues = XMLEntry("residues")
+    root.add_child(residues)
+    for i in range(len(_dict["residues"]["serials"])):
+        residue = XMLEntry("residue")
+        residue.attributes["serial"] = _dict["residues"]["serials"][i]
+        residue.attributes["name"] = _dict["residues"]["names"][i]
+        residues.add_child(residue)
+    atoms = XMLEntry("atoms")
+    root.add_child(atoms)
+    for i in range(len(_dict["atoms"]["serials"])):
+        atom = XMLEntry("atom")
+        atom.attributes["serial"] = _dict["atoms"]["serials"][i]
+        atom.attributes["id"] = _dict["atoms"]["ids"][i]
+        atom.attributes["element"] = _dict["atoms"]["elements"][i]
+        atom.attributes["residue"] = _dict["atoms"]["residue"][i]
+        atom.attributes["charge"] = _dict["atoms"]["charges"][i] or 0
+        atom.attributes["x"] = _dict["atoms"]["coords"][i][0]
+        atom.attributes["y"] = _dict["atoms"]["coords"][i][1]
+        atom.attributes["z"] = _dict["atoms"]["coords"][i][2]
+        atoms.add_child(atom)
+    bonds = XMLEntry("bonds")
+    root.add_child(bonds)
+    for i in range(len(_dict["bonds"]["bonds"])):
+        bond = XMLEntry("bond")
+        bond.attributes["atom1"] = _dict["bonds"]["bonds"][i][0]
+        bond.attributes["residue1"] = _dict["bonds"]["parents"][i][0]
+        bond.attributes["atom2"] = _dict["bonds"]["bonds"][i][1]
+        bond.attributes["residue2"] = _dict["bonds"]["parents"][i][1]
+        bond.attributes["order"] = _dict["bonds"]["orders"][i]
+        bonds.add_child(bond)
+    return root
+
+
+def _encode_meta_data_compound(_dict):
+    root = XMLEntry("compound")
+    root.attributes["id"] = _dict["id"]
+    root.attributes["name"] = _dict["name"]
+    root.attributes["formula"] = _dict["formula"]
+    root.attributes["type"] = _dict["type"]
+    root.attributes["oneletter"] = _dict["one_letter_code"]
+    root.attributes["threeletter"] = _dict["three_letter_code"]
+    names = XMLEntry("names")
+    root.add_child(names)
+    for name in _dict["names"]:
+        _name = XMLEntry("value")
+        _name.attributes["value"] = name
+        names.add_child(_name)
+    descriptors = XMLEntry("descriptors")
+    root.add_child(descriptors)
+    for desc in _dict["descriptors"]:
+        _desc = XMLEntry("value")
+        _desc.attributes["value"] = desc
+        descriptors.add_child(_desc)
+    return root
+
+
 def decode_xml(xml: str) -> XMLEntry:
     """
     Decode an XML string into an XML tree
@@ -183,6 +382,8 @@ def decode_xml(xml: str) -> XMLEntry:
     parent_stack = [root]
     for line in xml[1:]:
         line = line.strip()
+        if len(line) == 0:
+            continue
         if line.startswith("</"):
             parent_stack.pop()
             continue
@@ -193,24 +394,19 @@ def decode_xml(xml: str) -> XMLEntry:
     return root
 
 
-def write_xml(mol: "Molecule", filename: str, atom_attributes: list = None):
+def write_xml(filename: str, entry: XMLEntry):
     """
-    Write a Molecule to an XML file
+    Write an XML tree to a file
 
     Parameters
     ----------
-    mol : Molecule
-        The molecule to write
     filename : str
         The filename of the XML file
-    atom_attributes : list, optional
-        A list of atom attributes to include in the XML, the following attributes are always included:
-            - serial_number
-            - id
-            - element
+    entry : XMLEntry
+        The root of the XML tree
     """
     with open(filename, "w") as f:
-        f.write(str(encode_xml(mol, atom_attributes=atom_attributes)))
+        f.write(str(entry))
 
 
 def read_xml(filename: str) -> XMLEntry:
@@ -234,12 +430,9 @@ def read_xml(filename: str) -> XMLEntry:
 if __name__ == "__main__":
     import buildamol as bam
 
-    mol = bam.molecule("dimethylbenzene")
-    mol.stack("x", 10, 3)
+    bam.load_sugars()
 
-    from time import time
-
-    t = time()
-    write_xml(mol, "dimethylbenzene.xml", atom_attributes=["type"])
-    out = read_xml("dimethylbenzene.xml")
-    print(time() - t)
+    out = encode_topology(bam.get_default_topology())
+    write_xml("test.xml", out)
+    rev = decode_xml(open("test.xml").read())
+    print(rev)
