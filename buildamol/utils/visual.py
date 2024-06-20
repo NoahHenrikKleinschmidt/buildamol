@@ -14,6 +14,31 @@ import buildamol.utils.auxiliary as aux
 Draw = aux.Draw
 Chem = aux.Chem
 
+DEFAULT_BACKEND = "plotly"
+"""
+The default visualization backend for bare `draw` and `show` methods on objects. 
+"""
+
+
+def set_backend(backend: str):
+    """
+    Set the default visualization backend, which will be used by objects when calling `draw` and `show` methods.
+
+    Parameters
+    ----------
+    backend : str
+        Available backends are:
+            - plotly (default)
+            - py3dmol
+            - nglview
+    """
+    backend = backend.strip().lower()
+    if backend not in ("plotly", "py3dmol", "nglview"):
+        raise ValueError(f"Unsupported backend: {backend}")
+    global DEFAULT_BACKEND
+    DEFAULT_BACKEND = backend
+
+
 default_plotly_opacity = 1.0
 """
 The default opacity for plotly-based visualizations.

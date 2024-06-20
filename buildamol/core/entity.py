@@ -772,26 +772,6 @@ class BaseEntity:
         """
         utils.save_pickle(self, filename)
 
-    def show(
-        self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"
-    ):
-        """
-        Open a browser window to view the molecule in 3D using Plotly
-
-        Parameters
-        ----------
-        residue_graph : bool
-            If True, a residue graph is shown instead of the full structure.
-        atoms : bool
-            Whether to draw the atoms (default: True)
-        line_color : str
-            The line color to use when drawing bonds.
-        """
-        v = self.draw(residue_graph, atoms, line_color)
-        v.show()
-
-    show3d = show
-
     def nglview(self):
         """
         View the molecule in 3D through nglview
@@ -871,9 +851,17 @@ class BaseEntity:
 
             return v
 
-    draw3d = plotly
-    draw = plotly
+    def draw(self, *args, **kwargs):
+        backend = utils.visual.DEFAULT_BACKEND
+        return getattr(self, backend)
+    
+    draw3d = draw
+    
+    def show(self, *args, **kwargs):
+        self.draw(*args, **kwargs)().show()
 
+    show3d = show
+    
     # def vet(
     #     self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
     # ) -> bool:
