@@ -1064,7 +1064,7 @@ class BaseEntity:
             self.adjust_indexing(other)
 
         self.add_chains(*other.chains)
-        self._add_bonds(*other.get_bonds())
+        self._set_bonds(*other.get_bonds())
         return self
 
     def clear(self):
@@ -2423,6 +2423,8 @@ class BaseEntity:
         """
         if len(atoms) == 0:
             return self._model.get_atoms()
+        elif len(atoms) == 1 and isinstance(atoms[0], (list, set, tuple)):
+            atoms = atoms[0]
 
         if by is None:
             if isinstance(atoms[0], int):
@@ -2438,27 +2440,29 @@ class BaseEntity:
                     f"Unknown search parameter, must be either 'id', 'serial' or 'full_id' -> erroneous input: {atoms=}"
                 )
 
-        # these used to be list-comprehensions. Revert to them if it causes problems
-        # that the generators are used here...
-        if by == "id":
-            _atoms = (i for i in self._model.get_atoms() if i.id in atoms)
-        elif by == "serial":
-            _atoms = (i for i in self._model.get_atoms() if i.serial_number in atoms)
-        elif by == "full_id":
-            _atoms = (i for i in self._model.get_atoms() if i.full_id in atoms)
-        elif by == "element":
-            atoms = [i.upper() for i in atoms]
-            _atoms = (i for i in self._model.get_atoms() if i.element in atoms)
-        else:
-            raise ValueError(
-                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element' -> erroneous input: {atoms=}"
-            )
-
         if residue is not None:
             _residue = self.get_residue(residue)
             if residue is None:
                 raise ValueError(f"Residue '{residue}' not found")
-            _atoms = (a for a in _atoms if a.get_parent() is _residue)
+            atom_gen = _residue.get_atoms
+        else:
+            atom_gen = self._model.get_atoms
+
+        # these used to be list-comprehensions. Revert to them if it causes problems
+        # that the generators are used here...
+        if by == "id":
+            _atoms = (i for i in atom_gen() if i.id in atoms)
+        elif by == "serial":
+            _atoms = (i for i in atom_gen() if i.serial_number in atoms)
+        elif by == "full_id":
+            _atoms = (self.get_atom(i, by="full_id", residue=residue) for i in atoms)
+        elif by == "element":
+            atoms = [i.upper() for i in atoms]
+            _atoms = (i for i in atom_gen() if i.element in atoms)
+        else:
+            raise ValueError(
+                f"Unknown search parameter '{by}', must be either 'id', 'serial', 'full_id', or 'element' -> erroneous input: {atoms=}"
+            )
 
         if filter:
             _atoms = (a for a in _atoms if filter(a))
@@ -2509,20 +2513,20 @@ class BaseEntity:
         atom : base_classes.Atom
             The atom
         """
+        if isinstance(atom, base_classes.Atom):
+            if atom.parent.parent.parent is self._model:
+                return atom
+            else:
+                return self.get_atom(atom.full_id, by="full_id")
+
         if residue is not None:
             _residue = self.get_residue(residue)
             if _residue is None:
-                raise ValueError(f"Residue {_residue} not found")
+                raise ValueError(f"Residue {residue} not found")
             residue = _residue
             atom_gen = residue.get_atoms
         else:
             atom_gen = self._model.get_atoms
-
-        if isinstance(atom, base_classes.Atom):
-            if atom in atom_gen():
-                return atom
-            else:
-                return self.get_atom(atom.full_id, by="full_id")
 
         if by is None:
             if isinstance(atom, (int, np.int64)):
@@ -2543,7 +2547,17 @@ class BaseEntity:
                 atom = self.count_atoms() + atom + 1
             _atom = (i for i in atom_gen() if i.serial_number == atom)
         elif by == "full_id":
-            _atom = (i for i in atom_gen() if i.full_id == atom)
+            if residue is None:
+                _model = next(i for i in self.get_models() if i.id == atom[1])
+                _chain = next(i for i in _model.get_chains() if i.id == atom[2])
+                _residue = next(
+                    i for i in _chain.get_residues() if i.serial_number == atom[3][1]
+                )
+                _atom = (i for i in _residue.get_atoms() if i.id == atom[4][0])
+            else:
+                if residue.serial_number != atom[3][1]:
+                    return None
+                _atom = (i for i in atom_gen() if i.id == atom[4][0])
         elif by == "element":
             _atom = (i for i in atom_gen() if i.element == atom.upper())
         else:
@@ -2695,7 +2709,7 @@ class BaseEntity:
             The residue
         """
         if isinstance(residue, base_classes.Residue):
-            if residue in self.get_residues():
+            if residue.parent.parent is self._model:
                 return residue
             else:
                 return self.get_residue(residue.id[1], by="seqid", chain=chain)
@@ -2719,7 +2733,11 @@ class BaseEntity:
                 residue = len(self.residues) + residue + 1
             _residue = (i for i in self._model.get_residues() if i.id[1] == residue)
         elif by == "full_id":
-            _residue = (i for i in self._model.get_residues() if i.full_id == residue)
+            _model = next(i for i in self.get_models() if i.id == residue[1])
+            _chain = next(i for i in _model.get_chains() if i.id == residue[2])
+            _residue = (
+                i for i in _chain.get_residues() if i.serial_number == residue[3][1]
+            )
         else:
             raise ValueError(
                 f"Unknown search parameter, must be either 'name', 'seqid' or 'full_id' -> erroneous input: {residue=}"
@@ -3031,6 +3049,150 @@ class BaseEntity:
             self._AtomGraph.add_node(atom)
         return self
 
+    def link_atoms(self, *atoms: base_classes.Atom, residue=None):
+        """
+        Softlink atoms to the structure. This will add the atoms to the index of the maintained structure
+        but it will not adjust the atoms' own parent references. This is useful if you want to have atoms
+        be accessible from multiple Molecule objects.
+
+        Parameters
+        ----------
+        atoms : base_classes.Atom
+            The atoms to link
+        """
+        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple)):
+            atoms = iter(atoms[0])
+        if residue is not None:
+            target = self.get_residue(residue)
+            if target is None:
+                raise ValueError(f"Residue '{residue}' not found")
+        else:
+            target = self._chain.child_list[-1]
+
+        for atom in atoms:
+            target.link(atom)
+            self._AtomGraph.add_node(atom)
+        return self
+
+    def unlink_atoms(self, *atoms: base_classes.Atom):
+        """
+        Unlink atoms from the structure. This will remove the atoms from the index of the maintained structure
+        but it will not adjust the atoms' own parent references. This is useful if you want to have atoms
+        be accessible from multiple Molecule objects.
+
+        Parameters
+        ----------
+        atoms : base_classes.Atom
+            The atoms to unlink
+        """
+        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple)):
+            atoms = iter(atoms[0])
+
+        for atom in atoms:
+            for residue in self.get_residues():
+                if atom in residue.child_list:
+                    self._purge_bonds(atom)
+                    self._AtomGraph.remove_node(atom)
+                    residue.unlink(atom)
+                    break
+
+        return self
+
+    def link_residues(self, *residues: base_classes.Residue, chain=None):
+        """
+        Softlink residues to the structure. This will add the residues to the index of the maintained structure
+        but it will not adjust the residues' own parent references. This is useful if you want to have residues
+        be accessible from multiple Molecule objects.
+
+        Parameters
+        ----------
+        residues : base_classes.Residue
+            The residues to link
+        chain : str or base_classes.Chain
+            The chain to which the residues should be linked.
+            If None, the residues are linked to the current working chain.
+        """
+        if len(residues) == 1 and isinstance(residues[0], (list, tuple)):
+            residues = iter(residues[0])
+
+        if chain is not None:
+            chain = self.get_chain(chain)
+        else:
+            chain = self._chain
+        for residue in residues:
+            chain.link(residue)
+            for atom in residue.child_list:
+                self._AtomGraph.add_node(atom)
+        return self
+
+    def unlink_residues(self, *residues: base_classes.Residue):
+        """
+        Unlink residues from the structure. This will remove the residues from the index of the maintained structure
+        but it will not adjust the residues' own parent references. This is useful if you want to have residues
+        be accessible from multiple Molecule objects.
+
+        Parameters
+        ----------
+        residues : base_classes.Residue
+            The residues to unlink
+        """
+        if len(residues) == 1 and isinstance(residues[0], (list, tuple)):
+            residues = iter(residues[0])
+
+        for residue in residues:
+            for chain in self.get_chains():
+                if residue in chain.child_list:
+                    chain.unlink(residue)
+                    for atom in residue.child_list:
+                        self._purge_bonds(atom)
+                        self._AtomGraph.remove_node(atom)
+                    break
+        return self
+
+    def link_chains(self, *chains: base_classes.Chain):
+        """
+        Softlink chains to the structure. This will add the chains to the index of the maintained structure
+        but it will not adjust the chains' own parent references. This is useful if you want to have chains
+        be accessible from multiple Molecule objects.
+
+        Parameters
+        ----------
+        chains : base_classes.Chain
+            The chains to link
+        """
+        if len(chains) == 1 and isinstance(chains[0], (list, tuple)):
+            chains = iter(chains[0])
+
+        for chain in chains:
+            self._model.link(chain)
+            for atom in chain.get_atoms():
+                self._AtomGraph.add_node(atom)
+        return self
+
+    def unlink_chains(self, *chains: base_classes.Chain):
+        """
+        Unlink chains from the structure. This will remove the chains from the index of the maintained structure
+        but it will not adjust the chains' own parent references. This is useful if you want to have chains
+        be accessible from multiple Molecule objects.
+
+        Parameters
+        ----------
+        chains : base_classes.Chain
+            The chains to unlink
+        """
+        if len(chains) == 1 and isinstance(chains[0], (list, tuple)):
+            chains = iter(chains[0])
+
+        for chain in chains:
+            for model in self.get_models():
+                if chain in model.child_list:
+                    model.unlink(chain)
+                    for atom in chain.get_atoms():
+                        self._purge_bonds(atom)
+                        self._AtomGraph.remove_node(atom)
+                    break
+        return self
+
     def remove_atoms(self, *atoms: Union[int, str, tuple, base_classes.Atom]) -> list:
         """
         Remove one or more atoms from the structure
@@ -3046,7 +3208,7 @@ class BaseEntity:
         list
             The removed atoms
         """
-        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple)):
+        if len(atoms) == 1 and isinstance(atoms[0], (list, set, tuple)):
             atoms = iter(atoms[0])
 
         _atoms = []
@@ -3132,7 +3294,7 @@ class BaseEntity:
             Each atom may be specified directly (BuildAMol object)
             or by providing the serial number, the full_id or the id of the atoms.
         """
-        if len(bonds) == 1 and isinstance(bonds[0], (list, tuple)):
+        if len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
             bonds = iter(bonds[0])
 
         for bond in bonds:
@@ -3155,6 +3317,9 @@ class BaseEntity:
             Each atom may be specified directly (BuildAMol object)
             or by providing the serial number, the full_id or the id of the atoms.
         """
+        if len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
+            bonds = iter(bonds[0])
+
         for bond in bonds:
             if isinstance(bond, base_classes.Bond):
                 bond = bond.to_tuple()
@@ -3165,6 +3330,8 @@ class BaseEntity:
         """
         Add multiple bonds at once. This requires that the tuple objects are indeed Atoms in the structure!
         """
+        if len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
+            bonds = iter(bonds[0])
         for bond in bonds:
             if isinstance(bond, base_classes.Bond):
                 bond = bond.to_tuple()
@@ -3179,6 +3346,8 @@ class BaseEntity:
         by calling the method twice or certain bonds are specified multiple times in the arguments).
         This method will always set the bond order to the provided value.
         """
+        if len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
+            bonds = iter(bonds[0])
         for bond in bonds:
             if isinstance(bond, base_classes.Bond):
                 bond = bond.to_tuple()
@@ -3290,7 +3459,7 @@ class BaseEntity:
         #     If True, the bond is locked in both directions
         #     i.e. atom1 --- atom2 direction will be unavailable for
         #     rotation as well as atom2 --- atom1 direction as well.
-        self.locked_bonds = set(self.bonds)
+        self._AtomGraph.lock_all()
         # if both_ways:
         #     self.locked_bonds.update(b[::-1] for b in self.bonds)
         return self
@@ -3354,7 +3523,7 @@ class BaseEntity:
         #     return
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
-        if (atom1, atom2) in self._AtomGraph.edges:
+        if self._AtomGraph.has_edge(atom1, atom2):
             self._AtomGraph.unlock_edge(atom1, atom2)
         # if both_ways and (atom2, atom1) in self._AtomGraph.edges:
         #     self._AtomGraph.unlock_edge(atom2, atom1)
@@ -4198,7 +4367,7 @@ class BaseEntity:
         ]
         for bond in bonds:
             del self._bonds[bond]
-            
+
     def _add_bond(self, atom1, atom2, order=1):
         """
         Add a bond between two atoms
