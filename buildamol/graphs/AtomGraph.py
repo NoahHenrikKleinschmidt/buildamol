@@ -1,5 +1,6 @@
 import networkx as nx
-import Bio.PDB as bio
+
+# import Bio.PDB as bio
 
 import buildamol.structural as struct
 from buildamol.graphs.BaseGraph import BaseGraph

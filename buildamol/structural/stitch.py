@@ -6,7 +6,7 @@ from typing import Union
 
 import numpy as np
 
-import Bio.PDB as bio
+# import Bio.PDB as bio
 
 import buildamol.core.base_classes as base_classes
 import buildamol.core.Molecule as Molecule
