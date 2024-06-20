@@ -29,6 +29,7 @@ try to detect the type of user provided input and generate a molecule from it. C
 - A CIF file
 - A MOL file
 - A JSON file
+- An XML file
 - A SMILES string
 - An InChI string
 - An IUPAC name or abbreviation, or any name that matches a known compound synonym that is associated with the PubChem database
@@ -60,6 +61,7 @@ offers already a number of convenient methods to easily generate molecules direc
 - `Molecule.from_stk` to generate a molecule from an STK molecule object
 - `Molecule.from_molfile` to generate a molecule from a MOL file
 - `Molecule.from_json` to generate a molecule from a JSON file
+- `Molecule.from_xml` to generate a molecule from an XML file
 - `Molecule.empty` to generate an empty molecule
 
 
