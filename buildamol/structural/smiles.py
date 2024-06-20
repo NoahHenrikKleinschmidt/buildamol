@@ -1,7 +1,8 @@
 """
 Functions for handling SMILES strings
 """
-import buildamol.utils.convert as convert
+
+# import buildamol.utils.convert as convert
 import buildamol.utils.auxiliary as aux
 
 if aux.HAS_PYBEL:

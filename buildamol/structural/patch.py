@@ -4,7 +4,7 @@ Functions to patch molecules together
 
 import numpy as np
 
-import buildamol.utils.abstract as abstract
+# import buildamol.utils.abstract as abstract
 import buildamol.structural.connector as base
 import buildamol.structural.infer as infer
 import buildamol.core.Molecule as Molecule
