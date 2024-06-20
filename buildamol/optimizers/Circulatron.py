@@ -6,6 +6,8 @@ import numpy as np
 import buildamol.optimizers.Rotatron as Rotatron
 import buildamol.optimizers.DistanceRotatron as DistanceRotatron
 
+__all__ = ["Circulatron"]
+
 
 class Circulatron(Rotatron):
     """

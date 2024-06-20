@@ -15,6 +15,8 @@ from copy import deepcopy
 
 from multiprocessing import Pool
 
+__all__ = ["Rotatron"]
+
 
 class Rotatron(gym.Env):
     """

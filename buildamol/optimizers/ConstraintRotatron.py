@@ -5,6 +5,9 @@ The ConstraintRotatron allows for the optimization of a molecule's conformation 
 import buildamol.optimizers.Rotatron as Rotatron
 
 
+__all__ = ["ConstraintRotatron"]
+
+
 class ConstraintRotatron(Rotatron):
     """
     The ConstraintRotatron is a Meta-Rotatron environment that uses one of the other Rotatron environments to optimize the conformation of a molecule while also accepting an additional freely definable constraint function that will also contribute to the evaluation.
