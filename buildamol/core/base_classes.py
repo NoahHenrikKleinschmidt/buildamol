@@ -263,6 +263,17 @@ class Atom(ID, bio.Atom.Atom):
         return Atom.new(element, **kwargs)
 
     @property
+    def charge(self):
+        """
+        The atom charge.
+        """
+        return self.pqr_charge
+
+    @charge.setter
+    def charge(self, value):
+        self.pqr_charge = value
+
+    @property
     def full_id(self):
         p = self.get_parent()
         if p:
@@ -656,6 +667,13 @@ class Residue(ID, bio.Residue.Residue):
         self.child_dict[atom.get_id()] = atom
         self.child_list.append(atom)
 
+    def unlink(self, atom):
+        """
+        Unlink an atom from this residue's child_list without touching the atom's own parent references.
+        """
+        del self.child_dict[atom.get_id()]
+        self.child_list.remove(atom)
+
     # def add(self, atom):
     #     if atom.get_id() not in self.child_dict:
     #         self.child_list.append(atom)
@@ -979,6 +997,13 @@ class Chain(ID, bio.Chain.Chain):
         self.child_dict[residue.get_id()] = residue
         self.child_list.append(residue)
 
+    def unlink(self, residue):
+        """
+        Unlink a residue from this chain's child_list without touching the residue's own parent references.
+        """
+        del self.child_dict[residue.get_id()]
+        self.child_list.remove(residue)
+
     def __repr__(self):
         return f"Chain({self._id})"
 
@@ -1099,6 +1124,20 @@ class Model(bio.Model.Model, ID):
         """
         for chain in self.get_chains():
             chain.move(vector)
+
+    def link(self, chain):
+        """
+        Softlink a chain into this model's child_list without touching the chain's own parent references.
+        """
+        self.child_dict[chain.get_id()] = chain
+        self.child_list.append(chain)
+
+    def unlink(self, chain):
+        """
+        Unlink a chain from this model's child_list without touching the chain's own parent references.
+        """
+        del self.child_dict[chain.get_id()]
+        self.child_list.remove(chain)
 
     def matches(self, other) -> bool:
         """
