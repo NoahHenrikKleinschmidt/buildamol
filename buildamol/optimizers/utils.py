@@ -168,7 +168,7 @@ def optimize(
     # in case of the genetic algorithm, the solution is a list of solutions
     # so we need to take the first one
     n_edges = getattr(env, "n_edges", sol.shape[0])
-    if sol.shape[0] != n_edges:
+    if sol.shape[0] != n_edges or "n_best" in kwargs:
         if sol[0].shape[0] != n_edges:
             raise ValueError(
                 f"Solution and environment do not match (size mismatch): {sol.shape[0]} != {env.n_edges}"
@@ -355,7 +355,7 @@ if __name__ == "__main__":
     edges = graph.sample_edges(edges, m=5, n=3)
     env = rotatron(graph, edges)
     envs = [env] * 2
-    better = optimize(mol.copy(), env)
+    better = optimize(mol.copy(), env, n_best=10)
 
     rotatron = bam.optimizers.ForceFieldRotatron
 
