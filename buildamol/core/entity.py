@@ -853,15 +853,15 @@ class BaseEntity:
 
     def draw(self, *args, **kwargs):
         backend = utils.visual.DEFAULT_BACKEND
-        return getattr(self, backend)
-    
+        return getattr(self, backend)(*args, **kwargs)
+
     draw3d = draw
-    
+
     def show(self, *args, **kwargs):
-        self.draw(*args, **kwargs)().show()
+        self.draw(*args, **kwargs).show()
 
     show3d = show
-    
+
     # def vet(
     #     self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
     # ) -> bool:
@@ -1610,6 +1610,7 @@ class BaseEntity:
             descendants_only=True,
             angle_is_degrees=angle_is_degrees,
         )
+        return self
 
     def rotate_ancestors(
         self,
@@ -1639,6 +1640,7 @@ class BaseEntity:
             descendants_only=True,
             angle_is_degrees=angle_is_degrees,
         )
+        return self
 
     def rotate_around_bond(
         self,
@@ -1698,6 +1700,7 @@ class BaseEntity:
         if angle_is_degrees:
             angle = np.radians(angle)
         self._rotate_around_bond(atom1, atom2, angle, descendants_only)
+        return self
 
     def get_ancestors(
         self,
@@ -2003,6 +2006,115 @@ class BaseEntity:
         if len(Hs) == 0:
             return None
         return Hs.pop()
+
+    def trans(self, *bond: Union[base_classes.Atom, tuple, base_classes.Bond]):
+        """
+        Rotate the molecule such that the atoms in the bond are in a trans configuration.
+
+        Parameters
+        ----------
+        *bond : Atom or tuple or Bond
+            The bond to rotate
+        """
+        if len(bond) == 1 and isinstance(bond[0], (tuple, base_classes.Bond)):
+            bond = bond[0]
+        a = self.get_atom(bond[0])
+        b = self.get_atom(bond[1])
+        neighbor1 = self.get_neighbors(a, filter=lambda x: x.element != "H") - {b}
+        neighbor2 = self.get_neighbors(b, filter=lambda x: x.element != "H") - {a}
+        if len(neighbor1) == 0:
+            neighbor1 = self.get_neighbors(a) - {b}
+        if len(neighbor2) == 0:
+            neighbor2 = self.get_neighbors(b) - {a}
+        if len(neighbor1) == 0 or len(neighbor2) == 0:
+            raise ValueError("Both atoms must have at least one neighbor!")
+
+        neighbor1 = neighbor1.pop()
+        neighbor2 = neighbor2.pop()
+
+        angle = structural.angle_between(neighbor1.coord, a.coord, neighbor2.coord)
+        if angle < 100:
+            self._rotate_around_bond(a, b, np.pi, descendants_only=True)
+        return self
+
+    def cis(self, *bond: Union[base_classes.Atom, tuple, base_classes.Bond]):
+        """
+        Rotate the molecule such that the atoms in the bond are in a cis configuration.
+
+        Parameters
+        ----------
+        *bond : Atom or tuple or Bond
+            The bond to rotate
+        """
+        if len(bond) == 1 and isinstance(bond[0], (tuple, base_classes.Bond)):
+            bond = bond[0]
+        a = self.get_atom(bond[0])
+        b = self.get_atom(bond[1])
+        neighbor1 = self.get_neighbors(a, filter=lambda x: x.element != "H") - {b}
+        neighbor2 = self.get_neighbors(b, filter=lambda x: x.element != "H") - {a}
+        if len(neighbor1) == 0:
+            neighbor1 = self.get_neighbors(a) - {b}
+        if len(neighbor2) == 0:
+            neighbor2 = self.get_neighbors(b) - {a}
+        if len(neighbor1) == 0 or len(neighbor2) == 0:
+            raise ValueError("Both atoms must have at least one neighbor!")
+
+        neighbor1 = neighbor1.pop()
+        neighbor2 = neighbor2.pop()
+        angle = structural.angle_between(neighbor1.coord, a.coord, neighbor2.coord)
+        if angle > 100:
+            self._rotate_around_bond(a, b, np.pi, descendants_only=True)
+        return self
+
+    def is_cis(self, *bond: Union[base_classes.Atom, tuple, base_classes.Bond]) -> bool:
+        """
+        Check if the atoms in the bond are in a cis configuration.
+
+        Parameters
+        ----------
+        *bond : Atom or tuple or Bond
+            The bond to check
+
+        Returns
+        -------
+        bool
+            Whether the bond is in a cis configuration
+        """
+        if len(bond) == 1 and isinstance(bond[0], (tuple, base_classes.Bond)):
+            bond = bond[0]
+        a = self.get_atom(bond[0])
+        b = self.get_atom(bond[1])
+        neighbor1 = self.get_neighbors(a, filter=lambda x: x.element != "H") - {b}
+        neighbor2 = self.get_neighbors(b, filter=lambda x: x.element != "H") - {a}
+        if len(neighbor1) == 0:
+            neighbor1 = self.get_neighbors(a) - {b}
+        if len(neighbor2) == 0:
+            neighbor2 = self.get_neighbors(b) - {a}
+        if len(neighbor1) == 0 or len(neighbor2) == 0:
+            raise ValueError("Both atoms must have at least one neighbor!")
+
+        neighbor1 = neighbor1.pop()
+        neighbor2 = neighbor2.pop()
+        angle = structural.angle_between(neighbor1.coord, a.coord, neighbor2.coord)
+        return angle > 100
+
+    def is_trans(
+        self, *bond: Union[base_classes.Atom, tuple, base_classes.Bond]
+    ) -> bool:
+        """
+        Check if the atoms in the bond are in trans configuration
+
+        Parameters
+        ----------
+        *bond : Atom or tuple or Bond
+            The bond to check
+
+        Returns
+        -------
+        bool
+            Whether the bond is in a trans configuration
+        """
+        return not self.is_cis(*bond)
 
     def search_by_constraints(self, constraints: list) -> list:
         """
@@ -3939,7 +4051,7 @@ class BaseEntity:
         atom4 = self.get_atom(atom4)
         return structural.compute_dihedral(atom1, atom2, atom3, atom4)
 
-    def get_atom_graph(self, _copy: bool = True):
+    def get_atom_graph(self, _copy: bool = True) -> graphs.AtomGraph:
         """
         Get an AtomGraph for the Molecule
 
@@ -3973,7 +4085,9 @@ class BaseEntity:
         self._AtomGraph.add_edges_from(self._bonds)
         return self
 
-    def make_residue_graph(self, detailed: bool = False, locked: bool = True):
+    def make_residue_graph(
+        self, detailed: bool = False, locked: bool = True
+    ) -> graphs.ResidueGraph:
         """
         Generate a ResidueGraph for the Molecule
 
@@ -4347,14 +4461,16 @@ class BaseEntity:
         The core function of `purge_bonds` which expects atoms to be provided as Atom objects.
         """
         # the full_id thing seems to prevent some memory leaky-ness
-        bonds = [
+        bonds = (
             idx
             for idx, i in enumerate(self._bonds)
             if atom is i[0] or atom is i[1]
             # if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
-        ]
-        for bond in bonds:
-            del self._bonds[bond]
+        )
+        _bonds = {idx: i for idx, i in enumerate(self._bonds)}
+        for b in bonds:
+            _bonds.pop(b)
+        self._bonds = list(_bonds.values())
 
     def _add_bond(self, atom1, atom2, order=1):
         """
