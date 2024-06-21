@@ -602,6 +602,7 @@ class BaseGraph(nx.Graph):
 
             _rotatable_edges.extend(cluster.tolist())
 
+        _rotatable_edges = [tuple(i) for i in _rotatable_edges]
         return _rotatable_edges
 
     def in_same_cycle(self, node_1, node_2, cycles=None) -> bool:
