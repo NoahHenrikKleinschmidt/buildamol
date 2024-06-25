@@ -3,7 +3,7 @@ This script takes one PDBECompounds pickle file and filters out all molecules th
 """
 
 import argparse
-import biobuild as bb
+import buildamol as bam
 import os
 
 
@@ -23,7 +23,7 @@ def setup():
 def main(args):
     if args.input == args.output:
         args.output += ".tmp"
-    c = bb.read_compounds(args.input, False)
+    c = bam.read_compounds(args.input, False)
     ids = list(c.ids)
     for i in ids:
         pdb = c._pdb[i]

@@ -3,7 +3,7 @@ This script can be used to generate a PDBECompounds database pickle object from 
 """
 
 import argparse
-import biobuild as bb
+import buildamol as bam
 
 
 def setup():
@@ -27,13 +27,13 @@ def setup():
 
 
 def main(args):
-    db = bb.resources.PDBECompounds.from_file(args.input)
+    db = bam.resources.PDBECompounds.from_file(args.input)
     if args.output is None:
         args.output = args.input + ".comp.pkl"
     if args.output != "None":
         db.save(args.output)
     if args.setdefault:
-        bb.set_default_compounds(db, overwrite=True)
+        bam.set_default_compounds(db, overwrite=True)
 
 
 if __name__ == "__main__":

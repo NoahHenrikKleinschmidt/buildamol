@@ -5,15 +5,15 @@ Tests for the auxiliary structure module
 from copy import deepcopy
 import numpy as np
 import pytest
-import biobuild as bb
+import buildamol as bam
 import tests.base as base
 import Bio.PDB as bio
 import re
 
 MARGIN = 1.5 * 1e-2
-MANNOSE = bio.PDBParser().get_structure("MAN", base.MANNOSE)
-bb.load_small_molecules()
-bb.load_sugars()
+MANNOSE = bio.PDBParser().get_structure("MAN", base.MANPDB)
+bam.load_small_molecules()
+bam.load_sugars()
 
 
 # def test_missing_proper_1():
@@ -30,7 +30,7 @@ bb.load_sugars()
 #         _man.detach_child(to_delete)
 #         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-#         bb.structural.fill_missing_atoms(_man)
+#         bam.structural.fill_missing_atoms(_man)
 
 #         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -55,7 +55,7 @@ bb.load_sugars()
 #         _man.detach_child(to_delete)
 #         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-#         bb.structural.fill_missing_atoms(_man)
+#         bam.structural.fill_missing_atoms(_man)
 
 #         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -72,7 +72,7 @@ bb.load_sugars()
 #         _man = MANNOSE.copy()
 #         _man = next(_man.get_residues())
 
-#         top = deepcopy(bb.resources.get_default_topology())
+#         top = deepcopy(bam.resources.get_default_topology())
 #         abstract = top.get_residue(_man.resname)
 #         for idx, i in enumerate(abstract.internal_coordinates):
 #             if i.is_proper:
@@ -86,7 +86,7 @@ bb.load_sugars()
 #         _man.detach_child(to_delete)
 #         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-#         bb.structural.fill_missing_atoms(_man, top)
+#         bam.structural.fill_missing_atoms(_man, top)
 
 #         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -97,14 +97,14 @@ bb.load_sugars()
 
 
 # def test_missing_multi():
-#     man = bb.Molecule.from_compound("MAN")
+#     man = bam.Molecule.from_compound("MAN")
 #     man.repeat(2, "14bb")
 #     to_delete = ("O5", "C3", "O2", "O3")
 #     man.remove_atoms(*to_delete)
 #     for atom in man.get_atoms():
 #         atom.__mol__ = man
 #     for res in man.residues:
-#         bb.structural.fill_missing_atoms(res)
+#         bam.structural.fill_missing_atoms(res)
 
 
 # def test_missing_improper_4():
@@ -113,7 +113,7 @@ bb.load_sugars()
 #     for to_delete in to_deletes:
 #         _man = MANNOSE.copy()
 #         _man = next(_man.get_residues())
-#         top = deepcopy(bb.resources.get_default_topology())
+#         top = deepcopy(bam.resources.get_default_topology())
 #         abstract = top.get_residue(_man.resname)
 #         for idx, i in enumerate(abstract.internal_coordinates):
 #             if i.is_proper:
@@ -127,7 +127,7 @@ bb.load_sugars()
 #         _man.detach_child(to_delete)
 #         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-#         bb.structural.fill_missing_atoms(_man, top)
+#         bam.structural.fill_missing_atoms(_man, top)
 
 #         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -150,7 +150,7 @@ bb.load_sugars()
 
 #     _man.detach_child(to_delete)
 
-#     bb.structural.fill_missing_atoms(_man)
+#     bam.structural.fill_missing_atoms(_man)
 
 #     assert (
 #         _man.child_dict.get(to_delete) is not None
@@ -172,7 +172,7 @@ bb.load_sugars()
 #     for i in to_delete:
 #         _man.detach_child(i)
 
-#     bb.structural.fill_missing_atoms(_man)
+#     bam.structural.fill_missing_atoms(_man)
 
 #     for i in to_delete:
 #         assert _man.child_dict.get(i) is not None, f"Atom {i} was not added again!"
@@ -195,7 +195,7 @@ bb.load_sugars()
 #     for i in to_delete:
 #         _gal.detach_child(i)
 
-#     bb.structural.fill_missing_atoms(_gal)
+#     bam.structural.fill_missing_atoms(_gal)
 
 #     for i in to_delete:
 #         assert _gal.child_dict.get(i) is not None, f"Atom {i} was not added again!"
@@ -207,7 +207,7 @@ bb.load_sugars()
 
 
 # def test_missing_multiple_random_atoms_mannose9():
-#     _man = bio.PDBParser().get_structure("MAN9", base.MANNOSE9)
+#     _man = bio.PDBParser().get_structure("MAN9", base.MAN9PDB)
 
 #     atoms = list(_man.get_atoms())
 #     to_delete = np.random.choice(atoms, 15, replace=False)
@@ -219,7 +219,7 @@ bb.load_sugars()
 #         true_coords[idx] = i.coord
 #         parent.detach_child(i.id)
 
-#     bb.structural.fill_missing_atoms(_man)
+#     bam.structural.fill_missing_atoms(_man)
 
 #     for i, true_coord, parent in zip(to_delete, true_coords, parents):
 #         assert parent.child_dict.get(i.id) is not None, f"Atom {i} was not added again!"
@@ -231,9 +231,9 @@ bb.load_sugars()
 
 
 def test_apply_standard_bonds():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    bonds = bb.structural.apply_reference_bonds(MANNOSE)
+    bonds = bam.structural.apply_reference_bonds(MANNOSE)
 
     _recieved = len(bonds)
     _expected = 24
@@ -315,15 +315,15 @@ def test_apply_standard_bonds():
     assert (
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
-    bb.unload_sugars()
+    bam.unload_sugars()
 
 
 def test_apply_standard_bonds_one_atom():
-    bb.load_sugars()
+    bam.load_sugars()
     atom = {i.id: i for i in MANNOSE.get_atoms()}
     atom = atom.get("C1")
 
-    bonds = bb.structural.apply_reference_bonds(atom)
+    bonds = bam.structural.apply_reference_bonds(atom)
     bonds = [set((i.id, j.id)) for i, j, order in bonds]
 
     _recieved = len(bonds)
@@ -356,11 +356,11 @@ def test_apply_standard_bonds_one_atom():
     assert (
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
-    bb.unload_sugars()
+    bam.unload_sugars()
 
 
 def test_infer_bonds():
-    bonds = bb.structural.infer_bonds(MANNOSE)
+    bonds = bam.structural.infer_bonds(MANNOSE)
 
     _recieved = len(bonds)
     _expected = 24
@@ -445,8 +445,8 @@ def test_infer_bonds():
 
 
 def test_infer_residue_connections():
-    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
-    bonds = bb.structural.infer_residue_connections(_man9)
+    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MAN9PDB)
+    bonds = bam.structural.infer_residue_connections(_man9)
 
     connections = [
         set((i.get_parent()._id[1], j.get_parent()._id[1])) for i, j in bonds
@@ -499,15 +499,15 @@ def test_infer_residue_connections():
 
 
 def test_infer_residue_connections_triplet():
-    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
-    bonds = bb.structural.infer_residue_connections(_man9, triplet=True)
-    _no_triplets = bb.structural.infer_residue_connections(_man9)
+    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MAN9PDB)
+    bonds = bam.structural.infer_residue_connections(_man9, triplet=True)
+    _no_triplets = bam.structural.infer_residue_connections(_man9)
 
     assert len(bonds) == 2 * len(_no_triplets), "Not all triplets are found!"
 
 
 def test_atom_neighborhood_basic():
-    man = bb.molecule(MANNOSE)
+    man = bam.molecule(MANNOSE)
     man.infer_bonds()
     mannose = man._AtomGraph
 
@@ -518,7 +518,7 @@ def test_atom_neighborhood_basic():
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
-    neighborhood = bb.structural.AtomNeighborhood(mannose)
+    neighborhood = bam.structural.AtomNeighborhood(mannose)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     _recieved = len(neighborhood.atoms)
@@ -538,10 +538,10 @@ def test_atom_neighborhood_basic():
 
 
 def test_atom_neighborhood_get():
-    man = bb.molecule(MANNOSE)
+    man = bam.molecule(MANNOSE)
     man.infer_bonds()
     mannose = man._AtomGraph
-    neighborhood = bb.structural.AtomNeighborhood(mannose)
+    neighborhood = bam.structural.AtomNeighborhood(mannose)
 
     c1 = next(atom for atom in man.get_atoms() if atom.id == "C1")
 
@@ -569,11 +569,11 @@ def test_atom_neighborhood_get():
 
 
 def test_residue_neighborhood_basic():
-    mannose = bb.Molecule.from_pdb(base.MANNOSE9)
+    mannose = bam.Molecule.from_pdb(base.MAN9PDB)
     mannose.infer_bonds(restrict_residues=False)
     graph = mannose.make_residue_graph()
 
-    neighborhood = bb.structural.ResidueNeighborhood(graph)
+    neighborhood = bam.structural.ResidueNeighborhood(graph)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     _recieved = len(neighborhood.residues)
@@ -602,11 +602,11 @@ def test_residue_neighborhood_basic():
 
 
 def test_residue_neighborhood_get():
-    mannose = bb.Molecule.from_pdb(base.MANNOSE9)
+    mannose = bam.Molecule.from_pdb(base.MAN9PDB)
     mannose.infer_bonds(restrict_residues=False)
     graph = mannose.make_residue_graph()
 
-    neighborhood = bb.structural.ResidueNeighborhood(graph)
+    neighborhood = bam.structural.ResidueNeighborhood(graph)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     # because the graph is not detailed there should be no
@@ -652,7 +652,7 @@ def test_residue_neighborhood_get():
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
     _recieved = set(i.id[1] for i in neighborhood.get_neighbors(bma, 2, "at"))
-    _expected = {1, 7, 5, 10}
+    _expected = {2, 8, 6, 11}
     _what = "as n=2 neighbors of BMA"
     assert (
         _recieved == _expected
@@ -660,13 +660,13 @@ def test_residue_neighborhood_get():
 
 
 def test_compute_angle():
-    mannose = bb.molecule(MANNOSE)
+    mannose = bam.molecule(MANNOSE)
     mannose.infer_bonds()
 
     for triplet, angle in mannose.compute_angles().items():
         assert 90 < angle < 120, f"Angle {angle} is not in range 90-120°!"
 
-    # top = bb.resources.get_default_topology()
+    # top = bam.resources.get_default_topology()
     # man = top.get_residue("MAN")
 
     # _atom = "O5"  # some ref atom to get ICs for
@@ -679,14 +679,14 @@ def test_compute_angle():
     # assert len(refs) == 4, f"We got weird reference atoms: {refs}"
 
     # _true_angle = ic.bond_angle_123
-    # _recieved = bb.structural.compute_angle(*refs[:-1])
+    # _recieved = bam.structural.compute_angle(*refs[:-1])
     # _what = "° between 1-2-3"
     # assert _recieved == pytest.approx(
     #     _true_angle, 1e-3
     # ), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
 
     # _true_angle = ic.bond_angle_234
-    # _recieved = bb.structural.compute_angle(*refs[1:])
+    # _recieved = bam.structural.compute_angle(*refs[1:])
     # _what = "° between 2-3-4"
     # assert _recieved == pytest.approx(
     #     _true_angle, 1e-3
@@ -694,15 +694,15 @@ def test_compute_angle():
 
 
 def test_compute_dihedral():
-    mannose = bb.molecule(MANNOSE)
+    mannose = bam.molecule(MANNOSE)
 
     for quartet, dihedral in mannose.compute_dihedrals().items():
         assert -120 < dihedral < 120, f"Dihedral {dihedral} is not in range -120-120°!"
 
-    # mannose = bb.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
+    # mannose = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANPDB)
     # mannose = next(mannose.get_residues())
 
-    # top = bb.resources.get_default_topology()
+    # top = bam.resources.get_default_topology()
     # man = top.get_residue("MAN")
 
     # _atom = "O5"  # some ref atom to get ICs for
@@ -715,7 +715,7 @@ def test_compute_dihedral():
     # assert len(refs) == 4, f"We got weird reference atoms: {refs}"
 
     # _true_dihedral = ic.dihedral
-    # _recieved = bb.structural.compute_dihedral(*refs)
+    # _recieved = bam.structural.compute_dihedral(*refs)
     # _what = "° between 1-2-3-4"
     # assert _recieved == pytest.approx(
     #     _true_dihedral, 1e-3
@@ -724,21 +724,21 @@ def test_compute_dihedral():
 
 def test_compute_triplets():
     bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
-    triplets = bb.structural.compute_triplets(bonds, unique=False)
+    triplets = bam.structural.compute_triplets(bonds, unique=False)
     _expected = set(((2, 1, 3), (3, 1, 2), (1, 2, 4), (4, 2, 1), (1, 3, 5), (5, 3, 1)))
     assert (
         set(triplets) == _expected
     ), f"Expected {len(_expected)} triplets, got {len(triplets)}"
-    triplets = bb.structural.compute_triplets(bonds, unique=True)
+    triplets = bam.structural.compute_triplets(bonds, unique=True)
     assert (
         len(set(triplets).intersection(_expected)) == 3
     ), "Unique triplets are not unique!"
 
 
 def test_quartet_class():
-    a = bb.structural.neighbors.Quartet(1, 2, 3, 4, False)
-    b = bb.structural.neighbors.Quartet(1, 2, 3, 4, False)
-    c = bb.structural.neighbors.Quartet(5, 3, 4, 6, True)
+    a = bam.structural.neighbors.Quartet(1, 2, 3, 4, False)
+    b = bam.structural.neighbors.Quartet(1, 2, 3, 4, False)
+    c = bam.structural.neighbors.Quartet(5, 3, 4, 6, True)
 
     assert a == b, "Quartets are not equal!"
     assert a != c, "Quartets are equal!"
@@ -752,7 +752,7 @@ def test_quartet_class():
 
 def test_compute_quartets():
     bonds = bonds = [(1, 2), (2, 3), (2, 4), (3, 5)]
-    quartets = bb.structural.compute_quartets(bonds)
+    quartets = bam.structural.compute_quartets(bonds)
 
     _received = len(quartets)
     _expected = 3
@@ -761,26 +761,26 @@ def test_compute_quartets():
     assert sum(1 for i in quartets if not i.improper) == 2, "Expected 2 proper quartets"
 
     bonds = [(1, 2), (2, 3), (2, 4), (3, 5), (4, 6), (5, 7)]
-    quartets = bb.structural.compute_quartets(bonds)
+    quartets = bam.structural.compute_quartets(bonds)
 
     _received = len(quartets)
     _expected = 6
     assert _received == _expected, f"Expected {_expected} quartets, got {_received}"
 
-    # Quartet = bb.structural.neighbors.Quartet
+    # Quartet = bam.structural.neighbors.Quartet
     # assert Quartet(1, 2, 4, 6, False) in quartets
     # assert Quartet(1, 4, 2, 3, True) in quartets
 
 
 def test_patcher_anchors():
-    man1 = bb.Molecule.from_pdb(base.MANNOSE)
+    man1 = bam.Molecule.from_pdb(base.MANPDB)
     man1.infer_bonds()
     man2 = deepcopy(man1)
 
-    top = bb.get_default_topology()
+    top = bam.get_default_topology()
     patch = top.get_patch("12aa")
 
-    p = bb.structural.Patcher()
+    p = bam.structural.Patcher()
     p.target = man1
     p.source = man2
     p.patch = patch
@@ -792,13 +792,13 @@ def test_patcher_anchors():
 
 
 def test_patcher_anchors_2():
-    bb.load_sugars()
-    glc = bb.Molecule.from_compound("GLC")
+    bam.load_sugars()
+    glc = bam.Molecule.from_compound("GLC")
 
-    top = bb.get_default_topology()
+    top = bam.get_default_topology()
     patch = top.get_patch("14bb")
 
-    p = bb.structural.Patcher(True, True)
+    p = bam.structural.Patcher(True, True)
     p.target = glc
     p.source = glc
     p.patch = patch
@@ -807,20 +807,20 @@ def test_patcher_anchors_2():
     assert len(anchors) == 2
     assert anchors[0].id == "O4"
     assert anchors[1].id == "C1"
-    bb.unload_sugars()
+    bam.unload_sugars()
 
 
 def test_patcher_two_man():
-    man1 = bb.Molecule.from_pdb(base.MANNOSE)
+    man1 = bam.Molecule.from_pdb(base.MANPDB)
     man1.infer_bonds()
     man2 = deepcopy(man1)
 
     man1.lock_all()
     man2.lock_all()
 
-    top = bb.get_default_topology()
+    top = bam.get_default_topology()
     patches = ("12aa", "12ab", "14bb")
-    p = bb.structural.Patcher(copy_target=True, copy_source=True)
+    p = bam.structural.Patcher(copy_target=True, copy_source=True)
     for patch in patches:
         patch = top.get_patch(patch)
 
@@ -830,10 +830,11 @@ def test_patcher_two_man():
         _man1, _man2 = p.apply(patch, man1, man2)
         new = p.merge()
 
-        v = new.draw()
-        v.draw_edges(*new.locked_bonds, color="red")
-        v.draw_edges(*new.bonds, color="cyan", linewidth=2)
-        v.show()
+        if base.ALLOW_VISUAL:
+            v = new.draw()
+            v.draw_edges(*new.locked_bonds, color="red")
+            v.draw_edges(*new.bonds, color="cyan", linewidth=2)
+            v.show()
 
         assert new is not man1 and new is not man2
         assert len(new.residues) == 2
@@ -877,21 +878,21 @@ def test_patcher_two_man():
 
 
 def test_patcher_multiple_man():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    man1 = bb.Molecule.from_compound("MAN")
+    man1 = bam.Molecule.from_compound("MAN")
     man1.lock_all()
 
     man2 = man1.copy()
     man3 = man1.copy()
     man4 = man1.copy()
 
-    top = bb.get_default_topology()
+    top = bam.get_default_topology()
 
     orig_residues = len(man1.residues)
     orig_atoms = len(man1.atoms)
 
-    p = bb.structural.Patcher(False, False)
+    p = bam.structural.Patcher(False, False)
 
     p.apply(top.get_patch("14bb"), man3, man4)
     man_34 = p.merge()
@@ -925,27 +926,28 @@ def test_patcher_multiple_man():
     for angle in man1.compute_angles().values():
         assert 100 < angle < 130
 
-    v = man1.draw()
-    res_con = man1.infer_residue_connections(triplet=True)
-    v.draw_edges(*res_con, color="limegreen", linewidth=3)
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = man1.draw()
+        res_con = man1.infer_residue_connections(triplet=True)
+        v.draw_edges(*res_con, color="limegreen", linewidth=3)
+        v.show()
 
-    g = man1.make_residue_graph()
-    g.unlock_all()
-    g.lock_centers()
-    v = g.draw()
-    v.draw_edges(*g.edges, color="limegreen", linewidth=2)
-    v.draw_edges(*g._locked_edges, color="red", linewidth=2)
-    v.show()
+        g = man1.make_residue_graph()
+        g.unlock_all()
+        g.lock_centers()
+        v = g.draw()
+        v.draw_edges(*g.edges, color="limegreen", linewidth=2)
+        v.draw_edges(*g._locked_edges, color="red", linewidth=2)
+        v.show()
 
 
 def test_keep_copy_patcher():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    glc = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
 
-    patcher = bb.structural.Patcher(copy_target=True, copy_source=True)
-    patch = bb.get_default_topology().get_patch("12aa")
+    patcher = bam.structural.Patcher(copy_target=True, copy_source=True)
+    patch = bam.get_default_topology().get_patch("12aa")
 
     patcher.apply(patch, glc, glc)
     new = patcher.merge()
@@ -956,15 +958,15 @@ def test_keep_copy_patcher():
 
 
 def test_stitcher_two_glucose():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    glc = bb.Molecule.from_compound("GLC")
-    glc2 = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
+    glc2 = bam.Molecule.from_compound("GLC")
 
     glc2.rotate_around_bond(6, 5, 68)
     glc2.rotate_around_bond(3, 4, 41)
 
-    s = bb.structural.Stitcher(True, True)
+    s = bam.structural.Stitcher(True, True)
 
     at_glc = "C1"
     at_glc2 = "O4"
@@ -1004,7 +1006,8 @@ def test_stitcher_two_glucose():
     assert not np.allclose(old_glc2_coords[:r_glc2, :], new_glc2_coords[:r_glc2, :])
 
     final = s.merge()
-    final.show()
+    if base.ALLOW_VISUAL:
+        final.show()
 
     assert len(final.atoms) == len(glc.atoms) + len(glc2.atoms) - len(
         remove_on_glc
@@ -1025,15 +1028,15 @@ def test_stitcher_two_glucose():
 
 
 def test_stitcher_three_glucose():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    glc = bb.Molecule.from_compound("GLC")
-    glc2 = bb.Molecule.from_compound("GLC")
+    glc = bam.Molecule.from_compound("GLC")
+    glc2 = bam.Molecule.from_compound("GLC")
 
     glc2.rotate_around_bond(6, 5, 68)
     glc2.rotate_around_bond(3, 4, 41)
 
-    s = bb.structural.Stitcher(True, True)
+    s = bam.structural.Stitcher(True, True)
 
     at_glc = "C1"
     at_glc2 = "O4"
@@ -1082,17 +1085,18 @@ def test_stitcher_three_glucose():
         assert atom.serial_number not in _seen_indices
         _seen_indices.add(atom.serial_number)
 
-    final.show()
+    if base.ALLOW_VISUAL:
+        final.show()
 
 
 # def test_stitcher_two_glucose_root_atoms():
-#     glc = bb.Molecule.from_compound("GLC")
-#     glc2 = bb.Molecule.from_compound("GLC")
+#     glc = bam.Molecule.from_compound("GLC")
+#     glc2 = bam.Molecule.from_compound("GLC")
 
 #     glc2.rotate_around_bond(6, 5, 68)
 #     glc2.rotate_around_bond(3, 4, 41)
 
-#     s = bb.structural.Stitcher(True, True)
+#     s = bam.structural.Stitcher(True, True)
 
 #     at_glc = "C1"
 #     at_glc2 = "O4"
@@ -1156,10 +1160,10 @@ def test_stitcher_three_glucose():
 
 
 def test_patch_and_stich():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    glc = bb.Molecule.from_compound("GLC")
-    man = bb.Molecule.from_compound("MAN")
+    glc = bam.Molecule.from_compound("GLC")
+    man = bam.Molecule.from_compound("MAN")
 
     # ------------------------------------------
     # using the built-in patcher within molecule
@@ -1173,7 +1177,7 @@ def test_patch_and_stich():
     # ------------------------------------------
     # now stitch them together
     # ------------------------------------------
-    stitcher = bb.structural.Stitcher()
+    stitcher = bam.structural.Stitcher()
     stitcher.apply(
         target=glc,
         source=man,
@@ -1185,7 +1189,8 @@ def test_patch_and_stich():
         source_residue=1,
     )
     final = stitcher.merge()
-    final.show()
+    if base.ALLOW_VISUAL:
+        final.show()
 
     # ------------------------------------------
 
@@ -1205,12 +1210,12 @@ def test_patch_and_stich():
 
 
 def test_relabel_Hydrogens():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    ref = bb.Molecule.from_compound("GLC")
-    mol = bb.Molecule.from_pubchem("D-glucose")
+    ref = bam.Molecule.from_compound("GLC")
+    mol = bam.Molecule.from_pubchem("D-glucose")
 
-    bb.structural.relabel_hydrogens(mol)
+    bam.structural.relabel_hydrogens(mol)
 
     hydrogens = (a for a in mol.get_atoms() if a.element == "H")
     for h in hydrogens:
@@ -1220,10 +1225,10 @@ def test_relabel_Hydrogens():
 
 
 def test_autolabel():
-    bb.load_sugars()
+    bam.load_sugars()
 
-    ref = bb.Molecule.from_compound("GLC")
-    mol = bb.Molecule.from_pubchem("GLC")
+    ref = bam.Molecule.from_compound("GLC")
+    mol = bam.Molecule.from_pubchem("GLC")
     mol.autolabel()
     refs = set((i.id) for i in ref.get_atoms())
     mols = set((i.id) for i in mol.get_atoms())
@@ -1234,14 +1239,835 @@ def test_autolabel():
 
 
 def test_autolabel2():
-    bb.unload_all_compounds()
-    bb.load_small_molecules()
-    bb.load_sugars()
-    assert len(bb.get_default_compounds()) == 3180  # small + sugars
-    assert bb.has_compound("CH3") == True, "CH3 is not a compound!"
-    mol = bb.molecule("CH3")
+    bam.unload_all_compounds()
+    bam.load_small_molecules()
+    bam.load_sugars()
+    assert len(bam.get_default_compounds()) == 3180  # small + sugars
+    assert bam.has_compound("CH3") == True, "CH3 is not a compound!"
+    mol = bam.molecule("CH3")
     assert mol is not None
-    mol = bb.Molecule.from_compound("CH4", by="formula")
-    assert isinstance(mol, bb.Molecule)
+    mol = bam.Molecule.from_compound("CH4", by="formula")
+    assert isinstance(mol, bam.Molecule)
     mol.autolabel()
     assert set(i.id for i in mol.get_atoms()) == set(("C1", "H11", "H12", "H13", "H14"))
+
+
+def test_rotate_molecule():
+    mol = bam.Molecule.from_compound("GLC")
+
+    old_coords = np.array([a.coord for a in mol.get_atoms()])
+
+    d = mol.draw()
+    bam.structural.rotate_molecule(mol, 90, np.array([1, 0, 0]))
+    d.draw_edges(*mol.get_bonds(), color="red", linewidth=2)
+
+    bam.structural.rotate_molecule(mol, 30, np.array([0, 1, 0.2]))
+    d.draw_edges(*mol.get_bonds(), color="green", linewidth=2)
+
+    bam.structural.rotate_molecule(mol, 45, np.array([4.5, 2.3, 1.4]))
+    d.draw_edges(*mol.get_bonds(), color="blue", linewidth=2)
+
+    new_coords = np.array([a.coord for a in mol.get_atoms()])
+
+    assert not np.allclose(old_coords, new_coords)
+
+    d.show()
+
+
+def test_flip():
+    mol = bam.Molecule.from_compound("GLC")
+    old_coords = np.array([a.coord for a in mol.get_atoms()])
+    d = mol.draw()
+    bam.structural.flip_molecule(mol, [0, 0, 1], center=mol.center_of_geometry)
+    d.draw_vector("axis", [0, 0, 0], [0, 0, 1], color="orange")
+    d.draw_edges(*mol.get_bonds(), color="red", linewidth=2)
+    bam.structural.flip_molecule(mol, [0, 1, 0])
+    d.draw_edges(*mol.get_bonds(), color="green", linewidth=2)
+    bam.structural.flip_molecule(mol, [1, 0, 0])
+    d.draw_edges(*mol.get_bonds(), color="blue", linewidth=2)
+    new_coords = np.array([a.coord for a in mol.get_atoms()])
+    assert not np.allclose(old_coords, new_coords)
+    d.show()
+
+
+def test_infer_hydrogens_glucose():
+    mol = bam.Molecule.from_compound("GLC")
+    ref = mol.copy()
+
+    mol.remove_atoms("H1", "H61", "H62", "HO1")
+
+    # v = mol.draw()
+
+    hydrogenator = bam.structural.infer.Hydrogenator()
+    hydrogenator.infer_hydrogens(mol)
+
+    # v.draw_points(
+    #     mol.get_coords("H1", "H61", "H62", "HO1"), colors="orange"
+    #     )
+
+    # v.show()
+
+    assert len(mol.get_atoms("H1")) == 1
+    assert len(mol.get_atoms("H61")) == 1
+    assert len(mol.get_atoms("H62")) == 1
+    assert len(mol.get_atoms("HO1")) == 1
+
+    assert mol.get_atom("HO1") in mol.get_neighbors(mol.get_atom("O1"))
+    assert mol.get_atom("H1") in mol.get_neighbors(mol.get_atom("C1"))
+
+    new_coords = mol.get_coords("H1", "H61", "H62", "HO1")
+    ref_coords = ref.get_coords("H1", "H61", "H62", "HO1")
+
+    # evaluate that each of the inferred atoms is close
+    # by one of the references. (this is primarily because
+    # H61/H62 may have swapped labels when inferred)
+    d = bam.structural.cdist(new_coords, ref_coords)
+
+    assert d[0].min() < 0.5
+    assert d[1].min() < 0.5
+    assert d[2].min() < 0.5
+    assert (
+        d[3].min() < 1.1
+    )  # this is the HO1 which can freely rotate around the C-O axis and therefore is not necessarily in the same position
+
+
+def test_infer_hydrogens_glucose_all():
+    mol = bam.Molecule.from_compound("GLC")
+    ref = mol.copy()
+
+    mol.remove_atoms(*mol.get_atoms("H", by="element"))
+
+    # v = mol.draw()
+
+    hydrogenator = bam.structural.infer.Hydrogenator()
+    hydrogenator.infer_hydrogens(mol, bond_length=1.05)
+
+    # v.draw_points(mol.get_coords("H", by="element"), colors="orange")
+
+    # v.show()
+
+    assert len(mol.get_atoms("H1")) == 1
+    assert len(mol.get_atoms("H61")) == 1
+    assert len(mol.get_atoms("H62")) == 1
+    assert len(mol.get_atoms("HO1")) == 1
+
+    assert mol.get_atom("HO1") in mol.get_neighbors(mol.get_atom("O1"))
+    assert mol.get_atom("H1") in mol.get_neighbors(mol.get_atom("C1"))
+
+    new_coords = mol.get_coords("H1", "H61", "H62", "HO1")
+    ref_coords = ref.get_coords("H1", "H61", "H62", "HO1")
+
+    # evaluate that each of the inferred atoms is close
+    # by one of the references. (this is primarily because
+    # H61/H62 may have swapped labels when inferred)
+    d = bam.structural.cdist(new_coords, ref_coords)
+
+    assert d[0].min() < 0.1
+    assert d[1].min() < 0.1
+    assert d[2].min() < 0.1
+    assert (
+        d[3].min() < 2.1
+    )  # this is the HO1 which can freely rotate around the C-O axis and therefore is not necessarily in the same position
+
+
+def test_infer_hydrogens_tyrosine_all():
+    bam.load_amino_acids()
+    mol = bam.Molecule.from_compound("TYR")
+    ref = mol.copy()
+
+    mol.remove_atoms(*mol.get_atoms("H", by="element"))
+
+    # v = mol.draw()
+
+    hydrogenator = bam.structural.infer.Hydrogenator()
+    hydrogenator.infer_hydrogens(mol, 1.05)
+
+    # v.draw_points(mol.get_coords(
+    #     "H", by="element"
+    # ), colors="orange")
+
+    # v.show()
+
+    ref_coords = ref.get_coords("HD2", "HB2", "HB3", "HXT")
+    new_coords = mol.get_coords("HD2", "HB1", "HB2", "HOXT")
+
+    d = bam.structural.cdist(new_coords, ref_coords)
+    assert d[0].min() < 0.1
+    assert d[1].min() < 0.1
+    assert d[2].min() < 0.1
+    assert (
+        d[3].min() < 2.1
+    )  # the OH may freely rotate and be therefore not in the same position
+
+
+def test_geometry_tetrahedral():
+    bam.load_small_molecules()
+    mol = bam.get_compound("CH4")
+    assert mol is not None
+
+    tetrahedron = bam.structural.geometry.Tetrahedral()
+    assert tetrahedron is not None
+
+    C = mol.get_atom("C", by="element")
+    Hs = mol.get_atoms("H", by="element")
+
+    # make just from one central atom and one H
+    coords = tetrahedron.make_coords(C, Hs[0])
+
+    v = mol.draw()
+    v.draw_points(coords, colors="orange")
+    assert np.all(coords[0] == C.coord)
+    assert np.all(coords[1] == Hs[0].coord)
+    theta = bam.structural.angle_between(coords[1], coords[0], coords[4])
+    assert 109 < theta < 110
+    theta = bam.structural.angle_between(coords[2], coords[0], coords[4])
+    assert 109 < theta < 110
+    theta = bam.structural.angle_between(coords[3], coords[0], coords[4])
+    assert 109 < theta < 110
+
+    # make from central atom and 2 neighbors
+    coords = tetrahedron.make_coords(C, *Hs[:2])
+
+    v.draw_points(coords, colors="red")
+    if base.ALLOW_VISUAL:
+        v.show()
+
+    assert np.all(coords[0] == C.coord)
+    assert np.all(coords[1] == Hs[0].coord)
+    assert np.all(coords[2] == Hs[1].coord)
+
+    theta = bam.structural.angle_between(coords[1], coords[0], coords[2])
+    assert 95 < theta < 130
+    theta = bam.structural.angle_between(coords[1], coords[0], coords[3])
+    assert 95 < theta < 130
+    theta = bam.structural.angle_between(coords[1], coords[0], coords[4])
+    assert 95 < theta < 130
+    theta = bam.structural.angle_between(coords[2], coords[0], coords[4])
+    assert 95 < theta < 130
+    theta = bam.structural.angle_between(coords[3], coords[0], coords[4])
+    assert 95 < theta < 130
+
+
+def test_tetrahedral_applied_glucose():
+    bam.load_sugars()
+    mol = bam.get_compound("GLC")
+    assert mol is not None
+
+    C = mol.get_atom("C1")
+    C2 = mol.get_atom("C2")
+    O5 = mol.get_atom("O5")
+    O1 = mol.get_atom("O1")
+    H1 = mol.get_atom("H1")
+
+    tetrahedron = bam.structural.geometry.Tetrahedral()
+
+    # reconstruct coordinates
+    coords = tetrahedron.make_coords(C, C2, O1)
+
+    coords[3] = bam.structural.adjust_distance(coords[0], coords[3], C - O5)
+    coords[4] = bam.structural.adjust_distance(coords[0], coords[4], C - H1)
+
+    if base.ALLOW_VISUAL:
+        v = mol.draw()
+        v.draw_points(coords, colors="orange")
+        v.show()
+
+    assert np.all(coords[0] == C.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert np.all(coords[2] == O1.coord)
+
+    assert np.abs(coords[3] - O5.coord).sum() < 0.01
+    assert np.abs(coords[4] - H1.coord).sum() < 0.01
+
+
+def test_planar():
+    mol = bam.molecule("ethene").autolabel()
+    assert mol is not None
+
+    planar = bam.structural.geometry.TriangularPlanar()
+
+    C1 = mol.get_atom("C1")
+    C2 = mol.get_atom("C2")
+    H1 = mol.get_atom("H11")
+    H2 = mol.get_atom("H12")
+
+    coords = planar.make_coords(C1, C2, H1)
+
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert np.all(coords[2] == H1.coord)
+    coords[3] = bam.structural.adjust_distance(coords[0], coords[3], C1 - H2)
+    assert np.abs(coords[3] - H2.coord).sum() < 0.01
+
+    mol.transpose(
+        [0, 2, 12],
+        45.6,
+        np.array([0.2, 1, 0.3]) / np.linalg.norm(np.array([0.2, 1, 0.3])),
+    )
+
+    coords = planar.make_coords(C1, C2, H1)
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert np.all(coords[2] == H1.coord)
+    coords[3] = bam.structural.adjust_distance(coords[0], coords[3], C1 - H2)
+    assert np.abs(coords[3] - H2.coord).sum() < 0.01
+
+    # v = mol.draw()
+    # v.draw_points(coords, colors="orange")
+    # v.show()
+
+    coords = planar.make_coords(C1, C2)
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert bam.structural.angle_between(coords[0], coords[1], coords[2]) - 120 < 0.5
+    assert bam.structural.angle_between(coords[0], coords[1], coords[3]) - 120 < 0.5
+    assert bam.structural.angle_between(coords[2], coords[0], coords[3]) - 120 < 0.5
+
+
+def test_linear():
+    mol = bam.molecule("C#C")[0]
+    mol.autolabel()
+    assert mol is not None
+
+    linear = bam.structural.geometry.Linear()
+
+    C1 = mol.get_atom("C1")
+    C2 = mol.get_atom("C2")
+    H1 = mol.get_atom("H1")
+    H2 = mol.get_atom("H2")
+
+    coords = linear.make_coords(C1, C2)
+
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert bam.structural.angle_between(coords[0], coords[1], coords[2]) - 180 < 0.5
+
+    coords[2] = bam.structural.adjust_distance(coords[0], coords[2], C1 - H1)
+    assert np.abs(coords[2] - H1.coord).sum() < 0.01
+
+    mol.transpose(
+        [0, 2, 12],
+        45.6,
+        np.array([0.2, 1, 0.3]) / np.linalg.norm(np.array([0.2, 1, 0.3])),
+    )
+
+    coords = linear.make_coords(C1, C2)
+
+    assert np.all(coords[0] == C1.coord)
+    assert np.all(coords[1] == C2.coord)
+    # assert bam.structural.angle_between(coords[0], coords[1], coords[2]) - 180 < 0.5
+
+    # coords[2] = bam.structural.adjust_distance(coords[0], coords[2], C1 - H1)
+    # assert np.abs(coords[2] - H1.coord).sum() < 0.01
+
+
+def test_bipyramid():
+
+    mol = bam.Molecule.empty()
+    res = bam.Residue("PCL5")
+    mol.add_residues(res)
+
+    bipyramid = bam.structural.geometry.TrigonalBipyramidal()
+
+    P = bam.Atom.new("P")
+    C1 = bam.Atom.new("Cl", [0, 0, 1])
+
+    # atoms without coordinates yet
+    C2 = bam.Atom.new("Cl")
+    C3 = bam.Atom.new("Cl")
+    C4 = bam.Atom.new("Cl")
+    C5 = bam.Atom.new("Cl")
+
+    mol.add_atoms(P, C1, C2, C3, C4, C5)
+
+    coords = bipyramid.make_coords(P, C1, direction="planar")
+    assert np.all(coords[0] == P.coord)
+    assert np.all(coords[1] == C1.coord)
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[2]) - 120 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[3]) - 120 < 0.5
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[4]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[5]) - 90 < 0.5
+
+    C2.coord = coords[2]
+    C3.coord = coords[3]
+    C4.coord = coords[4]
+    C5.coord = coords[5]
+
+    v = mol.draw()
+    coords = bipyramid.make_coords(P, C2, C4, direction="mixed")
+
+    v.draw_points(coords, colors="orange")
+    if base.ALLOW_VISUAL:
+        v.show()
+
+    assert np.all(coords[0] == P.coord)
+    assert np.all(coords[1] == C2.coord)
+    assert np.all(coords[2] == C4.coord)
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[4]) - 120 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[3]) - 120 < 0.5
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[2]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[5]) - 90 < 0.5
+
+    # now test with non-specified directionality to see if it could infer them
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C4, C5)], bipyramid.angle
+    )
+    assert direction == "axial"
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C2, C3)], bipyramid.angle
+    )
+    assert direction == "planar"
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C2, C4)], bipyramid.angle
+    )
+    assert direction == "mixed"
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C4, C2)], bipyramid.angle
+    )
+    assert direction == "mixed"
+    direction = bam.structural.geometry._infer_point_relations(
+        [i.coord for i in (P, C2, C5)], bipyramid.angle
+    )
+    assert direction == "mixed"
+
+
+def test_octahedral():
+    mol = bam.Molecule.new(None, "PF6")
+
+    octahedral = bam.structural.geometry.Octahedral()
+
+    P = bam.Atom.new("P")
+    F1 = bam.Atom.new("F", [1, 0, 0])
+    F2 = bam.Atom.new("F", [0, 1, 0])
+    F3 = bam.Atom.new("F")
+    F4 = bam.Atom.new("F")
+    F5 = bam.Atom.new("F")
+    F6 = bam.Atom.new("F")
+
+    mol.add_atoms(P, F1, F2, F3, F4, F5, F6)
+
+    coords = octahedral.make_coords(P, F1, F2, direction="planar", length=1)
+    assert np.all(coords[0] == P.coord)
+    assert np.all(coords[1] == F1.coord)
+    assert np.all(coords[2] == F2.coord)
+
+    assert bam.structural.angle_between(coords[1], coords[0], coords[2]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[3]) - 180 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[4]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[1], coords[0], coords[5]) - 90 < 0.5
+
+    assert bam.structural.angle_between(coords[2], coords[0], coords[3]) - 90 < 0.5
+    assert bam.structural.angle_between(coords[2], coords[0], coords[4]) - 180 < 0.5
+    assert bam.structural.angle_between(coords[2], coords[0], coords[5]) - 90 < 0.5
+
+    F3.coord = coords[3]
+    F4.coord = coords[4]
+    F5.coord = coords[5]
+    F6.coord = coords[6]
+
+    # v = mol.draw()
+
+    mol.rotate(23, "x").rotate(45, "y").move([1, 2, 3])
+
+    coords = octahedral.make_coords(P, F1, F5, direction="mixed", length=1)
+
+    # v.draw_points(coords, colors="orange")
+
+    # v.show()
+
+    assert np.all(coords[0] == P.coord)
+    assert np.all(coords[1] == F1.coord)
+    assert np.all(coords[2] == F5.coord)
+
+    assert np.abs(F2.coord - coords[3]).sum() < 0.1
+    assert np.abs(F3.coord - coords[4]).sum() < 0.1
+    assert np.abs(F4.coord - coords[5]).sum() < 0.1
+    assert np.abs(F6.coord - coords[6]).sum() < 0.1
+
+
+def test_geometries_make_from_one():
+    for geometry in (
+        bam.structural.geometry.Linear(),
+        bam.structural.geometry.TrigonalPlanar(),
+        bam.structural.geometry.TrigonalBipyramidal(),
+        bam.structural.geometry.Octahedral(),
+        bam.structural.geometry.Tetrahedral(),
+    ):
+        atom = bam.Atom.new("C")
+        new_coords = geometry.make_coords(atom)
+        assert not np.isnan(
+            new_coords
+        ).any(), f"geometry {geometry.__class__.__name__} failed"
+        assert not np.isinf(
+            new_coords
+        ).any(), f"geometry {geometry.__class__.__name__} failed"
+
+
+def test_tetrahedral_apply():
+    bam.load_small_molecules()
+    mol = bam.get_compound("CH4").autolabel()
+
+    # v = mol.draw()
+
+    tetra = bam.structural.geometry.Tetrahedral()
+
+    old = mol.get_coords()
+
+    atoms = [mol.get_atom("C1"), *mol.get_atoms("H", by="element")]
+    tetra.apply(atoms)
+    new = mol.get_coords()
+
+    # v.draw_points(new, ids=[i.id for i in atoms], colors="green")
+    # v.show()
+
+    assert ((old - new) ** 2).sum() < 0.1
+
+
+def test_geometry_fill_hydrogens_from_one():
+    for geometry in (
+        bam.structural.geometry.Linear(),
+        bam.structural.geometry.TrigonalPlanar(),
+        bam.structural.geometry.TrigonalBipyramidal(),
+        bam.structural.geometry.Octahedral(),
+        bam.structural.geometry.Tetrahedral(),
+    ):
+        atom = bam.Atom.new("C")
+
+        atoms, bonds = geometry.fill_hydrogens(atom)
+        assert len(atoms) == geometry.size
+
+        mol = bam.Molecule.new(None, "NEW")
+        mol.add_atoms(*atoms)
+        mol.infer_bonds()
+
+        if base.ALLOW_VISUAL:
+            mol.show()
+
+
+def test_geometry_fill_hydrogens_from_two():
+    for geometry in (
+        bam.structural.geometry.Linear(),
+        bam.structural.geometry.TrigonalPlanar(),
+        bam.structural.geometry.TrigonalBipyramidal(),
+        bam.structural.geometry.Octahedral(),
+        bam.structural.geometry.Tetrahedral(),
+    ):
+        atom = bam.Atom.new("C")
+        atom2 = bam.Atom.new("C", [1, 0, 0])
+
+        atoms, bonds = geometry.fill_hydrogens(atom, atom2, direction="planar")
+        assert len(atoms) == geometry.size
+
+        mol = bam.Molecule.new(None, "NEW")
+        mol.add_atoms(atoms)
+        mol.add_bonds(bonds)
+
+        if base.ALLOW_VISUAL:
+            mol.show()
+
+
+def test_change_element_add_hydrogens():
+    mol = bam.Molecule.from_compound("GLC")
+
+    old_neighbors = mol.get_neighbors("O1")
+    old_atom = mol.get_atom("O1")
+
+    bam.structural.infer.change_element(mol.get_atom("O1"), "N", mol)
+
+    new = mol.get_atom("N1")
+    assert old_atom is new
+
+    assert mol.get_atom("N1").element == "N"
+    assert mol.get_atom("N1").id == "N1"
+    assert len(mol.get_neighbors("N1")) == len(old_neighbors) + 1
+
+    old_neighbors = mol.get_neighbors("O5")
+
+    old = mol.get_atom("O5")
+    bam.structural.infer.change_element(mol.get_atom("O5"), "N", mol)
+    new = mol.get_atom("N5")
+    assert old is new
+
+    assert mol.get_atom("N5").element == "N"
+    assert mol.get_atom("N5").id == "N5"
+    assert len(mol.get_neighbors("N5")) == len(old_neighbors) + 1
+
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_change_element_remove_hydrogens():
+    mol = bam.Molecule.from_compound("GLC")
+
+    old_neighbors = mol.get_neighbors("O1")
+
+    old = mol.get_atom("O1")
+    bam.structural.infer.change_element(mol.get_atom("O1"), "N", mol)
+    new = mol.get_atom("N1")
+    assert old is new
+
+    assert mol.get_atom("N1").element == "N"
+    assert mol.get_atom("N1").id == "N1"
+    assert len(mol.get_neighbors("N1")) == len(old_neighbors) + 1
+
+    old_neighbors = mol.get_neighbors("N1")
+    old = mol.get_atom("N1")
+    # now change back again
+    bam.structural.change_element(mol.get_atom("N1"), "O", mol)
+    new = mol.get_atom("O1")
+    assert old is new
+
+    assert mol.get_atom("O1").element == "O"
+    assert mol.get_atom("O1").id == "O1"
+    assert len(mol.get_neighbors("O1")) == len(old_neighbors) - 1
+
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_change_bond_order_add_hydrogens():
+    mol = bam.Molecule.from_smiles("CC=NC")
+    mol.autolabel()
+
+    C1 = mol.get_atom("C1")
+    N3 = mol.get_atom("N3")
+
+    old_C_neighbors = mol.get_neighbors(C1)
+    old_N_neighbors = mol.get_neighbors(N3)
+
+    # change the double bond to a single bond
+    bam.structural.change_bond_order(mol, C1, N3, 1)
+
+    assert len(mol.get_neighbors(C1)) == len(old_C_neighbors) + 1
+    assert len(mol.get_neighbors(N3)) == len(old_N_neighbors) + 1
+
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_change_bond_order_remove_hydrogens():
+    mol = bam.Molecule.from_smiles("CCNC")
+    mol.autolabel()
+
+    C1 = mol.get_atom("C1")
+    N3 = mol.get_atom("N3")
+
+    old_C_neighbors = mol.get_neighbors(C1)
+    old_N_neighbors = mol.get_neighbors(N3)
+
+    # change the double bond to a single bond
+    bam.structural.change_bond_order(mol, C1, N3, 2)
+
+    assert len(mol.get_neighbors(C1)) == len(old_C_neighbors) - 1
+    assert len(mol.get_neighbors(N3)) == len(old_N_neighbors) - 1
+
+    if base.ALLOW_VISUAL:
+        mol.show()
+    mol.to_pdb("mol.pdb")
+
+
+def test_find_equatorial_hydrogens():
+    bam.load_small_molecules()
+    mol = bam.molecule("cyclohexane")
+
+    v = mol.draw()
+    H = bam.structural.infer.find_equatorial_hydrogens(mol)
+    v.draw_atoms(*H, colors="orange")
+
+    for C in mol.get_atoms("C", by="element"):
+        H = bam.structural.infer.get_equatorial_hydrogen_neighbor(mol, C)
+        v.draw_atom(H, color="purple")
+
+    if base.ALLOW_VISUAL:
+        v.show()
+
+
+def test_find_axial_hydrogens():
+    bam.load_small_molecules()
+    mol = bam.molecule("cyclohexane")
+
+    v = mol.draw()
+    H = bam.structural.infer.find_axial_hydrogens(mol)
+    v.draw_atoms(*H, colors="orange")
+
+    for C in mol.get_atoms("C", by="element"):
+        H = bam.structural.infer.get_axial_hydrogen_neighbor(mol, C)
+        v.draw_atom(H, color="purple")
+
+    if base.ALLOW_VISUAL:
+        v.show()
+
+
+def test_find_equatorial_hydrogens2():
+    bam.load_sugars()
+    mol = bam.molecule("GLC")
+
+    v = mol.draw()
+
+    H = bam.structural.infer.find_equatorial_hydrogens(mol)
+
+    v.draw_atoms(*H, colors="orange")
+
+    for carbon in mol.get_atoms("C", by="element"):
+        H = bam.structural.infer.get_equatorial_hydrogen_neighbor(mol, carbon)
+        if H:
+            v.draw_atom(H, color="purple")
+
+    if base.ALLOW_VISUAL:
+        v.show()
+
+
+def test_find_axial_hydrogens2():
+    bam.load_sugars()
+    mol = bam.molecule("GLC")
+
+    v = mol.draw()
+
+    H = bam.structural.infer.find_axial_hydrogens(mol)
+
+    v.draw_atoms(*H, colors="orange")
+
+    for carbon in mol.get_atoms("C", by="element"):
+        H = bam.structural.infer.get_axial_hydrogen_neighbor(mol, carbon)
+        if H:
+            v.draw_atom(H, color="purple")
+
+    if base.ALLOW_VISUAL:
+        v.show()
+
+
+def test_get_left_and_right_hydrogen():
+    mol = bam.read_smiles("CCC(=O)O")
+    mol.autolabel()
+
+    center = mol.get_atom("C2")
+    left_hydrogen = bam.structural.infer.get_left_hydrogen(mol, center)
+    assert left_hydrogen is not None
+
+    right_hydrogen = bam.structural.infer.get_right_hydrogen(mol, center)
+    assert right_hydrogen is not None
+
+    if base.ALLOW_VISUAL:
+        v = mol.draw()
+        v.draw_atom(left_hydrogen, color="orange")
+        v.draw_atom(right_hydrogen, color="pink")
+        v.show()
+
+
+def test_superimpose_bonds():
+    mol = bam.Molecule.from_compound("GLC")
+
+    mol2 = mol.copy()
+    mol2.transpose([0, 2, 12], 45, [1, 0, 0])
+
+    v = mol.draw() + mol2.draw(atoms=False, line_color="red")
+
+    a, b = "C2", "C3"
+    bond1 = tuple(i.coord for i in mol.get_bond(a, b))
+    bond2 = tuple(i.coord for i in mol2.get_bond(a, b))
+
+    new_coords = bam.structural.superimpose_points(mol2.get_coords(), bond2, bond1)
+
+    for idx, atom in enumerate(mol2.get_atoms()):
+        atom.coord = new_coords[idx]
+
+    v += mol2.draw(atoms=False, line_color="green")
+
+    if base.ALLOW_VISUAL:
+        v.show()
+
+
+def test_superimpose_triplet():
+    mol = bam.Molecule.from_compound("GLC")
+
+    mol2 = mol.copy()
+    mol2.transpose([0, 2, 12], 45, [1, 0, 0])
+
+    v = mol.draw() + mol2.draw(atoms=False, line_color="red")
+
+    points = "C2", "C3", "C1"
+    points1 = tuple(i.coord for i in (mol.get_atom(i) for i in points))
+    points2 = tuple(i.coord for i in (mol2.get_atom(i) for i in points))
+
+    new_coords = bam.structural.superimpose_points(mol2.get_coords(), points2, points1)
+
+    for idx, atom in enumerate(mol2.get_atoms()):
+        atom.coord = new_coords[idx]
+
+    v += mol2.draw(atoms=False, line_color="green")
+
+    if base.ALLOW_VISUAL:
+        v.show()
+
+
+def test_infer_reactivity_atoms_from_groups():
+    bam.load_amino_acids()
+    mol = bam.Molecule.from_compound("TYR")
+
+    carboxyl = bam.structural.groups.carboxyl
+    amine = bam.structural.groups.amine
+
+    link = bam.Linkage.from_functional_groups(mol, carboxyl, mol, amine)
+    out = mol % link + mol
+    out.show()
+
+
+def test_infer_bond_orders():
+    mols = [
+        "2-butene",
+        "NAG",
+        "TYR",
+        "acetylbenzene",
+    ]
+    for mol in mols:
+        mol = bam.molecule(mol)
+        for bond in mol.get_bonds():
+            mol.set_bond_order(*bond, 1)
+
+        bam.structural.infer_bond_orders(mol)
+        assert any(bond.is_double() for bond in mol.get_bonds()), (
+            "No double bonds found in molecule" + mol.id
+        )
+        if base.ALLOW_VISUAL:
+            mol.show()
+
+
+def test_match_aromatic():
+    aromatic = bam.structural.groups.aromatic
+
+    bam.load_small_molecules()
+    bam.load_amino_acids()
+
+    for mol in ["TYR", "BNZ", "acetophenone"]:
+        mol = bam.molecule(mol)
+
+        for bond in mol.bonds:
+            mol.set_bond_order(*bond, 1)
+
+        atoms = mol.atoms
+
+        matches = aromatic.find_matches(mol, atoms)
+        if len(matches) == 0:
+            raise ValueError("No matches found")
+
+        aromatic.apply_connectivity(mol, atoms)
+
+        if base.ALLOW_VISUAL:
+            mol.show()
+
+
+def test_plane_from_points():
+    from buildamol.extensions import polymers
+
+    c = polymers.cyclic_alkane(10)
+
+    vec = bam.structural.plane_of_points(c.get_coords())
+
+    v = c.draw()
+    v.draw_vector("vec", c.center_of_geometry, c.center_of_geometry + vec, color="red")
+    if base.ALLOW_VISUAL:
+        v.show()

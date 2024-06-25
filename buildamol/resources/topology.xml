@@ -1,0 +1,342 @@
+<topology id="topology.pkl">
+	<patches>
+		<linkage id="SCK0" descr="patch to link lysine with retinal to form a" atom1="NZ" atom2="C15" deletes1="['HZ1', 'HZ2', 'HZ3']" deletes2="['O15']">
+			<ics>
+				<ic atom1="1CD" atom2="1CE" atom3="1NZ" atom4="2C15" improper="False" length12="0.0" length13="None" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="1CE" atom2="1NZ" atom3="2C15" atom4="2C14" improper="False" length12="0.0" length13="None" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="1NZ" atom2="2C15" atom3="2C14" atom4="2C13" improper="False" length12="0.0" length13="None" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="2C14" atom2="1NZ" atom3="2C15" atom4="2H15" improper="True" length12="None" length13="0.0" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="2C5" atom2="2C6" atom3="2C1" atom4="2C2" improper="False" length12="0.0" length13="None" length34="0.0" angle123="0.0" angle234="0.0" dihedral="0.0"/>
+			</ics>
+		</linkage>
+		<linkage id="SCK1" descr="patch to link lysine with retinal to form a" atom1="NZ" atom2="C15" deletes1="['HZ2', 'HZ3']" deletes2="['O15']">
+			<ics>
+				<ic atom1="1CD" atom2="1CE" atom3="1NZ" atom4="2C15" improper="False" length12="0.0" length13="None" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="1CE" atom2="1NZ" atom3="2C15" atom4="2C14" improper="False" length12="0.0" length13="None" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="1NZ" atom2="2C15" atom3="2C14" atom4="2C13" improper="False" length12="0.0" length13="None" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="2C15" atom2="1CE" atom3="1NZ" atom4="1HZ1" improper="True" length12="None" length13="0.0" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="2C14" atom2="1NZ" atom3="2C15" atom4="2H15" improper="True" length12="None" length13="0.0" length34="0.0" angle123="0.0" angle234="0.0" dihedral="180.0"/>
+				<ic atom1="2C5" atom2="2C6" atom3="2C1" atom4="2C2" improper="False" length12="0.0" length13="None" length34="0.0" angle123="0.0" angle234="0.0" dihedral="0.0"/>
+			</ics>
+		</linkage>
+		<linkage id="LLLO" descr="linkage for dol-P-P and sugar" atom1="C1" atom2="O22" deletes1="['HO1', 'O1']" deletes2="['HO22']">
+			<ics>
+				<ic atom1="1C3" atom2="1C2" atom3="1C1" atom4="1H1" improper="False" length12="1.5364" length13="None" length34="1.4102" angle123="112.47" angle234="109.44" dihedral="180.0"/>
+				<ic atom1="1C2" atom2="1H1" atom3="1C1" atom4="2O22" improper="True" length12="None" length13="1.5323" length34="1.1223" angle123="109.44" angle234="109.46" dihedral="-120.0"/>
+				<ic atom1="1C2" atom2="1C1" atom3="2O22" atom4="2P2" improper="False" length12="1.5323" length13="None" length34="1.5968" angle123="109.44" angle234="127.66" dihedral="-84.54"/>
+				<ic atom1="1C1" atom2="2O22" atom3="2P2" atom4="2O12" improper="False" length12="1.4102" length13="None" length34="1.5071" angle123="127.66" angle234="102.94" dihedral="-174.21"/>
+				<ic atom1="2O22" atom2="2O12" atom3="2P2" atom4="2O23" improper="True" length12="None" length13="1.5968" length34="1.5471" angle123="102.94" angle234="118.81" dihedral="113.03"/>
+				<ic atom1="2O22" atom2="2O12" atom3="2P2" atom4="2O24" improper="True" length12="None" length13="1.5968" length34="1.4811" angle123="102.94" angle234="109.37" dihedral="-113.6"/>
+			</ics>
+		</linkage>
+		<linkage id="CERA" descr="og axial patch of ceramide to C1 [based on patch OCTA]" atom1="O1" atom2="C1S" deletes1="['HO1']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C1S" improper="False" length12="1.4326" length13="None" length34="1.439" angle123="113.39" angle234="112.41" dihedral="76.24"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C1S" atom4="2C2S" improper="False" length12="1.3743" length13="None" length34="1.5661" angle123="112.41" angle234="113.71" dihedral="-174.48"/>
+				<ic atom1="1O1" atom2="2C1S" atom3="2C2S" atom4="2C3S" improper="False" length12="1.439" length13="None" length34="1.5435" angle123="113.71" angle234="116.6" dihedral="171.35"/>
+				<ic atom1="2C2S" atom2="1O1" atom3="2C1S" atom4="2H1S" improper="True" length12="None" length13="1.5661" length34="1.0672" angle123="113.71" angle234="113.66" dihedral="-128.8"/>
+				<ic atom1="2C2S" atom2="1O1" atom3="2C1S" atom4="2H1T" improper="True" length12="None" length13="1.5661" length34="1.1576" angle123="113.71" angle234="104.83" dihedral="111.7"/>
+			</ics>
+		</linkage>
+		<linkage id="CERB" descr="og equatorial patch of ceramide to C1 [based on patch OCTB]" atom1="O1" atom2="C1S" deletes1="['HO1']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C1S" improper="False" length12="1.4302" length13="None" length34="1.4262" angle123="103.27" angle234="111.36" dihedral="-83.3"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C1S" atom4="2C2S" improper="False" length12="1.4465" length13="None" length34="1.5408" angle123="111.36" angle234="110.89" dihedral="-171.8"/>
+				<ic atom1="1O1" atom2="2C1S" atom3="2C2S" atom4="2C3S" improper="False" length12="1.4262" length13="None" length34="1.539" angle123="110.89" angle234="111.72" dihedral="-178.19"/>
+				<ic atom1="2C2S" atom2="1O1" atom3="2C1S" atom4="2H1S" improper="True" length12="None" length13="1.5661" length34="1.0672" angle123="113.71" angle234="113.66" dihedral="-128.8"/>
+				<ic atom1="2C2S" atom2="1O1" atom3="2C1S" atom4="2H1T" improper="True" length12="None" length13="1.5661" length34="1.1576" angle123="113.71" angle234="104.83" dihedral="111.7"/>
+			</ics>
+		</linkage>
+		<linkage id="DAGA" descr="diacylglycerol at axial C1" atom1="O1" atom2="C1" deletes1="['HO1']" deletes2="['P', 'O13', 'O14', 'O12', 'H12', 'O11']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C1" improper="False" length12="1.4326" length13="None" length34="1.439" angle123="113.39" angle234="112.41" dihedral="-104.24"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C1" atom4="2C2" improper="False" length12="1.3743" length13="None" length34="1.5661" angle123="112.41" angle234="113.71" dihedral="-174.48"/>
+				<ic atom1="2C2" atom2="1O1" atom3="2C1" atom4="2HA" improper="True" length12="None" length13="1.5515" length34="1.1162" angle123="111.07" angle234="110.91" dihedral="-119.84"/>
+				<ic atom1="2HA" atom2="1O1" atom3="2C1" atom4="2HB" improper="True" length12="None" length13="1.1162" length34="1.1153" angle123="110.91" angle234="110.17" dihedral="-120.43"/>
+				<ic atom1="1O1" atom2="2C1" atom3="2C2" atom4="2C3" improper="False" length12="1.439" length13="None" length34="1.5435" angle123="113.71" angle234="116.6" dihedral="171.35"/>
+			</ics>
+		</linkage>
+		<linkage id="DAGB" descr="diacylglycerol at equatorial C1" atom1="O1" atom2="C1" deletes1="['HO1']" deletes2="['P', 'O13', 'O14', 'O12', 'H12', 'O11']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C1" improper="False" length12="1.4326" length13="None" length34="1.439" angle123="113.39" angle234="112.41" dihedral="76.24"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C1" atom4="2C2" improper="False" length12="1.3743" length13="None" length34="1.5661" angle123="112.41" angle234="113.71" dihedral="-174.48"/>
+				<ic atom1="2C2" atom2="1O1" atom3="2C1" atom4="2HA" improper="True" length12="None" length13="1.5515" length34="1.1162" angle123="111.07" angle234="110.91" dihedral="-119.84"/>
+				<ic atom1="2HA" atom2="1O1" atom3="2C1" atom4="2HB" improper="True" length12="None" length13="1.1162" length34="1.1153" angle123="110.91" angle234="110.17" dihedral="-120.43"/>
+				<ic atom1="1O1" atom2="2C1" atom3="2C2" atom4="2C3" improper="False" length12="1.439" length13="None" length34="1.5435" angle123="113.71" angle234="116.6" dihedral="171.35"/>
+			</ics>
+		</linkage>
+		<linkage id="INS2A" descr="link alpha-sugar (axial) to phosphorylated inositol 2nd position (axial) [based on 14aa]" atom1="C1" atom2="O2" deletes1="['HO1', 'O1']" deletes2="['HO2']">
+			<ics>
+				<ic atom1="1C2" atom2="1O5" atom3="1C1" atom4="2O2" improper="True" length12="None" length13="1.48" length34="1.395" angle123="106.0" angle234="112.0" dihedral="126.4"/>
+				<ic atom1="1O5" atom2="2O2" atom3="1C1" atom4="1H1" improper="True" length12="None" length13="1.449" length34="1.1057" angle123="109.48" angle234="107.55" dihedral="-116.61"/>
+				<ic atom1="1O5" atom2="2O2" atom3="1C1" atom4="1C2" improper="True" length12="None" length13="1.449" length34="1.5065" angle123="109.48" angle234="110.72" dihedral="124.57"/>
+				<ic atom1="1O5" atom2="1C1" atom3="2O2" atom4="2C12" improper="False" length12="1.4716" length13="None" length34="1.449" angle123="119.44" angle234="109.48" dihedral="133.57"/>
+				<ic atom1="1C1" atom2="2O2" atom3="2C12" atom4="2C11" improper="False" length12="1.5075" length13="None" length34="1.4036" angle123="110.4" angle234="119.44" dihedral="-86.29"/>
+				<ic atom1="1C1" atom2="2O2" atom3="2C12" atom4="2C13" improper="False" length12="1.395" length13="None" length34="1.48" angle123="109.2" angle234="109.0" dihedral="-140.3"/>
+			</ics>
+		</linkage>
+		<linkage id="INS2B" descr="link alpha-sugar (equatorial) to phosphorylated inositol 2nd position (axial) [based on 14ba]" atom1="C1" atom2="O2" deletes1="['HO1', 'O1']" deletes2="['HO2']">
+			<ics>
+				<ic atom1="1C2" atom2="1O5" atom3="1C1" atom4="2O2" improper="True" length12="None" length13="1.48" length34="1.395" angle123="106.0" angle234="112.0" dihedral="-125.0"/>
+				<ic atom1="1O5" atom2="2O2" atom3="1C1" atom4="1H1" improper="True" length12="None" length13="1.447" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+				<ic atom1="1O5" atom2="2O2" atom3="1C1" atom4="1C2" improper="True" length12="None" length13="1.447" length34="1.5316" angle123="108.63" angle234="110.89" dihedral="-122.09"/>
+				<ic atom1="1O5" atom2="1C1" atom3="2O2" atom4="2C12" improper="False" length12="1.456" length13="None" length34="1.447" angle123="121.0" angle234="108.63" dihedral="-130.97"/>
+				<ic atom1="1C1" atom2="2O2" atom3="2C12" atom4="2C11" improper="False" length12="1.5071" length13="None" length34="1.3902" angle123="110.4" angle234="121.0" dihedral="-86.3"/>
+				<ic atom1="1C1" atom2="2O2" atom3="2C12" atom4="2C13" improper="False" length12="1.395" length13="None" length34="1.48" angle123="109.2" angle234="109.0" dihedral="21.8"/>
+			</ics>
+		</linkage>
+		<linkage id="INS6A" descr="link alpha-sugar (axial) to phosphorylated inositol 6th position (equatorial) [based on 14ab]" atom1="C1" atom2="O6" deletes1="['HO1', 'O1']" deletes2="['HO6']">
+			<ics>
+				<ic atom1="1C2" atom2="1O5" atom3="1C1" atom4="2O6" improper="True" length12="None" length13="1.48" length34="1.395" angle123="106.0" angle234="112.0" dihedral="127.3"/>
+				<ic atom1="1O5" atom2="2O6" atom3="1C1" atom4="1H1" improper="True" length12="None" length13="1.457" length34="1.1057" angle123="109.48" angle234="107.55" dihedral="-116.61"/>
+				<ic atom1="1O5" atom2="2O6" atom3="1C1" atom4="1C2" improper="True" length12="None" length13="1.457" length34="1.5065" angle123="109.48" angle234="110.72" dihedral="124.57"/>
+				<ic atom1="1O5" atom2="1C1" atom3="2O6" atom4="2C16" improper="False" length12="1.4919" length13="None" length34="1.457" angle123="118.66" angle234="109.48" dihedral="48.64"/>
+				<ic atom1="1C1" atom2="2O6" atom3="2C16" atom4="2C15" improper="False" length12="1.501" length13="None" length34="1.4036" angle123="117.73" angle234="118.66" dihedral="72.71"/>
+				<ic atom1="1C1" atom2="2O6" atom3="2C16" atom4="2C11" improper="False" length12="1.395" length13="None" length34="1.48" angle123="109.2" angle234="109.0" dihedral="-158.8"/>
+			</ics>
+		</linkage>
+		<linkage id="INS6B" descr="link beta-sugar (equatorial) to phosphorylated inositol 6th position (equatorial) [based on 14bb]" atom1="C1" atom2="O6" deletes1="['HO1', 'O1']" deletes2="['HO6']">
+			<ics>
+				<ic atom1="1C2" atom2="1O5" atom3="1C1" atom4="2O6" improper="True" length12="None" length13="1.48" length34="1.395" angle123="106.0" angle234="112.0" dihedral="-118.8"/>
+				<ic atom1="1O5" atom2="2O6" atom3="1C1" atom4="1H1" improper="True" length12="None" length13="1.447" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+				<ic atom1="1O5" atom2="2O6" atom3="1C1" atom4="1C2" improper="True" length12="None" length13="1.447" length34="1.5316" angle123="108.63" angle234="110.89" dihedral="-122.09"/>
+				<ic atom1="1O5" atom2="1C1" atom3="2O6" atom4="2C16" improper="False" length12="1.456" length13="None" length34="1.447" angle123="121.0" angle234="108.63" dihedral="-130.97"/>
+				<ic atom1="1C1" atom2="2O6" atom3="2C16" atom4="2C15" improper="False" length12="1.5009" length13="None" length34="1.3902" angle123="110.76" angle234="121.0" dihedral="81.86"/>
+				<ic atom1="1C1" atom2="2O6" atom3="2C16" atom4="2C11" improper="False" length12="1.395" length13="None" length34="1.48" angle123="109.2" angle234="109.0" dihedral="-60.6"/>
+			</ics>
+		</linkage>
+		<linkage id="SGPA" descr="for connecting SER at the alpha position" atom1="OG" atom2="C1" deletes1="['HG1']" deletes2="['O1', 'HO1']">
+			<ics>
+				<ic atom1="1CA" atom2="1CB" atom3="1OG" atom4="2C1" improper="False" length12="1.5246" length13="None" length34="1.4191" angle123="112.48" angle234="115.72" dihedral="-174.87"/>
+				<ic atom1="1CB" atom2="1OG" atom3="2C1" atom4="2O5" improper="False" length12="1.4218" length13="None" length34="1.4241" angle123="115.72" angle234="110.03" dihedral="45.37"/>
+				<ic atom1="1CB" atom2="1OG" atom3="2C1" atom4="2H1" improper="False" length12="1.4218" length13="None" length34="1.1125" angle123="115.72" angle234="112.01" dihedral="-71.61"/>
+				<ic atom1="1OG" atom2="2C1" atom3="2O5" atom4="2C5" improper="False" length12="1.4191" length13="None" length34="1.4591" angle123="110.03" angle234="109.91" dihedral="63.29"/>
+			</ics>
+		</linkage>
+		<linkage id="TGPA" descr="for connecting THR at the alpha position" atom1="OG1" atom2="C1" deletes1="['HG1']" deletes2="['O1', 'HO1']">
+			<ics>
+				<ic atom1="1CA" atom2="1CB" atom3="1OG1" atom4="2C1" improper="False" length12="1.59" length13="None" length34="1.4047" angle123="102.09" angle234="116.78" dihedral="161.11"/>
+				<ic atom1="1CB" atom2="1OG1" atom3="2C1" atom4="2O5" improper="False" length12="1.504" length13="None" length34="1.4346" angle123="116.78" angle234="114.66" dihedral="69.9"/>
+				<ic atom1="1CB" atom2="1OG1" atom3="2C1" atom4="2H1" improper="False" length12="1.504" length13="None" length34="1.1436" angle123="116.78" angle234="110.33" dihedral="-51.01"/>
+				<ic atom1="1OG1" atom2="2C1" atom3="2O5" atom4="2C5" improper="False" length12="1.4047" length13="None" length34="1.4751" angle123="114.66" angle234="114.71" dihedral="71.63"/>
+			</ics>
+		</linkage>
+		<linkage id="SGPB" descr="for connecting SER at the beta position" atom1="OG" atom2="C1" deletes1="['HG1']" deletes2="['O1', 'HO1']">
+			<ics>
+				<ic atom1="1CA" atom2="1CB" atom3="1OG" atom4="2C1" improper="False" length12="1.5288" length13="None" length34="1.4222" angle123="114.42" angle234="116.19" dihedral="160.15"/>
+				<ic atom1="1CB" atom2="1OG" atom3="2C1" atom4="2O5" improper="False" length12="1.5026" length13="None" length34="1.4694" angle123="116.19" angle234="107.74" dihedral="19.87"/>
+				<ic atom1="1CB" atom2="1OG" atom3="2C1" atom4="2H1" improper="False" length12="1.5026" length13="None" length34="1.1232" angle123="116.19" angle234="108.46" dihedral="149.79"/>
+				<ic atom1="1OG" atom2="2C1" atom3="2O5" atom4="2C5" improper="False" length12="1.4222" length13="None" length34="1.4637" angle123="107.74" angle234="112.12" dihedral="173.59"/>
+			</ics>
+		</linkage>
+		<linkage id="TGPB" descr="for connecting THR at the beta position" atom1="OG1" atom2="C1" deletes1="['HG1']" deletes2="['O1', 'HO1']">
+			<ics>
+				<ic atom1="1CA" atom2="1CB" atom3="1OG1" atom4="2C1" improper="False" length12="1.5466" length13="None" length34="1.4626" angle123="109.42" angle234="119.34" dihedral="84.79"/>
+				<ic atom1="1CB" atom2="1OG1" atom3="2C1" atom4="2O5" improper="False" length12="1.4452" length13="None" length34="1.417" angle123="119.34" angle234="108.68" dihedral="33.16"/>
+				<ic atom1="1CB" atom2="1OG1" atom3="2C1" atom4="2H1" improper="False" length12="1.4452" length13="None" length34="1.0859" angle123="119.34" angle234="103.58" dihedral="142.21"/>
+				<ic atom1="1OG1" atom2="2C1" atom3="2O5" atom4="2C5" improper="False" length12="1.4626" length13="None" length34="1.4643" angle123="108.68" angle234="109.99" dihedral="167.53"/>
+			</ics>
+		</linkage>
+		<linkage id="NGLA" descr="og make model compound 3 by adding equat" atom1="ND2" atom2="C1" deletes1="['HD21']" deletes2="['O1', 'HO1']">
+			<ics>
+				<ic atom1="1CB" atom2="1CG" atom3="1ND2" atom4="2C1" improper="False" length12="1.5278" length13="None" length34="1.4551" angle123="116.61" angle234="128.01" dihedral="179.92"/>
+				<ic atom1="1CG" atom2="1ND2" atom3="2C1" atom4="2O5" improper="False" length12="1.3341" length13="None" length34="1.421" angle123="128.01" angle234="103.48" dihedral="168.99"/>
+				<ic atom1="1HD22" atom2="1ND2" atom3="2C1" atom4="2O5" improper="False" length12="0.9855" length13="None" length34="1.421" angle123="112.93" angle234="103.48" dihedral="-12.55"/>
+				<ic atom1="2C5" atom2="2O5" atom3="2C1" atom4="2H1" improper="False" length12="1.4292" length13="None" length34="1.0797" angle123="117.47" angle234="108.88" dihedral="-174.95"/>
+				<ic atom1="1ND2" atom2="2C1" atom3="2O5" atom4="2C5" improper="False" length12="1.4551" length13="None" length34="1.4292" angle123="103.48" angle234="117.47" dihedral="75.29"/>
+			</ics>
+		</linkage>
+		<linkage id="11aa" descr="axial to C1 and axial to C1' 1<->1" atom1="O1" atom2="C1" deletes1="['HO1']" deletes2="['O1', 'HO1']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C1" improper="False" length12="1.4759" length13="None" length34="1.4128" angle123="106.06" angle234="121.25" dihedral="103.46"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C1" atom4="2O5" improper="False" length12="1.3408" length13="None" length34="1.4504" angle123="121.25" angle234="107.68" dihedral="103.54"/>
+				<ic atom1="1O1" atom2="2C1" atom3="2O5" atom4="2C5" improper="False" length12="1.4128" length13="None" length34="1.4499" angle123="107.68" angle234="108.29" dihedral="64.56"/>
+				<ic atom1="2O5" atom2="1O1" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.4504" length34="1.0897" angle123="107.68" angle234="112.98" dihedral="-109.8"/>
+			</ics>
+		</linkage>
+		<linkage id="11ab" descr="axial to C1 and equat to C1' 1<->1" atom1="O1" atom2="C1" deletes1="['HO1']" deletes2="['O1', 'HO1']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C1" improper="False" length12="1.4879" length13="None" length34="1.3543" angle123="109.36" angle234="114.93" dihedral="121.75"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C1" atom4="2O5" improper="False" length12="1.4072" length13="None" length34="1.4974" angle123="114.93" angle234="105.04" dihedral="51.8"/>
+				<ic atom1="1O1" atom2="2C1" atom3="2O5" atom4="2C5" improper="False" length12="1.3543" length13="None" length34="1.4328" angle123="105.04" angle234="110.75" dihedral="167.51"/>
+				<ic atom1="2O5" atom2="1O1" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.4974" length34="1.1284" angle123="105.04" angle234="99.5" dihedral="111.19"/>
+			</ics>
+		</linkage>
+		<linkage id="11bb" descr="equat to C1 and equat to C1' 1<->1" atom1="O1" atom2="C1" deletes1="['HO1']" deletes2="['O1', 'HO1']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C1" improper="False" length12="1.4568" length13="None" length34="1.3686" angle123="111.54" angle234="115.54" dihedral="-56.58"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C1" atom4="2O5" improper="False" length12="1.3693" length13="None" length34="1.4023" angle123="115.54" angle234="103.31" dihedral="-79.64"/>
+				<ic atom1="1O1" atom2="2C1" atom3="2O5" atom4="2C5" improper="False" length12="1.3686" length13="None" length34="1.4519" angle123="103.31" angle234="110.2" dihedral="172.18"/>
+				<ic atom1="2O5" atom2="1O1" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.4023" length34="1.0973" angle123="103.31" angle234="109.38" dihedral="127.53"/>
+			</ics>
+		</linkage>
+		<linkage id="12aa" descr="(i)1->2(i-1) axial at C1 and axial at C2" atom1="O2" atom2="C1" deletes1="['HO2']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C1" atom2="1C2" atom3="1O2" atom4="2C1" improper="False" length12="1.4748" length13="None" length34="1.4036" angle123="111.74" angle234="112.92" dihedral="-132.81"/>
+				<ic atom1="1C2" atom2="1O2" atom3="2C1" atom4="2O5" improper="False" length12="1.4675" length13="None" length34="1.429" angle123="112.92" angle234="109.48" dihedral="47.16"/>
+				<ic atom1="1O2" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.404" length34="1.5077" angle123="109.52" angle234="112.51" dihedral="-123.53"/>
+				<ic atom1="2O5" atom2="1O2" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.429" length34="1.1057" angle123="109.48" angle234="107.55" dihedral="-116.61"/>
+			</ics>
+		</linkage>
+		<linkage id="12ab" descr="(i)1->2(i-1) axial at C1 and equatorial at C2" atom1="O2" atom2="C1" deletes1="['HO2']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C1" atom2="1C2" atom3="1O2" atom4="2C1" improper="False" length12="1.5772" length13="None" length34="1.4039" angle123="113.82" angle234="117.71" dihedral="115.32"/>
+				<ic atom1="1C2" atom2="1O2" atom3="2C1" atom4="2O5" improper="False" length12="1.474" length13="None" length34="1.379" angle123="117.71" angle234="109.52" dihedral="86.93"/>
+				<ic atom1="1O2" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.4042" length34="1.5063" angle123="109.49" angle234="112.48" dihedral="-123.49"/>
+				<ic atom1="2O5" atom2="1O2" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.379" length34="1.1057" angle123="109.52" angle234="107.54" dihedral="-116.62"/>
+			</ics>
+		</linkage>
+		<linkage id="12ba" descr="(i)1->2(i-1) equatorial at C1 and axial at C2" atom1="O2" atom2="C1" deletes1="['HO2']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C1" atom2="1C2" atom3="1O2" atom4="2C1" improper="False" length12="1.4742" length13="None" length34="1.3902" angle123="111.77" angle234="118.52" dihedral="-132.78"/>
+				<ic atom1="1C2" atom2="1O2" atom3="2C1" atom4="2O5" improper="False" length12="1.5137" length13="None" length34="1.45" angle123="118.52" angle234="108.63" dihedral="-168.07"/>
+				<ic atom1="1O2" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.3903" length34="1.5315" angle123="108.62" angle234="110.89" dihedral="122.16"/>
+				<ic atom1="2O5" atom2="1O2" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.45" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+			</ics>
+		</linkage>
+		<linkage id="12bb" descr="(i)1->2(i-1) equatorial at C1 and equatorial at C2" atom1="O2" atom2="C1" deletes1="['HO2']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C1" atom2="1C2" atom3="1O2" atom4="2C1" improper="False" length12="1.5351" length13="None" length34="1.3902" angle123="110.95" angle234="118.52" dihedral="117.14"/>
+				<ic atom1="1C2" atom2="1O2" atom3="2C1" atom4="2O5" improper="False" length12="1.5137" length13="None" length34="1.45" angle123="118.52" angle234="108.63" dihedral="-168.07"/>
+				<ic atom1="1O2" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.3904" length34="1.532" angle123="108.66" angle234="110.85" dihedral="122.06"/>
+				<ic atom1="2O5" atom2="1O2" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.45" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+			</ics>
+		</linkage>
+		<linkage id="13aa" descr="(i)1->3(i-1) axial at C1 and axial at C3" atom1="O3" atom2="C1" deletes1="['HO3']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C2" atom2="1C3" atom3="1O3" atom4="2C1" improper="False" length12="1.5128" length13="None" length34="1.4039" angle123="108.83" angle234="116.91" dihedral="113.29"/>
+				<ic atom1="1C3" atom2="1O3" atom3="2C1" atom4="2O5" improper="False" length12="1.511" length13="None" length34="1.463" angle123="116.91" angle234="109.52" dihedral="65.46"/>
+				<ic atom1="1O3" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.404" length34="1.507" angle123="109.53" angle234="112.55" dihedral="-123.55"/>
+				<ic atom1="2O5" atom2="1O3" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.463" length34="1.1057" angle123="109.52" angle234="107.54" dihedral="-116.62"/>
+			</ics>
+		</linkage>
+		<linkage id="13ab" descr="(i)1->3(i-1) axial at C1 and equatorial at C3" atom1="O3" atom2="C1" deletes1="['HO3']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C2" atom2="1C3" atom3="1O3" atom4="2C1" improper="False" length12="1.5353" length13="None" length34="1.4039" angle123="112.07" angle234="116.91" dihedral="-141.32"/>
+				<ic atom1="1C3" atom2="1O3" atom3="2C1" atom4="2O5" improper="False" length12="1.511" length13="None" length34="1.463" angle123="116.91" angle234="109.52" dihedral="65.46"/>
+				<ic atom1="1O3" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.4039" length34="1.5071" angle123="109.51" angle234="112.49" dihedral="-123.5"/>
+				<ic atom1="2O5" atom2="1O3" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.463" length34="1.1057" angle123="109.52" angle234="107.54" dihedral="-116.62"/>
+			</ics>
+		</linkage>
+		<linkage id="13ba" descr="(i)1->3(i-1) equatorial at C1 and axial at C3" atom1="O3" atom2="C1" deletes1="['HO3']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C2" atom2="1C3" atom3="1O3" atom4="2C1" improper="False" length12="1.4976" length13="None" length34="1.3902" angle123="117.5" angle234="120.58" dihedral="-131.68"/>
+				<ic atom1="1C3" atom2="1O3" atom3="2C1" atom4="2O5" improper="False" length12="1.4319" length13="None" length34="1.447" angle123="120.58" angle234="108.63" dihedral="-100.16"/>
+				<ic atom1="1O3" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.3908" length34="1.5312" angle123="108.59" angle234="110.9" dihedral="122.06"/>
+				<ic atom1="2O5" atom2="1O3" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.447" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+			</ics>
+		</linkage>
+		<linkage id="13bb" descr="(i)1->3(i-1) equatorial at C1 and equatorial at C3" atom1="O3" atom2="C1" deletes1="['HO3']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C2" atom2="1C3" atom3="1O3" atom4="2C1" improper="False" length12="1.5129" length13="None" length34="1.3902" angle123="108.83" angle234="123.77" dihedral="-131.68"/>
+				<ic atom1="1C3" atom2="1O3" atom3="2C1" atom4="2O5" improper="False" length12="1.4801" length13="None" length34="1.478" angle123="123.77" angle234="108.63" dihedral="-130.16"/>
+				<ic atom1="1O3" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.39" length34="1.5311" angle123="108.61" angle234="110.9" dihedral="122.15"/>
+				<ic atom1="2O5" atom2="1O3" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.478" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+			</ics>
+		</linkage>
+		<linkage id="14aa" descr="(i)1->4(i-1) axial at C1 and axial at C4" atom1="O4" atom2="C1" deletes1="['HO4']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C3" atom2="1C4" atom3="1O4" atom4="2C1" improper="False" length12="1.5075" length13="None" length34="1.4036" angle123="110.4" angle234="119.44" dihedral="-86.29"/>
+				<ic atom1="1C4" atom2="1O4" atom3="2C1" atom4="2O5" improper="False" length12="1.4716" length13="None" length34="1.449" angle123="119.44" angle234="109.48" dihedral="133.57"/>
+				<ic atom1="1O4" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.4043" length34="1.5071" angle123="109.49" angle234="112.48" dihedral="-123.48"/>
+				<ic atom1="2O5" atom2="1O4" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.449" length34="1.1057" angle123="109.48" angle234="107.55" dihedral="-116.61"/>
+			</ics>
+		</linkage>
+		<linkage id="14ab" descr="(i)1->4(i-1) axial at C1 and equatorial at C4" atom1="O4" atom2="C1" deletes1="['HO4']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C3" atom2="1C4" atom3="1O4" atom4="2C1" improper="False" length12="1.501" length13="None" length34="1.4036" angle123="117.73" angle234="118.66" dihedral="72.71"/>
+				<ic atom1="1C4" atom2="1O4" atom3="2C1" atom4="2O5" improper="False" length12="1.4919" length13="None" length34="1.457" angle123="118.66" angle234="109.48" dihedral="48.64"/>
+				<ic atom1="1O4" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.4035" length34="1.5061" angle123="109.46" angle234="112.47" dihedral="-123.53"/>
+				<ic atom1="2O5" atom2="1O4" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.457" length34="1.1057" angle123="109.48" angle234="107.55" dihedral="-116.61"/>
+			</ics>
+		</linkage>
+		<linkage id="14ba" descr="(i)1->4(i-1) equatorial at C1 and axial at C4" atom1="O4" atom2="C1" deletes1="['HO4']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C3" atom2="1C4" atom3="1O4" atom4="2C1" improper="False" length12="1.5071" length13="None" length34="1.3902" angle123="110.4" angle234="121.0" dihedral="-86.3"/>
+				<ic atom1="1C4" atom2="1O4" atom3="2C1" atom4="2O5" improper="False" length12="1.456" length13="None" length34="1.447" angle123="121.0" angle234="108.63" dihedral="-130.97"/>
+				<ic atom1="1O4" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.3906" length34="1.5314" angle123="108.61" angle234="110.87" dihedral="122.12"/>
+				<ic atom1="2O5" atom2="1O4" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.447" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+			</ics>
+		</linkage>
+		<linkage id="14bb" descr="(i)1->4(i-1) equatorial at C1 and equatorial at C4" atom1="O4" atom2="C1" deletes1="['HO4']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C3" atom2="1C4" atom3="1O4" atom4="2C1" improper="False" length12="1.5009" length13="None" length34="1.3902" angle123="110.76" angle234="121.0" dihedral="81.86"/>
+				<ic atom1="1C4" atom2="1O4" atom3="2C1" atom4="2O5" improper="False" length12="1.456" length13="None" length34="1.447" angle123="121.0" angle234="108.63" dihedral="-130.97"/>
+				<ic atom1="1O4" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.3896" length34="1.5318" angle123="108.63" angle234="110.87" dihedral="122.12"/>
+				<ic atom1="2O5" atom2="1O4" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.447" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+			</ics>
+		</linkage>
+		<linkage id="16aa" descr="(i)1->6(i-1) axial at C1 and equatorial at C6" atom1="O6" atom2="C1" deletes1="['HO6']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C5" atom2="1C6" atom3="1O6" atom4="2C1" improper="False" length12="1.5266" length13="None" length34="1.4036" angle123="104.41" angle234="111.56" dihedral="178.98"/>
+				<ic atom1="1C6" atom2="1O6" atom3="2C1" atom4="2O5" improper="False" length12="1.4492" length13="None" length34="1.427" angle123="111.56" angle234="109.48" dihedral="71.24"/>
+				<ic atom1="1O6" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.4036" length34="1.5066" angle123="109.48" angle234="112.46" dihedral="-123.55"/>
+				<ic atom1="2O5" atom2="1O6" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.427" length34="1.1054" angle123="109.48" angle234="107.58" dihedral="-116.57"/>
+			</ics>
+		</linkage>
+		<linkage id="16ab" descr="(i)1->6(i-1) equatorial at C1 and equatorial at C6" atom1="O6" atom2="C1" deletes1="['HO6']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C5" atom2="1C6" atom3="1O6" atom4="2C1" improper="False" length12="1.5616" length13="None" length34="1.3902" angle123="105.37" angle234="113.93" dihedral="172.71"/>
+				<ic atom1="1C6" atom2="1O6" atom3="2C1" atom4="2O5" improper="False" length12="1.4311" length13="None" length34="1.411" angle123="113.93" angle234="108.63" dihedral="-63.49"/>
+				<ic atom1="1O6" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.3896" length34="1.5323" angle123="108.67" angle234="110.86" dihedral="122.13"/>
+				<ic atom1="2O5" atom2="1O6" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.411" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+			</ics>
+		</linkage>
+		<linkage id="16ba" descr="(i)1->6(i-1) equatorial at C1 and equatorial at C6" atom1="O6" atom2="C1" deletes1="['HO6']" deletes2="['HO1', 'O1']">
+			<ics>
+				<ic atom1="1C5" atom2="1C6" atom3="1O6" atom4="2C1" improper="False" length12="1.5616" length13="None" length34="1.3902" angle123="105.37" angle234="113.93" dihedral="172.71"/>
+				<ic atom1="1C6" atom2="1O6" atom3="2C1" atom4="2O5" improper="False" length12="1.4311" length13="None" length34="1.411" angle123="113.93" angle234="108.63" dihedral="-63.49"/>
+				<ic atom1="1O6" atom2="2O5" atom3="2C1" atom4="2C2" improper="True" length12="None" length13="1.3896" length34="1.5323" angle123="108.67" angle234="110.86" dihedral="122.13"/>
+				<ic atom1="2O5" atom2="1O6" atom3="2C1" atom4="2H1" improper="True" length12="None" length13="1.411" length34="1.0837" angle123="108.63" angle234="111.32" dihedral="121.92"/>
+			</ics>
+		</linkage>
+		<linkage id="SUCR" descr="pram; make sucrose, apply to AGLC,BFRU" atom1="O1" atom2="C2" deletes1="['HO1']" deletes2="['O2', 'HO2']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C2" improper="False" length12="1.43" length13="None" length34="1.4632" angle123="108.97" angle234="115.17" dihedral="106.13"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C2" atom4="2O5" improper="False" length12="1.4159" length13="None" length34="1.388" angle123="115.17" angle234="114.57" dihedral="-47.6"/>
+				<ic atom1="1O1" atom2="2C2" atom3="2O5" atom4="2C5" improper="False" length12="1.4632" length13="None" length34="1.4233" angle123="114.57" angle234="109.86" dihedral="-100.55"/>
+				<ic atom1="2O5" atom2="1O1" atom3="2C2" atom4="2C1" improper="True" length12="None" length13="1.388" length34="1.5052" angle123="114.57" angle234="106.87" dihedral="121.04"/>
+			</ics>
+		</linkage>
+		<linkage id="LCTL" descr="pram; make lactulose, apply to BGAL,BFRU" atom1="O1" atom2="C4" deletes1="['HO1']" deletes2="['O4', 'HO4']">
+			<ics>
+				<ic atom1="1O5" atom2="1C1" atom3="1O1" atom4="2C4" improper="False" length12="1.4515" length13="None" length34="1.4008" angle123="114.15" angle234="115.45" dihedral="-92.26"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C4" atom4="2C5" improper="False" length12="1.4006" length13="None" length34="1.5389" angle123="115.45" angle234="109.78" dihedral="176.86"/>
+				<ic atom1="1O1" atom2="2C4" atom3="2C5" atom4="2O5" improper="False" length12="1.4008" length13="None" length34="1.4194" angle123="109.78" angle234="108.07" dihedral="-135.17"/>
+				<ic atom1="2C5" atom2="1O1" atom3="2C4" atom4="2H4" improper="True" length12="None" length13="1.5389" length34="1.112" angle123="109.78" angle234="113.16" dihedral="128.08"/>
+			</ics>
+		</linkage>
+		<linkage id="AB15" descr="pram; make 1->5 arabinose disac without methylation, apply to AARB,AARB" atom1="O1" atom2="C5" deletes1="['HO1']" deletes2="['O5', 'HO5']">
+			<ics>
+				<ic atom1="1O4" atom2="1C1" atom3="1O1" atom4="2C5" improper="False" length12="1.456" length13="None" length34="1.4384" angle123="110.35" angle234="112.98" dihedral="75.44"/>
+				<ic atom1="1C1" atom2="1O1" atom3="2C5" atom4="2C4" improper="False" length12="1.3759" length13="None" length34="1.4291" angle123="112.98" angle234="111.0" dihedral="148.61"/>
+				<ic atom1="1O1" atom2="2C5" atom3="2C4" atom4="2O4" improper="False" length12="1.4384" length13="None" length34="1.4617" angle123="111.0" angle234="107.21" dihedral="-56.56"/>
+				<ic atom1="1O1" atom2="2C4" atom3="2C5" atom4="2H51" improper="True" length12="None" length13="1.4384" length34="1.1042" angle123="111.0" angle234="107.52" dihedral="113.48"/>
+				<ic atom1="1O1" atom2="2C4" atom3="2C5" atom4="2H52" improper="True" length12="None" length13="1.4384" length34="1.1078" angle123="111.0" angle234="115.17" dihedral="-131.84"/>
+			</ics>
+		</linkage>
+		<linkage id="SA23AB" descr="og sialic acid alpha 2->3 equatorial" atom1="O3" atom2="C2" deletes1="['HO3']" deletes2="['HO2', 'O2']">
+			<ics>
+				<ic atom1="1C2" atom2="1C3" atom3="1O3" atom4="2C2" improper="False" length12="1.5353" length13="None" length34="1.4039" angle123="112.07" angle234="116.91" dihedral="-141.32"/>
+				<ic atom1="1C3" atom2="1O3" atom3="2C2" atom4="2O6" improper="False" length12="1.511" length13="None" length34="1.463" angle123="116.91" angle234="109.52" dihedral="-65.46"/>
+				<ic atom1="1O3" atom2="2O6" atom3="2C2" atom4="2C3" improper="True" length12="None" length13="1.4039" length34="1.5066" angle123="109.54" angle234="112.55" dihedral="-123.58"/>
+			</ics>
+		</linkage>
+		<linkage id="LINK" descr="Peptide linkage N- to C-terminal" atom1="C" atom2="N" deletes1="['OXT', 'HXT']" deletes2="['H']">
+			<ics>
+				<ic atom1="1O" atom2="1CA" atom3="1C" atom4="2N" improper="True" length12="2.3918416423468125" length13="1.2289422499667666" length34="1.3348749102082436" angle123="26.314398055128386" angle234="116.60593496346887" dihedral="179.95634149408892"/>
+				<ic atom1="1N" atom2="1CA" atom3="1C" atom4="2N" improper="False" length12="1.448999971151352" length13="2.435915451051025" length34="1.3348749102082436" angle123="110.08919699361365" angle234="116.60593496346887" dihedral="-47.00796398478231"/>
+				<ic atom1="2H" atom2="2CA" atom3="2N" atom4="1C" improper="True" length12="2.130919963851228" length13="1.0102475072850738" length34="1.3348749102082436" angle123="24.483313578104905" angle234="121.90300543695855" dihedral="179.99408806460477"/>
+				<ic atom1="2H" atom2="1C" atom3="2N" atom4="2CA" improper="True" length12="2.0277600944183365" length13="1.0102475072850738" length34="1.4486890151400535" angle123="25.82126067212748" angle234="121.90300543695855" dihedral="-179.9940887893432"/>
+				<ic atom1="1O" atom2="2N" atom3="1C" atom4="1CA" improper="True" length12="2.25393964628731" length13="1.2289422499667666" length34="1.5226388911756754" angle123="27.20389653140556" angle234="116.60593496346887" dihedral="-179.95507515818326"/>
+				<ic atom1="1O" atom2="1C" atom3="2N" atom4="2CA" improper="False" length12="1.2289422499667666" length13="2.25393964628731" length34="1.4486890151400535" angle123="123.02312440481715" angle234="121.90300543695855" dihedral="99.96697868191657"/>
+				<ic atom1="1HA" atom2="1CA" atom3="1C" atom4="2N" improper="False" length12="1.08984258544992" length13="2.1438371366301534" length34="1.3348749102082436" angle123="109.17047688236688" angle234="116.60593496346887" dihedral="-166.83965139800551"/>
+				<ic atom1="1CA" atom2="1O" atom3="1C" atom4="2N" improper="True" length12="2.3918416423468125" length13="1.5226388911756754" length34="1.3348749102082436" angle123="33.31467661672645" angle234="123.02312440481715" dihedral="-179.9534433996902"/>
+				<ic atom1="1CA" atom2="1C" atom3="2N" atom4="2CA" improper="False" length12="1.5226388911756754" length13="2.433283064602094" length34="1.4486890151400535" angle123="116.60593496346887" angle234="121.90300543695855" dihedral="-79.98809647626668"/>
+				<ic atom1="1C" atom2="2H" atom3="2N" atom4="2CA" improper="True" length12="2.0277600944183365" length13="1.3348749102082436" length34="1.4486890151400535" angle123="35.13656560157368" angle234="119.0548205778424" dihedral="179.9942592742782"/>
+				<ic atom1="1C" atom2="2N" atom3="2CA" atom4="2C" improper="False" length12="1.3348749102082436" length13="2.43404414566433" length34="1.5221238637990335" angle123="121.90300543695855" angle234="110.11183023395458" dihedral="-56.998471548615655"/>
+				<ic atom1="1C" atom2="2N" atom3="2CA" atom4="2HA" improper="False" length12="1.3348749102082436" length13="2.43404414566433" length34="1.0909692713536367" angle123="121.90300543695855" angle234="109.15311228022684" dihedral="62.8433906922491"/>
+			</ics>
+		</linkage>
+	</patches>
+</topology>

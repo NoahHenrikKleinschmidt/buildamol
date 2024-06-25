@@ -1,6 +1,7 @@
 """
 Make a new version of biobuild
 """
+
 import argparse
 import os
 import re
@@ -8,7 +9,7 @@ import subprocess
 
 BASE_DIR = os.path.abspath(__file__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
-CODE_DIR = BASE_DIR + "/biobuild"
+CODE_DIR = BASE_DIR + "/buildamol"
 DOCS_DIR = BASE_DIR + "/docs"
 
 FILES_TO_UPDATE = {
@@ -227,7 +228,26 @@ def build_docs():
     """
     Build the documentation
     """
+    import add_example_gallery
+
     os.chdir(DOCS_DIR)
+    g = add_example_gallery.gallery("_static/gallery/")
+    with open(DOCS_DIR + "/index.rst", "r") as f:
+        contents = []
+        keep_line = True
+        for line in f:
+            if line == ".. <gallery>\n":
+                keep_line = not keep_line
+                continue
+            if keep_line:
+                contents.append(line)
+
+    contents = "".join(contents)
+    with open(DOCS_DIR + "/index.rst", "w") as f:
+        f.write(g)
+        f.write("\n")
+        f.write(contents)
+
     subprocess.run("make clean", shell=True)
     subprocess.run("make html", shell=True)
 

@@ -1,0 +1,3707 @@
+{
+    "version": "3.2.25",
+    "id": "default_topology",
+    "patches": [
+        {
+            "version": "3.2.25",
+            "id": "SCK0",
+            "description": "patch to link lysine with retinal to form a",
+            "bond": {
+                "target": "1NZ",
+                "source": "2C15"
+            },
+            "to_delete": {
+                "target": [
+                    "HZ1",
+                    "HZ2",
+                    "HZ3"
+                ],
+                "source": [
+                    "O15"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CD",
+                        "1CE",
+                        "1NZ",
+                        "2C15"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": 0.0,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CE",
+                        "1NZ",
+                        "2C15",
+                        "2C14"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": 0.0,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1NZ",
+                        "2C15",
+                        "2C14",
+                        "2C13"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": 0.0,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C14",
+                        "1NZ",
+                        "2C15",
+                        "2H15"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": null,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": 0.0
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C5",
+                        "2C6",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 0.0,
+                    "bond_length_12": 0.0,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "SCK1",
+            "description": "patch to link lysine with retinal to form a",
+            "bond": {
+                "target": "1NZ",
+                "source": "2C15"
+            },
+            "to_delete": {
+                "target": [
+                    "HZ2",
+                    "HZ3"
+                ],
+                "source": [
+                    "O15"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CD",
+                        "1CE",
+                        "1NZ",
+                        "2C15"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": 0.0,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CE",
+                        "1NZ",
+                        "2C15",
+                        "2C14"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": 0.0,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1NZ",
+                        "2C15",
+                        "2C14",
+                        "2C13"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": 0.0,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C15",
+                        "1CE",
+                        "1NZ",
+                        "1HZ1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": null,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": 0.0
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C14",
+                        "1NZ",
+                        "2C15",
+                        "2H15"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 180.0,
+                    "bond_length_12": null,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": 0.0
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C5",
+                        "2C6",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 0.0,
+                    "bond_angle_234": 0.0,
+                    "dihedral": 0.0,
+                    "bond_length_12": 0.0,
+                    "bond_length_34": 0.0,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "LLLO",
+            "description": "linkage for dol-P-P and sugar",
+            "bond": {
+                "target": "1C1",
+                "source": "2O22"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1",
+                    "O1"
+                ],
+                "source": [
+                    "HO22"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1C2",
+                        "1C1",
+                        "1H1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.47,
+                    "bond_angle_234": 109.44,
+                    "dihedral": 180.0,
+                    "bond_length_12": 1.5364,
+                    "bond_length_34": 1.4102,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1H1",
+                        "1C1",
+                        "2O22"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.44,
+                    "bond_angle_234": 109.46,
+                    "dihedral": -120.0,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1223,
+                    "bond_length_13": 1.5323
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1C1",
+                        "2O22",
+                        "2P2"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.44,
+                    "bond_angle_234": 127.66,
+                    "dihedral": -84.54,
+                    "bond_length_12": 1.5323,
+                    "bond_length_34": 1.5968,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O22",
+                        "2P2",
+                        "2O12"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 127.66,
+                    "bond_angle_234": 102.94,
+                    "dihedral": -174.21,
+                    "bond_length_12": 1.4102,
+                    "bond_length_34": 1.5071,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O22",
+                        "2O12",
+                        "2P2",
+                        "2O23"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 102.94,
+                    "bond_angle_234": 118.81,
+                    "dihedral": 113.03,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5471,
+                    "bond_length_13": 1.5968
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O22",
+                        "2O12",
+                        "2P2",
+                        "2O24"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 102.94,
+                    "bond_angle_234": 109.37,
+                    "dihedral": -113.6,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.4811,
+                    "bond_length_13": 1.5968
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "CERA",
+            "description": "og axial patch of ceramide to C1 [based on patch OCTA]",
+            "bond": {
+                "target": "1O1",
+                "source": "2C1S"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C1S"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.39,
+                    "bond_angle_234": 112.41,
+                    "dihedral": 76.24,
+                    "bond_length_12": 1.4326,
+                    "bond_length_34": 1.439,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C1S",
+                        "2C2S"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.41,
+                    "bond_angle_234": 113.71,
+                    "dihedral": -174.48,
+                    "bond_length_12": 1.3743,
+                    "bond_length_34": 1.5661,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C1S",
+                        "2C2S",
+                        "2C3S"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.71,
+                    "bond_angle_234": 116.6,
+                    "dihedral": 171.35,
+                    "bond_length_12": 1.439,
+                    "bond_length_34": 1.5435,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C2S",
+                        "1O1",
+                        "2C1S",
+                        "2H1S"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 113.71,
+                    "bond_angle_234": 113.66,
+                    "dihedral": -128.8,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0672,
+                    "bond_length_13": 1.5661
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C2S",
+                        "1O1",
+                        "2C1S",
+                        "2H1T"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 113.71,
+                    "bond_angle_234": 104.83,
+                    "dihedral": 111.7,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1576,
+                    "bond_length_13": 1.5661
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "CERB",
+            "description": "og equatorial patch of ceramide to C1 [based on patch OCTB]",
+            "bond": {
+                "target": "1O1",
+                "source": "2C1S"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C1S"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 103.27,
+                    "bond_angle_234": 111.36,
+                    "dihedral": -83.3,
+                    "bond_length_12": 1.4302,
+                    "bond_length_34": 1.4262,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C1S",
+                        "2C2S"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 111.36,
+                    "bond_angle_234": 110.89,
+                    "dihedral": -171.8,
+                    "bond_length_12": 1.4465,
+                    "bond_length_34": 1.5408,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C1S",
+                        "2C2S",
+                        "2C3S"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.89,
+                    "bond_angle_234": 111.72,
+                    "dihedral": -178.19,
+                    "bond_length_12": 1.4262,
+                    "bond_length_34": 1.539,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C2S",
+                        "1O1",
+                        "2C1S",
+                        "2H1S"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 113.71,
+                    "bond_angle_234": 113.66,
+                    "dihedral": -128.8,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0672,
+                    "bond_length_13": 1.5661
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C2S",
+                        "1O1",
+                        "2C1S",
+                        "2H1T"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 113.71,
+                    "bond_angle_234": 104.83,
+                    "dihedral": 111.7,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1576,
+                    "bond_length_13": 1.5661
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "DAGA",
+            "description": "diacylglycerol at axial C1",
+            "bond": {
+                "target": "1O1",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "P",
+                    "O13",
+                    "O14",
+                    "O12",
+                    "H12",
+                    "O11"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.39,
+                    "bond_angle_234": 112.41,
+                    "dihedral": -104.24,
+                    "bond_length_12": 1.4326,
+                    "bond_length_34": 1.439,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.41,
+                    "bond_angle_234": 113.71,
+                    "dihedral": -174.48,
+                    "bond_length_12": 1.3743,
+                    "bond_length_34": 1.5661,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C2",
+                        "1O1",
+                        "2C1",
+                        "2HA"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 111.07,
+                    "bond_angle_234": 110.91,
+                    "dihedral": -119.84,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1162,
+                    "bond_length_13": 1.5515
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2HA",
+                        "1O1",
+                        "2C1",
+                        "2HB"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 110.91,
+                    "bond_angle_234": 110.17,
+                    "dihedral": -120.43,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1153,
+                    "bond_length_13": 1.1162
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C1",
+                        "2C2",
+                        "2C3"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.71,
+                    "bond_angle_234": 116.6,
+                    "dihedral": 171.35,
+                    "bond_length_12": 1.439,
+                    "bond_length_34": 1.5435,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "DAGB",
+            "description": "diacylglycerol at equatorial C1",
+            "bond": {
+                "target": "1O1",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "P",
+                    "O13",
+                    "O14",
+                    "O12",
+                    "H12",
+                    "O11"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.39,
+                    "bond_angle_234": 112.41,
+                    "dihedral": 76.24,
+                    "bond_length_12": 1.4326,
+                    "bond_length_34": 1.439,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.41,
+                    "bond_angle_234": 113.71,
+                    "dihedral": -174.48,
+                    "bond_length_12": 1.3743,
+                    "bond_length_34": 1.5661,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C2",
+                        "1O1",
+                        "2C1",
+                        "2HA"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 111.07,
+                    "bond_angle_234": 110.91,
+                    "dihedral": -119.84,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1162,
+                    "bond_length_13": 1.5515
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2HA",
+                        "1O1",
+                        "2C1",
+                        "2HB"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 110.91,
+                    "bond_angle_234": 110.17,
+                    "dihedral": -120.43,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1153,
+                    "bond_length_13": 1.1162
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C1",
+                        "2C2",
+                        "2C3"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.71,
+                    "bond_angle_234": 116.6,
+                    "dihedral": 171.35,
+                    "bond_length_12": 1.439,
+                    "bond_length_34": 1.5435,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "INS2A",
+            "description": "link alpha-sugar (axial) to phosphorylated inositol 2nd position (axial) [based on 14aa]",
+            "bond": {
+                "target": "1C1",
+                "source": "2O2"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1",
+                    "O1"
+                ],
+                "source": [
+                    "HO2"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1O5",
+                        "1C1",
+                        "2O2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 106.0,
+                    "bond_angle_234": 112.0,
+                    "dihedral": 126.4,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.395,
+                    "bond_length_13": 1.48
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "2O2",
+                        "1C1",
+                        "1H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 107.55,
+                    "dihedral": -116.61,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1057,
+                    "bond_length_13": 1.449
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "2O2",
+                        "1C1",
+                        "1C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 110.72,
+                    "dihedral": 124.57,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5065,
+                    "bond_length_13": 1.449
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "2O2",
+                        "2C12"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 119.44,
+                    "bond_angle_234": 109.48,
+                    "dihedral": 133.57,
+                    "bond_length_12": 1.4716,
+                    "bond_length_34": 1.449,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O2",
+                        "2C12",
+                        "2C11"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.4,
+                    "bond_angle_234": 119.44,
+                    "dihedral": -86.29,
+                    "bond_length_12": 1.5075,
+                    "bond_length_34": 1.4036,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O2",
+                        "2C12",
+                        "2C13"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.2,
+                    "bond_angle_234": 109.0,
+                    "dihedral": -140.3,
+                    "bond_length_12": 1.395,
+                    "bond_length_34": 1.48,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "INS2B",
+            "description": "link alpha-sugar (equatorial) to phosphorylated inositol 2nd position (axial) [based on 14ba]",
+            "bond": {
+                "target": "1C1",
+                "source": "2O2"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1",
+                    "O1"
+                ],
+                "source": [
+                    "HO2"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1O5",
+                        "1C1",
+                        "2O2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 106.0,
+                    "bond_angle_234": 112.0,
+                    "dihedral": -125.0,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.395,
+                    "bond_length_13": 1.48
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "2O2",
+                        "1C1",
+                        "1H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.447
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "2O2",
+                        "1C1",
+                        "1C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 110.89,
+                    "dihedral": -122.09,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5316,
+                    "bond_length_13": 1.447
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "2O2",
+                        "2C12"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 121.0,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -130.97,
+                    "bond_length_12": 1.456,
+                    "bond_length_34": 1.447,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O2",
+                        "2C12",
+                        "2C11"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.4,
+                    "bond_angle_234": 121.0,
+                    "dihedral": -86.3,
+                    "bond_length_12": 1.5071,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O2",
+                        "2C12",
+                        "2C13"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.2,
+                    "bond_angle_234": 109.0,
+                    "dihedral": 21.8,
+                    "bond_length_12": 1.395,
+                    "bond_length_34": 1.48,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "INS6A",
+            "description": "link alpha-sugar (axial) to phosphorylated inositol 6th position (equatorial) [based on 14ab]",
+            "bond": {
+                "target": "1C1",
+                "source": "2O6"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1",
+                    "O1"
+                ],
+                "source": [
+                    "HO6"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1O5",
+                        "1C1",
+                        "2O6"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 106.0,
+                    "bond_angle_234": 112.0,
+                    "dihedral": 127.3,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.395,
+                    "bond_length_13": 1.48
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "2O6",
+                        "1C1",
+                        "1H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 107.55,
+                    "dihedral": -116.61,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1057,
+                    "bond_length_13": 1.457
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "2O6",
+                        "1C1",
+                        "1C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 110.72,
+                    "dihedral": 124.57,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5065,
+                    "bond_length_13": 1.457
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "2O6",
+                        "2C16"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 118.66,
+                    "bond_angle_234": 109.48,
+                    "dihedral": 48.64,
+                    "bond_length_12": 1.4919,
+                    "bond_length_34": 1.457,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O6",
+                        "2C16",
+                        "2C15"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 117.73,
+                    "bond_angle_234": 118.66,
+                    "dihedral": 72.71,
+                    "bond_length_12": 1.501,
+                    "bond_length_34": 1.4036,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O6",
+                        "2C16",
+                        "2C11"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.2,
+                    "bond_angle_234": 109.0,
+                    "dihedral": -158.8,
+                    "bond_length_12": 1.395,
+                    "bond_length_34": 1.48,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "INS6B",
+            "description": "link beta-sugar (equatorial) to phosphorylated inositol 6th position (equatorial) [based on 14bb]",
+            "bond": {
+                "target": "1C1",
+                "source": "2O6"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1",
+                    "O1"
+                ],
+                "source": [
+                    "HO6"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1O5",
+                        "1C1",
+                        "2O6"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 106.0,
+                    "bond_angle_234": 112.0,
+                    "dihedral": -118.8,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.395,
+                    "bond_length_13": 1.48
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "2O6",
+                        "1C1",
+                        "1H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.447
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "2O6",
+                        "1C1",
+                        "1C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 110.89,
+                    "dihedral": -122.09,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5316,
+                    "bond_length_13": 1.447
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "2O6",
+                        "2C16"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 121.0,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -130.97,
+                    "bond_length_12": 1.456,
+                    "bond_length_34": 1.447,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O6",
+                        "2C16",
+                        "2C15"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.76,
+                    "bond_angle_234": 121.0,
+                    "dihedral": 81.86,
+                    "bond_length_12": 1.5009,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "2O6",
+                        "2C16",
+                        "2C11"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.2,
+                    "bond_angle_234": 109.0,
+                    "dihedral": -60.6,
+                    "bond_length_12": 1.395,
+                    "bond_length_34": 1.48,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "SGPA",
+            "description": "for connecting SER at the alpha position",
+            "bond": {
+                "target": "1OG",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HG1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CA",
+                        "1CB",
+                        "1OG",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.48,
+                    "bond_angle_234": 115.72,
+                    "dihedral": -174.87,
+                    "bond_length_12": 1.5246,
+                    "bond_length_34": 1.4191,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1OG",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 115.72,
+                    "bond_angle_234": 110.03,
+                    "dihedral": 45.37,
+                    "bond_length_12": 1.4218,
+                    "bond_length_34": 1.4241,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1OG",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 115.72,
+                    "bond_angle_234": 112.01,
+                    "dihedral": -71.61,
+                    "bond_length_12": 1.4218,
+                    "bond_length_34": 1.1125,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1OG",
+                        "2C1",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.03,
+                    "bond_angle_234": 109.91,
+                    "dihedral": 63.29,
+                    "bond_length_12": 1.4191,
+                    "bond_length_34": 1.4591,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "TGPA",
+            "description": "for connecting THR at the alpha position",
+            "bond": {
+                "target": "1OG1",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HG1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CA",
+                        "1CB",
+                        "1OG1",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 102.09,
+                    "bond_angle_234": 116.78,
+                    "dihedral": 161.11,
+                    "bond_length_12": 1.59,
+                    "bond_length_34": 1.4047,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1OG1",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.78,
+                    "bond_angle_234": 114.66,
+                    "dihedral": 69.9,
+                    "bond_length_12": 1.504,
+                    "bond_length_34": 1.4346,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1OG1",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.78,
+                    "bond_angle_234": 110.33,
+                    "dihedral": -51.01,
+                    "bond_length_12": 1.504,
+                    "bond_length_34": 1.1436,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1OG1",
+                        "2C1",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 114.66,
+                    "bond_angle_234": 114.71,
+                    "dihedral": 71.63,
+                    "bond_length_12": 1.4047,
+                    "bond_length_34": 1.4751,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "SGPB",
+            "description": "for connecting SER at the beta position",
+            "bond": {
+                "target": "1OG",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HG1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CA",
+                        "1CB",
+                        "1OG",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 114.42,
+                    "bond_angle_234": 116.19,
+                    "dihedral": 160.15,
+                    "bond_length_12": 1.5288,
+                    "bond_length_34": 1.4222,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1OG",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.19,
+                    "bond_angle_234": 107.74,
+                    "dihedral": 19.87,
+                    "bond_length_12": 1.5026,
+                    "bond_length_34": 1.4694,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1OG",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.19,
+                    "bond_angle_234": 108.46,
+                    "dihedral": 149.79,
+                    "bond_length_12": 1.5026,
+                    "bond_length_34": 1.1232,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1OG",
+                        "2C1",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 107.74,
+                    "bond_angle_234": 112.12,
+                    "dihedral": 173.59,
+                    "bond_length_12": 1.4222,
+                    "bond_length_34": 1.4637,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "TGPB",
+            "description": "for connecting THR at the beta position",
+            "bond": {
+                "target": "1OG1",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HG1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CA",
+                        "1CB",
+                        "1OG1",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.42,
+                    "bond_angle_234": 119.34,
+                    "dihedral": 84.79,
+                    "bond_length_12": 1.5466,
+                    "bond_length_34": 1.4626,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1OG1",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 119.34,
+                    "bond_angle_234": 108.68,
+                    "dihedral": 33.16,
+                    "bond_length_12": 1.4452,
+                    "bond_length_34": 1.417,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1OG1",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 119.34,
+                    "bond_angle_234": 103.58,
+                    "dihedral": 142.21,
+                    "bond_length_12": 1.4452,
+                    "bond_length_34": 1.0859,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1OG1",
+                        "2C1",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 108.68,
+                    "bond_angle_234": 109.99,
+                    "dihedral": 167.53,
+                    "bond_length_12": 1.4626,
+                    "bond_length_34": 1.4643,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "NGLA",
+            "description": "og make model compound 3 by adding equat",
+            "bond": {
+                "target": "1ND2",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HD21"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CB",
+                        "1CG",
+                        "1ND2",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.61,
+                    "bond_angle_234": 128.01,
+                    "dihedral": 179.92,
+                    "bond_length_12": 1.5278,
+                    "bond_length_34": 1.4551,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1CG",
+                        "1ND2",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 128.01,
+                    "bond_angle_234": 103.48,
+                    "dihedral": 168.99,
+                    "bond_length_12": 1.3341,
+                    "bond_length_34": 1.421,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1HD22",
+                        "1ND2",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.93,
+                    "bond_angle_234": 103.48,
+                    "dihedral": -12.55,
+                    "bond_length_12": 0.9855,
+                    "bond_length_34": 1.421,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C5",
+                        "2O5",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 117.47,
+                    "bond_angle_234": 108.88,
+                    "dihedral": -174.95,
+                    "bond_length_12": 1.4292,
+                    "bond_length_34": 1.0797,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1ND2",
+                        "2C1",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 103.48,
+                    "bond_angle_234": 117.47,
+                    "dihedral": 75.29,
+                    "bond_length_12": 1.4551,
+                    "bond_length_34": 1.4292,
+                    "bond_length_13": null
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "11aa",
+            "description": "axial to C1 and axial to C1' 1<->1",
+            "bond": {
+                "target": "1O1",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 106.06,
+                    "bond_angle_234": 121.25,
+                    "dihedral": 103.46,
+                    "bond_length_12": 1.4759,
+                    "bond_length_34": 1.4128,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 121.25,
+                    "bond_angle_234": 107.68,
+                    "dihedral": 103.54,
+                    "bond_length_12": 1.3408,
+                    "bond_length_34": 1.4504,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C1",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 107.68,
+                    "bond_angle_234": 108.29,
+                    "dihedral": 64.56,
+                    "bond_length_12": 1.4128,
+                    "bond_length_34": 1.4499,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O1",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 107.68,
+                    "bond_angle_234": 112.98,
+                    "dihedral": -109.8,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0897,
+                    "bond_length_13": 1.4504
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "11ab",
+            "description": "axial to C1 and equat to C1' 1<->1",
+            "bond": {
+                "target": "1O1",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.36,
+                    "bond_angle_234": 114.93,
+                    "dihedral": 121.75,
+                    "bond_length_12": 1.4879,
+                    "bond_length_34": 1.3543,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 114.93,
+                    "bond_angle_234": 105.04,
+                    "dihedral": 51.8,
+                    "bond_length_12": 1.4072,
+                    "bond_length_34": 1.4974,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C1",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 105.04,
+                    "bond_angle_234": 110.75,
+                    "dihedral": 167.51,
+                    "bond_length_12": 1.3543,
+                    "bond_length_34": 1.4328,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O1",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 105.04,
+                    "bond_angle_234": 99.5,
+                    "dihedral": 111.19,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1284,
+                    "bond_length_13": 1.4974
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "11bb",
+            "description": "equat to C1 and equat to C1' 1<->1",
+            "bond": {
+                "target": "1O1",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 111.54,
+                    "bond_angle_234": 115.54,
+                    "dihedral": -56.58,
+                    "bond_length_12": 1.4568,
+                    "bond_length_34": 1.3686,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 115.54,
+                    "bond_angle_234": 103.31,
+                    "dihedral": -79.64,
+                    "bond_length_12": 1.3693,
+                    "bond_length_34": 1.4023,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C1",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 103.31,
+                    "bond_angle_234": 110.2,
+                    "dihedral": 172.18,
+                    "bond_length_12": 1.3686,
+                    "bond_length_34": 1.4519,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O1",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 103.31,
+                    "bond_angle_234": 109.38,
+                    "dihedral": 127.53,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0973,
+                    "bond_length_13": 1.4023
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "12aa",
+            "description": "(i)1->2(i-1) axial at C1 and axial at C2",
+            "bond": {
+                "target": "1O2",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO2"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1C2",
+                        "1O2",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 111.74,
+                    "bond_angle_234": 112.92,
+                    "dihedral": -132.81,
+                    "bond_length_12": 1.4748,
+                    "bond_length_34": 1.4036,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1O2",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.92,
+                    "bond_angle_234": 109.48,
+                    "dihedral": 47.16,
+                    "bond_length_12": 1.4675,
+                    "bond_length_34": 1.429,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O2",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.52,
+                    "bond_angle_234": 112.51,
+                    "dihedral": -123.53,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5077,
+                    "bond_length_13": 1.404
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O2",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 107.55,
+                    "dihedral": -116.61,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1057,
+                    "bond_length_13": 1.429
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "12ab",
+            "description": "(i)1->2(i-1) axial at C1 and equatorial at C2",
+            "bond": {
+                "target": "1O2",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO2"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1C2",
+                        "1O2",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.82,
+                    "bond_angle_234": 117.71,
+                    "dihedral": 115.32,
+                    "bond_length_12": 1.5772,
+                    "bond_length_34": 1.4039,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1O2",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 117.71,
+                    "bond_angle_234": 109.52,
+                    "dihedral": 86.93,
+                    "bond_length_12": 1.474,
+                    "bond_length_34": 1.379,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O2",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.49,
+                    "bond_angle_234": 112.48,
+                    "dihedral": -123.49,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5063,
+                    "bond_length_13": 1.4042
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O2",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.52,
+                    "bond_angle_234": 107.54,
+                    "dihedral": -116.62,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1057,
+                    "bond_length_13": 1.379
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "12ba",
+            "description": "(i)1->2(i-1) equatorial at C1 and axial at C2",
+            "bond": {
+                "target": "1O2",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO2"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1C2",
+                        "1O2",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 111.77,
+                    "bond_angle_234": 118.52,
+                    "dihedral": -132.78,
+                    "bond_length_12": 1.4742,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1O2",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 118.52,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -168.07,
+                    "bond_length_12": 1.5137,
+                    "bond_length_34": 1.45,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O2",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.62,
+                    "bond_angle_234": 110.89,
+                    "dihedral": 122.16,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5315,
+                    "bond_length_13": 1.3903
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O2",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.45
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "12bb",
+            "description": "(i)1->2(i-1) equatorial at C1 and equatorial at C2",
+            "bond": {
+                "target": "1O2",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO2"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1C2",
+                        "1O2",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.95,
+                    "bond_angle_234": 118.52,
+                    "dihedral": 117.14,
+                    "bond_length_12": 1.5351,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1O2",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 118.52,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -168.07,
+                    "bond_length_12": 1.5137,
+                    "bond_length_34": 1.45,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O2",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.66,
+                    "bond_angle_234": 110.85,
+                    "dihedral": 122.06,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.532,
+                    "bond_length_13": 1.3904
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O2",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.45
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "13aa",
+            "description": "(i)1->3(i-1) axial at C1 and axial at C3",
+            "bond": {
+                "target": "1O3",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO3"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1C3",
+                        "1O3",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 108.83,
+                    "bond_angle_234": 116.91,
+                    "dihedral": 113.29,
+                    "bond_length_12": 1.5128,
+                    "bond_length_34": 1.4039,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1O3",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.91,
+                    "bond_angle_234": 109.52,
+                    "dihedral": 65.46,
+                    "bond_length_12": 1.511,
+                    "bond_length_34": 1.463,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O3",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.53,
+                    "bond_angle_234": 112.55,
+                    "dihedral": -123.55,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.507,
+                    "bond_length_13": 1.404
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O3",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.52,
+                    "bond_angle_234": 107.54,
+                    "dihedral": -116.62,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1057,
+                    "bond_length_13": 1.463
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "13ab",
+            "description": "(i)1->3(i-1) axial at C1 and equatorial at C3",
+            "bond": {
+                "target": "1O3",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO3"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1C3",
+                        "1O3",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.07,
+                    "bond_angle_234": 116.91,
+                    "dihedral": -141.32,
+                    "bond_length_12": 1.5353,
+                    "bond_length_34": 1.4039,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1O3",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.91,
+                    "bond_angle_234": 109.52,
+                    "dihedral": 65.46,
+                    "bond_length_12": 1.511,
+                    "bond_length_34": 1.463,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O3",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.51,
+                    "bond_angle_234": 112.49,
+                    "dihedral": -123.5,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5071,
+                    "bond_length_13": 1.4039
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O3",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.52,
+                    "bond_angle_234": 107.54,
+                    "dihedral": -116.62,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1057,
+                    "bond_length_13": 1.463
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "13ba",
+            "description": "(i)1->3(i-1) equatorial at C1 and axial at C3",
+            "bond": {
+                "target": "1O3",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO3"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1C3",
+                        "1O3",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 117.5,
+                    "bond_angle_234": 120.58,
+                    "dihedral": -131.68,
+                    "bond_length_12": 1.4976,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1O3",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 120.58,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -100.16,
+                    "bond_length_12": 1.4319,
+                    "bond_length_34": 1.447,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O3",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.59,
+                    "bond_angle_234": 110.9,
+                    "dihedral": 122.06,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5312,
+                    "bond_length_13": 1.3908
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O3",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.447
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "13bb",
+            "description": "(i)1->3(i-1) equatorial at C1 and equatorial at C3",
+            "bond": {
+                "target": "1O3",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO3"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1C3",
+                        "1O3",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 108.83,
+                    "bond_angle_234": 123.77,
+                    "dihedral": -131.68,
+                    "bond_length_12": 1.5129,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1O3",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 123.77,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -130.16,
+                    "bond_length_12": 1.4801,
+                    "bond_length_34": 1.478,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O3",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.61,
+                    "bond_angle_234": 110.9,
+                    "dihedral": 122.15,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5311,
+                    "bond_length_13": 1.39
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O3",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.478
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "14aa",
+            "description": "(i)1->4(i-1) axial at C1 and axial at C4",
+            "bond": {
+                "target": "1O4",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO4"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1C4",
+                        "1O4",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.4,
+                    "bond_angle_234": 119.44,
+                    "dihedral": -86.29,
+                    "bond_length_12": 1.5075,
+                    "bond_length_34": 1.4036,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C4",
+                        "1O4",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 119.44,
+                    "bond_angle_234": 109.48,
+                    "dihedral": 133.57,
+                    "bond_length_12": 1.4716,
+                    "bond_length_34": 1.449,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O4",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.49,
+                    "bond_angle_234": 112.48,
+                    "dihedral": -123.48,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5071,
+                    "bond_length_13": 1.4043
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O4",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 107.55,
+                    "dihedral": -116.61,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1057,
+                    "bond_length_13": 1.449
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "14ab",
+            "description": "(i)1->4(i-1) axial at C1 and equatorial at C4",
+            "bond": {
+                "target": "1O4",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO4"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1C4",
+                        "1O4",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 117.73,
+                    "bond_angle_234": 118.66,
+                    "dihedral": 72.71,
+                    "bond_length_12": 1.501,
+                    "bond_length_34": 1.4036,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C4",
+                        "1O4",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 118.66,
+                    "bond_angle_234": 109.48,
+                    "dihedral": 48.64,
+                    "bond_length_12": 1.4919,
+                    "bond_length_34": 1.457,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O4",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.46,
+                    "bond_angle_234": 112.47,
+                    "dihedral": -123.53,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5061,
+                    "bond_length_13": 1.4035
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O4",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 107.55,
+                    "dihedral": -116.61,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1057,
+                    "bond_length_13": 1.457
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "14ba",
+            "description": "(i)1->4(i-1) equatorial at C1 and axial at C4",
+            "bond": {
+                "target": "1O4",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO4"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1C4",
+                        "1O4",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.4,
+                    "bond_angle_234": 121.0,
+                    "dihedral": -86.3,
+                    "bond_length_12": 1.5071,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C4",
+                        "1O4",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 121.0,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -130.97,
+                    "bond_length_12": 1.456,
+                    "bond_length_34": 1.447,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O4",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.61,
+                    "bond_angle_234": 110.87,
+                    "dihedral": 122.12,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5314,
+                    "bond_length_13": 1.3906
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O4",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.447
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "14bb",
+            "description": "(i)1->4(i-1) equatorial at C1 and equatorial at C4",
+            "bond": {
+                "target": "1O4",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO4"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1C4",
+                        "1O4",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.76,
+                    "bond_angle_234": 121.0,
+                    "dihedral": 81.86,
+                    "bond_length_12": 1.5009,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C4",
+                        "1O4",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 121.0,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -130.97,
+                    "bond_length_12": 1.456,
+                    "bond_length_34": 1.447,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O4",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 110.87,
+                    "dihedral": 122.12,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5318,
+                    "bond_length_13": 1.3896
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O4",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.447
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "16aa",
+            "description": "(i)1->6(i-1) axial at C1 and equatorial at C6",
+            "bond": {
+                "target": "1O6",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO6"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C5",
+                        "1C6",
+                        "1O6",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 104.41,
+                    "bond_angle_234": 111.56,
+                    "dihedral": 178.98,
+                    "bond_length_12": 1.5266,
+                    "bond_length_34": 1.4036,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C6",
+                        "1O6",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 111.56,
+                    "bond_angle_234": 109.48,
+                    "dihedral": 71.24,
+                    "bond_length_12": 1.4492,
+                    "bond_length_34": 1.427,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O6",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 112.46,
+                    "dihedral": -123.55,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5066,
+                    "bond_length_13": 1.4036
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O6",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.48,
+                    "bond_angle_234": 107.58,
+                    "dihedral": -116.57,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1054,
+                    "bond_length_13": 1.427
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "16ab",
+            "description": "(i)1->6(i-1) equatorial at C1 and equatorial at C6",
+            "bond": {
+                "target": "1O6",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO6"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C5",
+                        "1C6",
+                        "1O6",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 105.37,
+                    "bond_angle_234": 113.93,
+                    "dihedral": 172.71,
+                    "bond_length_12": 1.5616,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C6",
+                        "1O6",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.93,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -63.49,
+                    "bond_length_12": 1.4311,
+                    "bond_length_34": 1.411,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O6",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.67,
+                    "bond_angle_234": 110.86,
+                    "dihedral": 122.13,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5323,
+                    "bond_length_13": 1.3896
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O6",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.411
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "16ba",
+            "description": "(i)1->6(i-1) equatorial at C1 and equatorial at C6",
+            "bond": {
+                "target": "1O6",
+                "source": "2C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO6"
+                ],
+                "source": [
+                    "HO1",
+                    "O1"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C5",
+                        "1C6",
+                        "1O6",
+                        "2C1"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 105.37,
+                    "bond_angle_234": 113.93,
+                    "dihedral": 172.71,
+                    "bond_length_12": 1.5616,
+                    "bond_length_34": 1.3902,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C6",
+                        "1O6",
+                        "2C1",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 113.93,
+                    "bond_angle_234": 108.63,
+                    "dihedral": -63.49,
+                    "bond_length_12": 1.4311,
+                    "bond_length_34": 1.411,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O6",
+                        "2O5",
+                        "2C1",
+                        "2C2"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.67,
+                    "bond_angle_234": 110.86,
+                    "dihedral": 122.13,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5323,
+                    "bond_length_13": 1.3896
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O6",
+                        "2C1",
+                        "2H1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 108.63,
+                    "bond_angle_234": 111.32,
+                    "dihedral": 121.92,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.0837,
+                    "bond_length_13": 1.411
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "SUCR",
+            "description": "pram; make sucrose, apply to AGLC,BFRU",
+            "bond": {
+                "target": "1O1",
+                "source": "2C2"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "O2",
+                    "HO2"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C2"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 108.97,
+                    "bond_angle_234": 115.17,
+                    "dihedral": 106.13,
+                    "bond_length_12": 1.43,
+                    "bond_length_34": 1.4632,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C2",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 115.17,
+                    "bond_angle_234": 114.57,
+                    "dihedral": -47.6,
+                    "bond_length_12": 1.4159,
+                    "bond_length_34": 1.388,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C2",
+                        "2O5",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 114.57,
+                    "bond_angle_234": 109.86,
+                    "dihedral": -100.55,
+                    "bond_length_12": 1.4632,
+                    "bond_length_34": 1.4233,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2O5",
+                        "1O1",
+                        "2C2",
+                        "2C1"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 114.57,
+                    "bond_angle_234": 106.87,
+                    "dihedral": 121.04,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5052,
+                    "bond_length_13": 1.388
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "LCTL",
+            "description": "pram; make lactulose, apply to BGAL,BFRU",
+            "bond": {
+                "target": "1O1",
+                "source": "2C4"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "O4",
+                    "HO4"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O5",
+                        "1C1",
+                        "1O1",
+                        "2C4"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 114.15,
+                    "bond_angle_234": 115.45,
+                    "dihedral": -92.26,
+                    "bond_length_12": 1.4515,
+                    "bond_length_34": 1.4008,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C4",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 115.45,
+                    "bond_angle_234": 109.78,
+                    "dihedral": 176.86,
+                    "bond_length_12": 1.4006,
+                    "bond_length_34": 1.5389,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C4",
+                        "2C5",
+                        "2O5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.78,
+                    "bond_angle_234": 108.07,
+                    "dihedral": -135.17,
+                    "bond_length_12": 1.4008,
+                    "bond_length_34": 1.4194,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "2C5",
+                        "1O1",
+                        "2C4",
+                        "2H4"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.78,
+                    "bond_angle_234": 113.16,
+                    "dihedral": 128.08,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.112,
+                    "bond_length_13": 1.5389
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "AB15",
+            "description": "pram; make 1->5 arabinose disac without methylation, apply to AARB,AARB",
+            "bond": {
+                "target": "1O1",
+                "source": "2C5"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "O5",
+                    "HO5"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O4",
+                        "1C1",
+                        "1O1",
+                        "2C5"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.35,
+                    "bond_angle_234": 112.98,
+                    "dihedral": 75.44,
+                    "bond_length_12": 1.456,
+                    "bond_length_34": 1.4384,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C1",
+                        "1O1",
+                        "2C5",
+                        "2C4"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.98,
+                    "bond_angle_234": 111.0,
+                    "dihedral": 148.61,
+                    "bond_length_12": 1.3759,
+                    "bond_length_34": 1.4291,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C5",
+                        "2C4",
+                        "2O4"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 111.0,
+                    "bond_angle_234": 107.21,
+                    "dihedral": -56.56,
+                    "bond_length_12": 1.4384,
+                    "bond_length_34": 1.4617,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C4",
+                        "2C5",
+                        "2H51"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 111.0,
+                    "bond_angle_234": 107.52,
+                    "dihedral": 113.48,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1042,
+                    "bond_length_13": 1.4384
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O1",
+                        "2C4",
+                        "2C5",
+                        "2H52"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 111.0,
+                    "bond_angle_234": 115.17,
+                    "dihedral": -131.84,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.1078,
+                    "bond_length_13": 1.4384
+                }
+            ]
+        },
+        {
+            "version": "3.2.25",
+            "id": "SA23AB",
+            "description": "og sialic acid alpha 2->3 equatorial",
+            "bond": {
+                "target": "1O3",
+                "source": "2C2"
+            },
+            "to_delete": {
+                "target": [
+                    "HO3"
+                ],
+                "source": [
+                    "HO2",
+                    "O2"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C2",
+                        "1C3",
+                        "1O3",
+                        "2C2"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 112.07,
+                    "bond_angle_234": 116.91,
+                    "dihedral": -141.32,
+                    "bond_length_12": 1.5353,
+                    "bond_length_34": 1.4039,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1C3",
+                        "1O3",
+                        "2C2",
+                        "2O6"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.91,
+                    "bond_angle_234": 109.52,
+                    "dihedral": -65.46,
+                    "bond_length_12": 1.511,
+                    "bond_length_34": 1.463,
+                    "bond_length_13": null
+                },
+                {
+                    "version": "3.2.25",
+                    "atoms": [
+                        "1O3",
+                        "2O6",
+                        "2C2",
+                        "2C3"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 109.54,
+                    "bond_angle_234": 112.55,
+                    "dihedral": -123.58,
+                    "bond_length_12": null,
+                    "bond_length_34": 1.5066,
+                    "bond_length_13": 1.4039
+                }
+            ]
+        },
+        {
+            "version": "3.2.18-a",
+            "id": "LINK",
+            "description": "Peptide linkage N- to C-terminal",
+            "bond": {
+                "target": "1C",
+                "source": "2N"
+            },
+            "to_delete": {
+                "target": [
+                    "OXT",
+                    "HXT"
+                ],
+                "source": [
+                    "H"
+                ]
+            },
+            "ics": [
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1O",
+                        "1CA",
+                        "1C",
+                        "2N"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 26.314398055128386,
+                    "bond_angle_234": 116.60593496346887,
+                    "dihedral": 179.95634149408892,
+                    "bond_length_12": 2.3918416423468125,
+                    "bond_length_34": 1.3348749102082436,
+                    "bond_length_13": 1.2289422499667666
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1N",
+                        "1CA",
+                        "1C",
+                        "2N"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 110.08919699361365,
+                    "bond_angle_234": 116.60593496346887,
+                    "dihedral": -47.00796398478231,
+                    "bond_length_12": 1.448999971151352,
+                    "bond_length_34": 1.3348749102082436,
+                    "bond_length_13": 2.435915451051025
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "2H",
+                        "2CA",
+                        "2N",
+                        "1C"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 24.483313578104905,
+                    "bond_angle_234": 121.90300543695855,
+                    "dihedral": 179.99408806460477,
+                    "bond_length_12": 2.130919963851228,
+                    "bond_length_34": 1.3348749102082436,
+                    "bond_length_13": 1.0102475072850738
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "2H",
+                        "1C",
+                        "2N",
+                        "2CA"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 25.82126067212748,
+                    "bond_angle_234": 121.90300543695855,
+                    "dihedral": -179.9940887893432,
+                    "bond_length_12": 2.0277600944183365,
+                    "bond_length_34": 1.4486890151400535,
+                    "bond_length_13": 1.0102475072850738
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1O",
+                        "2N",
+                        "1C",
+                        "1CA"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 27.20389653140556,
+                    "bond_angle_234": 116.60593496346887,
+                    "dihedral": -179.95507515818326,
+                    "bond_length_12": 2.25393964628731,
+                    "bond_length_34": 1.5226388911756754,
+                    "bond_length_13": 1.2289422499667666
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1O",
+                        "1C",
+                        "2N",
+                        "2CA"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 123.02312440481715,
+                    "bond_angle_234": 121.90300543695855,
+                    "dihedral": 99.96697868191657,
+                    "bond_length_12": 1.2289422499667666,
+                    "bond_length_34": 1.4486890151400535,
+                    "bond_length_13": 2.25393964628731
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1HA",
+                        "1CA",
+                        "1C",
+                        "2N"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 109.17047688236688,
+                    "bond_angle_234": 116.60593496346887,
+                    "dihedral": -166.83965139800551,
+                    "bond_length_12": 1.08984258544992,
+                    "bond_length_34": 1.3348749102082436,
+                    "bond_length_13": 2.1438371366301534
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1CA",
+                        "1O",
+                        "1C",
+                        "2N"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 33.31467661672645,
+                    "bond_angle_234": 123.02312440481715,
+                    "dihedral": -179.9534433996902,
+                    "bond_length_12": 2.3918416423468125,
+                    "bond_length_34": 1.3348749102082436,
+                    "bond_length_13": 1.5226388911756754
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1CA",
+                        "1C",
+                        "2N",
+                        "2CA"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 116.60593496346887,
+                    "bond_angle_234": 121.90300543695855,
+                    "dihedral": -79.98809647626668,
+                    "bond_length_12": 1.5226388911756754,
+                    "bond_length_34": 1.4486890151400535,
+                    "bond_length_13": 2.433283064602094
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1C",
+                        "2H",
+                        "2N",
+                        "2CA"
+                    ],
+                    "improper": true,
+                    "bond_angle_123": 35.13656560157368,
+                    "bond_angle_234": 119.0548205778424,
+                    "dihedral": 179.9942592742782,
+                    "bond_length_12": 2.0277600944183365,
+                    "bond_length_34": 1.4486890151400535,
+                    "bond_length_13": 1.3348749102082436
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1C",
+                        "2N",
+                        "2CA",
+                        "2C"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 121.90300543695855,
+                    "bond_angle_234": 110.11183023395458,
+                    "dihedral": -56.998471548615655,
+                    "bond_length_12": 1.3348749102082436,
+                    "bond_length_34": 1.5221238637990335,
+                    "bond_length_13": 2.43404414566433
+                },
+                {
+                    "version": "3.2.18-a",
+                    "atoms": [
+                        "1C",
+                        "2N",
+                        "2CA",
+                        "2HA"
+                    ],
+                    "improper": false,
+                    "bond_angle_123": 121.90300543695855,
+                    "bond_angle_234": 109.15311228022684,
+                    "dihedral": 62.8433906922491,
+                    "bond_length_12": 1.3348749102082436,
+                    "bond_length_34": 1.0909692713536367,
+                    "bond_length_13": 2.43404414566433
+                }
+            ]
+        }
+    ]
+}

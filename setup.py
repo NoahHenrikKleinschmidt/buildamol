@@ -4,25 +4,32 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 setuptools.setup(
-    name="biobuild",
-    version="3.10.10",
+    name="buildamol",
+    version="1.1.67",
     author="Noah H. Kleinschmidt",
-    author_email="noah.kleinschmidt@students.unibe.ch",
+    author_email="noah.kleinschmidt@unibe.ch",
     description="A fragment-based molecular assembly toolkit for python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={
-        "biobuild.resources": ["*.pkl", "*.json", "*.cif"],
+        "buildamol.resources": ["*.pkl", "*.json", "*.cif", "*.xml"],
     },
-    url="https://github.com/NoahHenrikKleinschmidt/biobuild",
+    url="https://github.com/NoahHenrikKleinschmidt/buildamol",
     packages=[
-        "biobuild",
-        "biobuild.core",
-        "biobuild.resources",
-        "biobuild.utils",
-        "biobuild.structural",
-        "biobuild.graphs",
-        "biobuild.optimizers",
+        "buildamol",
+        "buildamol.core",
+        "buildamol.resources",
+        "buildamol.utils",
+        "buildamol.structural",
+        "buildamol.graphs",
+        "buildamol.optimizers",
+        "buildamol.extensions",
+        "buildamol.extensions.complexes",
+        "buildamol.extensions.polymers",
+        "buildamol.extensions.bio",
+        "buildamol.extensions.bio.proteins",
+        "buildamol.extensions.molecular_dynamics",
+        "buildamol.extensions.molecular_dynamics.atom_typing",
     ],
     install_requires=[
         "numpy",
@@ -39,7 +46,7 @@ setuptools.setup(
         "pubchempy",
         "tabulate",
         "scikit-learn",
-        "ipywidgets<8.0.1",
+        "ipywidgets",  # "ipywidgets<8.0.1", # I don't remember why the 8.0.1 was there
         "attrs",
     ],
     optional_requires={

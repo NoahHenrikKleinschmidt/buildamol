@@ -6,10 +6,10 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "biobuild"
-copyright = "2023, Noah Kleinschmidt"
+project = "buildamol"
+copyright = "2024, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "3.10.10"
+release = "1.1.67"
 
 
 import plotly.io as pio
@@ -29,6 +29,7 @@ extensions = [
     "sphinx_design",
     "nbsphinx",
     "sphinxmermaid",
+    "sphinx_gallery.load_style",
     # "sphinx_panels",
     # "sphinx_gallery.gen_gallery",
 ]
@@ -37,6 +38,11 @@ extensions = [
 #     "examples_dirs": "../examples",  # path to your example scripts
 #     "gallery_dirs": "./examples",  # path to where to save gallery generated output
 # }
+
+# nbsphinx_thumbnails = {
+#     "examples/building_circular": "examples/_thumbnails/polyhis.jpg",
+# }
+
 
 napoleon_numpy_docstring = True
 napoleon_use_param = True

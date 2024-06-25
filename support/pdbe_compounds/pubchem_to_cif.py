@@ -1,10 +1,10 @@
 """
-This script takes one pubchem JSON file and corresponding SDF structure file and converts them to a PDBE-CIF file that can be imported into biobuild. 
+This script takes one pubchem JSON file and corresponding SDF structure file and converts them to a PDBE-CIF file that can be imported into buildamol. 
 The created CIF file is not a full-format CIF file, but a CIF file that contains only the information needed for biobuild!
 """
 
 import argparse
-from biobuild.resources import pubchem
+from buildamol.resources import pubchem
 
 
 def setup():

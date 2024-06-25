@@ -1,0 +1,814 @@
+
+PRES PHEM         0.00 ! Patch for HEME to His link.
+                       ! Patch residues must be 1-HIS, and 2-HEME.
+                       ! do NOT use AUTOgenerate ANGLes DIHEdrals after this patch
+DELETE ANGLE 2NA 2FE 2NC  2NB 2FE 2ND 
+BOND 1NE2 2FE   
+ANGLE 1CD2 1NE2 2FE  1CE1 1NE2 2FE  1NE2 2FE 2NA  1NE2 2FE 2NB   
+ANGLE 1NE2 2FE  2NC  1NE2 2FE  2ND   
+DIHE 1CD2  1NE2  2FE  2NA
+IC 1CD2 1NE2 2FE  2NA   0.0000  0.0000    0.0000  0.0000  0.0000
+IC 1CD2 1NE2 2FE  2NB   0.0000  0.0000    0.0000  0.0000  0.0000
+IC 1CD2 1NE2 2FE  2NB   0.0000  0.0000    0.0000  0.0000  0.0000
+IC 1CD2 1NE2 2FE  2NB   0.0000  0.0000    0.0000  0.0000  0.0000
+IC 1CE1 1NE2 2FE  2NA   0.0000  0.0000    0.0000  0.0000  0.0000
+
+PRES SCK0       0.00 ! patch to link lysine with retinal to form a
+                     ! deprotonated schiff's base
+                     ! follow with AUTOgenerate ANGLes DIHEdrals command
+! residue 1: lysine
+! residue 2: retinal
+!
+DELETE ATOM 1HZ1
+DELETE ATOM 1HZ2
+DELETE ATOM 1HZ3
+DELETE ATOM 2O15
+GROUP                !  HE1 HE2
+ATOM 1CE  CT2   0.04 !    \ /
+ATOM 1HE1 HA2   0.09 !  --1CE1       2H15
+ATOM 1HE2 HA2   0.09 !        \       /
+ATOM 1NZ  NS1  -0.60 !        1NZ=2C15
+ATOM 2C15 CC1B  0.23 !        /       \
+ATOM 2H15 HE1   0.15 !     2HZ1        2C14==
+GROUP                !                /
+ATOM 2C14 CC1A -0.15 !             2HE14
+ATOM 2H141 HE1  0.15
+
+BOND 1NZ 2C15 
+
+IC 1CD    1CE    1NZ    2C15    0.0000    0.00  180.00    0.00   0.0000
+IC 1CE    1NZ    2C15   2C14    0.0000    0.00  180.00    0.00   0.0000
+IC 1NZ    2C15   2C14   2C13    0.0000    0.00  180.00    0.00   0.0000
+IC 2C14   1NZ    *2C15  2H15    0.0000    0.00  180.00    0.00   0.0000
+IC 2C5    2C6    2C1    2C2     0.0000    0.00    0.00    0.00   0.0000 ! required to build retinal
+
+
+PRES SCK1       1.00 ! patch to link lysine with retinal to form a
+                     ! protonated schiff's base
+                     ! follow with AUTOgenerate ANGLes DIHEdrals command
+! residue 1: lysine
+! residue 2: retinal
+!
+DELETE ATOM 1HZ2
+DELETE ATOM 1HZ3
+DELETE ATOM 2O15
+GROUP                !  HE1 HE2
+ATOM 1CE  CT2   0.27 !    \ /
+ATOM 1HE1 HA2   0.09 !  --1CE1       2H15
+ATOM 1HE2 HA2   0.09 !        \       /
+ATOM 1NZ  NS2  -0.40 !        1NZ=2C15
+ATOM HZ1  HC    0.38 !        /       \
+ATOM 2C15 CC1B  0.37 !     2HZ1        2C14==
+ATOM 2H15 HR1   0.20 !                /
+GROUP                !             2HE14
+ATOM 2C14 CC1A -0.15
+ATOM 2H141 HE1  0.15
+
+BOND 1NZ 2C15 
+
+IC 1CD    1CE    1NZ    2C15    0.0000    0.00  180.00    0.00   0.0000
+IC 1CE    1NZ    2C15   2C14    0.0000    0.00  180.00    0.00   0.0000
+IC 1NZ    2C15   2C14   2C13    0.0000    0.00  180.00    0.00   0.0000
+IC 2C15   1CE    *1NZ   1HZ1    0.0000    0.00  180.00    0.00   0.0000
+IC 2C14   1NZ    *2C15  2H15    0.0000    0.00  180.00    0.00   0.0000
+IC 2C5    2C6    2C1    2C2     0.0000    0.00    0.00    0.00   0.0000 ! required to build retinal
+
+
+
+PRES LLLO           -2.10 ! linkage for dol-P-P and sugar
+dele atom 1HO1            !
+dele atom 1O1             !
+dele atom 2HO22           !
+GROUP                     !
+ATOM 1C1   CC3162    0.30 ! adjust to make this section charge 0.1 (same as the dol part)
+ATOM 1H1   HCA1      0.09 !
+ATOM 1C5   CC3163    0.02 !           H5
+ATOM 1H5   HCA1      0.09 !             \
+ATOM 1O5   OC3C61   -0.40 !             C5-------O5
+                          !             /         \   H1
+                          !            /           \ /
+                          !           C4           C1
+                          !            \           / \
+                          !             \         /   \ 
+                          !              C3------C2    \
+                          !                             \
+                          !                              \
+                          !                               \
+ATOM 2P2    PG1      1.50 !                                \
+ATOM 2O22   OG303   -0.62 !                                 O22
+ATOM 2O23   OG2P1   -0.82 !                                 |          
+ATOM 2O24   OG2P1   -0.82 !                            O23==P2==O24 (-) 
+                          !                                 |          
+ATOM 2O12   OG304   -0.68 !                                 O12         
+ATOM 2P1    PG1      1.50 !                                 |          
+ATOM 2O13   OG2P1   -0.82 !                            O13==P1==O14 (-) 
+ATOM 2O14   OG2P1   -0.82 !                                 |          
+ATOM 2O11   OG303   -0.62 !                                 O11         
+                          !                                 |
+!ATOM 2C1    CG321   -0.08 !                            H11--C1--H12
+!ATOM 2H11   HGA2     0.09 !                                 |
+!ATOM 2H12   HGA2     0.09 !                                 |
+
+BOND 1C1 2O22
+
+!Thermalized IC
+!IC  1C3  1C2   1C1   2O22     1.5364  112.47 -174.92  109.44   1.4102
+!IC  1C2  2O22  *1C1  1H1      1.5323  109.44 -120.96  109.46   1.1223
+IC  1C3  1C2   1C1   1H1      1.5364  112.47  180.00  109.44   1.4102
+IC  1C2  1H1   *1C1  2O22     1.5323  109.44 -120.00  109.46   1.1223
+IC  1C2  1C1   2O22  2P2      1.5323  109.44  -84.54  127.66   1.5968
+IC  1C1  2O22  2P2   2O12     1.4102  127.66 -174.21  102.94   1.5071
+IC  2O22 2O12  *2P2  2O23     1.5968  102.94  113.03  118.81   1.5471
+IC  2O22 2O12  *2P2  2O24     1.5968  102.94 -113.60  109.37   1.4811
+
+PRES CERA           0.11 ! og axial patch of ceramide to C1 [based on patch OCTA]
+                         ! e.g., patch CERA CARB CER
+dele atom 1HO1
+dele atom 2HO1
+dele atom 2O1 
+
+GROUP
+ATOM 1C1  CC3162    0.29 !
+ATOM 1O1  OC301    -0.36 !
+
+ATOM 2C1S CTO2      0.00 !
+ATOM 2H1S HAL2      0.09 !
+ATOM 2H1T HAL2      0.09 !
+
+BOND 1O1 2C1S
+
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC  1O5  1C1  1O1  2C1S    1.4326  113.39   76.24  112.41   1.4390
+IC  1C1  1O1  2C1S 2C2S    1.3743  112.41 -174.48  113.71   1.5661
+IC  1O1  2C1S 2C2S 2C3S    1.4390  113.71  171.35  116.60   1.5435
+IC  2C2S 1O1 *2C1S 2H1S    1.5661  113.71 -128.80  113.66   1.0672
+IC  2C2S 1O1 *2C1S 2H1T    1.5661  113.71  111.70  104.83   1.1576
+
+PRES CERB           0.11 ! og equatorial patch of ceramide to C1 [based on patch OCTB]
+                         ! e.g., patch CERB CARB CER
+dele atom 1HO1
+dele atom 2HO1
+dele atom 2O1 
+
+GROUP
+ATOM 1C1  CC3162    0.29 !
+ATOM 1O1  OC301    -0.36 !
+
+ATOM 2C1S CTO2      0.00 !
+ATOM 2H1S HAL2      0.09 !
+ATOM 2H1T HAL2      0.09 !
+
+BOND 1O1 2C1S
+
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC  1O5  1C1  1O1  2C1S    1.4302  103.27  -83.30  111.36   1.4262
+IC  1C1  1O1  2C1S 2C2S    1.4465  111.36 -171.80  110.89   1.5408
+IC  1O1  2C1S 2C2S 2C3S    1.4262  110.89 -178.19  111.72   1.5390
+IC  2C2S 1O1 *2C1S 2H1S    1.5661  113.71 -128.80  113.66   1.0672
+IC  2C2S 1O1 *2C1S 2H1T    1.5661  113.71  111.70  104.83   1.1576
+
+
+
+PRES DAGA           0.20 ! diacylglycerol at axial C1
+DELE ATOM 1HO1           ! e.g., patch DAGA CARB 1 DLPA 1
+DELE ATOM 2P    
+DELE ATOM 2O13  
+DELE ATOM 2O14  
+DELE ATOM 2O12  
+DELE ATOM 2H12  
+DELE ATOM 2O11  
+GROUP
+ATOM 1C1  CC3162    0.29 !
+ATOM 1H1  HCA1      0.09 !
+ATOM 1O1  OC301    -0.36 !
+ATOM 2C1  CTO2      0.00 !
+ATOM 2HA  HAL2      0.09 !
+ATOM 2HB  HAL2      0.09 !
+BOND 1O1  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC  1O5   1C1    1O1   2C1     1.4326  113.39 -104.24  112.41   1.4390
+IC  1C1   1O1    2C1   2C2     1.3743  112.41 -174.48  113.71   1.5661
+IC  2C2   1O1   *2C1   2HA     1.5515  111.07 -119.84  110.91   1.1162
+IC  2HA   1O1   *2C1   2HB     1.1162  110.91 -120.43  110.17   1.1153
+IC  1O1   2C1    2C2   2C3     1.4390  113.71  171.35  116.60   1.5435
+
+
+PRES DAGB           0.20 ! diacylglycerol at equatorial C1
+DELE ATOM 1HO1           ! e.g., patch DAGB CARB 1 DLPA 1
+DELE ATOM 2P    
+DELE ATOM 2O13  
+DELE ATOM 2O14  
+DELE ATOM 2O12  
+DELE ATOM 2H12  
+DELE ATOM 2O11  
+GROUP
+ATOM 1C1  CC3162    0.29 !
+ATOM 1H1  HCA1      0.09 !
+ATOM 1O1  OC301    -0.36 !
+ATOM 2C1  CTO2      0.00 !
+ATOM 2HA  HAL2      0.09 !
+ATOM 2HB  HAL2      0.09 !
+BOND 1O1  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC  1O5   1C1    1O1   2C1     1.4326  113.39   76.24  112.41   1.4390
+IC  1C1   1O1    2C1   2C2     1.3743  112.41 -174.48  113.71   1.5661
+IC  2C2   1O1   *2C1   2HA     1.5515  111.07 -119.84  110.91   1.1162
+IC  2HA   1O1   *2C1   2HB     1.1162  110.91 -120.43  110.17   1.1153
+IC  1O1   2C1    2C2   2C3     1.4390  113.71  171.35  116.60   1.5435
+
+PRES INS2A         0.02 ! link alpha-sugar (axial) to phosphorylated inositol 2nd position (axial) [based on 14aa]
+dele atom 1HO1
+dele atom 1O1
+dele atom 2HO2
+ATOM 1C1  CC3162    0.29 !
+ATOM 2C12 CC3161    0.09 !
+ATOM 2O2  OC301    -0.36 !
+BOND 1C1  2O2
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1O5 *1C1  2O2    1.4800  106.00  126.40  112.00   1.3950  ! psj, pdbID: 2gaz
+IC   1O5  2O2 *1C1  1H1    1.4490  109.48 -116.61  107.55   1.1057
+IC   1O5  2O2 *1C1  1C2    1.4490  109.48  124.57  110.72   1.5065
+IC   1O5  1C1  2O2 2C12    1.4716  119.44  133.57  109.48   1.4490  ! phi
+IC   1C1  2O2 2C12 2C11    1.5075  110.40  -86.29  119.44   1.4036  ! psi
+IC   1C1  2O2 2C12 2C13    1.3950  109.20 -140.30  109.00   1.4800  ! psj
+
+PRES INS2B         0.02 ! link alpha-sugar (equatorial) to phosphorylated inositol 2nd position (axial) [based on 14ba]
+dele atom 1HO1
+dele atom 1O1
+dele atom 2HO2
+ATOM 1C1  CC3162    0.29 !
+ATOM 2C12 CC3161    0.09 !
+ATOM 2O2  OC301    -0.36 !
+BOND 1C1  2O2
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1O5 *1C1  2O2    1.4800  106.00 -125.00  112.00   1.3950  ! psj, C-GUI
+IC   1O5  2O2 *1C1  1H1    1.4470  108.63  121.92  111.32   1.0837
+IC   1O5  2O2 *1C1  1C2    1.4470  108.63 -122.09  110.89   1.5316
+IC   1O5  1C1  2O2 2C12    1.4560  121.00 -130.97  108.63   1.4470  ! phi
+IC   1C1  2O2 2C12 2C11    1.5071  110.40  -86.30  121.00   1.3902  ! psi
+IC   1C1  2O2 2C12 2C13    1.3950  109.20   21.80  109.00   1.4800  ! psj, C-GUI
+
+PRES INS6A          0.02 ! link alpha-sugar (axial) to phosphorylated inositol 6th position (equatorial) [based on 14ab]
+dele atom 1HO1
+dele atom 1O1
+dele atom 2HO6
+ATOM 1C1  CC3162    0.29 !
+ATOM 2C16 CC3161    0.09 !
+ATOM 2O6  OC301    -0.36 !
+BOND 1C1  2O6
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1O5 *1C1  2O6    1.4800  106.00  127.30  112.00   1.3950  ! psj, pdbID: 2gaz
+IC   1O5  2O6 *1C1  1H1    1.4570  109.48 -116.61  107.55   1.1057
+IC   1O5  2O6 *1C1  1C2    1.4570  109.48  124.57  110.72   1.5065
+IC   1O5  1C1  2O6 2C16    1.4919  118.66   48.64  109.48   1.4570  ! phi
+IC   1C1  2O6 2C16 2C15    1.5010  117.73   72.71  118.66   1.4036  ! psi
+IC   1C1  2O6 2C16 2C11    1.3950  109.20 -158.80  109.00   1.4800  ! psj
+
+PRES INS6B          0.02 ! link beta-sugar (equatorial) to phosphorylated inositol 6th position (equatorial) [based on 14bb]
+dele atom 1HO1
+dele atom 1O1
+dele atom 2HO6
+ATOM 1C1  CC3162    0.29 !
+ATOM 2C16 CC3161    0.09 !
+ATOM 2O6  OC301    -0.36 !
+BOND 1C1  2O6
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1O5 *1C1  2O6    1.4800  106.00 -118.80  112.00   1.3950  ! psj, C-GUI
+IC   1O5  2O6 *1C1  1H1    1.4470  108.63  121.92  111.32   1.0837
+IC   1O5  2O6 *1C1  1C2    1.4470  108.63 -122.09  110.89   1.5316
+IC   1O5  1C1  2O6 2C16    1.4560  121.00 -130.97  108.63   1.4470  ! phi
+IC   1C1  2O6 2C16 2C15    1.5009  110.76   81.86  121.00   1.3902  ! psi
+IC   1C1  2O6 2C16 2C11    1.3950  109.20  -60.60  109.00   1.4800  ! psj, C-GUI
+
+
+
+PRES SGPA           -0.07 ! for connecting SER at the alpha position
+dele atom 1HG1
+dele atom 2O1  
+dele atom 2HO1  
+
+GROUP
+
+ATOM 1CB   CT2      0.00     !Charge assigned by adding
+ATOM 1OG   OC301    -0.36  ! Charge from OMEA
+
+GROUP
+
+ATOM 2C1   CC3162    0.29  ! Charge from OMEA
+
+BOND 1OG 2C1    
+
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+
+!IC   1CA  1CB  1OG  2C1    0.0000  0.0000  167.06  0.0000   0.0000
+!IC   1CB  1OG  2C1  2O5    0.0000  0.0000   71.26  0.0000   0.0000
+!IC   1CB  1OG  2C1  2H1    0.0000  0.0000  -50.07  0.0000   0.0000
+!IC   1OG  2C1  2O5  2C5    0.0000  0.0000   70.42  0.0000   0.0000  
+
+!Thermalized IC
+IC   1CA  1CB  1OG  2C1     1.5246  112.48 -174.87  115.72   1.4191 
+IC   1CB  1OG  2C1  2O5     1.4218  115.72   45.37  110.03   1.4241 
+IC   1CB  1OG  2C1  2H1     1.4218  115.72  -71.61  112.01   1.1125 
+IC   1OG  2C1  2O5  2C5     1.4191  110.03   63.29  109.91   1.4591 
+
+!     |                          |              
+!  HN-N                       HN-N
+!     |     OG1--HG1             |     OG1--C1(sugar)
+!     |    /                     |    /
+!  HA-CA--CB-HB          ==>  HA-CA--CB-HB   
+!     |    \                     |    \
+!     |     CG2--HG21            |     CG2--HG21
+!   O=C    / \                 O=C    / \
+!     | HG21 HG22                | HG21 HG22
+
+PRES TGPA            0.02 ! for connecting THR at the alpha position
+dele atom 1HG1
+dele atom 2O1
+dele atom 2HO1
+
+GROUP
+
+ATOM 1CB   CT1      0.09     !Charge assigned by adding
+ATOM 1OG1  OC301    -0.36  ! Charge from OMEA
+
+GROUP
+
+ATOM 2C1   CC3162    0.29  ! Charge from OMEA
+
+BOND 1OG1 2C1
+
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+
+!IC   1CA  1CB  1OG1 2C1    0.0000  0.0000  167.06  0.0000   0.0000
+!IC   1CB  1OG1 2C1  2O5    0.0000  0.0000   71.26  0.0000   0.0000
+!IC   1CB  1OG1 2C1  2H1    0.0000  0.0000  -50.07  0.0000   0.0000
+!IC   1OG1 2C1  2O5  2C5    0.0000  0.0000   70.42  0.0000   0.0000
+
+!Thermalized IC
+IC    1CA  1CB  1OG1 2C1    1.5900  102.09  161.11  116.78   1.4047 
+IC    1CB  1OG1 2C1  2O5    1.5040  116.78   69.90  114.66   1.4346 
+IC    1CB  1OG1 2C1  2H1    1.5040  116.78  -51.01  110.33   1.1436 
+IC    1OG1 2C1  2O5  2C5    1.4047  114.66   71.63  114.71   1.4751 
+
+!     |                         |            * change charges
+!  HN-N                      HN-N
+!     |   HB1                   |   HB1
+!     |   |                     |   | *   *
+!  HA-CA--CB--OG        ==>  HA-CA--CB--OG
+!     |   |     \               |   |     \  *
+!     |   HB2    HG1            |   HB2    C1(sugar)
+!   O=C                       O=C
+!     |                         |
+
+PRES SGPB           -0.07 ! for connecting SER at the beta position
+dele atom 1HG1
+dele atom 2O1
+dele atom 2HO1
+
+GROUP
+
+ATOM 1CB   CT2      0.00     !Charge assigned by adding
+ATOM 1OG   OC301    -0.36  ! Charge from OMEA
+
+GROUP
+
+ATOM 2C1   CC3162    0.29  ! Charge from OMEA
+
+BOND 1OG 2C1
+
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+
+!IC   1CA  1CB  1OG  2C1    0.0000  0.0000  167.06  0.0000   0.0000
+!IC   1CB  1OG  2C1  2O5    0.0000  0.0000   41.65  0.0000   0.0000
+!IC   1CB  1OG  2C1  2H1    0.0000  0.0000  164.59  0.0000   0.0000
+!IC   1OG  2C1  2O5  2C5    0.0000  0.0000  177.84  0.0000   0.0000
+
+!Thermalized IC
+IC   1CA  1CB  1OG  2C1     1.5288  114.42  160.15  116.19   1.4222 
+IC   1CB  1OG  2C1  2O5     1.5026  116.19   19.87  107.74   1.4694 
+IC   1CB  1OG  2C1  2H1     1.5026  116.19  149.79  108.46   1.1232 
+IC   1OG  2C1  2O5  2C5     1.4222  107.74  173.59  112.12   1.4637 
+
+!     |                          |
+!  HN-N                       HN-N
+!     |     OG1--HG1             |     OG1--C1(sugar)
+!     |    /                     |    /
+!  HA-CA--CB-HB          ==>  HA-CA--CB-HB
+!     |    \                     |    \
+!     |     CG2--HG21            |     CG2--HG21
+!   O=C    / \                 O=C    / \
+!     | HG21 HG22                | HG21 HG22
+
+PRES TGPB            0.02 ! for connecting THR at the beta position
+dele atom 1HG1
+dele atom 2O1
+dele atom 2HO1
+
+GROUP
+
+ATOM 1CB   CT1      0.09     !Charge assigned by adding
+ATOM 1OG1  OC301    -0.36  ! Charge from OMEA
+
+GROUP
+
+ATOM 2C1   CC3162    0.29  ! Charge from OMEA
+
+BOND 1OG1 2C1
+
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+
+!IC   1CA  1CB  1OG1 2C1    0.0000  0.0000  167.06  0.0000   0.0000
+!IC   1CB  1OG1 2C1  2O5    0.0000  0.0000   41.65  0.0000   0.0000
+!IC   1CB  1OG1 2C1  2H1    0.0000  0.0000  164.59  0.0000   0.0000
+!IC   1OG1 2C1  2O5  2C5    0.0000  0.0000  177.84  0.0000   0.0000
+
+!Thermalized IC
+IC    1CA  1CB  1OG1 2C1    1.5466  109.42   84.79  119.34   1.4626 
+IC    1CB  1OG1 2C1  2O5    1.4452  119.34   33.16  108.68   1.4170 
+IC    1CB  1OG1 2C1  2H1    1.4452  119.34  142.21  103.58   1.0859 
+IC    1OG1 2C1  2O5  2C5    1.4626  108.68  167.53  109.99   1.4643 
+
+
+
+PRES NGLA          0.00 ! og make model compound 3 by adding equat
+dele atom 1HD21           !
+dele atom 2O1             !  O-methyl to C1; apply to THP2
+dele atom 2HO1            !  O-methyl to C1; apply to THP2
+
+GROUP
+ATOM 2C1   CC3162    0.27   !       |
+ATOM 2H1   HCA1      0.09   !    HN-N
+ATOM 1ND2  NC2D1    -0.47   !       |   HB1 OD1    HD21 (cis to OD1)
+ATOM 1HD22 HCP1      0.31   !       |   |   ||    /
+ATOM 2C5   CC3163    0.11   !    HA-CA--CB--CG--ND2
+ATOM 2H5   HCA1      0.09   !       |   |         \
+ATOM 2O5   OC3C61   -0.40   !       |   HB2        HD22 (trans to OD1)
+GROUP                       !     O=C
+ATOM 1CG   CC2O1     0.510  !       |
+ATOM 1OD1  OC2D1    -0.510  !
+GROUP                       !                          |              Sugar
+ATOM 1CB   CC321    -0.180  !                       HN-N              |
+ATOM 1HB1  HCA2      0.090  !                          |   HB1 OD1    C1   (cis to OD1)
+ATOM 1HB2  HCA2      0.090  !                          |   |   ||    /
+                            !                       HA-CA--CB--CG--ND2
+                            !                          |   |         \
+                            !                          |   HB2        HD22 (trans to OD1)
+                            !                        O=C
+                            !                          |
+BOND 2C1  1ND2              !
+IMPR 1ND2  1CG  2C1  1HD22  !
+
+
+!    I     J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+!IC   1CB   1CG  1ND2  2C1     1.4000  120.00  180.00  120.00   1.4000
+!IC   1CG   1ND2 2C1   2O5     1.4000  120.00 -180.00  120.00   1.4000
+!IC   1HD22 1ND2 2C1   2O5     1.4000  120.00    0.00  120.00   1.4000
+!IC   2C5   2O5  2C1   2H1     1.4773  111.49 -180.14  108.74   1.0555
+!IC   1ND2  2C1  2O5   2C5     1.4000  120.00   60.00  120.00   1.4000
+
+!Thermalized
+IC    1CB   1CG  1ND2  2C1         1.5278  116.61  179.92  128.01   1.4551
+IC    1CG   1ND2 2C1   2O5         1.3341  128.01  168.99  103.48   1.4210
+IC    1HD22 1ND2 2C1   2O5         0.9855  112.93  -12.55  103.48   1.4210
+IC    2C5   2O5  2C1   2H1         1.4292  117.47 -174.95  108.88   1.0797
+IC    1ND2  2C1  2O5   2C5         1.4551  103.48   75.29  117.47   1.4292
+
+
+
+!! PATCHES for the disaccharides !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! diaxial 1<->1 linkage use for alpha,alpha(1<->1) trehalose
+! crystals used for TREHAL03, YOXFOG, YOXFUM
+PRES 11aa          0.22 ! axial to C1 and axial to C1' 1<->1
+dele atom 1HO1
+dele atom 2O1
+dele atom 2HO1
+ATOM 1C1  CC3162   0.29 !
+ATOM 1O1  OC302   -0.36 !
+ATOM 2C1  CC3162   0.29 !
+BOND 1O1  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1O5  1C1  1O1  2C1    1.4759  106.06  103.46  121.25   1.4128
+IC   1C1  1O1  2C1  2O5    1.3408  121.25  103.54  107.68   1.4504
+IC   1O1  2C1  2O5  2C5    1.4128  107.68   64.56  108.29   1.4499
+IC   2O5  1O1  *2C1 2H1    1.4504  107.68 -109.80  112.98   1.0897
+
+!axial-equatorial 1<->1 linkage for alpha,beta(1<->1) trehalose
+! crystal used for TIQDUS
+PRES 11ab           0.22 ! axial to C1 and equat to C1' 1<->1
+dele atom 1HO1
+dele atom 2O1
+dele atom 2HO1
+ATOM 1C1   CC3162   0.29 !
+ATOM 1O1   OC302   -0.36 !
+ATOM 2C1   CC3162   0.29 !
+BOND 1O1  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1O5  1C1  1O1  2C1    1.4879  109.36  121.75  114.93   1.3543
+IC   1C1  1O1  2C1  2O5    1.4072  114.93   51.80  105.04   1.4974
+IC   1O1  2C1  2O5  2C5    1.3543  105.04  167.51  110.75   1.4328
+IC   2O5  1O1  *2C1 2H1    1.4974  105.04  111.19   99.50   1.1284
+
+! equatorial-equatorial 1<->1 linkage for beta,beta (1<->) trehalose
+! crystal disaccharide used for WACHOX
+PRES 11bb          0.22 ! equat to C1 and equat to C1' 1<->1
+dele atom 1HO1
+dele atom 2O1
+dele atom 2HO1
+ATOM 1C1  CC3162   0.29 !
+ATOM 1O1  OC302   -0.36 !
+ATOM 2C1  CC3162   0.29 !
+BOND 1O1  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1O5  1C1  1O1  2C1    1.4568  111.54  -56.58  115.54   1.3686
+IC   1C1  1O1  2C1  2O5    1.3693  115.54  -79.64  103.31   1.4023
+IC   1O1  2C1  2O5  2C5    1.3686  103.31  172.18  110.20   1.4519
+IC   2O5  1O1  *2C1 2H1    1.4023  103.31  127.53  109.38   1.0973
+
+! axial-axial 1->2 linkage
+! use for FABYOW axial mannopyranose
+PRES 12aa           0.02 ! (i)1->2(i-1) axial at C1 and axial at C2
+dele atom 1HO2
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C2  CC3161    0.09 !
+ATOM 1O2  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O2  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C1  1C2  1O2  2C1    1.4748  111.74 -132.81  112.92   1.4036  ! psi
+IC   1C2  1O2  2C1  2O5    1.4675  112.92   47.16  109.48   1.4290  ! phi
+IC   1O2  2O5 *2C1  2C2    1.4040  109.52 -123.53  112.51   1.5077
+IC   2O5  1O2 *2C1  2H1    1.4290  109.48 -116.61  107.55   1.1057
+
+! axial-equatorial 1->2 linkage
+! use for RESMOR alpha mannose (1->2) beta glucose
+PRES 12ab           0.02 ! (i)1->2(i-1) axial at C1 and equatorial at C2
+dele atom 1HO2
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C2  CC3161    0.09 !
+ATOM 1O2  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O2  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C1  1C2  1O2  2C1    1.5772  113.82  115.32  117.71   1.4039  ! psi
+IC   1C2  1O2  2C1  2O5    1.4740  117.71   86.93  109.52   1.3790  ! phi
+IC   1O2  2O5 *2C1  2C2    1.4042  109.49 -123.49  112.48   1.5063
+IC   2O5  1O2 *2C1  2H1    1.3790  109.52 -116.62  107.54   1.1057
+
+! equatorial-axial 1->2 linkage
+PRES 12ba           0.02 ! (i)1->2(i-1) equatorial at C1 and axial at C2
+dele atom 1HO2
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C2  CC3161    0.09 !
+ATOM 1O2  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O2  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C1  1C2  1O2  2C1    1.4742  111.77 -132.78  118.52   1.3902  ! psi
+IC   1C2  1O2  2C1  2O5    1.5137  118.52 -168.07  108.63   1.4500  ! phi
+IC   1O2  2O5 *2C1  2C2    1.3903  108.62  122.16  110.89   1.5315
+IC   2O5  1O2 *2C1  2H1    1.4500  108.63  121.92  111.32   1.0837
+
+! equatorial-equatorial 1->2 linkage
+PRES 12bb           0.02 ! (i)1->2(i-1) equatorial at C1 and equatorial at C2
+dele atom 1HO2
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C2  CC3161    0.09 !
+ATOM 1O2  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O2  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C1  1C2  1O2  2C1    1.5351  110.95  117.14  118.52   1.3902  ! psi
+IC   1C2  1O2  2C1  2O5    1.5137  118.52 -168.07  108.63   1.4500  ! phi
+IC   1O2  2O5 *2C1  2C2    1.3904  108.66  122.06  110.85   1.5320
+IC   2O5  1O2 *2C1  2H1    1.4500  108.63  121.92  111.32   1.0837
+
+! axial-axial 1->3 linkage
+PRES 13aa           0.02 ! (i)1->3(i-1) axial at C1 and axial at C3
+dele atom 1HO3
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C3  CC3161    0.09 !
+ATOM 1O3  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O3  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1C3  1O3  2C1    1.5128  108.83  113.29  116.91   1.4039  ! psi
+IC   1C3  1O3  2C1  2O5    1.5110  116.91   65.46  109.52   1.4630  ! phi
+IC   1O3  2O5 *2C1  2C2    1.4040  109.53 -123.55  112.55   1.5070
+IC   2O5  1O3 *2C1  2H1    1.4630  109.52 -116.62  107.54   1.1057
+
+!axial-equatorial 1->3 linkage
+! nigerose MOGLPR
+PRES 13ab           0.02 ! (i)1->3(i-1) axial at C1 and equatorial at C3
+dele atom 1HO3
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C3  CC3161    0.09 !
+ATOM 1O3  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O3  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1C3  1O3  2C1    1.5353  112.07 -141.32  116.91   1.4039  ! psi
+IC   1C3  1O3  2C1  2O5    1.5110  116.91   65.46  109.52   1.4630  ! phi
+IC   1O3  2O5 *2C1  2C2    1.4039  109.51 -123.50  112.49   1.5071
+IC   2O5  1O3 *2C1  2H1    1.4630  109.52 -116.62  107.54   1.1057
+
+!equatorial-axial 1->3 linkage
+PRES 13ba           0.02 ! (i)1->3(i-1) equatorial at C1 and axial at C3
+dele atom 1HO3
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C3  CC3161    0.09 !
+ATOM 1O3  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O3  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1C3  1O3  2C1    1.4976  117.50 -131.68  120.58   1.3902  ! psi
+IC   1C3  1O3  2C1  2O5    1.4319  120.58 -100.16  108.63   1.4470  ! phi
+IC   1O3  2O5 *2C1  2C2    1.3908  108.59  122.06  110.90   1.5312
+IC   2O5  1O3 *2C1  2H1    1.4470  108.63  121.92  111.32   1.0837
+
+! equatorial (1->3) linkage
+! LAMBIO3 beta glucose (1->3) beta glucose
+PRES 13bb           0.02 ! (i)1->3(i-1) equatorial at C1 and equatorial at C3
+dele atom 1HO3
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C3  CC3161    0.09 !
+ATOM 1O3  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O3  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1C3  1O3  2C1    1.5129  108.83 -131.68  123.77   1.3902  ! psi
+IC   1C3  1O3  2C1  2O5    1.4801  123.77 -130.16  108.63   1.4780  ! phi
+IC   1O3  2O5 *2C1  2C2    1.3900  108.61  122.15  110.90   1.5311
+IC   2O5  1O3 *2C1  2H1    1.4780  108.63  121.92  111.32   1.0837
+
+! axial-axial 1->4 linkage
+! use when both units are galactose
+! CITSIH10
+PRES 14aa           0.02 ! (i)1->4(i-1) axial at C1 and axial at C4
+dele atom 1HO4
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C4  CC3161    0.09 !
+ATOM 1O4  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O4  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C3  1C4  1O4  2C1    1.5075  110.40  -86.29  119.44   1.4036  ! psi
+IC   1C4  1O4  2C1  2O5    1.4716  119.44  133.57  109.48   1.4490  ! phi
+IC   1O4  2O5 *2C1  2C2    1.4043  109.49 -123.48  112.48   1.5071
+IC   2O5  1O4 *2C1  2H1    1.4490  109.48 -116.61  107.55   1.1057
+
+
+! axial-equatorial 1->4 linkage
+! use for MALTOS11
+PRES 14ab           0.02 ! (i)1->4(i-1) axial at C1 and equatorial at C4
+dele atom 1HO4
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C4  CC3161    0.09 !
+ATOM 1O4  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O4  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C3  1C4  1O4  2C1    1.5010  117.73   72.71  118.66   1.4036  ! psi
+IC   1C4  1O4  2C1  2O5    1.4919  118.66   48.64  109.48   1.4570  ! phi
+IC   1O4  2O5 *2C1  2C2    1.4035  109.46 -123.53  112.47   1.5061
+IC   2O5  1O4 *2C1  2H1    1.4570  109.48 -116.61  107.55   1.1057
+
+! equatorial-axial 1->4 linkage
+PRES 14ba           0.02 ! (i)1->4(i-1) equatorial at C1 and axial at C4
+dele atom 1HO4
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C4  CC3161    0.09 !
+ATOM 1O4  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O4  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C3  1C4  1O4  2C1    1.5071  110.40  -86.30  121.00   1.3902  ! psi
+IC   1C4  1O4  2C1  2O5    1.4560  121.00 -130.97  108.63   1.4470  ! phi
+IC   1O4  2O5 *2C1  2C2    1.3906  108.61  122.12  110.87   1.5314
+IC   2O5  1O4 *2C1  2H1    1.4470  108.63  121.92  111.32   1.0837
+
+! equatorial-equatorial 1->4 linkage
+! LACTOS03, EYOCUQ01, CELLOB01
+PRES 14bb           0.02 ! (i)1->4(i-1) equatorial at C1 and equatorial at C4
+dele atom 1HO4
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C4  CC3161    0.09 !
+ATOM 1O4  OC301    -0.36 !
+ATOM 2C1  CC3162    0.29 !
+BOND 1O4  2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C3  1C4  1O4  2C1    1.5009  110.76   81.86  121.00   1.3902  ! psi
+IC   1C4  1O4  2C1  2O5    1.4560  121.00 -130.97  108.63   1.4470  ! phi
+IC   1O4  2O5 *2C1  2C2    1.3896  108.63  122.12  110.87   1.5318
+IC   2O5  1O4 *2C1  2H1    1.4470  108.63  121.92  111.32   1.0837
+
+! axial-equatorial 1->6 linkage
+! MELBM01
+! galactose and glucose
+! alpha,beta mellibiose hydrate
+PRES 16aa          -0.07 ! (i)1->6(i-1) axial at C1 and equatorial at C6
+dele atom 1HO6
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C6   CC321    0.00 !
+ATOM 1O6   OC301   -0.36 !
+ATOM 2C1   CC3162   0.29 !
+BOND 1O6 2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C5  1C6  1O6  2C1    1.5266  104.41  178.98  111.56   1.4036 ! PSI
+IC   1C6  1O6  2C1  2O5    1.4492  111.56   71.24  109.48   1.4270 ! PHI
+IC   1O6  2O5 *2C1  2C2    1.4036  109.48 -123.55  112.46   1.5066
+IC   2O5  1O6 *2C1  2H1    1.4270  109.48 -116.57  107.58   1.1054
+
+! equatorial-equatorial 1->6 linkage
+! GENTBSO1
+PRES 16ab          -0.07 ! (i)1->6(i-1) equatorial at C1 and equatorial at C6
+dele atom 1HO6
+dele atom 2HO1
+dele atom 2O1
+ATOM 1C6   CC321    0.00 !
+ATOM 1O6   OC301   -0.36 !
+ATOM 2C1   CC3162   0.29 !
+BOND 1O6 2C1
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C5  1C6  1O6  2C1    1.5616  105.37  172.71  113.93   1.3902 ! PSI
+IC   1C6  1O6  2C1  2O5    1.4311  113.93  -63.49  108.63   1.4110 ! PHI
+IC   1O6  2O5 *2C1  2C2    1.3896  108.67  122.13  110.86   1.5323
+IC   2O5  1O6 *2C1  2H1    1.4110  108.63  121.92  111.32   1.0837
+
+PRES SUCR           0.00 ! pram; make sucrose, apply to AGLC,BFRU
+dele atom 1HO1
+dele atom 2O2
+dele atom 2HO2
+GROU
+ATOM 1C1  CC3162    0.29 !
+ATOM 1O1  OC302    -0.36 !
+ATOM 2C2  CC3051    0.38 !
+ATOM 1H1  HCA1      0.09 !
+ATOM 1C5  CC3163    0.11 !
+ATOM 1H5  HCA1      0.09 !
+ATOM 1O5  OC3C61   -0.40 !
+ATOM 2O5  OC3C51   -0.40 !
+ATOM 2C5  CC3153    0.11 !
+ATOM 2H5  HCA1      0.09 !
+BOND 1O1  2C2
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1O5  1C1  1O1  2C2    1.4300  108.97  106.13  115.17   1.4632
+IC   1C1  1O1  2C2  2O5    1.4159  115.17  -47.60  114.57   1.3880
+IC   1O1  2C2  2O5  2C5    1.4632  114.57 -100.55  109.86   1.4233
+IC   2O5  1O1  *2C2 2C1    1.3880  114.57  121.04  106.87   1.5052
+
+PRES LCTL           0.02 ! pram; make lactulose, apply to BGAL,BFRU
+dele atom 1HO1
+dele atom 2O4
+dele atom 2HO4
+ATOM 1C1  CC3162    0.29 !
+ATOM 1O1  OC303    -0.36 !
+ATOM 2C4  CC3151    0.09 !
+BOND 1O1  2C4
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1O5  1C1  1O1  2C4    1.4515  114.15  -92.26  115.45   1.4008
+IC   1C1  1O1  2C4  2C5    1.4006  115.45  176.86  109.78   1.5389
+IC   1O1  2C4  2C5  2O5    1.4008  109.78 -135.17  108.07   1.4194
+IC   2C5  1O1  *2C4 2H4    1.5389  109.78  128.08  113.16   1.1120
+
+PRES AB15          -0.07 ! pram; make 1->5 arabinose disac without methylation, apply to AARB,AARB
+dele atom 1HO1           ! angl and dihe params associated in this linkage have not been explicitly validated
+dele atom 2O5            ! using crystals. crystal validation was done on fructofuranose based di/poly-saccharides
+dele atom 2HO5
+ATOM 1C1  CC3152    0.29 !
+ATOM 1O1  OC301    -0.36 !
+ATOM 2C5  CC321     0.00 !
+BOND 1O1  2C5
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1O4  1C1  1O1  2C5    1.4560  110.35   75.44  112.98   1.4384
+IC   1C1  1O1  2C5  2C4    1.3759  112.98  148.61  111.00   1.4291
+IC   1O1  2C5  2C4  2O4    1.4384  111.00  -56.56  107.21   1.4617
+IC   1O1  2C4 *2C5  2H51   1.4384  111.00  113.48  107.52   1.1042
+IC   1O1  2C4 *2C5  2H52   1.4384  111.00 -131.84  115.17   1.1078
+
+
+PRES SA23AB         0.01 ! og sialic acid alpha 2->3 equatorial
+dele atom 1HO3
+dele atom 2HO2
+dele atom 2O2
+ATOM 1C3  CC3161    0.09 !
+ATOM 1O3  OC301    -0.36 !
+ATOM 2C2  CC3062    0.28 !
+BOND 1O3  2C2
+!    I    J    K    L      R(IK)   T(IKJ)    PHI   T(JKL)   R(KL)
+IC   1C2  1C3  1O3  2C2    1.5353  112.07 -141.32  116.91   1.4039  ! psi
+IC   1C3  1O3  2C2  2O6    1.5110  116.91  -65.46  109.52   1.4630  ! phi
+IC   1O3  2O6 *2C2  2C3    1.4039  109.54 -123.58  112.55   1.5066

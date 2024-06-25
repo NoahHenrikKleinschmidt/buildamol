@@ -2,20 +2,20 @@
 Test the behaviour of CHARMM force fields and the abstract classes that store their behaviour
 """
 
-import biobuild as bb
+import buildamol as bam
 import tests.base as base
 
 
 def test_default_settings():
-    top = bb.resources.get_default_topology()
+    top = bam.resources.get_default_topology()
     assert top is not None, "No topology is made"
 
 
 def test_make_charmm_topology():
-    top = bb.resources.charmm.CHARMMTopology()
+    top = bam.resources.charmm.CHARMMTopology()
     assert top is not None, "No topology is made"
 
-    top = bb.resources.charmm.CHARMMTopology.from_file(base.CHARMM_TOPOLOGY_FILE)
+    top = bam.resources.charmm.CHARMMTopology.from_file(base.CHARMM_TOPOLOGY_FILE)
     assert top is not None, "No topology is made"
 
     assert len(top.patches) == 38
@@ -30,7 +30,7 @@ def test_make_charmm_topology():
 
 
 # def test_residue():
-#     top = bb.resources.get_default_topology()
+#     top = bam.resources.get_default_topology()
 
 #     assert top.has_residue("MAN"), "No mannose found!"
 #     man = top.get_residue("MAN")
