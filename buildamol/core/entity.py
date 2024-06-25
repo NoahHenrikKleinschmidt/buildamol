@@ -802,7 +802,7 @@ class BaseEntity:
         viewer.view.setStyle(viewer.style)
         return viewer
 
-    def chem2dview(self):
+    def chem2dview(self, *args, **kwargs):
         """
         View the molecule in 2D through RDKit
         """
@@ -810,11 +810,11 @@ class BaseEntity:
 
     draw2d = chem2dview
 
-    def show2d(self):
+    def show2d(self, *args, **kwargs):
         """
         View the molecule in 2D through RDKit
         """
-        viewer = self.chem2dview()
+        viewer = self.draw2d(*args, **kwargs)
         viewer.show()
 
     def plotly(
