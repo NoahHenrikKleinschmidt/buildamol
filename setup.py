@@ -5,14 +5,14 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="buildamol",
-    version="1.1.64",
+    version="1.1.65",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A fragment-based molecular assembly toolkit for python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={
-        "buildamol.resources": ["*.pkl", "*.json", "*.cif"],
+        "buildamol.resources": ["*.pkl", "*.json", "*.cif", "*.xml"],
     },
     url="https://github.com/NoahHenrikKleinschmidt/buildamol",
     packages=[
