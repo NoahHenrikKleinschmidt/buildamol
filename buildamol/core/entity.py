@@ -985,6 +985,33 @@ class BaseEntity:
             )
         )
 
+    def has_clashes(self,
+                    clash_threshold: float = 1.0,
+                    ignore_hydrogens: bool = True,
+                    coarse_precheck: bool = True) -> bool:
+        """
+        Check if the molecule has any clashes.
+
+        Parameters
+        ----------
+        clash_threshold : float, optional
+            The minimal allowed distance between two atoms (in Angstrom).
+        ignore_hydrogens : bool, optional
+            Whether to ignore clashes with hydrogen atoms (default: True)
+        coarse_precheck : bool, optional
+            If set to True a coarse-grained pre-screening on residue-level is done
+            to speed up the computation. This may cause the sytem to overlook clashes if
+            individual residues are particularly large, however (e.g. lipids with long carbon chains).
+
+        Returns
+        -------
+        bool
+            True if there are clashes, False otherwise.
+        """
+        return next(structural.find_clashes_between(
+                self, self, clash_threshold, ignore_hydrogens, coarse_precheck
+            ), None) is not None
+
     def copy(self, n: int = 1) -> list:
         """
         Create one or multiple deepcopy of the molecule
@@ -2352,9 +2379,9 @@ class BaseEntity:
         residues
             The residues' id, seqid or full_id tuple. If None is passed, the iterator over all residues is returned.
         by : str
-            The type of parameter to search for. Can be either 'name', 'seqid' or 'full_id'
+            The type of parameter to search for. Can be either 'name', 'seqid' (or 'serial') or 'full_id'
             By default, this is inferred from the datatype of the residue parameter.
-            If it is an integer, it is assumed to be the sequence identifying number,
+            If it is an integer, it is assumed to be the sequence identifying number (serial number),
             if it is a string, it is assumed to be the residue name and if it is a tuple, it is assumed
             to be the full_id.
         chain : str
@@ -2384,22 +2411,18 @@ class BaseEntity:
                     continue
 
             if by is None:
-                if isinstance(residue, int):
-                    by = "seqid"
-                elif isinstance(residue, str):
-                    by = "name"
-                elif isinstance(residue, tuple):
-                    by = "full_id"
-                else:
-                    raise ValueError(
-                        f"Cannot infer search parameter from residue query '{residue}', provide `by` manually: 'name', 'seqid' or 'full_id'"
-                    )
+                by = infer_search_param(residue)
+            if by == "id": 
+                by = "name"
+            elif by == "seqid":
+                by = "serial"
+             
 
             if by == "name":
                 _residue = [
                     i for i in self._model.get_residues() if i.resname == residue
                 ]
-            elif by == "seqid":
+            elif by == "serial":
                 if residue < 0:
                     residue = len(self.residues) + residue + 1
                 _residue = [i for i in self._model.get_residues() if i.id[1] == residue]
@@ -2502,7 +2525,7 @@ class BaseEntity:
             only one type of parameter is supported per call. If left empty, the underlying generator is returned.
 
         by : str
-            The type of parameter to search for. Can be either 'id', 'serial' or 'full_id'
+            The type of parameter to search for. Can be either 'id', 'serial', 'full_id', or 'element'
             If None is given, the parameter is inferred from the datatype of the atoms argument
             'serial' in case of `int`, 'id' in case of `str`, `full_id` in case of a tuple.
 
@@ -2522,23 +2545,31 @@ class BaseEntity:
             The atom(s)
         """
         if len(atoms) == 0:
+            if residue is not None:
+                _residue = self.get_residue(residue)
+                if _residue is None:
+                    raise ValueError(f"Residue {residue} not found")
+                return _residue.get_atoms()
+            if filter is not None:
+                return (a for a in self._model.get_atoms() if filter(a))
             return self._model.get_atoms()
+
         elif len(atoms) == 1 and isinstance(atoms[0], (list, set, tuple)):
             atoms = atoms[0]
 
+        if isinstance(atoms[0], base_classes.Atom):
+            atoms_to_keep = [i for i in atoms if i.parent.parent.parent is self._model]
+            atoms_to_get = [i.full_id for i in set(atoms) - set(atoms_to_keep)]
+            atoms_to_get = self.get_atoms(atoms_to_get, by="full_id", residue=residue)
+            _atoms = atoms_to_keep + atoms_to_get
+            if filter:
+                _atoms = [a for a in _atoms if filter(a)]
+            if keep_order:
+                return sorted(_atoms, key=lambda x: atoms.index(x))
+            return _atoms
+
         if by is None:
-            if isinstance(atoms[0], int):
-                by = "serial"
-            elif isinstance(atoms[0], str):
-                by = "id"
-            elif isinstance(atoms[0], tuple):
-                by = "full_id"
-            elif isinstance(atoms[0], base_classes.Atom):
-                return atoms
-            else:
-                raise ValueError(
-                    f"Unknown search parameter, must be either 'id', 'serial' or 'full_id' -> erroneous input: {atoms=}"
-                )
+            by = infer_search_param(atoms[0])
 
         if residue is not None:
             _residue = self.get_residue(residue)
@@ -2629,16 +2660,7 @@ class BaseEntity:
             atom_gen = self._model.get_atoms
 
         if by is None:
-            if isinstance(atom, (int, np.int64)):
-                by = "serial"
-            elif isinstance(atom, str):
-                by = "id"
-            elif isinstance(atom, tuple):
-                by = "full_id"
-            else:
-                raise ValueError(
-                    f"Unknown search parameter, must be either 'id', 'serial' or 'full_id' -> erroneous input: {atom=}"
-                )
+            by = infer_search_param(atom)
 
         if by == "id":
             _atom = (i for i in atom_gen() if i.id == atom)
@@ -2795,9 +2817,9 @@ class BaseEntity:
         residue
             The residue id, seqid or full_id tuple
         by : str
-            The type of parameter to search for. Can be either 'name', 'seqid' or 'full_id'
+            The type of parameter to search for. Can be either 'name', 'serial' (or 'seqid') or 'full_id'
             By default, this is inferred from the datatype of the residue parameter.
-            If it is an integer, it is assumed to be the sequence identifying number,
+            If it is an integer, it is assumed to be the sequence identifying number (serial number),
             if it is a string, it is assumed to be the residue name and if it is a tuple, it is assumed
             to be the full_id.
         chain : str
@@ -2812,23 +2834,18 @@ class BaseEntity:
             if residue.parent.parent is self._model:
                 return residue
             else:
-                return self.get_residue(residue.id[1], by="seqid", chain=chain)
+                return self.get_residue(residue.id[1], by="serial", chain=chain)
 
         if by is None:
-            if isinstance(residue, int):
-                by = "seqid"
-            elif isinstance(residue, str):
-                by = "name"
-            elif isinstance(residue, tuple):
-                by = "full_id"
-            else:
-                raise ValueError(
-                    f"Cannot infer search parameter from residue query '{residue}', provide `by` manually: 'name', 'seqid' or 'full_id'"
-                )
+            by = infer_search_param(residue)
+        if by == "id":
+            by = "name"
+        elif by == "seqid":
+            by = "serial"
 
         if by == "name":
             _residue = (i for i in self._model.get_residues() if i.resname == residue)
-        elif by == "seqid":
+        elif by == "serial":
             if residue < 0:
                 residue = len(self.residues) + residue + 1
             _residue = (i for i in self._model.get_residues() if i.id[1] == residue)
@@ -2840,7 +2857,7 @@ class BaseEntity:
             )
         else:
             raise ValueError(
-                f"Unknown search parameter, must be either 'name', 'seqid' or 'full_id' -> erroneous input: {residue=}"
+                f"Unknown search parameter, must be either 'name', 'seqid'/'serial', or 'full_id' -> erroneous input: {residue=}"
             )
         if chain is not None:
             chain = self.get_chain(chain)
@@ -3781,7 +3798,8 @@ class BaseEntity:
             bonds = [
                 bond
                 for bond in bonds
-                if bond not in self._locked_bonds and not self._AtomGraph.in_same_cycle(*bond)
+                if bond not in self._locked_bonds
+                and not self._AtomGraph.in_same_cycle(*bond)
             ]
             return bonds
         return [b for b in bonds]
@@ -4680,6 +4698,20 @@ def should_invert(bond, direct_connecting_atoms):
         elif atom1.serial_number > atom2.serial_number:
             return True
     return False
+
+
+def infer_search_param(input):
+    """
+    Infer the search parameter 'by' for the get_atoms/residues etc. methods
+    """
+    if isinstance(input, (int, np.int64, np.int16, np.int32, np.int8)):
+        return "serial"
+    elif isinstance(input, str):
+        return "id"
+    elif isinstance(input, (tuple, list)):
+        return "full_id"
+    else:
+        raise ValueError(f"Could not infer search parameter for {input}")
 
 
 if __name__ == "__main__":
