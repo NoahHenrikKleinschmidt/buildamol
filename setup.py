@@ -5,9 +5,9 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="buildamol",
-    version="1.1.65",
+    version="1.1.66",
     author="Noah H. Kleinschmidt",
-    author_email="noah.kleinschmidt@students.unibe.ch",
+    author_email="noah.kleinschmidt@unibe.ch",
     description="A fragment-based molecular assembly toolkit for python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
