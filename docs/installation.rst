@@ -17,8 +17,8 @@ If you want to install BuildAMol from source, you can clone the repository and i
 
 .. code-block:: bash
 
-   git clone https://github.com/NoahHenrikKleinschmidt/biobuild
-   cd biobuild
+   git clone https://github.com/NoahHenrikKleinschmidt/buildamol
+   cd buildamol
    pip install .
 
 Optional dependencies
