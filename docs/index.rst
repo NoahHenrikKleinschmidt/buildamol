@@ -17,6 +17,10 @@
     </div>
 
     <div class="mySlides fade">
+        <img src="_static/gallery/conf_samples.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
         <img src="_static/gallery/polyphenylene.png" style="width:100%">
     </div>
 

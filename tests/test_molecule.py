@@ -64,7 +64,7 @@ def test_molecule_basic():
 
 
 def test_can_read_xml():
-    mol = bam.Molecule.from_pdb(base.GLCXML)
+    mol = bam.Molecule.from_xml(base.GLCXML)
     assert mol.count_atoms() > 0
     assert mol.count_bonds() > 0
     if base.ALLOW_VISUAL:
