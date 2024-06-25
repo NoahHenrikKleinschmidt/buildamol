@@ -19,7 +19,7 @@ bam.load_sugars()
 
 
 def test_atom_graph_from_molecule():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.infer_bonds()
     mol.lock_all()
     graph = bam.graphs.AtomGraph.from_molecule(mol)
@@ -38,7 +38,7 @@ def test_atom_graph_from_molecule():
 
 
 def test_atom_graph_pdb_one_residue_is_non_empty():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.infer_bonds()
     mol = bam.graphs.AtomGraph.from_molecule(mol)
     _received = len(list(mol.bonds))
@@ -51,7 +51,7 @@ def test_atom_graph_pdb_one_residue_is_non_empty():
 
 
 def test_atom_graph_pdb_multi_residue_is_non_empty():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds()
     mol = bam.graphs.AtomGraph.from_molecule(mol)
     _received = len(list(mol.bonds))
@@ -63,7 +63,7 @@ def test_atom_graph_pdb_multi_residue_is_non_empty():
 
 
 def test_atom_graph_one_residue_get_neighbors():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.infer_bonds()
     graph = bam.graphs.AtomGraph.from_molecule(mol)
 
@@ -83,7 +83,7 @@ def test_atom_graph_one_residue_get_neighbors():
 
 
 def test_atom_graph_multi_residue_get_neighbors():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds()
     graph = bam.graphs.AtomGraph.from_molecule(mol)
 
@@ -103,7 +103,7 @@ def test_atom_graph_multi_residue_get_neighbors():
 
 
 def test_atom_graph_get_descendants():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.infer_bonds()
     mol = bam.graphs.AtomGraph.from_molecule(mol)
 
@@ -152,7 +152,7 @@ def test_atom_graph_get_descendants():
 
 
 def test_atom_graph_rotate_descendants_only():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.infer_bonds()
     graph = bam.graphs.AtomGraph.from_molecule(mol)
 
@@ -180,12 +180,13 @@ def test_atom_graph_rotate_descendants_only():
         current_descendants, new_descendants
     ), "Descendants have not moved"
 
-    v.draw_points([i.coord for i in graph.nodes])
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.draw_points([i.coord for i in graph.nodes])
+        v.show()
 
 
 def test_atom_graph_rotate_all():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.infer_bonds()
     mol = bam.graphs.AtomGraph.from_molecule(mol)
 
@@ -220,23 +221,24 @@ def test_atom_graph_rotate_all():
 
 
 def test_residue_graph_from_molecule():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.reindex()
     mol.infer_bonds(restrict_residues=False)
     mol.get_residue_connections()
     mol.lock_all()
     graph_simple = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
-    v = mol.draw()
-    for edge in mol.get_residue_connections():
-        v.draw_vector(
-            f"""{edge[0].full_id[3:]} ---> {edge[1].full_id[3:]}""",
-            edge[0].coord,
-            edge[1].coord,
-            color="magenta",
-            elongate=1.2,
-        )
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = mol.draw()
+        for edge in mol.get_residue_connections():
+            v.draw_vector(
+                f"""{edge[0].full_id[3:]} ---> {edge[1].full_id[3:]}""",
+                edge[0].coord,
+                edge[1].coord,
+                color="magenta",
+                elongate=1.2,
+            )
+        v.show()
 
     assert graph_simple is not None, "No molecule is made"
 
@@ -246,18 +248,20 @@ def test_residue_graph_from_molecule():
 
     assert len(graph_simple._locked_edges) == 0, "Molecule is not locked"
 
-    v = graph_simple.draw()
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = graph_simple.draw()
+        v.show()
 
     graph_detailed = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
     graph_detailed.make_detailed(False)
     assert graph_detailed is not None, "No molecule is made"
 
     graph_detailed.lock_centers()
-    v = graph_detailed.draw()
-    v.draw_edges(*graph_detailed.get_locked_edges(), color="magenta")
-    v.draw_edges(*graph_detailed.get_unlocked_edges(), color="limegreen")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = graph_detailed.draw()
+        v.draw_edges(*graph_detailed.get_locked_edges(), color="magenta")
+        v.draw_edges(*graph_detailed.get_unlocked_edges(), color="limegreen")
+        v.show()
 
     _received = len(list(graph_detailed.bonds))
     _expected = 40
@@ -265,12 +269,12 @@ def test_residue_graph_from_molecule():
 
 
 def test_residue_graph_multi_residue_get_neighbors():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
 
     graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
     graph.make_detailed(False)
-    graph.show()
+    # graph.show()
 
     pytest.raises(KeyError, graph.get_neighbors, "C1")
 
@@ -315,19 +319,19 @@ def test_residue_graph_multi_residue_get_neighbors():
 
 
 def test_residue_graph_residue_order():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     mol = mol.make_residue_graph(detailed=False)
 
-    mol2 = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol2 = bam.Molecule.from_pdb(base.MAN9PDB)
     mol2.infer_bonds(restrict_residues=False)
     mol2 = mol2.make_residue_graph(detailed=False)
 
-    mol3 = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol3 = bam.Molecule.from_pdb(base.MAN9PDB)
     mol3.infer_bonds(restrict_residues=False)
     mol3 = mol3.make_residue_graph(detailed=False)
 
-    mol4 = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol4 = bam.Molecule.from_pdb(base.MAN9PDB)
     mol4.infer_bonds(restrict_residues=False)
     mol4 = mol4.make_residue_graph(detailed=False)
 
@@ -345,7 +349,7 @@ def test_residue_graph_residue_order():
 
 
 def test_residue_graph_get_descendants():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
@@ -354,9 +358,10 @@ def test_residue_graph_get_descendants():
     nag2 = mol.residues[0]
     nag3 = mol.residues[1]
 
-    v.draw_point("nag2", nag2.coord, color="red")
-    v.draw_point("nag3", nag3.coord, color="blue")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.draw_point("nag2", nag2.coord, color="red")
+        v.draw_point("nag3", nag3.coord, color="blue")
+        v.show()
 
     _received = graph.get_descendants(nag2, nag3)
     _received = len(_received)
@@ -382,7 +387,7 @@ def test_residue_graph_get_descendants():
 
 
 def test_get_descendants_sets():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
@@ -391,9 +396,10 @@ def test_get_descendants_sets():
     nag2 = mol.residues[0]
     nag3 = mol.residues[1]
 
-    v.draw_point("nag2", nag2.coord, color="red")
-    v.draw_point("nag3", nag3.coord, color="blue")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.draw_point("nag2", nag2.coord, color="red")
+        v.draw_point("nag3", nag3.coord, color="blue")
+        v.show()
 
     all_serials = {i.serial_number for i in mol.residues}
 
@@ -443,7 +449,7 @@ def test_get_descendants_sets():
 
 
 def test_residue_graph_rotate_descendants_only():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
@@ -473,11 +479,12 @@ def test_residue_graph_rotate_descendants_only():
         current_descendants, new_descendants
     ), "Descendants have not moved"
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_residue_graph_rotate_descendants_only_detailed():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=True)
 
@@ -512,12 +519,13 @@ def test_residue_graph_rotate_descendants_only_detailed():
         ), "Descendants have not moved"
 
     t2 = timeit.timeit()
-    v.show()
     print("Total: ", t2 - t1)
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_residue_graph_rotate_all():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
@@ -547,7 +555,7 @@ def test_residue_graph_rotate_all():
 
 
 def test_residue_graph_detailed():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     mol = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
@@ -561,7 +569,7 @@ def test_residue_graph_detailed():
 
 
 def test_residue_graph_detailed_get_neighbors():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     graph = bam.graphs.ResidueGraph.from_molecule(mol, detailed=False)
     graph.make_detailed(False)
@@ -623,7 +631,7 @@ def test_atom_graph_lock():
 
 
 def test_sample_edges():
-    mol = bam.Molecule.from_pdb(base.MANNOSE9)
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     graph = mol.get_residue_graph(True)
     edges = graph.find_rotatable_edges(min_descendants=10)

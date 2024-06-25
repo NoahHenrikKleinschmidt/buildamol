@@ -13,15 +13,17 @@ bam.load_amino_acids()
 
 import tests.base as base
 
+# set ALLOW_VISUAL to True to allow visual tests
+
 
 def test_molecule_basic():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     assert mol is not None
 
     assert len(mol.atoms) == 24
     assert len(mol.bonds) == 0
 
-    _mol = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
+    _mol = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANPDB)
     mol = bam.Molecule(_mol)
     assert mol is not None
 
@@ -61,12 +63,12 @@ def test_molecule_basic():
     assert a is b
 
 
-def test_can_read_pdb():
-    f = "/Users/noahhk/GIT/biobuild/ligtestaux.pdb"
-    mol = bam.Molecule.from_pdb(f)
+def test_can_read_xml():
+    mol = bam.Molecule.from_pdb(base.GLCXML)
     assert mol.count_atoms() > 0
     assert mol.count_bonds() > 0
-    mol.show()
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_can_write_pdb():
@@ -120,8 +122,8 @@ def test_molecule_from_compound():
 
 
 def test_atomgraph_sync():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
-    mol2 = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    mol2 = bam.Molecule.from_pdb(base.MANPDB)
 
     mol.apply_standard_bonds()
     mol2.apply_standard_bonds()
@@ -159,7 +161,7 @@ def test_atomgraph_sync():
 
 
 def test_molecule_bonds():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
 
     assert len(mol.bonds) == 0
 
@@ -177,9 +179,8 @@ def test_molecule_get_bonds():
     glc = bam.Molecule.from_compound("GLC")
     glc.repeat(2, "14bb")
 
-    v = glc.draw()
-    v.show()
     assert len(glc.bonds) == 46
+    v = glc.draw()
 
     b = glc.get_bonds("O4")
     v.draw_edges(*b, color="red")
@@ -189,11 +190,13 @@ def test_molecule_get_bonds():
     b = glc.get_bonds("O4", c1)
     v.draw_edges(*b, color="green")
     assert len(b) == 1
-    v.show()
+
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_angles():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.apply_standard_bonds()
 
     # top = bam.resources.get_default_topology()
@@ -217,7 +220,7 @@ def test_angles():
 
 
 def test_dihedrals():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.apply_standard_bonds()
 
     # top = bam.resources.get_default_topology()
@@ -240,7 +243,7 @@ def test_dihedrals():
 
 
 def test_add_atoms():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.apply_standard_bonds()
 
     pre = len(mol.atoms)
@@ -280,7 +283,7 @@ def test_remove_residues():
 
 
 def test_add_residues():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.apply_standard_bonds()
 
     other = bam.Molecule.from_compound("GLC")
@@ -324,7 +327,7 @@ def test_add_residues():
 
 
 def test_get_descendants():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.apply_standard_bonds()
 
     descendants = mol.get_descendants("C5", "C6")
@@ -343,7 +346,7 @@ def test_get_descendants():
 
 
 def test_rotate_all():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.apply_standard_bonds()
 
     first = mol.get_atom("O3")
@@ -420,11 +423,12 @@ def test_rotate_some():
         for atom in mol.atoms:
             v.draw_point(atom.id, atom.coord, opacity=0.4, showlegend=False)
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_rotate_some_inverse():
-    mol = bam.Molecule.from_pdb(base.MANNOSE)
+    mol = bam.Molecule.from_pdb(base.MANPDB)
     mol.apply_standard_bonds()
 
     first = mol.get_atom("O3")
@@ -640,8 +644,8 @@ def test_multiply_with_patch():
     for angle in man.compute_angles().values():
         assert 100 < angle < 130
 
-    v = man.draw()
-    v.show()
+    if base.ALLOW_VISUAL:
+        man.show()
 
 
 def test_multiply_with_recipe():
@@ -684,7 +688,8 @@ def test_multiply_with_recipe():
     for angle in man.compute_angles().values():
         assert 100 < angle < 130
 
-    man.show()
+    if base.ALLOW_VISUAL:
+        man.show()
 
 
 def test_repeat():
@@ -716,8 +721,8 @@ def test_repeat():
     for angle in man.compute_angles().values():
         assert 100 < angle < 130
 
-    v = man.draw()
-    v.show()
+    if base.ALLOW_VISUAL:
+        man.show()
 
 
 def test_repeat_with_recipe():
@@ -739,9 +744,6 @@ def test_repeat_with_recipe():
     n = 10
     man = man.repeat(n, recipe)
 
-    v = man.draw()
-    v.show()
-
     new_residues = len(man.residues)
     new_atoms = len(man.atoms)
     new_bonds = len(man.bonds)
@@ -760,6 +762,9 @@ def test_repeat_with_recipe():
     # test that the new molecule has no weird bond angles
     for angle in man.compute_angles().values():
         assert 100 < angle < 130
+
+    if base.ALLOW_VISUAL:
+        man.show()
 
 
 def test_make_mannose8():
@@ -848,7 +853,8 @@ def test_make_mannose8():
 
     v.draw_edges(*man8.get_residue_connections(triplet=True), color="red", linewidth=3)
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
     g = man8.make_residue_graph(detailed=False)
     g2 = man8.make_residue_graph(detailed=True)
@@ -857,10 +863,12 @@ def test_make_mannose8():
     assert len(g.nodes) < len(g2.nodes)
 
     v = g.draw()
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
     v = g2.draw()
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
     try:
         man8.to_pdb("man8.pdb")
@@ -919,7 +927,7 @@ def test_make_mannose8_2():
     man8 @ -2 % "16ab"
     man_branch @ 1
 
-    _man8 = deepcopy(man8)
+    _man8 = man8.copy()
     man8 += man_branch
 
     # just checkin if the one line syntax is the same as the two line syntax
@@ -940,8 +948,9 @@ def test_make_mannose8_2():
         assert atom.get_serial_number() not in _seen_serials
         _seen_serials.add(atom.get_serial_number())
 
-    v = man8.make_residue_graph(detailed=False).draw()
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = man8.make_residue_graph(detailed=False).draw()
+        v.show()
 
 
 def test_make_mannose8_3():
@@ -1014,29 +1023,31 @@ def test_make_mannose8_3():
         assert atom.get_serial_number() not in _seen_serials
         _seen_serials.add(atom.get_serial_number())
 
-    v = man8.draw()
-    colors = [
-        "red",
-        "green",
-        "blue",
-        "magenta",
-        "cyan",
-        "orange",
-        "purple",
-        "pink",
-        "brown",
-        "grey",
-        "black",
-    ]
-    idx = 0
-    for residue in man8.residues:
-        for bond in man8.bonds:
-            if bond[0].get_parent() == residue and bond[1].get_parent() == residue:
-                v.draw_edges(bond, color=colors[idx], linewidth=3)
-        idx += 1
+    if base.ALLOW_VISUAL:
 
-    v += man8.optimize(inplace=True).move([20, 0, 0]).draw(atoms=False)
-    v.show()
+        v = man8.draw()
+        colors = [
+            "red",
+            "green",
+            "blue",
+            "magenta",
+            "cyan",
+            "orange",
+            "purple",
+            "pink",
+            "brown",
+            "grey",
+            "black",
+        ]
+        idx = 0
+        for residue in man8.residues:
+            for bond in man8.bonds:
+                if bond[0].get_parent() == residue and bond[1].get_parent() == residue:
+                    v.draw_edges(bond, color=colors[idx], linewidth=3)
+            idx += 1
+
+        v += man8.optimize(inplace=True).move([20, 0, 0]).draw(atoms=False)
+        v.show()
 
 
 def test_make_mannose8_with_recipe():
@@ -1108,28 +1119,29 @@ def test_make_mannose8_with_recipe():
     all_serials = [atom.serial_number for atom in man8.get_atoms()]
     assert len(set(all_serials)) == len(all_serials)
 
-    v = man8.draw()
-    colors = [
-        "red",
-        "green",
-        "blue",
-        "magenta",
-        "cyan",
-        "orange",
-        "purple",
-        "pink",
-        "brown",
-        "grey",
-        "black",
-    ]
-    idx = 0
-    for residue in man8.residues:
-        for bond in man8.bonds:
-            if bond[0].get_parent() == residue and bond[1].get_parent() == residue:
-                v.draw_edges(bond, color=colors[idx], linewidth=3)
-        idx += 1
+    if base.ALLOW_VISUAL:
+        v = man8.draw()
+        colors = [
+            "red",
+            "green",
+            "blue",
+            "magenta",
+            "cyan",
+            "orange",
+            "purple",
+            "pink",
+            "brown",
+            "grey",
+            "black",
+        ]
+        idx = 0
+        for residue in man8.residues:
+            for bond in man8.bonds:
+                if bond[0].get_parent() == residue and bond[1].get_parent() == residue:
+                    v.draw_edges(bond, color=colors[idx], linewidth=3)
+            idx += 1
 
-    v.show()
+        v.show()
 
 
 def test_relabel():
@@ -1242,13 +1254,14 @@ def test_rotate_descendants_2():
     # v.draw_edges(glc.bonds, color="red")
 
     v.draw_edges(*glc.get_bonds(glc.residues[0]), color="teal", linewidth=5, opacity=1)
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_from_rdkit():
     from rdkit import Chem
 
-    rdkit_mol = Chem.MolFromPDBFile(base.GLUCOSE, removeHs=False)
+    rdkit_mol = Chem.MolFromPDBFile(base.GLCPDB, removeHs=False)
     assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
 
     mol = bam.Molecule.from_rdkit(rdkit_mol, "myman")
@@ -1293,11 +1306,14 @@ def test_to_and_from_xml():
     assert glc.count_bonds() == glc2.count_bonds()
     assert glc.to_biopython() == glc2.to_biopython()
 
-    v = glc2.draw()
-    for model in glc2.get_models():
-        glc2.set_model(model)
-        v.draw_edges(*glc2.bonds, color="red", opacity=0.5)
-    v.show()
+    os.remove("glc.xml")
+    if base.ALLOW_VISUAL:
+
+        v = glc2.draw()
+        for model in glc2.get_models():
+            glc2.set_model(model)
+            v.draw_edges(*glc2.bonds, color="red", opacity=0.5)
+        v.show()
 
 
 def test_work_with_pubchem():
@@ -1313,14 +1329,16 @@ def test_work_with_pubchem():
     )
     phprop % l
     phprop = phprop + phprop
-    phprop.show()
+    if base.ALLOW_VISUAL:
+        phprop.show()
 
 
 def test_chlorine():
     benz = bam.Molecule.from_pubchem("1,2,4-trichloro-5-methylbenzene")
     benz.autolabel()
     benz.residues[0].resname = "CBZ"
-    benz.show()
+    if base.ALLOW_VISUAL:
+        benz.show()
 
 
 # def test_infer_missing():
@@ -1349,16 +1367,13 @@ def test_peptide_link():
     his = bam.Molecule.from_compound("HIS")
     ser = bam.Molecule.from_compound("SER")
 
-    # we use a patch to make the peptide link
-    # top = bam.read_topology(
-    #     "/Users/noahhk/GIT/biobuild/docs/_tutorials/peptide_link.rtf"
-    # )
-    # peptide_link = top.get_patch("LINK")
     peptide_link = bam.linkage("C", "N", ["OXT", "HXT"], ["H"])
     his % peptide_link
     peptide = his.attach(ser, inplace=False)
     peptide.attach(his)
-    peptide.show()
+    assert peptide.count_residues() == 3
+    if base.ALLOW_VISUAL:
+        peptide.show()
 
 
 def test_peptide_link_multiple():
@@ -1372,7 +1387,10 @@ def test_peptide_link_multiple():
     peptide = bam.connect(peptide, ser, peptide_link)
     peptide = bam.connect(peptide, his, peptide_link)
     peptide = bam.connect(peptide, ser, peptide_link)
-    peptide.show()
+    assert peptide.count_residues() == 5
+
+    if base.ALLOW_VISUAL:
+        peptide.show()
 
 
 def test_ferrocynyl():
@@ -1404,7 +1422,8 @@ def test_ferrocynyl():
 
     link6 = bam.linkage("P1", "N2", ["CL3"])
     per3 = per2.attach(linker, link6, at_residue=4, inplace=False)
-    per3.show()
+    if base.ALLOW_VISUAL:
+        per3.show()
 
 
 def test_keeps_pdb_enumeration():
@@ -1455,7 +1474,8 @@ def test_molecule_rotate():
     mol.rotate(90, (0, 1, 0), center=mol.get_atom("HO6").coord)
     d.draw_edges(*mol.bonds, color="blue")
 
-    d.show()
+    if base.ALLOW_VISUAL:
+        d.show()
 
 
 def test_molecule_transpose():
@@ -1476,7 +1496,8 @@ def test_molecule_transpose():
 
     d.draw_edges(*mol.get_bonds(), color="green", showlegend=False)
 
-    d.show()
+    if base.ALLOW_VISUAL:
+        d.show()
 
 
 def test_base_classes_move():
@@ -1522,7 +1543,8 @@ def test_base_classes_move():
     # the final output will have one bond that is really
     # bad because we move and rotate one individual atom
     # to an impossible position, so that's fine...
-    d.show()
+    if base.ALLOW_VISUAL:
+        d.show()
 
 
 def test_linkage_apply_deletes():
@@ -1560,8 +1582,8 @@ def test_linkage_apply_bond():
     assert mol.get_bond("O3", "C1") is not None
 
     d.draw_edges(*mol.bonds, color="red", linewidth=3)
-
-    d.show()
+    if base.ALLOW_VISUAL:
+        d.show()
 
 
 def test_squash():
@@ -1827,7 +1849,8 @@ def test_polyphenylene():
 
         core.attach(periphery, link2, at_residue=1)
 
-    core.show()
+    if base.ALLOW_VISUAL:
+        core.show()
 
 
 def test_add_hydrogens_glucose():
@@ -1841,11 +1864,12 @@ def test_add_hydrogens_glucose():
 
     assert len(mol._atoms) == ref_n
 
-    mol.show()
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_add_hydrogens_mannose9():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
 
     ref_n = mol.count_atoms()
@@ -1864,15 +1888,15 @@ def test_add_hydrogens_mannose9():
 
     v.draw_points(mol.get_coords(*new_hydrogens), colors="limegreen")
     v.draw_points(bam.utils.coord_array(*old_hydrogens), colors="purple")
-    v.show()
+
+    if base.ALLOW_VISUAL:
+        v.show()
 
     assert len(mol._atoms) == ref_n
 
 
 def test_optimize():
-    mol = bam.Molecule.from_json(
-        "/Users/noahhk/GIT/biobuild/docs/examples/rotaxane_scaffold.json"
-    )
+    mol = bam.Molecule.from_json(base.ROTSCAFJSON)
     mol.optimize(residue_graph=False)
 
     for b in mol.get_bonds():
@@ -1882,52 +1906,84 @@ def test_optimize():
 
 def test_phosphorylate():
     mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
     bam.phosphorylate(mol, "C1")
-    mol.show()
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_hydroxylate():
     mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
     bam.hydroxylate(mol, "C1")
-    mol.show()
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_methylate():
     mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
     bam.methylate(mol, "C1")
-    mol.show()
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_acetylate():
     mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
     bam.acetylate(mol, "C1")
-    mol.show()
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_amidate():
     mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
     bam.amidate(mol, "C1")
-    mol.show()
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_carboxylate():
     mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
     bam.carboxylate(mol, "C1")
-    mol.show()
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_benzylate():
     mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
     bam.benzylate(mol, "C1")
-    mol.show()
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_phenolate():
     mol = bam.Molecule.from_smiles("CCC")
+    n = mol.count_atoms()
     bam.phenolate(mol, "C1", how="ortho")
     bam.phenolate(mol, "C2", how="meta")
     bam.phenolate(mol, "C3", how="para")
-    mol.show()
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_carboxylate_multiple():
@@ -1936,7 +1992,8 @@ def test_carboxylate_multiple():
     hydrogens = [mol.get_left_hydrogen(i) for i in carbons]
     hydrogens[0] = None
     bam.carboxylate(mol, carbons, hydrogens)
-    mol.show()
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_get_left_right_hydrogens():
@@ -1946,11 +2003,12 @@ def test_get_left_right_hydrogens():
     right = mol.get_right_hydrogen(center)
     assert left.element == "H"
     assert right.element == "H"
-    v = mol.draw()
-    v.draw_point("center", center.coord, color="red")
-    v.draw_point("left", left.coord, color="blue")
-    v.draw_point("right", right.coord, color="green")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = mol.draw()
+        v.draw_point("center", center.coord, color="red")
+        v.draw_point("left", left.coord, color="blue")
+        v.draw_point("right", right.coord, color="green")
+        v.show()
 
 
 def test_superimpose():
@@ -1984,7 +2042,8 @@ def test_superimpose():
 
     v += mol4.draw(atoms=False, line_color="purple")
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_react_with():
@@ -1993,7 +2052,9 @@ def test_react_with():
     out = mol.react_with(
         mol, bam.structural.groups.carboxyl, bam.structural.groups.amine
     )
-    out.show()
+    assert out.count_residues() == 2
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_react_with2():
@@ -2007,7 +2068,9 @@ def test_react_with2():
     ).react_with(
         mol, bam.structural.groups.carboxyl, bam.structural.groups.amine, inplace=False
     )
-    out.show()
+    assert out.count_residues() == 3
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_from_geometry():
@@ -2029,7 +2092,10 @@ def test_from_geometry():
         bam.structural.geometry.trigonal_bipyramidal, [P, *Fs[:3]]
     )
 
-    mol3.show()
+    if base.ALLOW_VISUAL:
+        mol1.show()
+        mol2.show()
+        mol3.show()
 
 
 def test_add_with_functional_groups():
@@ -2037,7 +2103,9 @@ def test_add_with_functional_groups():
     mol1, mol2 = mol.copy(2)
 
     out = mol1 % bam.structural.groups.carboxyl + mol2 % bam.structural.groups.amine
-    out.show()
+    assert out.count_residues() == 2
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_adjust_length_with_descendants():
@@ -2045,13 +2113,13 @@ def test_adjust_length_with_descendants():
     bam.acetylate(mol, "C1")
 
     mol.adjust_bond_length("C", "C1", 4, True)
-    mol.show()
+    assert 3.9 < mol.get_bond("C", "C1").compute_length() < 4.1
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_get_atoms_generator_implementation():
-    mol = bam.read_pdb(
-        "/Users/noahhk/GIT/biobuild/test_(2S)-2-amino-3-(4-hydroxyphenyl)propanoic acid.pdb"
-    )
+    mol = bam.read_pdb(base.PADPDB)
     out = mol.get_atoms(
         "C",
         by="element",
@@ -2184,7 +2252,8 @@ def test_sampler():
             .move([10, 0, 0])
             .draw(atoms=False, line_color="blue")
         )
-        v.show()
+        if base.ALLOW_VISUAL:
+            v.show()
 
 
 def test_search_by_constraints():
@@ -2214,5 +2283,3 @@ def test_search_by_constraints2():
         ]
     )
     assert len(out) == 1
-
-    pass

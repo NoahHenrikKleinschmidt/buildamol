@@ -11,7 +11,7 @@ import Bio.PDB as bio
 import re
 
 MARGIN = 1.5 * 1e-2
-MANNOSE = bio.PDBParser().get_structure("MAN", base.MANNOSE)
+MANNOSE = bio.PDBParser().get_structure("MAN", base.MANPDB)
 bam.load_small_molecules()
 bam.load_sugars()
 
@@ -207,7 +207,7 @@ bam.load_sugars()
 
 
 # def test_missing_multiple_random_atoms_mannose9():
-#     _man = bio.PDBParser().get_structure("MAN9", base.MANNOSE9)
+#     _man = bio.PDBParser().get_structure("MAN9", base.MAN9PDB)
 
 #     atoms = list(_man.get_atoms())
 #     to_delete = np.random.choice(atoms, 15, replace=False)
@@ -445,7 +445,7 @@ def test_infer_bonds():
 
 
 def test_infer_residue_connections():
-    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
+    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MAN9PDB)
     bonds = bam.structural.infer_residue_connections(_man9)
 
     connections = [
@@ -499,7 +499,7 @@ def test_infer_residue_connections():
 
 
 def test_infer_residue_connections_triplet():
-    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
+    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MAN9PDB)
     bonds = bam.structural.infer_residue_connections(_man9, triplet=True)
     _no_triplets = bam.structural.infer_residue_connections(_man9)
 
@@ -569,7 +569,7 @@ def test_atom_neighborhood_get():
 
 
 def test_residue_neighborhood_basic():
-    mannose = bam.Molecule.from_pdb(base.MANNOSE9)
+    mannose = bam.Molecule.from_pdb(base.MAN9PDB)
     mannose.infer_bonds(restrict_residues=False)
     graph = mannose.make_residue_graph()
 
@@ -602,7 +602,7 @@ def test_residue_neighborhood_basic():
 
 
 def test_residue_neighborhood_get():
-    mannose = bam.Molecule.from_pdb(base.MANNOSE9)
+    mannose = bam.Molecule.from_pdb(base.MAN9PDB)
     mannose.infer_bonds(restrict_residues=False)
     graph = mannose.make_residue_graph()
 
@@ -699,7 +699,7 @@ def test_compute_dihedral():
     for quartet, dihedral in mannose.compute_dihedrals().items():
         assert -120 < dihedral < 120, f"Dihedral {dihedral} is not in range -120-120°!"
 
-    # mannose = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
+    # mannose = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANPDB)
     # mannose = next(mannose.get_residues())
 
     # top = bam.resources.get_default_topology()
@@ -773,7 +773,7 @@ def test_compute_quartets():
 
 
 def test_patcher_anchors():
-    man1 = bam.Molecule.from_pdb(base.MANNOSE)
+    man1 = bam.Molecule.from_pdb(base.MANPDB)
     man1.infer_bonds()
     man2 = deepcopy(man1)
 
@@ -811,7 +811,7 @@ def test_patcher_anchors_2():
 
 
 def test_patcher_two_man():
-    man1 = bam.Molecule.from_pdb(base.MANNOSE)
+    man1 = bam.Molecule.from_pdb(base.MANPDB)
     man1.infer_bonds()
     man2 = deepcopy(man1)
 
@@ -830,10 +830,11 @@ def test_patcher_two_man():
         _man1, _man2 = p.apply(patch, man1, man2)
         new = p.merge()
 
-        v = new.draw()
-        v.draw_edges(*new.locked_bonds, color="red")
-        v.draw_edges(*new.bonds, color="cyan", linewidth=2)
-        v.show()
+        if base.ALLOW_VISUAL:
+            v = new.draw()
+            v.draw_edges(*new.locked_bonds, color="red")
+            v.draw_edges(*new.bonds, color="cyan", linewidth=2)
+            v.show()
 
         assert new is not man1 and new is not man2
         assert len(new.residues) == 2
@@ -925,18 +926,19 @@ def test_patcher_multiple_man():
     for angle in man1.compute_angles().values():
         assert 100 < angle < 130
 
-    v = man1.draw()
-    res_con = man1.infer_residue_connections(triplet=True)
-    v.draw_edges(*res_con, color="limegreen", linewidth=3)
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = man1.draw()
+        res_con = man1.infer_residue_connections(triplet=True)
+        v.draw_edges(*res_con, color="limegreen", linewidth=3)
+        v.show()
 
-    g = man1.make_residue_graph()
-    g.unlock_all()
-    g.lock_centers()
-    v = g.draw()
-    v.draw_edges(*g.edges, color="limegreen", linewidth=2)
-    v.draw_edges(*g._locked_edges, color="red", linewidth=2)
-    v.show()
+        g = man1.make_residue_graph()
+        g.unlock_all()
+        g.lock_centers()
+        v = g.draw()
+        v.draw_edges(*g.edges, color="limegreen", linewidth=2)
+        v.draw_edges(*g._locked_edges, color="red", linewidth=2)
+        v.show()
 
 
 def test_keep_copy_patcher():
@@ -1004,7 +1006,8 @@ def test_stitcher_two_glucose():
     assert not np.allclose(old_glc2_coords[:r_glc2, :], new_glc2_coords[:r_glc2, :])
 
     final = s.merge()
-    final.show()
+    if base.ALLOW_VISUAL:
+        final.show()
 
     assert len(final.atoms) == len(glc.atoms) + len(glc2.atoms) - len(
         remove_on_glc
@@ -1082,7 +1085,8 @@ def test_stitcher_three_glucose():
         assert atom.serial_number not in _seen_indices
         _seen_indices.add(atom.serial_number)
 
-    final.show()
+    if base.ALLOW_VISUAL:
+        final.show()
 
 
 # def test_stitcher_two_glucose_root_atoms():
@@ -1185,7 +1189,8 @@ def test_patch_and_stich():
         source_residue=1,
     )
     final = stitcher.merge()
-    final.show()
+    if base.ALLOW_VISUAL:
+        final.show()
 
     # ------------------------------------------
 
@@ -1424,7 +1429,8 @@ def test_geometry_tetrahedral():
     coords = tetrahedron.make_coords(C, *Hs[:2])
 
     v.draw_points(coords, colors="red")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
     assert np.all(coords[0] == C.coord)
     assert np.all(coords[1] == Hs[0].coord)
@@ -1461,9 +1467,10 @@ def test_tetrahedral_applied_glucose():
     coords[3] = bam.structural.adjust_distance(coords[0], coords[3], C - O5)
     coords[4] = bam.structural.adjust_distance(coords[0], coords[4], C - H1)
 
-    v = mol.draw()
-    v.draw_points(coords, colors="orange")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = mol.draw()
+        v.draw_points(coords, colors="orange")
+        v.show()
 
     assert np.all(coords[0] == C.coord)
     assert np.all(coords[1] == C2.coord)
@@ -1589,11 +1596,11 @@ def test_bipyramid():
     C5.coord = coords[5]
 
     v = mol.draw()
-
     coords = bipyramid.make_coords(P, C2, C4, direction="mixed")
 
     v.draw_points(coords, colors="orange")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
     assert np.all(coords[0] == P.coord)
     assert np.all(coords[1] == C2.coord)
@@ -1737,7 +1744,8 @@ def test_geometry_fill_hydrogens_from_one():
         mol.add_atoms(*atoms)
         mol.infer_bonds()
 
-        mol.show()
+        if base.ALLOW_VISUAL:
+            mol.show()
 
 
 def test_geometry_fill_hydrogens_from_two():
@@ -1758,7 +1766,8 @@ def test_geometry_fill_hydrogens_from_two():
         mol.add_atoms(atoms)
         mol.add_bonds(bonds)
 
-        mol.show()
+        if base.ALLOW_VISUAL:
+            mol.show()
 
 
 def test_change_element_add_hydrogens():
@@ -1787,7 +1796,8 @@ def test_change_element_add_hydrogens():
     assert mol.get_atom("N5").id == "N5"
     assert len(mol.get_neighbors("N5")) == len(old_neighbors) + 1
 
-    mol.show()
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_change_element_remove_hydrogens():
@@ -1815,7 +1825,8 @@ def test_change_element_remove_hydrogens():
     assert mol.get_atom("O1").id == "O1"
     assert len(mol.get_neighbors("O1")) == len(old_neighbors) - 1
 
-    mol.show()
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_change_bond_order_add_hydrogens():
@@ -1834,7 +1845,8 @@ def test_change_bond_order_add_hydrogens():
     assert len(mol.get_neighbors(C1)) == len(old_C_neighbors) + 1
     assert len(mol.get_neighbors(N3)) == len(old_N_neighbors) + 1
 
-    mol.show()
+    if base.ALLOW_VISUAL:
+        mol.show()
 
 
 def test_change_bond_order_remove_hydrogens():
@@ -1853,7 +1865,8 @@ def test_change_bond_order_remove_hydrogens():
     assert len(mol.get_neighbors(C1)) == len(old_C_neighbors) - 1
     assert len(mol.get_neighbors(N3)) == len(old_N_neighbors) - 1
 
-    mol.show()
+    if base.ALLOW_VISUAL:
+        mol.show()
     mol.to_pdb("mol.pdb")
 
 
@@ -1869,7 +1882,8 @@ def test_find_equatorial_hydrogens():
         H = bam.structural.infer.get_equatorial_hydrogen_neighbor(mol, C)
         v.draw_atom(H, color="purple")
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_find_axial_hydrogens():
@@ -1884,7 +1898,8 @@ def test_find_axial_hydrogens():
         H = bam.structural.infer.get_axial_hydrogen_neighbor(mol, C)
         v.draw_atom(H, color="purple")
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_find_equatorial_hydrogens2():
@@ -1902,7 +1917,8 @@ def test_find_equatorial_hydrogens2():
         if H:
             v.draw_atom(H, color="purple")
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_find_axial_hydrogens2():
@@ -1920,7 +1936,8 @@ def test_find_axial_hydrogens2():
         if H:
             v.draw_atom(H, color="purple")
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_get_left_and_right_hydrogen():
@@ -1934,10 +1951,11 @@ def test_get_left_and_right_hydrogen():
     right_hydrogen = bam.structural.infer.get_right_hydrogen(mol, center)
     assert right_hydrogen is not None
 
-    v = mol.draw()
-    v.draw_atom(left_hydrogen, color="orange")
-    v.draw_atom(right_hydrogen, color="pink")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = mol.draw()
+        v.draw_atom(left_hydrogen, color="orange")
+        v.draw_atom(right_hydrogen, color="pink")
+        v.show()
 
 
 def test_superimpose_bonds():
@@ -1959,7 +1977,8 @@ def test_superimpose_bonds():
 
     v += mol2.draw(atoms=False, line_color="green")
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_superimpose_triplet():
@@ -1981,7 +2000,8 @@ def test_superimpose_triplet():
 
     v += mol2.draw(atoms=False, line_color="green")
 
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()
 
 
 def test_infer_reactivity_atoms_from_groups():
@@ -2012,7 +2032,8 @@ def test_infer_bond_orders():
         assert any(bond.is_double() for bond in mol.get_bonds()), (
             "No double bonds found in molecule" + mol.id
         )
-        mol.show()
+        if base.ALLOW_VISUAL:
+            mol.show()
 
 
 def test_match_aromatic():
@@ -2035,7 +2056,8 @@ def test_match_aromatic():
 
         aromatic.apply_connectivity(mol, atoms)
 
-        mol.show()
+        if base.ALLOW_VISUAL:
+            mol.show()
 
 
 def test_plane_from_points():
@@ -2047,4 +2069,5 @@ def test_plane_from_points():
 
     v = c.draw()
     v.draw_vector("vec", c.center_of_geometry, c.center_of_geometry + vec, color="red")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v.show()

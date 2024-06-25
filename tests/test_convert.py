@@ -8,7 +8,7 @@ from openbabel import pybel
 import Bio.PDB as bio
 
 import buildamol as bam
-import tests.base as bas
+import tests.base as base
 
 
 def test_biopython():
@@ -64,7 +64,7 @@ def test_rdkit():
 
 
 def test_rdkit2():
-    mol = bam.read_pdb(bas.GALACTOSE)
+    mol = bam.read_pdb(base.GLCPDB)
     mol.infer_bonds()
     assert mol is not None
 
@@ -125,12 +125,13 @@ def test_rdkit3():
 
     classical.move((0, 0, 5))
 
-    v = classical.draw()
-    for bond in reverse.get_bonds():
-        v.draw_vector(
-            None, bond[0].coord, bond[1].coord, color="red", linewidth=bond.order**3
-        )
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = classical.draw()
+        for bond in reverse.get_bonds():
+            v.draw_vector(
+                None, bond[0].coord, bond[1].coord, color="red", linewidth=bond.order**3
+            )
+        v.show()
 
 
 def test_rdkit4():
@@ -164,22 +165,23 @@ def test_rdkit4():
 
     classical.move((0, 0, 5))
 
-    v = classical.draw()
-    for bond in reverse.get_bonds():
-        v.draw_vector(
-            None, bond[0].coord, bond[1].coord, color="red", linewidth=bond.order**3
-        )
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = classical.draw()
+        for bond in reverse.get_bonds():
+            v.draw_vector(
+                None, bond[0].coord, bond[1].coord, color="red", linewidth=bond.order**3
+            )
+        v.show()
 
 
 def test_to_rdkit5():
 
-    mol = bam.Molecule.from_pdb("/Users/noahhk/GIT/biobuild/EX8.paper.pdb")
+    mol = bam.Molecule.from_pdb(base.EX8PDB)
 
     rdmol = mol.to_rdkit()
 
     ref = bam.utils.Chem.MolFromPDBFile(
-        "/Users/noahhk/GIT/biobuild/EX8.paper.pdb",
+        base.EX8PDB,
         proximityBonding=False,
         removeHs=False,
     )
@@ -210,7 +212,7 @@ def test_to_rdkit5():
 
 
 def test_stk():
-    mol = bam.Molecule.from_pdb(bas.GALACTOSE)
+    mol = bam.Molecule.from_pdb(base.GLCPDB)
     mol.infer_bonds()
 
     stk = mol.to_stk()

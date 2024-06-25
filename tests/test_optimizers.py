@@ -9,7 +9,7 @@ import buildamol.optimizers as opt
 
 
 def test_distance_rotatron():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -22,7 +22,7 @@ def test_distance_rotatron():
 
 
 def test_distance_rotatron_resgraph():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -35,7 +35,7 @@ def test_distance_rotatron_resgraph():
 
 
 def test_overlap_rotatron():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -48,7 +48,7 @@ def test_overlap_rotatron():
 
 
 def test_overlap_rotatron_resgraph():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -61,7 +61,7 @@ def test_overlap_rotatron_resgraph():
 
 
 def test_forcefield_rotatron():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -74,7 +74,7 @@ def test_forcefield_rotatron():
 
 
 def test_forcefield_rotatron_resgraph():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -87,7 +87,7 @@ def test_forcefield_rotatron_resgraph():
 
 
 def test_swarm():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -102,7 +102,7 @@ def test_swarm():
 
 
 def test_genetic():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -117,7 +117,7 @@ def test_genetic():
 
 
 def test_anneal():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -132,7 +132,7 @@ def test_anneal():
 
 
 def test_scipy():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -147,7 +147,7 @@ def test_scipy():
 
 
 def test_apply():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -172,11 +172,12 @@ def test_apply():
 
     assert not np.allclose(before, after, atol=1e-2)
 
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_distance_swarm():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -189,11 +190,12 @@ def test_optim_distance_swarm():
     out = opt.optimize(mol.copy(), env, "swarm", n_particles=50)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_distance_anneal():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -206,11 +208,12 @@ def test_optim_distance_anneal():
     out = opt.optimize(mol.copy(), env, "anneal", n_particles=50)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_distance_genetic():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -223,11 +226,12 @@ def test_optim_distance_genetic():
     out = opt.optimize(mol.copy(), env, "genetic", max_generations=500)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_distance_scipy():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -240,11 +244,12 @@ def test_optim_distance_scipy():
     out = opt.optimize(mol.copy(), env, "scipy")
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_overlap_swarm():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -257,11 +262,12 @@ def test_optim_overlap_swarm():
     out = opt.optimize(mol.copy(), env, "swarm", n_particles=50)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_overlap_anneal():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -274,11 +280,12 @@ def test_optim_overlap_anneal():
     out = opt.optimize(mol.copy(), env, "anneal", n_particles=50)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_overlap_genetic():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -291,11 +298,12 @@ def test_optim_overlap_genetic():
     out = opt.optimize(mol.copy(), env, "genetic", max_generations=500)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_overlap_scipy():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -308,11 +316,12 @@ def test_optim_overlap_scipy():
     out = opt.optimize(mol.copy(), env, "scipy")
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_forcefield_swarm():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -325,11 +334,12 @@ def test_optim_forcefield_swarm():
     out = opt.optimize(mol.copy(), env, "swarm", n_particles=50)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_forcefield_anneal():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -342,11 +352,12 @@ def test_optim_forcefield_anneal():
     out = opt.optimize(mol.copy(), env, "anneal", n_particles=50)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_forcefield_genetic():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -359,11 +370,12 @@ def test_optim_forcefield_genetic():
     out = opt.optimize(mol.copy(), env, "genetic", max_generations=500)
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_forcefield_scipy():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
     assert mol is not None
 
@@ -376,7 +388,8 @@ def test_optim_forcefield_scipy():
     out = opt.optimize(mol.copy(), env, "scipy")
 
     print(out.count_clashes())
-    out.show()
+    if base.ALLOW_VISUAL:
+        out.show()
 
 
 def test_optim_numba_distance_swarm():
@@ -504,7 +517,7 @@ def test_optim_numba_forcefield_scipy():
 
 
 def test_translatron_optimize():
-    mol = bam.read_pdb(base.MANNOSE9)
+    mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
 
     ref_coords = mol.get_coords()
@@ -528,13 +541,15 @@ def test_translatron_optimize():
 
     assert out.count_clashes() == mol.count_clashes()
 
-    v = mol.draw(atoms=False)
-    v += out.draw(atoms=False, line_color="red")
-    v.show()
+    if base.ALLOW_VISUAL:
+        v = mol.draw(atoms=False)
+        v += out.draw(atoms=False, line_color="red")
+        v.show()
 
 
 def test_apply_inplace():
     mol = bam.read_smiles("C1=CC(=O)C(CCCOC)CCC1")
     mol.autolabel()
     mol.optimize()
-    mol.show()
+    if base.ALLOW_VISUAL:
+        mol.show()

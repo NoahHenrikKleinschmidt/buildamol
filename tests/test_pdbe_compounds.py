@@ -46,7 +46,7 @@ def test_compound_is_same():
 
     man = comps.get("D-Mannose", by="name")
 
-    ref = bam.Molecule.from_pdb(base.MANNOSE)
+    ref = bam.Molecule.from_pdb(base.MANPDB)
     ref.infer_bonds()
 
     man_atoms = [(i.id, i.serial_number) for i in man.atoms]

@@ -1,0 +1,138 @@
+<molecule id="GLC">
+	<structure atoms="24">
+		<chain id="A">
+			<residue serial="1" name="GLC">
+				<atom serial="1" id="C1" element="C"/>
+				<atom serial="2" id="C2" element="C"/>
+				<atom serial="3" id="C3" element="C"/>
+				<atom serial="4" id="C4" element="C"/>
+				<atom serial="5" id="C5" element="C"/>
+				<atom serial="6" id="C6" element="C"/>
+				<atom serial="7" id="O1" element="O"/>
+				<atom serial="8" id="O2" element="O"/>
+				<atom serial="9" id="O3" element="O"/>
+				<atom serial="10" id="O4" element="O"/>
+				<atom serial="11" id="O5" element="O"/>
+				<atom serial="12" id="O6" element="O"/>
+				<atom serial="13" id="H1" element="H"/>
+				<atom serial="14" id="H2" element="H"/>
+				<atom serial="15" id="H3" element="H"/>
+				<atom serial="16" id="H4" element="H"/>
+				<atom serial="17" id="H5" element="H"/>
+				<atom serial="18" id="H61" element="H"/>
+				<atom serial="19" id="H62" element="H"/>
+				<atom serial="20" id="HO1" element="H"/>
+				<atom serial="21" id="HO2" element="H"/>
+				<atom serial="22" id="HO3" element="H"/>
+				<atom serial="23" id="HO4" element="H"/>
+				<atom serial="24" id="HO6" element="H"/>
+			</residue>
+		</chain>
+	</structure>
+	<connectivity bonds="24">
+		<bond atom1="1" atom2="2" order="1"/>
+		<bond atom1="1" atom2="7" order="1"/>
+		<bond atom1="1" atom2="11" order="1"/>
+		<bond atom1="1" atom2="13" order="1"/>
+		<bond atom1="2" atom2="3" order="1"/>
+		<bond atom1="2" atom2="8" order="1"/>
+		<bond atom1="2" atom2="14" order="1"/>
+		<bond atom1="3" atom2="4" order="1"/>
+		<bond atom1="3" atom2="9" order="1"/>
+		<bond atom1="3" atom2="15" order="1"/>
+		<bond atom1="4" atom2="5" order="1"/>
+		<bond atom1="4" atom2="10" order="1"/>
+		<bond atom1="4" atom2="16" order="1"/>
+		<bond atom1="5" atom2="6" order="1"/>
+		<bond atom1="5" atom2="11" order="1"/>
+		<bond atom1="5" atom2="17" order="1"/>
+		<bond atom1="6" atom2="12" order="1"/>
+		<bond atom1="6" atom2="18" order="1"/>
+		<bond atom1="6" atom2="19" order="1"/>
+		<bond atom1="7" atom2="20" order="1"/>
+		<bond atom1="8" atom2="21" order="1"/>
+		<bond atom1="9" atom2="22" order="1"/>
+		<bond atom1="10" atom2="23" order="1"/>
+		<bond atom1="12" atom2="24" order="1"/>
+	</connectivity>
+	<coordinates models="3">
+		<model id="0">
+			<atomcoord serial="1" x="-0.567" y="1.572" z="-0.245"/>
+			<atomcoord serial="2" x="-1.578" y="0.465" z="-0.554"/>
+			<atomcoord serial="3" x="-1.179" y="-0.806" z="0.203"/>
+			<atomcoord serial="4" x="0.249" y="-1.195" z="-0.192"/>
+			<atomcoord serial="5" x="1.189" y="-0.024" z="0.102"/>
+			<atomcoord serial="6" x="2.607" y="-0.383" z="-0.345"/>
+			<atomcoord serial="7" x="-0.6" y="1.871" z="1.151"/>
+			<atomcoord serial="8" x="-2.881" y="0.879" z="-0.139"/>
+			<atomcoord serial="9" x="-2.075" y="-1.866" z="-0.137"/>
+			<atomcoord serial="10" x="0.658" y="-2.338" z="0.562"/>
+			<atomcoord serial="11" x="0.744" y="1.133" z="-0.608"/>
+			<atomcoord serial="12" x="3.506" y="0.661" z="0.035"/>
+			<atomcoord serial="13" x="-0.822" y="2.466" z="-0.815"/>
+			<atomcoord serial="14" x="-1.583" y="0.264" z="-1.626"/>
+			<atomcoord serial="15" x="-1.223" y="-0.619" z="1.276"/>
+			<atomcoord serial="16" x="0.281" y="-1.429" z="-1.257"/>
+			<atomcoord serial="17" x="1.187" y="0.184" z="1.173"/>
+			<atomcoord serial="18" x="2.913" y="-1.315" z="0.129"/>
+			<atomcoord serial="19" x="2.627" y="-0.503" z="-1.428"/>
+			<atomcoord serial="20" x="0.017" y="2.566" z="1.42"/>
+			<atomcoord serial="21" x="-3.197" y="1.682" z="-0.576"/>
+			<atomcoord serial="22" x="-3.0" y="-1.684" z="0.08"/>
+			<atomcoord serial="23" x="0.102" y="-3.118" z="0.427"/>
+			<atomcoord serial="24" x="4.425" y="0.501" z="-0.218"/>
+		</model>
+		<model id="1">
+			<atomcoord serial="1" x="9.433" y="1.572" z="-0.245"/>
+			<atomcoord serial="2" x="8.422" y="0.465" z="-0.554"/>
+			<atomcoord serial="3" x="8.821" y="-0.806" z="0.203"/>
+			<atomcoord serial="4" x="10.249" y="-1.195" z="-0.192"/>
+			<atomcoord serial="5" x="11.189" y="-0.024" z="0.102"/>
+			<atomcoord serial="6" x="12.607" y="-0.383" z="-0.345"/>
+			<atomcoord serial="7" x="9.4" y="1.871" z="1.151"/>
+			<atomcoord serial="8" x="7.119" y="0.879" z="-0.139"/>
+			<atomcoord serial="9" x="7.925" y="-1.866" z="-0.137"/>
+			<atomcoord serial="10" x="10.658" y="-2.338" z="0.562"/>
+			<atomcoord serial="11" x="10.744" y="1.133" z="-0.608"/>
+			<atomcoord serial="12" x="13.506" y="0.661" z="0.035"/>
+			<atomcoord serial="13" x="9.178" y="2.466" z="-0.815"/>
+			<atomcoord serial="14" x="8.417" y="0.264" z="-1.626"/>
+			<atomcoord serial="15" x="8.777" y="-0.619" z="1.276"/>
+			<atomcoord serial="16" x="10.281" y="-1.429" z="-1.257"/>
+			<atomcoord serial="17" x="11.187" y="0.184" z="1.173"/>
+			<atomcoord serial="18" x="12.913" y="-1.315" z="0.129"/>
+			<atomcoord serial="19" x="12.627" y="-0.503" z="-1.428"/>
+			<atomcoord serial="20" x="10.017" y="2.566" z="1.42"/>
+			<atomcoord serial="21" x="6.803" y="1.682" z="-0.576"/>
+			<atomcoord serial="22" x="7.0" y="-1.684" z="0.08"/>
+			<atomcoord serial="23" x="10.102" y="-3.118" z="0.427"/>
+			<atomcoord serial="24" x="14.425" y="0.501" z="-0.218"/>
+		</model>
+		<model id="2">
+			<atomcoord serial="1" x="9.433" y="11.572" z="-0.245"/>
+			<atomcoord serial="2" x="8.422" y="10.465" z="-0.554"/>
+			<atomcoord serial="3" x="8.821" y="9.194" z="0.203"/>
+			<atomcoord serial="4" x="10.249" y="8.805" z="-0.192"/>
+			<atomcoord serial="5" x="11.189" y="9.976" z="0.102"/>
+			<atomcoord serial="6" x="12.607" y="9.617" z="-0.345"/>
+			<atomcoord serial="7" x="9.4" y="11.871" z="1.151"/>
+			<atomcoord serial="8" x="7.119" y="10.879" z="-0.139"/>
+			<atomcoord serial="9" x="7.925" y="8.134" z="-0.137"/>
+			<atomcoord serial="10" x="10.658" y="7.662" z="0.562"/>
+			<atomcoord serial="11" x="10.744" y="11.133" z="-0.608"/>
+			<atomcoord serial="12" x="13.506" y="10.661" z="0.035"/>
+			<atomcoord serial="13" x="9.178" y="12.466" z="-0.815"/>
+			<atomcoord serial="14" x="8.417" y="10.264" z="-1.626"/>
+			<atomcoord serial="15" x="8.777" y="9.381" z="1.276"/>
+			<atomcoord serial="16" x="10.281" y="8.571" z="-1.257"/>
+			<atomcoord serial="17" x="11.187" y="10.184" z="1.173"/>
+			<atomcoord serial="18" x="12.913" y="8.685" z="0.129"/>
+			<atomcoord serial="19" x="12.627" y="9.497" z="-1.428"/>
+			<atomcoord serial="20" x="10.017" y="12.566" z="1.42"/>
+			<atomcoord serial="21" x="6.803" y="11.682" z="-0.576"/>
+			<atomcoord serial="22" x="7.0" y="8.316" z="0.08"/>
+			<atomcoord serial="23" x="10.102" y="6.882" z="0.427"/>
+			<atomcoord serial="24" x="14.425" y="10.501" z="-0.218"/>
+		</model>
+	</coordinates>
+</molecule>
