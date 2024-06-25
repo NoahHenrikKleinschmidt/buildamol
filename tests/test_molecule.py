@@ -2010,6 +2010,18 @@ def test_get_left_right_hydrogens():
         v.draw_point("right", right.coord, color="green")
         v.show()
 
+def test_get_atoms_filter_only():
+    mol = bam.Molecule.from_compound("GLC")
+    carbons = mol.get_atoms(filter=lambda x: x.element == "C")
+    carbons = list(carbons)
+    assert len(carbons) == 6
+
+def test_get_atoms_residue_only():
+    mol = bam.Molecule.from_compound("GLC")
+    carbons = mol.get_atoms(residue=1)
+    carbons = list(carbons)
+    assert carbons == list(mol.get_residue(1).get_atoms())
+    assert len(carbons) == 24
 
 def test_superimpose():
     mol = bam.Molecule.from_compound("GLC")
@@ -2041,7 +2053,6 @@ def test_superimpose():
     )
 
     v += mol4.draw(atoms=False, line_color="purple")
-
     if base.ALLOW_VISUAL:
         v.show()
 
