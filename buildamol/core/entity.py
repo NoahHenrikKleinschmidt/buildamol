@@ -3781,7 +3781,7 @@ class BaseEntity:
             bonds = [
                 bond
                 for bond in bonds
-                if bond not in self._locked_bonds and bond.is_rotatable()
+                if bond not in self._locked_bonds and not self._AtomGraph.in_same_cycle(*bond)
             ]
             return bonds
         return [b for b in bonds]
