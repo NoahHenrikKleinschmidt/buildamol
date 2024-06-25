@@ -985,10 +985,12 @@ class BaseEntity:
             )
         )
 
-    def has_clashes(self,
-                    clash_threshold: float = 1.0,
-                    ignore_hydrogens: bool = True,
-                    coarse_precheck: bool = True) -> bool:
+    def has_clashes(
+        self,
+        clash_threshold: float = 1.0,
+        ignore_hydrogens: bool = True,
+        coarse_precheck: bool = True,
+    ) -> bool:
         """
         Check if the molecule has any clashes.
 
@@ -1008,9 +1010,15 @@ class BaseEntity:
         bool
             True if there are clashes, False otherwise.
         """
-        return next(structural.find_clashes_between(
-                self, self, clash_threshold, ignore_hydrogens, coarse_precheck
-            ), None) is not None
+        return (
+            next(
+                structural.find_clashes_between(
+                    self, self, clash_threshold, ignore_hydrogens, coarse_precheck
+                ),
+                None,
+            )
+            is not None
+        )
 
     def copy(self, n: int = 1) -> list:
         """
@@ -2272,7 +2280,7 @@ class BaseEntity:
 
     def set_model(self, model: int):
         """
-        Set the active model of the molecule
+        Set the current working model of the molecule
 
         Parameters
         ----------
@@ -2303,15 +2311,23 @@ class BaseEntity:
         self._model = new_model
         return self
 
-    def get_model(self, model: int):
+    def get_model(self, model: int = None) -> base_classes.Model:
         """
-        Get a model from the molecule
+        Get a model from the molecule.
 
         Parameters
         ----------
         model : Int
-            The id of the model to get
+            The id of the model to get. If not provided the current working model is returned.
+        
+        Returns
+        -------
+        Model
+            The model
         """
+        if model is None:
+            return self._model
+
         if isinstance(model, int):
             return self._base_struct.child_list[model]
         elif isinstance(model, base_classes.Model):
@@ -2337,6 +2353,9 @@ class BaseEntity:
             new.id = len(self._base_struct.child_list)
         elif isinstance(model, base_classes.Model):
             new = model
+            new.id = len(self._base_struct.child_list)
+        elif isinstance(model, BaseEntity):
+            new = model._model
             new.id = len(self._base_struct.child_list)
         elif model is None:
             new = base_classes.Model(len(self._base_struct.child_list))
@@ -2412,11 +2431,10 @@ class BaseEntity:
 
             if by is None:
                 by = infer_search_param(residue)
-            if by == "id": 
+            if by == "id":
                 by = "name"
             elif by == "seqid":
                 by = "serial"
-             
 
             if by == "name":
                 _residue = [
@@ -2549,10 +2567,12 @@ class BaseEntity:
                 _residue = self.get_residue(residue)
                 if _residue is None:
                     raise ValueError(f"Residue {residue} not found")
-                return _residue.get_atoms()
+                atom_gen = _residue.get_atoms
+            else:
+                atom_gen = self._model.get_atoms
             if filter is not None:
-                return (a for a in self._model.get_atoms() if filter(a))
-            return self._model.get_atoms()
+                return (a for a in atom_gen if filter(a))
+            return atom_gen()
 
         elif len(atoms) == 1 and isinstance(atoms[0], (list, set, tuple)):
             atoms = atoms[0]
