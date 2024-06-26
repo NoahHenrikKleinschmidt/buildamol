@@ -1824,8 +1824,8 @@ def infer_residue_connections(
                 elif residue2 in _seen_residues:
                     continue
 
-                atoms = list(residue1.get_atoms())
-                atoms.extend(residue2.get_atoms())
+                atoms = list(i for i in residue1.get_atoms() if i.element != "H")
+                atoms.extend(i for i in residue2.get_atoms() if i.element != "H")
 
                 _neighbors = NeighborSearch(atoms)
                 _neighbors = _neighbors.search_all(radius=max_length)
