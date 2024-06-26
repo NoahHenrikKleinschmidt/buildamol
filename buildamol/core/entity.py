@@ -2319,7 +2319,7 @@ class BaseEntity:
         ----------
         model : Int
             The id of the model to get. If not provided the current working model is returned.
-        
+
         Returns
         -------
         Model
@@ -2580,7 +2580,10 @@ class BaseEntity:
         if isinstance(atoms[0], base_classes.Atom):
             atoms_to_keep = [i for i in atoms if i.parent.parent.parent is self._model]
             atoms_to_get = [i.full_id for i in set(atoms) - set(atoms_to_keep)]
-            atoms_to_get = self.get_atoms(atoms_to_get, by="full_id", residue=residue)
+            if len(atoms_to_get) > 0:
+                atoms_to_get = self.get_atoms(
+                    atoms_to_get, by="full_id", residue=residue
+                )
             _atoms = atoms_to_keep + atoms_to_get
             if filter:
                 _atoms = [a for a in _atoms if filter(a)]
@@ -2690,12 +2693,17 @@ class BaseEntity:
             _atom = (i for i in atom_gen() if i.serial_number == atom)
         elif by == "full_id":
             if residue is None:
-                _model = next(i for i in self.get_models() if i.id == atom[1])
-                _chain = next(i for i in _model.get_chains() if i.id == atom[2])
-                _residue = next(
-                    i for i in _chain.get_residues() if i.serial_number == atom[3][1]
-                )
-                _atom = (i for i in _residue.get_atoms() if i.id == atom[4][0])
+                try:
+                    _model = next(i for i in self.get_models() if i.id == atom[1])
+                    _chain = next(i for i in _model.get_chains() if i.id == atom[2])
+                    _residue = next(
+                        i
+                        for i in _chain.get_residues()
+                        if i.serial_number == atom[3][1]
+                    )
+                    _atom = (i for i in _residue.get_atoms() if i.id == atom[4][0])
+                except StopIteration:
+                    _atom = (i for i in atom_gen() if i.full_id == atom)
             else:
                 if residue.serial_number != atom[3][1]:
                     return None
@@ -2744,7 +2752,7 @@ class BaseEntity:
         """
         has_edge = self._AtomGraph.has_edge(atom1, atom2)
         if add_if_not_present and not has_edge:
-            self.add_bond(atom1, atom2)
+            self._set_bond(atom1, atom2)
         elif not has_edge:
             return None
         return self._AtomGraph.edges[atom1, atom2]["bond_obj"]
@@ -3785,7 +3793,7 @@ class BaseEntity:
         list
             A set of tuples of atom pairs that are bonded and connect different residues
         """
-        bonds = (i for i in self.bonds if i[0].get_parent() != i[1].get_parent())
+        bonds = (i for i in self._bonds if i[0].get_parent() != i[1].get_parent())
 
         if residue_a is not None and residue_b is None:
             residue_a = self.get_residues(residue_a)
@@ -3914,8 +3922,13 @@ class BaseEntity:
         bonds = structural.infer_residue_connections(
             self._base_struct, bond_length, triplet
         )
-        self._bonds.extend(base_classes.Bond(*b) for b in bonds if b not in self._bonds)
+        _bonds = [base_classes.Bond(*b) for b in bonds]
+        _bonds = [b for b in _bonds if b not in self._bonds]
+        self._bonds.extend(_bonds)
         self._AtomGraph.add_edges_from(bonds)
+        for b in _bonds:
+            self._AtomGraph.edges[*b]["bond_order"] = 1
+            self._AtomGraph.edges[*b]["bond_obj"] = b
         return bonds
 
     def apply_standard_bonds(self, _compounds=None) -> list:
@@ -4252,7 +4265,8 @@ class BaseEntity:
                 - id
                 - element
         """
-        utils.xml.write_xml(self, filename, atom_attributes)
+        xml = utils.xml.encode_molecule(self, atom_attributes)
+        utils.xml.write_xml(filename, xml)
 
     def to_openmm(self):
         """
@@ -4540,6 +4554,8 @@ class BaseEntity:
             self._bonds.append(bond)
         else:
             self._AtomGraph.edges[atom1, atom2]["bond_order"] = order
+            self._AtomGraph.edges[atom1, atom2]["bond_obj"].order = order
+
         return self
 
     def _remove_bond(self, atom1, atom2):  # , either_way: bool = False):
