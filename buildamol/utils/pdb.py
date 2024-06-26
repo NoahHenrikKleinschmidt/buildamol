@@ -311,55 +311,62 @@ def make_atoms_table(mol):
     """
     lines = []
     for atom in mol.get_atoms():
-        neg_adj = " "
-        # if len(atom.id) > 3:
-        #     neg_adj = ""
-        #     altloc_len = 2
-        # else:
-        #     neg_adj = " "
-        # altloc_len = 1
-        if atom.pqr_charge is None or atom.pqr_charge == 0:
-            charge = ""
-        else:
-            charge = str(abs(int(atom.pqr_charge))) + (
-                "-" if atom.pqr_charge < 0 else "+"
-            )
-
-        if atom.get_parent().resname in __amino_acids:
-            prefix = "ATOM  "
-        else:
-            prefix = "HETATM"
-
-        new_line = atom_line.format(
-            prefix=prefix,
-            serial=left_adjust(str(atom.serial_number), 5),
-            neg_adj=neg_adj,
-            id=right_adjust(atom.id.upper()[:4], 4),
-            # id=right_adjust(
-            #     atom.id.replace(atom.element.upper(), "").replace(
-            #         atom.element.title(), ""
-            #     ),
-            #     2,
-            # ),
-            altloc=right_adjust(atom.altloc, 1),
-            residue=left_adjust(atom.get_parent().resname, 3),
-            chain=atom.get_parent().get_parent().id or " ",
-            # resseq=left_adjust(" ", 3),
-            res_serial=left_adjust(str(atom.get_parent().serial_number), 4),
-            icode="",  # atom.get_parent().id[2],
-            x=left_adjust(f"{atom.coord[0]:.3f}", 8),
-            y=left_adjust(f"{atom.coord[1]:.3f}", 8),
-            z=left_adjust(f"{atom.coord[2]:.3f}", 8),
-            # occ=left_adjust("1.00", 6),
-            occ=left_adjust(f"{atom.occupancy:.2f}", 6),
-            # temp=left_adjust("0.00", 6),
-            temp=left_adjust(f"{atom.bfactor:.2f}", 6),
-            seg=right_adjust("", 3),
-            element=right_adjust(atom.element.upper(), 2),
-            charge=left_adjust(charge, 2),
-        )
+        new_line = encode_atom(atom)
         lines.append(new_line)
     return "\n".join(lines)
+
+
+def encode_atom(atom) -> str:
+    """
+    Make an ATOM line for a PDB file.
+    """
+    neg_adj = " "
+    # if len(atom.id) > 3:
+    #     neg_adj = ""
+    #     altloc_len = 2
+    # else:
+    #     neg_adj = " "
+    # altloc_len = 1
+    if atom.pqr_charge is None or atom.pqr_charge == 0:
+        charge = ""
+    else:
+        charge = str(abs(int(atom.pqr_charge))) + ("-" if atom.pqr_charge < 0 else "+")
+
+    if atom.get_parent().resname in __amino_acids:
+        prefix = "ATOM  "
+    else:
+        prefix = "HETATM"
+
+    new_line = atom_line.format(
+        prefix=prefix,
+        serial=left_adjust(str(atom.serial_number), 5),
+        neg_adj=neg_adj,
+        id=right_adjust(atom.id.upper()[:4], 4),
+        # id=right_adjust(
+        #     atom.id.replace(atom.element.upper(), "").replace(
+        #         atom.element.title(), ""
+        #     ),
+        #     2,
+        # ),
+        altloc=right_adjust(atom.altloc, 1),
+        residue=left_adjust(atom.get_parent().resname, 3),
+        chain=atom.get_parent().get_parent().id or " ",
+        # resseq=left_adjust(" ", 3),
+        res_serial=left_adjust(str(atom.get_parent().serial_number), 4),
+        icode="",  # atom.get_parent().id[2],
+        x=left_adjust(f"{atom.coord[0]:.3f}", 8),
+        y=left_adjust(f"{atom.coord[1]:.3f}", 8),
+        z=left_adjust(f"{atom.coord[2]:.3f}", 8),
+        # occ=left_adjust("1.00", 6),
+        occ=left_adjust(f"{atom.occupancy:.2f}", 6),
+        # temp=left_adjust("0.00", 6),
+        temp=left_adjust(f"{atom.bfactor:.2f}", 6),
+        seg=right_adjust("", 3),
+        element=right_adjust(atom.element.upper(), 2),
+        charge=left_adjust(charge, 2),
+    )
+
+    return new_line
 
 
 def right_adjust(s, n):
