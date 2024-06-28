@@ -2,7 +2,7 @@
 ![](docs/_resources/logo_large.png)
 
 ---
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12581093.svg)](https://doi.org/10.5281/zenodo.12581093)
 [![Documentation Status](https://readthedocs.org/projects/biobuild/badge/?version=latest)](https://buildamol.readthedocs.io/en/latest/?badge=latest)
 [![CodeFactor](https://www.codefactor.io/repository/github/noahhenrikkleinschmidt/buildamol/badge/main)](https://www.codefactor.io/repository/github/noahhenrikkleinschmidt/buildamol/overview/main)
 
