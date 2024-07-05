@@ -130,3 +130,5 @@ __dev/
 __figure_makery__/
 __tutorials copy__/
 __vs_stk__/
+
+*.DS_Store
