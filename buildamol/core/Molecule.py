@@ -463,7 +463,6 @@ import buildamol.core.Linkage as Linkage
 import buildamol.utils as utils
 import buildamol.structural as structural
 import buildamol.resources as resources
-import buildamol.optimizers as optimizers
 
 __all__ = [
     "Molecule",
@@ -2007,6 +2006,8 @@ class Molecule(entity.BaseEntity):
         molecule
             The optimized molecule (either the original object or a copy)
         """
+        import buildamol.optimizers as optimizers
+        
         if residue_graph is None:
             residue_graph = self.count_atoms() > 300
 

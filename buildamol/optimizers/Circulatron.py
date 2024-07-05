@@ -3,13 +3,13 @@ The Circulatron class to circularize a molecule
 """
 
 import numpy as np
-import buildamol.optimizers.Rotatron as Rotatron
-import buildamol.optimizers.DistanceRotatron as DistanceRotatron
+import buildamol.optimizers.base_rotatron as Rotatron
+from buildamol.optimizers.distance_rotatron import DistanceRotatron
 
 __all__ = ["Circulatron"]
 
 
-class Circulatron(Rotatron):
+class Circulatron(Rotatron.Rotatron):
     """
     A special rotatron to circularize a molecule.
     This rotatron works by minimizing the distance between two target nodes in the graph in order to superimpose them.

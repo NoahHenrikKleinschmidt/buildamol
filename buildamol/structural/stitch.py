@@ -13,7 +13,6 @@ import buildamol.core.Molecule as Molecule
 import buildamol.core.Linkage as Linkage
 import buildamol.structural.connector as base
 import buildamol.structural.base as structural_base
-import buildamol.optimizers as optimizers
 
 # something to hopefully fix the import issue
 if isinstance(Molecule, type):
@@ -264,6 +263,7 @@ class Stitcher(base.Connector):
         steps : int
             The number of optimization steps to perform
         """
+        import buildamol.optimizers as optimizers
 
         self.target.adjust_indexing(self.source)
         bonds = self.target.get_bonds(self._target_residue)

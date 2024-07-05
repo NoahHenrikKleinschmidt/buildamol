@@ -4,9 +4,9 @@ This module contains utility functions for the optimizers.
 
 from typing import Union
 import numpy as np
-import buildamol.optimizers.Rotatron as Rotatron
-import buildamol.optimizers.Translatron as Translatron
-import buildamol.optimizers.DistanceRotatron as DistanceRotatron
+import buildamol.optimizers.base_rotatron as Rotatron
+import buildamol.optimizers.translatron as Translatron
+
 
 import buildamol.core.Molecule as Molecule
 import buildamol.optimizers.algorithms as agents
@@ -150,6 +150,8 @@ def optimize(
         raise ValueError(f"Unknown algorithm: {algorithm}")
 
     if env is None:
+        from buildamol.optimizers.distance_rotatron import DistanceRotatron
+
         if mol.count_atoms() > 500:
             graph = mol.make_residue_graph()
             graph.make_detailed(n_samples=0.6)
@@ -185,9 +187,9 @@ def auto_algorithm(mol, env=None):
     Decide which algorithm to use for a quick-optimize based on the molecule size.
     """
     if env is not None:
-        if isinstance(env, Rotatron):
+        if isinstance(env, Rotatron.Rotatron):
             return "swarm"
-        if isinstance(env, Translatron):
+        if isinstance(env, Translatron.Translatron):
             return "scipy"
     # if mol.count_atoms() < 500:
     #     if aux.HAS_RDKIT:
@@ -196,9 +198,9 @@ def auto_algorithm(mol, env=None):
 
 
 def auto_applier(env):
-    if isinstance(env, Rotatron):
+    if isinstance(env, Rotatron.Rotatron):
         return apply_rotatron_solution
-    if isinstance(env, Translatron):
+    if isinstance(env, Translatron.Translatron):
         return apply_translatron_solution
     else:
         raise ValueError(f"Unknown environment type: {env}")

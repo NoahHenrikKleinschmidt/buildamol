@@ -17,7 +17,7 @@ import gym
 import numpy as np
 from scipy.spatial.distance import cdist
 
-import buildamol.optimizers.Rotatron as Rotatron
+import buildamol.optimizers.base_rotatron as Rotatron
 import buildamol.graphs.BaseGraph as BaseGraph
 import buildamol.utils.auxiliary as aux
 import buildamol.structural.base as structural
@@ -121,7 +121,7 @@ __numba_wrappers__ = {
 }
 
 
-class DistanceRotatron(Rotatron):
+class DistanceRotatron(Rotatron.Rotatron):
     """
     A distance-based Rotatron environment.
 
@@ -216,7 +216,7 @@ class DistanceRotatron(Rotatron):
 
         self.edx = 0
 
-        Rotatron.__init__(
+        Rotatron.Rotatron.__init__(
             self, graph, rotatable_edges, n_processes=n_processes, **kwargs
         )
         self.action_space = gym.spaces.Box(
