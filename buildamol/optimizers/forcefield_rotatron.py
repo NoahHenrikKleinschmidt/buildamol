@@ -14,7 +14,7 @@ import numpy as np
 
 from scipy.spatial.distance import cdist
 
-import buildamol.optimizers.Rotatron as Rotatron
+import buildamol.optimizers.base_rotatron as Rotatron
 import buildamol.graphs.BaseGraph as BaseGraph
 import buildamol.utils.auxiliary as aux
 
@@ -23,7 +23,7 @@ import buildamol.utils.auxiliary as aux
 __all__ = ["ForceFieldRotatron"]
 
 
-class ForceFieldRotatron(Rotatron):
+class ForceFieldRotatron(Rotatron.Rotatron):
     """
     A force field based rotatron. This rotatron uses RDKit's MMFF94 force field to
     evaluate the energy of a given state.
@@ -101,7 +101,7 @@ class ForceFieldRotatron(Rotatron):
 
         # =====================================
 
-        Rotatron.__init__(
+        Rotatron.Rotatron.__init__(
             self, graph, rotatable_edges, n_processes=n_processes, **kwargs
         )
         self.action_space = gym.spaces.Box(

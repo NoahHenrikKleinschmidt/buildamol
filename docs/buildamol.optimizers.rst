@@ -24,42 +24,42 @@ that can be used for optimization heads-on. These are:
 
    .. tab-item:: The DistanceRotatron
 
-      .. automodule:: buildamol.optimizers.DistanceRotatron
+      .. automodule:: buildamol.optimizers.distance_rotatron
          :members:
          :undoc-members:
          :show-inheritance:
 
    .. tab-item:: The OverlapRotatron
 
-      .. automodule:: buildamol.optimizers.OverlapRotatron
+      .. automodule:: buildamol.optimizers.overlap_rotatron
          :members:
          :undoc-members:
          :show-inheritance:
    
    .. tab-item:: The ForceFieldRotatron
 
-      .. automodule:: buildamol.optimizers.ForceFieldRotatron
+      .. automodule:: buildamol.optimizers.forcefield_rotatron
          :members:
          :undoc-members:
          :show-inheritance:
 
    .. tab-item:: The Circulatron
 
-         .. automodule:: buildamol.optimizers.Circulatron
+         .. automodule:: buildamol.optimizers.circulatron
             :members:
             :undoc-members:
             :show-inheritance:
    
    .. tab-item:: The ConstraintRotatron
 
-         .. automodule:: buildamol.optimizers.ConstraintRotatron
+         .. automodule:: buildamol.optimizers.constraint_rotatron
             :members:
             :undoc-members:
             :show-inheritance:
 
    .. tab-item:: The Base Rotatron
          
-         .. automodule:: buildamol.optimizers.Rotatron
+         .. automodule:: buildamol.optimizers.base_rotatron
             :members:
             :undoc-members:
             :show-inheritance:
@@ -73,7 +73,7 @@ its translation and global translation around the x, y and z axis. This is usefu
 
 .. dropdown:: The Translatron
       
-   .. automodule:: buildamol.optimizers.Translatron
+   .. automodule:: buildamol.optimizers.translatron
       :members:
       :undoc-members:
       :show-inheritance:

@@ -15,7 +15,7 @@ from scipy.stats import multivariate_normal
 # from scipy.stats import entropy
 
 
-import buildamol.optimizers.Rotatron as Rotatron
+import buildamol.optimizers.base_rotatron as Rotatron
 import buildamol.graphs.BaseGraph as BaseGraph
 
 __all__ = [
@@ -155,7 +155,7 @@ def _kl_divergence(p, q):
 # Rotatron = Rotatron.Rotatron
 
 
-class OverlapRotatron(Rotatron):
+class OverlapRotatron(Rotatron.Rotatron):
     """
     A distribution overlap-based Rotatron environment.
 
@@ -239,7 +239,7 @@ class OverlapRotatron(Rotatron):
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
         )
-        Rotatron.__init__(
+        Rotatron.Rotatron.__init__(
             self, graph, rotatable_edges, n_processes=n_processes, **kwargs
         )
 
