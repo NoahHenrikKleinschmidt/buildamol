@@ -6,8 +6,6 @@ from typing import Union
 
 import numpy as np
 
-resources.load_lipids()
-
 
 __all__ = [
     "fatty_acid",
@@ -59,18 +57,22 @@ def fatty_acid(
     # make a linear alkane
     mol = linear_alkane(length)
 
+    # select some random positions for double bonds if not provided
     if isinstance(double_bonds, int):
-        double_bonds = np.random.choice(
-            range(3, length - 1), double_bonds, replace=False
-        )
+        possible = list(range(2, length - 1))
+        selected = []
+        for _ in range(double_bonds):
+            db = np.random.choice(possible)
+            selected.append(db)
+            possible.remove(db)
+            # don't allow two double bonds in a row
+            if db + 1 in possible:
+                possible.remove(db + 1)
+            if db - 1 in possible:
+                possible.remove(db - 1)
+        double_bonds = selected
 
-    # now make sure that we don't have consecutive double bonds
-    to_drop = []
-    for i in range(len(double_bonds) - 1):
-        if double_bonds[i + 1] - double_bonds[i] <= 1:
-            to_drop.append(i)
-    double_bonds = np.delete(double_bonds, to_drop)
-
+    # select some random cis configurations if not provided
     if isinstance(cis, (float, int, bool)):
         cis = np.random.choice(
             [True, False], len(double_bonds), p=[float(cis), float(1 - cis)]
@@ -124,6 +126,7 @@ def triacylglycerol(
     Molecule
         The triacylglycerol molecule.
     """
+    resources.load_lipids()
     out = core.Molecule.from_compound("GOL")
 
     link = core.linkage(None, "C", delete_in_source=("OXT", "HXT"))
@@ -225,6 +228,7 @@ def sphingolipid(
     Molecule
         The sphingolipid molecule.
     """
+    resources.load_lipids()
     out = core.Molecule.from_compound("SPH")
 
     # attach the fatty acid chain
