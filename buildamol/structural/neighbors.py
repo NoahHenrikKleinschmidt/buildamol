@@ -121,10 +121,10 @@ class Neighborhood:
         if len(constraints) == 1:
             node_factory = lambda node: {node}
         else:
-            node_factory = lambda node: {
+            node_factory = lambda node: [
                 node,
                 *self.get_neighbors(node, n=len(constraints) - 1),
-            }
+            ]
 
         for node in self._src.nodes:
             _nodes = node_factory(node)
