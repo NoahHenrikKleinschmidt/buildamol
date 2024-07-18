@@ -29,6 +29,7 @@ setuptools.setup(
         "buildamol.extensions.bio",
         "buildamol.extensions.bio.proteins",
         "buildamol.extensions.bio.lipids",
+        "buildamol.extensions.bio.glycans",
         "buildamol.extensions.molecular_dynamics",
         "buildamol.extensions.molecular_dynamics.atom_typing",
     ],
