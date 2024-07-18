@@ -9,7 +9,7 @@
 project = "buildamol"
 copyright = "2024, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "1.2.1"
+release = "1.2.3"
 
 
 import plotly.io as pio
