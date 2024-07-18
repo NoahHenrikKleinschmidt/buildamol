@@ -642,6 +642,17 @@ def test_sample_edges():
     assert all(i in all_edges for i in edges)
 
 
+def test_direct_edges():
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    mol.set_root(1)
+    graph = mol.get_atom_graph()
+    edges = mol.get_residue_connections(triplet=False)
+    directed = graph.direct_edges(mol.root_atom, edges=edges)
+    for i in directed:
+        assert i[0].parent.serial_number < i[1].parent.serial_number
+
+
 def test_search_by_constraints():
     mol = bam.Molecule.from_smiles("CC(=O)NC")
     graph = mol.get_atom_graph()
