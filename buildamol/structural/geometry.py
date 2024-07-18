@@ -144,7 +144,7 @@ class Geometry:
         #         atom.coord = coords[i]
 
         # now fill the rest with hydrogens
-        import buildamol.core.base_classes as core
+        import buildamol.base_classes as core
 
         atoms = list(atoms)
         for coord in coords[len(atoms) :]:

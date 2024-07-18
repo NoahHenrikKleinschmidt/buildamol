@@ -698,9 +698,10 @@ class BaseGraph(nx.Graph):
             raise ValueError(f"Root node {root_node} not in graph")
 
         _directed = nx.dfs_tree(self, source=root_node).edges
-        _directed = [i for i in _directed if i in edges or i[::-1] in edges]
 
-        return _directed
+        _tupled_edges = [(i[0], i[1]) for i in edges]
+        out = [edge if edge in _directed else edge[::-1] for edge in _tupled_edges]
+        return out
 
     def clear_cache(self):
         """

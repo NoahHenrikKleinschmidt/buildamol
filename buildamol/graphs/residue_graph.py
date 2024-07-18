@@ -4,7 +4,7 @@ import Bio.PDB as bio
 import numpy as np
 
 import buildamol.structural as struct
-from buildamol.graphs.BaseGraph import BaseGraph
+from buildamol.graphs.base_graph import BaseGraph
 import buildamol.utils.visual as vis
 
 

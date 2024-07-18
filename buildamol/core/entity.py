@@ -11,7 +11,7 @@ import warnings
 import Bio.PDB as bio
 import numpy as np
 
-import buildamol.core.base_classes as base_classes
+import buildamol.base_classes as base_classes
 import buildamol.core.Linkage as Linkage
 import buildamol.structural as structural
 import buildamol.utils as utils

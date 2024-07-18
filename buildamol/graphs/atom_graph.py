@@ -3,8 +3,8 @@ import networkx as nx
 # import Bio.PDB as bio
 
 import buildamol.structural as struct
-from buildamol.graphs.BaseGraph import BaseGraph
-import buildamol.core.base_classes as base_classes
+from buildamol.graphs.base_graph import BaseGraph
+import buildamol.base_classes as base_classes
 import buildamol.utils.visual as vis
 
 

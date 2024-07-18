@@ -18,7 +18,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 import buildamol.optimizers.base_rotatron as Rotatron
-import buildamol.graphs.BaseGraph as BaseGraph
+import buildamol.graphs.base_graph as base_graph
 import buildamol.utils.auxiliary as aux
 import buildamol.structural.base as structural
 
@@ -161,7 +161,7 @@ class DistanceRotatron(Rotatron.Rotatron):
 
     def __init__(
         self,
-        graph: "BaseGraph.BaseGraph",
+        graph: "base_graph.BaseGraph",
         rotatable_edges: list = None,
         radius: float = 20,
         pushback: float = 3,

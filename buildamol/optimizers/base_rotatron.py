@@ -9,7 +9,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 import buildamol.utils.auxiliary as aux
-import buildamol.graphs.BaseGraph as BaseGraph
+import buildamol.graphs.base_graph as base_graph
 import buildamol.structural.base as structural
 from copy import deepcopy
 
@@ -39,7 +39,7 @@ class Rotatron(gym.Env):
 
     def __init__(
         self,
-        graph: "BaseGraph.BaseGraph",
+        graph: "base_graph.BaseGraph",
         rotatable_edges: list = None,
         n_processes: int = 1,
         setup: bool = True,

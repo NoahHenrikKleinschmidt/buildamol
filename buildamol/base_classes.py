@@ -17,7 +17,7 @@ It is important to note, that for most purposes, however, the BuildAMol classes 
 .. code-block:: python
 
     import Bio.PDB as bio
-    from buildamol.core.base_classes import Atom
+    from buildamol.base_classes import Atom
 
     bio_atom = bio.Atom("CA", (0, 0, 0))
     atom = Atom.from_biopython(bio_atom)
@@ -31,7 +31,7 @@ then all atoms, residues, chains and models will be converted to their BuildAMol
 .. code-block:: python
 
     import Bio.PDB as bio
-    from buildamol.core.base_classes import Structure
+    from buildamol.base_classes import Structure
 
     bio_structure = bio.PDBParser().get_structure("test", "test.pdb")
     structure = Structure.from_biopython(bio_structure)

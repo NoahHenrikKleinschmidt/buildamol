@@ -142,7 +142,7 @@ import buildamol.utils.json as json
 import buildamol.utils.defaults as defaults
 import buildamol.utils.auxiliary as aux
 import buildamol.utils as utils
-import buildamol.core.base_classes as base_classes
+import buildamol.base_classes as base_classes
 import buildamol.core.Molecule as Molecule
 
 __loaded_compounds__ = {
