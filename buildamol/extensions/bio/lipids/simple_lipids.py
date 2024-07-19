@@ -154,12 +154,12 @@ def phospholipid(
     Parameters
     ----------
     chain1 : Molecule
-        The first fatty acid chain.
+        The first fatty acid chain. None can be provided, to leave this position empty.
     chain2 : Molecule
-        The second fatty acid chain.
+        The second fatty acid chain. None can be provided, to leave this position empty.
     headgroup : Molecule
         The headgroup of the phospholipid. This will be attached to the phosphate group.
-        It is assumed that the headgroup does NOT have its own phosphate group.
+        It is assumed that the headgroup does NOT have its own phosphate group. None can be provided, to leave this position empty.
     headgroup_link: Linkage
         The linkage to use to attach the headgroup to the phosphate group. The phosphate group is treated
         as "target" the headgroup is "source".
@@ -184,18 +184,22 @@ def phospholipid(
     _chains = (chain1, chain2)
     _i = 2
     for i in (1, 2):
+        if _chains[i - 1] is None:
+            continue
         link.atom1 = f"C{i}"
         out.attach(_chains[i - 1], link, at_residue=1)
         _i += 1
         OXT = out.get_atom("OXT", residue=_i)
         out.rename_atom(OXT, f"O{i}")
 
-    # now attach the headgroup (making sure to rename the target atom if necessary)
-    if headgroup_link.atom1 is None or headgroup_link.atom1 not in ("O3", "O4"):
-        headgroup_link.atom1 = "O3"
+    if headgroup is not None:
 
-    out.get_atom(headgroup_link.atom1, residue=2).charge = 0
-    out.attach(headgroup, headgroup_link, at_residue=2)
+        # now attach the headgroup (making sure to rename the target atom if necessary)
+        if headgroup_link.atom1 is None or headgroup_link.atom1 not in ("O3", "O4"):
+            headgroup_link.atom1 = "O3"
+
+        out.get_atom(headgroup_link.atom1, residue=2).charge = 0
+        out.attach(headgroup, headgroup_link, at_residue=2)
 
     out.rename_residue(1, id)
     out.id = id
@@ -214,9 +218,9 @@ def sphingolipid(
     Parameters
     ----------
     chain : Molecule
-        The fatty acid chain.
+        The fatty acid chain. None can be provided, to leave this position empty.
     headgroup : Molecule
-        The headgroup of the sphingolipid.
+        The headgroup of the sphingolipid. None can be provided, to leave this position empty.
     headgroup_link: Linkage
         The linkage to use to attach the headgroup to the sphingosine. The sphingosine is treated
         as "target" the headgroup is "source".
@@ -231,14 +235,18 @@ def sphingolipid(
     resources.load_lipids()
     out = core.Molecule.from_compound("SPH")
 
-    # attach the fatty acid chain
-    link = core.linkage("N2", "C", delete_in_source=("OXT", "HXT"))
-    out.attach(chain, link, at_residue=1)
+    if chain is not None:
 
-    # now attach the headgroup (making sure to rename the target atom if necessary)
-    if headgroup_link.atom1 is None or headgroup_link.atom1 != "O1":
-        headgroup_link.atom1 = "O1"
-    out.attach(headgroup, headgroup_link, at_residue=1)
+        # attach the fatty acid chain
+        link = core.linkage("N2", "C", delete_in_source=("OXT", "HXT"))
+        out.attach(chain, link, at_residue=1)
+
+    if headgroup is not None:
+
+        # now attach the headgroup (making sure to rename the target atom if necessary)
+        if headgroup_link.atom1 is None or headgroup_link.atom1 != "O1":
+            headgroup_link.atom1 = "O1"
+        out.attach(headgroup, headgroup_link, at_residue=1)
 
     out.rename_residue(1, id)
     out.id = id
