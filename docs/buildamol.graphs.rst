@@ -17,7 +17,7 @@ The `BaseGraph` is at the basis of both the `AtomGraph` and `ResidueGraph`.
 
 .. dropdown:: The `BaseGraph` class
 
-   .. autoclass:: buildamol.graphs.BaseGraph.BaseGraph
+   .. autoclass:: buildamol.graphs.base_graph.BaseGraph
       :members:
       :undoc-members:
       :show-inheritance:
