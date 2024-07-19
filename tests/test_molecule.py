@@ -2010,11 +2010,13 @@ def test_get_left_right_hydrogens():
         v.draw_point("right", right.coord, color="green")
         v.show()
 
+
 def test_get_atoms_filter_only():
     mol = bam.Molecule.from_compound("GLC")
     carbons = mol.get_atoms(filter=lambda x: x.element == "C")
     carbons = list(carbons)
     assert len(carbons) == 6
+
 
 def test_get_atoms_residue_only():
     mol = bam.Molecule.from_compound("GLC")
@@ -2022,6 +2024,7 @@ def test_get_atoms_residue_only():
     carbons = list(carbons)
     assert carbons == list(mol.get_residue(1).get_atoms())
     assert len(carbons) == 24
+
 
 def test_superimpose():
     mol = bam.Molecule.from_compound("GLC")
@@ -2294,3 +2297,28 @@ def test_search_by_constraints2():
         ]
     )
     assert len(out) == 1
+
+
+def test_add_hydrogens_specific():
+    glc = bam.Molecule.from_compound("GLC")
+
+    glc.remove_hydrogens()
+    glc.add_hydrogens("O1")
+
+    assert len(glc.get_atoms("H", by="element")) == 1
+
+    glc.add_hydrogens("C3", "C4", "C5")
+
+    assert glc.get_hydrogen("C3") is not None
+
+
+def test_remove_hydrogens_specific():
+    glc = bam.Molecule.from_compound("GLC")
+
+    current = len(glc.get_atoms("H", by="element"))
+    glc.remove_hydrogens("O1")
+    assert len(glc.get_atoms("H", by="element")) == current - 1
+
+    glc.remove_hydrogens("C3", "C4", "C5")
+    assert len(glc.get_atoms("H", by="element")) == current - 4
+    assert glc.get_hydrogen("C3") is None

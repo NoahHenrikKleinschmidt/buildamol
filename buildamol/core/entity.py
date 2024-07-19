@@ -4025,19 +4025,45 @@ class BaseEntity:
         structural.relabel_hydrogens(self)
         return self
 
-    def add_hydrogens(self):
+    def add_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
         """
         Infer missing hydrogens in the structure.
+
+        Parameters
+        ----------
+        atoms
+            The atoms to infer hydrogens for. If None, all atoms are considered.
         """
+        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple, set)):
+            atoms = atoms[0]
         H = structural.infer.Hydrogenator()
-        H.infer_hydrogens(self, bond_length=1.05)
+        if atoms:
+            atoms = self.get_atoms(*atoms)
+            for a in atoms:
+                H.add_hydrogens(a, self)
+        else:
+            H.infer_hydrogens(self, bond_length=1.05)
         return self
 
-    def remove_hydrogens(self):
+    def remove_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
         """
         Remove all hydrogens in the structure.
+
+        Parameters
+        ----------
+        atoms
+            The atoms to remove hydrogens from. If None, all atoms are considered.
         """
-        self._remove_atoms(*self.get_atoms("H", by="element"))
+        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple, set)):
+            atoms = atoms[0]
+        if atoms:
+            atoms = self.get_atoms(*atoms)
+            hydrogens = set()
+            for atom in atoms:
+                hydrogens.update(self.get_hydrogens(atom))
+            self._remove_atoms(*hydrogens)
+        else:
+            self._remove_atoms(*self.get_atoms("H", by="element"))
         return self
 
     def get_quartets(self):
