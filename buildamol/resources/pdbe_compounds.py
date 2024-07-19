@@ -525,7 +525,9 @@ def load_amino_acids():
     amino_acids = read_compounds(
         defaults.DEFAULT_PDBE_COMPONENT_FILES["amino_acids"], set_default=False
     )
+    warnings.filterwarnings("ignore")
     comps.merge(amino_acids)
+    warnings.filterwarnings("default")
     __loaded_compounds__["amino_acids"] = True
 
 
@@ -552,7 +554,9 @@ def load_lipids():
     lipids = read_compounds(
         defaults.DEFAULT_PDBE_COMPONENT_FILES["lipids"], set_default=False
     )
+    warnings.filterwarnings("ignore")
     comps.merge(lipids)
+    warnings.filterwarnings("default")
     __loaded_compounds__["lipids"] = True
 
 
@@ -579,7 +583,9 @@ def load_sugars():
     sugars = read_compounds(
         defaults.DEFAULT_PDBE_COMPONENT_FILES["sugars"], set_default=False
     )
+    warnings.filterwarnings("ignore")
     comps.merge(sugars)
+    warnings.filterwarnings("default")
     __loaded_compounds__["sugars"] = True
 
 
@@ -607,7 +613,9 @@ def load_nucleotides():
     nucleotides = read_compounds(
         defaults.DEFAULT_PDBE_COMPONENT_FILES["nucleotides"], set_default=False
     )
+    warnings.filterwarnings("ignore")
     comps.merge(nucleotides)
+    warnings.filterwarnings("default")
     __loaded_compounds__["nucleotides"] = True
 
 
@@ -634,7 +642,9 @@ def load_small_molecules():
     small_molecules = read_compounds(
         defaults.DEFAULT_PDBE_COMPONENT_FILES["small_molecules"], set_default=False
     )
+    warnings.filterwarnings("ignore")
     comps.merge(small_molecules)
+    warnings.filterwarnings("default")
     __loaded_compounds__["small_molecules"] = True
 
 
