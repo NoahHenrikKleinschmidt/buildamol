@@ -307,7 +307,7 @@ class Atom(ID, bio.Atom.Atom):
     def equals(self, other, include_coord: bool = False) -> bool:
         """
         Check if the atom is equal to another atom.
-        This will return True if the two atoms match and have the parent-serial number.
+        This will return True if the two atoms match and have same the parent-serial number.
         """
         return self.matches(other, include_id=True, include_coord=include_coord) and (
             self.parent.id[1] == other.parent.id[1]

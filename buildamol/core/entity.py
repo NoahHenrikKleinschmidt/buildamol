@@ -2592,7 +2592,7 @@ class BaseEntity:
             else:
                 atom_gen = self._model.get_atoms
             if filter is not None:
-                return (a for a in atom_gen if filter(a))
+                return (a for a in atom_gen() if filter(a))
             return atom_gen()
 
         elif len(atoms) == 1 and isinstance(atoms[0], (list, set, tuple)):
