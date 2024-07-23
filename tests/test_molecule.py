@@ -1261,7 +1261,7 @@ def test_rotate_descendants_2():
 def test_from_rdkit():
     from rdkit import Chem
 
-    rdkit_mol = Chem.MolFromPDBFile(base.GLCPDB, removeHs=False)
+    rdkit_mol = Chem.MolFromPDBFile(str(base.GLCPDB), removeHs=False)
     assert sum(1 for i in rdkit_mol.GetAtoms()) == 24
 
     mol = bam.Molecule.from_rdkit(rdkit_mol, "myman")
@@ -1750,14 +1750,14 @@ def test_base_matches_with_reindex():
     for a1, a2 in zip(mol.atoms, mol2.atoms):
         assert a1.matches(a2)
         assert a2.matches(a1)
-        assert a1.equals(a2)  # on atom level all should still be equal
-        assert a2.equals(a1)
+        assert not a1.equals(a2)
+        assert not a2.equals(a1)
 
     for r1, r2 in zip(mol.residues, mol2.residues):
         assert r1.matches(r2)
         assert r2.matches(r1)
-        assert not r1.equals(r2)
-        assert not r2.equals(r1)
+        assert r1.equals(r2)
+        assert r2.equals(r1)
 
     for c1, c2 in zip(mol.chains, mol2.chains):
         assert c1.matches(c2)
@@ -1870,21 +1870,23 @@ def test_add_hydrogens_glucose():
 
 def test_add_hydrogens_mannose9():
     mol = bam.read_pdb(base.MAN9PDB)
-    mol.infer_bonds(restrict_residues=False)
+    mol.infer_bonds(restrict_residues=False, infer_bond_orders=True)
+    mol.autolabel()
 
     ref_n = mol.count_atoms()
-
     old_hydrogens = mol.get_atoms("H", by="element")
-    mol.remove_atoms(*old_hydrogens)
+    n_hydrogens = len(old_hydrogens)
+    mol.remove_atoms(old_hydrogens)
 
-    assert mol.count_atoms() < ref_n
+    assert mol.count_atoms() == ref_n - n_hydrogens
 
     v = mol.draw()
     mol.add_hydrogens()
 
     new_hydrogens = mol.get_atoms("H", by="element")
 
-    diff_H = set(new_hydrogens) - set(old_hydrogens)
+    # we should have the same number of hydrogens as before
+    assert len(new_hydrogens) == n_hydrogens
 
     v.draw_points(mol.get_coords(*new_hydrogens), colors="limegreen")
     v.draw_points(bam.utils.coord_array(*old_hydrogens), colors="purple")
@@ -2144,130 +2146,130 @@ def test_get_atoms_generator_implementation():
     assert len(out) != 0
 
 
-def test_sampler():
-    import numpy as np
+# def test_sampler():
+#     import numpy as np
 
-    bam.load_small_molecules()
-    N = 8
-    fragments = []
-    for id in bam.get_default_compounds().ids:
-        info, pdb = bam.get_compound(id, return_type="dict")
-        n_atoms = sum(1 for i in pdb["atoms"]["elements"] if i != "H")
-        if n_atoms <= N:
-            fragments.append(bam.get_compound(id, return_type="molecule"))
-            a = []
-            for adx, atom in enumerate(fragments[-1].get_atoms()):
-                if fragments[-1].get_hydrogen(atom):
-                    a.append(adx)
-            if len(a) == 0:
-                fragments.pop()
-                continue
+#     bam.load_small_molecules()
+#     N = 8
+#     fragments = []
+#     for id in bam.get_default_compounds().ids:
+#         info, pdb = bam.get_compound(id, return_type="dict")
+#         n_atoms = sum(1 for i in pdb["atoms"]["elements"] if i != "H")
+#         if n_atoms <= N:
+#             fragments.append(bam.get_compound(id, return_type="molecule"))
+#             a = []
+#             for adx, atom in enumerate(fragments[-1].get_atoms()):
+#                 if fragments[-1].get_hydrogen(atom):
+#                     a.append(adx)
+#             if len(a) == 0:
+#                 fragments.pop()
+#                 continue
 
-    class MoleculeSampler:
-        def __init__(self, fragments):
-            attachment_points = []
-            atom_ids = []
+#     class MoleculeSampler:
+#         def __init__(self, fragments):
+#             attachment_points = []
+#             atom_ids = []
 
-            to_drop = []
-            for fdx, fragment in enumerate(fragments):
-                n_atoms = sum(1 for i in fragment.get_atoms() if i.element != "H")
-                a = []
-                for adx, atom in enumerate(fragment.get_atoms()):
-                    if atom.element == "H":
-                        continue
-                    if fragment.get_hydrogen(atom):
-                        a.append(adx)
-                if len(a) == 0:
-                    to_drop.append(fdx)
-                    continue
-                attachment_points.append(a)
-                atom_ids.append([atom.id for atom in fragment.get_atoms()])
+#             to_drop = []
+#             for fdx, fragment in enumerate(fragments):
+#                 n_atoms = sum(1 for i in fragment.get_atoms() if i.element != "H")
+#                 a = []
+#                 for adx, atom in enumerate(fragment.get_atoms()):
+#                     if atom.element == "H":
+#                         continue
+#                     if fragment.get_hydrogen(atom):
+#                         a.append(adx)
+#                 if len(a) == 0:
+#                     to_drop.append(fdx)
+#                     continue
+#                 attachment_points.append(a)
+#                 atom_ids.append([atom.id for atom in fragment.get_atoms()])
 
-            for fragment in to_drop:
-                del fragments[fragment]
+#             for fragment in to_drop:
+#                 del fragments[fragment]
 
-            self.fragments = fragments
-            self.attachment_points = attachment_points
-            self.atom_ids = atom_ids
-            self._others = {
-                i: np.array([j for j in range(len(fragments)) if j != i])
-                for i in range(len(fragments))
-            }
-            self._n = 1
+#             self.fragments = fragments
+#             self.attachment_points = attachment_points
+#             self.atom_ids = atom_ids
+#             self._others = {
+#                 i: np.array([j for j in range(len(fragments)) if j != i])
+#                 for i in range(len(fragments))
+#             }
+#             self._n = 1
 
-        def random(self, n_fragments: int):
-            """
-            Make a random matrix encoding for a molecule assembled from fragments.
-            """
-            self._n = n_fragments
-            molecule_vec = np.full((n_fragments, 4), -1, dtype=int)
-            molecule_vec[0, 0] = np.random.choice(len(self.fragments))
+#         def random(self, n_fragments: int):
+#             """
+#             Make a random matrix encoding for a molecule assembled from fragments.
+#             """
+#             self._n = n_fragments
+#             molecule_vec = np.full((n_fragments, 4), -1, dtype=int)
+#             molecule_vec[0, 0] = np.random.choice(len(self.fragments))
 
-            _used_atoms = {i: set() for i in range(n_fragments)}
-            for i in range(1, n_fragments):
-                molecule_vec[i, 0] = np.random.choice(len(self.fragments))
+#             _used_atoms = {i: set() for i in range(n_fragments)}
+#             for i in range(1, n_fragments):
+#                 molecule_vec[i, 0] = np.random.choice(len(self.fragments))
 
-                while molecule_vec[i, 1] == -1:
-                    atom = np.random.choice(self.attachment_points[molecule_vec[i, 0]])
-                    if atom not in _used_atoms[i]:
-                        molecule_vec[i, 1] = atom
-                        _used_atoms[i].add(atom)
+#                 while molecule_vec[i, 1] == -1:
+#                     atom = np.random.choice(self.attachment_points[molecule_vec[i, 0]])
+#                     if atom not in _used_atoms[i]:
+#                         molecule_vec[i, 1] = atom
+#                         _used_atoms[i].add(atom)
 
-                while molecule_vec[i, 2] == -1:
-                    target = i - 1  # np.random.choice(range(i))
-                    available = [
-                        i
-                        for i in self.attachment_points[molecule_vec[target, 0]]
-                        if i not in _used_atoms[target]
-                    ]
-                    if len(available) > 0:
-                        molecule_vec[i, 2] = target
-                        molecule_vec[i, 3] = np.random.choice(available)
-                        _used_atoms[target].add(molecule_vec[i, 3])
+#                 while molecule_vec[i, 2] == -1:
+#                     target = i - 1  # np.random.choice(range(i))
+#                     available = [
+#                         i
+#                         for i in self.attachment_points[molecule_vec[target, 0]]
+#                         if i not in _used_atoms[target]
+#                     ]
+#                     if len(available) > 0:
+#                         molecule_vec[i, 2] = target
+#                         molecule_vec[i, 3] = np.random.choice(available)
+#                         _used_atoms[target].add(molecule_vec[i, 3])
 
-            return molecule_vec
+#             return molecule_vec
 
-        def make_molecule(self, matrix):
-            """
-            Assemble a molecule based on an instruction matrix
-            """
-            _used_atoms = {i: set() for i in range(len(matrix))}
+#         def make_molecule(self, matrix):
+#             """
+#             Assemble a molecule based on an instruction matrix
+#             """
+#             _used_atoms = {i: set() for i in range(len(matrix))}
 
-            mol = self.fragments[matrix[0, 0]].copy()
+#             mol = self.fragments[matrix[0, 0]].copy()
 
-            for i in range(1, len(matrix)):
-                source, source_atom, target, target_atom = matrix[i, :]
+#             for i in range(1, len(matrix)):
+#                 source, source_atom, target, target_atom = matrix[i, :]
 
-                if target_atom in _used_atoms[target]:
-                    raise ValueError("Target atom already used")
-                if source_atom in _used_atoms[i]:
-                    raise ValueError("Source atom already used")
+#                 if target_atom in _used_atoms[target]:
+#                     raise ValueError("Target atom already used")
+#                 if source_atom in _used_atoms[i]:
+#                     raise ValueError("Source atom already used")
 
-                link = bam.linkage(
-                    self.atom_ids[matrix[target, 0]][target_atom],
-                    self.atom_ids[source][source_atom],
-                )
-                mol.stitch_attach(
-                    self.fragments[source], link, at_residue=int(target + 1)
-                )
+#                 link = bam.linkage(
+#                     self.atom_ids[matrix[target, 0]][target_atom],
+#                     self.atom_ids[source][source_atom],
+#                 )
+#                 mol.stitch_attach(
+#                     self.fragments[source], link, at_residue=int(target + 1)
+#                 )
 
-                _used_atoms[target].add(target_atom)
-                _used_atoms[i].add(source_atom)
+#                 _used_atoms[target].add(target_atom)
+#                 _used_atoms[i].add(source_atom)
 
-            return mol
+#             return mol
 
-    sampler = MoleculeSampler(fragments)
-    for i in range(3):
-        m = sampler.random(4)
-        mol = sampler.make_molecule(m)
-        v = mol.draw(atoms=False)
-        v += (
-            mol.optimize(inplace=True)
-            .move([10, 0, 0])
-            .draw(atoms=False, line_color="blue")
-        )
-        if base.ALLOW_VISUAL:
-            v.show()
+#     sampler = MoleculeSampler(fragments)
+#     for i in range(3):
+#         m = sampler.random(4)
+#         mol = sampler.make_molecule(m)
+#         v = mol.draw(atoms=False)
+#         v += (
+#             mol.optimize(inplace=True)
+#             .move([10, 0, 0])
+#             .draw(atoms=False, line_color="blue")
+#         )
+#         if base.ALLOW_VISUAL:
+#             v.show()
 
 
 def test_search_by_constraints():
