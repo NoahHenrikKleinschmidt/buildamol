@@ -16,7 +16,7 @@ from scipy.stats import multivariate_normal
 
 
 import buildamol.optimizers.base_rotatron as Rotatron
-import buildamol.graphs.BaseGraph as BaseGraph
+import buildamol.graphs.base_graph as base_graph
 
 __all__ = [
     "OverlapRotatron",
@@ -188,7 +188,7 @@ class OverlapRotatron(Rotatron.Rotatron):
 
     def __init__(
         self,
-        graph: "BaseGraph.BaseGraph",
+        graph: "base_graph.BaseGraph",
         rotatable_edges: list = None,
         artificial_spread: float = 2.0,
         clash_distance: float = 1.2,

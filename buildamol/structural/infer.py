@@ -21,7 +21,7 @@ import buildamol.structural.neighbors as neighbors
 import buildamol.structural.geometry as geometry
 
 # might cause circular imports!
-import buildamol.core.base_classes as base_classes
+import buildamol.base_classes as base_classes
 
 element_connectivity = {
     "C": 4,

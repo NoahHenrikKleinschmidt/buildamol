@@ -190,7 +190,7 @@ def test_relabel_2():
 def test_get_2FJ():
     assert bam.has_compound("2FJ") == False, "The compound was already added!"
 
-    comps = bam.read_compounds(base.PDBE_TEST_FILE, set_default=False)
+    comps = bam.read_compounds(str(base.PDBE_TEST_FILE), set_default=False)
     _dict = comps.get("2FJ", return_type="dict")
     assert isinstance(_dict, dict)
     mol = comps.get("2FJ", return_type="molecule")

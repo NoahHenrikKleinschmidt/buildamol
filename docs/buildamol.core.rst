@@ -50,7 +50,7 @@ in situations where multiple identical molecules are connected to each other. Al
 
 .. dropdown:: The `base_classes` module
 
-   .. automodule:: buildamol.core.base_classes
+   .. automodule:: buildamol.base_classes
       :members:
       :undoc-members:
       :show-inheritance:

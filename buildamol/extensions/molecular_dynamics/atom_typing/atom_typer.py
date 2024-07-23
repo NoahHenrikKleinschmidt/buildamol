@@ -1,4 +1,4 @@
-import buildamol.core.base_classes as base_classes
+import buildamol.base_classes as base_classes
 
 
 class AtomTyper:

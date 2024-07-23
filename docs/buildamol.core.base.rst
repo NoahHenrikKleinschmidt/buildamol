@@ -12,7 +12,7 @@ The lowest level of buildamol base classes.
 buildamol base\_classes
 -----------------------
 
-.. automodule:: buildamol.core.base_classes
+.. automodule:: buildamol.base_classes
    :members:
    :undoc-members:
    :show-inheritance:

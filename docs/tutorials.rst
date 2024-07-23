@@ -18,35 +18,59 @@ Basic Usage
    examples/drawing
    examples/syntax_flavours
    examples/optimization
-   examples/functional_groups
    examples/converting_formats
 
-Resource-oriented tutorials
+Resource-oriented Tutorials
 ---------------------------
 
 .. nbgallery::
    examples/built-in
    examples/default_settings
 
+
+BuildAmol and Chemistry
+-----------------------
+
+.. nbgallery::
+   examples/functional_groups
+   examples/geometry_scratch
+
+
+BuildAmol and Biology
+---------------------
+
+.. nbgallery::
+   examples/bio_extension
+   examples/glycosylation
+   examples/ligand_design
+
+BuildAmol and Materials
+-----------------------
+
+.. nbgallery::
+   examples/nanotube
+   examples/metal_organic_framework
+
+BuildAmol and Molecular Dynamics
+--------------------------------
+
+.. nbgallery::
+   examples/molecular_dynamics
+   examples/conformation_sampling
+   examples/solvation_box
+
+   
 More applied tutorials
 -----------------------
 
 .. nbgallery::
 
-   examples/geometry_scratch
+   examples/rotaxane_easy
+   examples/rotaxane_hard
    examples/building_circular
    examples/building_polyphenylene
    examples/irregular_dendrimer
-   examples/glycosylation
-   examples/molecular_dynamics
-   examples/conformation_sampling
-   examples/rotaxane_easy
-   examples/rotaxane_hard
-   examples/nanotube
-   examples/metal_organic_framework
-   examples/solvation_box
    examples/fragment_library
-   examples/ligand_design
 
 .. .. _cards-clickable::
 

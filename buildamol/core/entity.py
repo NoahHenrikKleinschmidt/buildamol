@@ -11,7 +11,7 @@ import warnings
 import Bio.PDB as bio
 import numpy as np
 
-import buildamol.core.base_classes as base_classes
+import buildamol.base_classes as base_classes
 import buildamol.core.Linkage as Linkage
 import buildamol.structural as structural
 import buildamol.utils as utils
@@ -2042,6 +2042,27 @@ class BaseEntity:
             return None
         return Hs.pop()
 
+    def get_hydrogens(
+        self, atom: Union[int, str, tuple, base_classes.Atom] = None
+    ) -> set:
+        """
+        Get multiple hydrogen atoms
+
+        Parameters
+        ----------
+        atom
+            A specific atom whose hydrogen neighbors should be returned. If None, all hydrogen atoms in the molecule are returned.
+
+        Returns
+        -------
+        set
+            A set of hydrogen atoms
+        """
+        if atom is not None:
+            return self.get_neighbors(atom, n=1, filter=lambda a: a.element == "H")
+        else:
+            return set(self.get_atoms("H", by="element"))
+
     def trans(self, *bond: Union[base_classes.Atom, tuple, base_classes.Bond]):
         """
         Rotate the molecule such that the atoms in the bond are in a trans configuration.
@@ -2571,7 +2592,7 @@ class BaseEntity:
             else:
                 atom_gen = self._model.get_atoms
             if filter is not None:
-                return (a for a in atom_gen if filter(a))
+                return (a for a in atom_gen() if filter(a))
             return atom_gen()
 
         elif len(atoms) == 1 and isinstance(atoms[0], (list, set, tuple)):
@@ -2812,7 +2833,7 @@ class BaseEntity:
 
         return self._get_bonds(atom1, atom2, either_way)
 
-    def set_bond_order(self, atom1, atom2, order: int):
+    def set_bond_order(self, atom1, atom2, order: int, adjust_hydrogens: bool = False):
         """
         Set the order of a bond between two atoms
 
@@ -2824,10 +2845,18 @@ class BaseEntity:
             The second atom
         order : int
             The order of the bond
+        adjust_hydrogens : bool
+            Whether to adjust the number of hydrogens on the atoms based on the bond order
         """
         bond = self.get_bond(atom1, atom2)
         self._AtomGraph.edges[atom1, atom2]["bond_order"] = order
         bond.order = order
+        if adjust_hydrogens:
+            H = structural.Hydrogenator()
+            self.remove_atoms(self.get_hydrogens(atom1) | self.get_hydrogens(atom2))
+            H.add_hydrogens(atom1, self)
+            H.add_hydrogens(atom2, self)
+        return self
 
     def get_residue(
         self,
@@ -3996,19 +4025,45 @@ class BaseEntity:
         structural.relabel_hydrogens(self)
         return self
 
-    def add_hydrogens(self):
+    def add_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
         """
         Infer missing hydrogens in the structure.
+
+        Parameters
+        ----------
+        atoms
+            The atoms to infer hydrogens for. If None, all atoms are considered.
         """
+        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple, set)):
+            atoms = atoms[0]
         H = structural.infer.Hydrogenator()
-        H.infer_hydrogens(self, bond_length=1.05)
+        if atoms:
+            atoms = self.get_atoms(*atoms)
+            for a in atoms:
+                H.add_hydrogens(a, self)
+        else:
+            H.infer_hydrogens(self, bond_length=1.05)
         return self
 
-    def remove_hydrogens(self):
+    def remove_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
         """
         Remove all hydrogens in the structure.
+
+        Parameters
+        ----------
+        atoms
+            The atoms to remove hydrogens from. If None, all atoms are considered.
         """
-        self._remove_atoms(*self.get_atoms("H", by="element"))
+        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple, set)):
+            atoms = atoms[0]
+        if atoms:
+            atoms = self.get_atoms(*atoms)
+            hydrogens = set()
+            for atom in atoms:
+                hydrogens.update(self.get_hydrogens(atom))
+            self._remove_atoms(*hydrogens)
+        else:
+            self._remove_atoms(*self.get_atoms("H", by="element"))
         return self
 
     def get_quartets(self):

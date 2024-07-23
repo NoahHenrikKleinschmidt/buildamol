@@ -32,6 +32,8 @@ wrappers available to create either a patch or recipe, respectively, which requi
         id = "my_link"
     )
 
+    
+
 
 Pre-defined patches
 -------------------
@@ -98,7 +100,7 @@ to the ``Molecule``'s ``attach`` method or any other function that requires a li
 
 """
 
-import buildamol.core.base_classes as base_classes
+import buildamol.base_classes as base_classes
 import buildamol.utils as utils
 import buildamol.structural.neighbors as neighbors
 

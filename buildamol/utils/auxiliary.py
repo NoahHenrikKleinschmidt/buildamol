@@ -8,6 +8,7 @@ import os
 import string
 
 import pickle
+import warnings
 import numpy as np
 
 import importlib
@@ -42,6 +43,7 @@ HAS_PYBEL = has_package("openbabel")
 HAS_OPENMM = has_package("openmm")
 HAS_NUMBA = has_package("numba")
 HAS_STK = has_package("stk")
+HAS_TQDM = has_package("tqdm")
 HAS_ALIVE_PROGRESS = has_package("alive_progress")
 
 if HAS_RDKIT:
@@ -112,10 +114,19 @@ else:
 USE_NUMBA = False
 USE_ALL_NUMBA = False
 
-if HAS_ALIVE_PROGRESS:
+if HAS_TQDM:
+    from tqdm import tqdm
+
+    def progress_bar(*args, **kwargs):
+        return tqdm(*args, **kwargs)
+
+elif HAS_ALIVE_PROGRESS:
     from alive_progress import alive_bar
 
     def progress_bar(*args, **kwargs):
+        warnings.warn(
+            DeprecationWarning("alive_progress is deprecated. Use tqdm instead.")
+        )
         return alive_bar(*args, **kwargs)
 
 else:
@@ -385,4 +396,7 @@ class DummyBar:
         return self
 
     def __exit__(self, *args, **kwargs):
+        pass
+
+    def update(self, *args, **kwargs):
         pass

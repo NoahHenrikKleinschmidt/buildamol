@@ -8,7 +8,7 @@ import numpy as np
 
 # import Bio.PDB as bio
 
-import buildamol.core.base_classes as base_classes
+import buildamol.base_classes as base_classes
 import buildamol.core.Molecule as Molecule
 import buildamol.core.Linkage as Linkage
 import buildamol.structural.connector as base
