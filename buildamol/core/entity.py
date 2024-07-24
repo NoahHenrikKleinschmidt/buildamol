@@ -3185,6 +3185,32 @@ class BaseEntity:
 
         return self
 
+    def set_charge(
+        self,
+        atom: Union[str, int, tuple, base_classes.Atom],
+        charge: int,
+        adjust_protonation: bool = True,
+    ):
+        """
+        Set the charge of an atom. This will automatically adjust the number of protons on the atom
+        if the charge is changed.
+
+        Parameters
+        ----------
+        atom : str or int or tuple or Atom
+            The atom whose charge should be changed
+        charge : int
+            The new charge. This is NOT the charge difference to apply but the final charge of the atom.
+        adjust_protonation : bool
+            If True, adjust the number of protons on the atom to match the charge.
+        """
+        atom = self.get_atom(atom)
+        if adjust_protonation:
+            structural.adjust_protonation(self, atom, charge)
+        else:
+            atom.charge = charge
+        return self
+
     def add_atoms(self, *atoms: base_classes.Atom, residue=None, _copy: bool = False):
         """
         Add atoms to the structure. This will automatically adjust the atom's serial number to

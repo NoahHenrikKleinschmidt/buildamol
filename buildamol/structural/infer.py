@@ -722,6 +722,7 @@ class Hydrogenator:
         (1, 4): tetrahedral,
         (1, 3): tetrahedral,
         (1, 2): trigonal_planar,
+        (2, 3): trigonal_planar,
         (2, 4): trigonal_planar,
         (3, 4): linear,
         (2, 5): tetrahedral,  # an organic phosphate
@@ -864,6 +865,54 @@ class Hydrogenator:
 
         self._molecule.add_atoms(*Hs, residue=atom.parent)
         self._molecule.add_bonds(*bonds)
+
+
+def adjust_protonation(molecule, atom, new_charge):
+    """
+    Adjust the protonation state of an atom in a molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to adjust the protonation state in.
+    atom : Atom
+        The atom to adjust the protonation state of.
+    new_charge : int
+        The new charge of the atom.
+    """
+    if new_charge == atom.pqr_charge:
+        return
+
+    connectivity = element_connectivity.get(atom.element, 0)
+    if connectivity == 0:
+        raise ValueError(
+            f"Cannot adjust protonation state of {atom}. No connectivity information available for element {atom.element}."
+        )
+
+    if new_charge >= 0:
+        H = Hydrogenator()
+        if new_charge == 0:
+            # remove all hydrogens
+            hydrogens = molecule.get_hydrogens(atom)
+            molecule.remove_atoms(*hydrogens)
+            atom.pqr_charge = new_charge
+            H.add_hydrogens(atom, molecule)
+        else:
+            # little hack here
+            element_connectivity[atom.element] += new_charge
+            H.add_hydrogens(atom, molecule)
+            atom.pqr_charge = new_charge
+            element_connectivity[atom.element] = connectivity
+    else:
+        hydrogens = tuple(molecule.get_hydrogens(atom))
+        if len(hydrogens) < abs(new_charge):
+            raise ValueError(
+                f"Cannot adjust protonation state of {atom} to {new_charge}. Not enough hydrogens present."
+            )
+        molecule.remove_atoms(*hydrogens[: abs(new_charge)])
+        atom.pqr_charge = new_charge
+
+    return molecule
 
 
 def relabel_hydrogens(molecule):

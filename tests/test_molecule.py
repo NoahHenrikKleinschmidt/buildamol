@@ -2324,3 +2324,24 @@ def test_remove_hydrogens_specific():
     glc.remove_hydrogens("C3", "C4", "C5")
     assert len(glc.get_atoms("H", by="element")) == current - 4
     assert glc.get_hydrogen("C3") is None
+
+
+def test_set_charge_with_protonation():
+    mol = bam.Molecule.from_compound("GLC")
+
+    n_hydrogens = len(mol.get_atoms("H", by="element"))
+    mol.set_charge("O1", 1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens + 1
+
+    mol.set_charge("O1", 0)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens
+
+    mol.set_charge("O1", -1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens - 1
+
+    try:
+        mol.set_charge("O1", -2)
+    except ValueError:
+        pass
+    else:
+        assert False, "Should have raised an error"
