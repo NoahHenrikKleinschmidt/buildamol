@@ -392,6 +392,28 @@ def test_optim_forcefield_scipy():
         out.show()
 
 
+def test_use_numba_setting():
+    assert not bam.utils.auxiliary.USE_NUMBA
+    assert not bam.utils.auxiliary.USE_ALL_NUMBA
+
+    bam.use_numba()
+
+    assert bam.utils.auxiliary.USE_NUMBA
+    assert not bam.utils.auxiliary.USE_ALL_NUMBA
+
+    bam.dont_use_numba()
+
+    assert not bam.utils.auxiliary.USE_NUMBA
+    assert not bam.utils.auxiliary.USE_ALL_NUMBA
+
+    bam.use_all_numba()
+
+    assert not bam.utils.auxiliary.USE_NUMBA
+    assert bam.utils.auxiliary.USE_ALL_NUMBA
+
+    bam.dont_use_numba()
+
+
 def test_optim_numba_distance_swarm():
     bam.use_all_numba()
     test_optim_distance_swarm()

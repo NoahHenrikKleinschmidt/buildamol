@@ -2345,3 +2345,47 @@ def test_set_charge_with_protonation():
         pass
     else:
         assert False, "Should have raised an error"
+
+
+def test_isomers():
+    # GAL and GIV are L/D isomers of galactose
+    glc = bam.Molecule.from_compound("GLC")
+    gal = bam.Molecule.from_compound("GAL")
+    giv = bam.Molecule.from_compound("GIV")
+
+    bam.dont_use_ic()
+
+    A = glc % "14bb" + gal
+    B = glc % "14bb" + giv
+
+    A.superimpose_to_residue(1, B.get_residue(1))
+
+    b_dihe = B.compute_dihedral(
+        B.get_atom("C5", residue=1),
+        B.get_atom("C4", residue=1),
+        B.get_atom("O4", residue=1),
+        B.get_atom("C1", residue=2),
+    )
+
+    a_dihe = A.compute_dihedral(
+        A.get_atom("C5", residue=1),
+        A.get_atom("C4", residue=1),
+        A.get_atom("O4", residue=1),
+        A.get_atom("C1", residue=2),
+    )
+
+    A.rotate_descendants(
+        A.get_atom("C4", residue=1),
+        A.get_atom("O4", residue=1),
+        180 - a_dihe + b_dihe,
+    )
+
+    assert np.allclose(A.get_coords(residue=1), B.get_coords(residue=1))
+    assert not np.allclose(A.get_coords(residue=2), B.get_coords(residue=2))
+
+    if base.ALLOW_VISUAL:
+        v = A.draw()
+        B.move([10, 0, 0])
+        v += B.draw(atoms=True, line_color="red")
+        v.show()
+        pass
