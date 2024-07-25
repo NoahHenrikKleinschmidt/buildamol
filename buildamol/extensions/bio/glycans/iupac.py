@@ -212,6 +212,8 @@ class IUPACParser:
             )
 
     def _reformat_link(self, link):
+        if "-" not in link:
+            return link[::-1]
         link = link[::-1].replace("-", "")
         link = link + self._second_latest_conformation + self._latest_conformation
         return link
