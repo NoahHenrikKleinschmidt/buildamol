@@ -1424,6 +1424,40 @@ class BaseEntity:
 
         return self
 
+    def superimpose_to_residue(self, ref_residue, other_residue):
+        """
+        Superimpose the molecule to another molecule based on two residues.
+        This will move this molecule so that the residues are superimposed.
+
+        Parameters
+        ----------
+        ref_residue : Residue or int or str
+            The residue to superimpose to in this molecule
+        other_residue : Residue
+            The residue to superimpose to in the other molecule
+        """
+        if isinstance(ref_residue, (int, str)):
+            ref_residue = self.get_residue(ref_residue)
+        if not isinstance(other_residue, base_classes.Residue):
+            raise ValueError("other_residue must be a Residue object")
+
+        ref_atoms = tuple(ref_residue.get_atoms())
+        ref_triplet = []
+        other_triplet = []
+        for r in ref_atoms:
+            o = other_residue.get_atom(r.id)
+            if o is not None:
+                ref_triplet.append(r)
+                other_triplet.append(o)
+            if len(ref_triplet) == 3:
+                break
+        if len(ref_triplet) < 3:
+            raise ValueError(
+                f"Could not find corresponding atoms in the other residue. For this method to work 3 corresponding atoms with the same IDs are required but only {len(ref_triplet)} were found."
+            )
+
+        return self.superimpose_to_triplet(ref_triplet, other_triplet)
+
     def stack(self, axis: Union[str, np.ndarray], n: int, pad: float = 0):
         """
         Stack the molecule along an axis. This will create n copies of the molecule along the axis with a padding of pad between them.
