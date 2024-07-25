@@ -13,7 +13,6 @@ import numpy as np
 
 import importlib
 
-
 # the version with the extra dictionary somehow
 # seems to prevent the loading issues where packages are
 # reassigned in sys.modules, raising errors. Thus we keep it like this...
@@ -133,6 +132,25 @@ else:
 
     def progress_bar(*args, **kwargs):
         return DummyBar(*args, **kwargs)
+
+
+USE_IC = True
+
+
+def use_ic():
+    """
+    Use internal coordinates when connecting molecules (where available)
+    """
+    global USE_IC
+    USE_IC = True
+
+
+def dont_use_ic():
+    """
+    Don't use internal coordinates when connecting molecules
+    """
+    global USE_IC
+    USE_IC = False
 
 
 # =================================================================
