@@ -170,6 +170,11 @@ class Stitcher(base.Connector):
         U, S, VT = np.linalg.svd(H)
         R = VT.T @ U.T
 
+        # Ensure the rotation matrix is a proper rotation (det(R) should be +1)
+        if np.linalg.det(R) < 0:
+            VT[-1, :] *= -1
+            R = VT.T @ U.T
+
         # self._v.draw_edges(self.source.bonds, color="black", opacity=0.5)
         atom_coords = np.array([atom.coord for atom in self.source.get_atoms()])
         atom_coords = (R @ (atom_coords - old_centroid).T).T + new_centroid
