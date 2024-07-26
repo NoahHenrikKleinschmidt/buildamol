@@ -2022,7 +2022,7 @@ def change_element(atom, new_element: str, _molecule):
     or add them.
     """
     old_element = atom.element
-    atom.set_element(new_element)
+    atom.set_element(new_element, adjust_id=False)
     new_connectivity = element_connectivity.get(new_element, 0)
     reference_connectivity = element_connectivity.get(old_element, 0)
 
