@@ -4056,10 +4056,12 @@ class BaseEntity:
         list
             A list of tuples of atom pairs that are bonded
         """
+        if len(residues) == 1 and isinstance(residues[0], (set, list, tuple)):
+            residues = residues[0]
         bonds = []
         for res in self.get_residues(*residues):
             bonds.extend(structural.apply_reference_bonds(res, _compounds))
-        self._add_bonds(*bonds)
+        self._set_bonds(*bonds)
         return bonds
 
     def autolabel(self):
