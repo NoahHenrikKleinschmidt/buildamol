@@ -10,7 +10,13 @@ import buildamol.optimizers as optimizers
 
 from buildamol.core import *
 from buildamol.resources import *
-from buildamol.utils.auxiliary import use_numba, use_all_numba, dont_use_numba
+from buildamol.utils.auxiliary import (
+    use_numba,
+    use_all_numba,
+    dont_use_numba,
+    use_ic,
+    dont_use_ic,
+)
 from buildamol.utils.visual import MoleculeViewer3D, Py3DmolViewer
 from buildamol.optimizers import *
 

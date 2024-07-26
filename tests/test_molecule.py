@@ -2324,3 +2324,68 @@ def test_remove_hydrogens_specific():
     glc.remove_hydrogens("C3", "C4", "C5")
     assert len(glc.get_atoms("H", by="element")) == current - 4
     assert glc.get_hydrogen("C3") is None
+
+
+def test_set_charge_with_protonation():
+    mol = bam.Molecule.from_compound("GLC")
+
+    n_hydrogens = len(mol.get_atoms("H", by="element"))
+    mol.set_charge("O1", 1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens + 1
+
+    mol.set_charge("O1", 0)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens
+
+    mol.set_charge("O1", -1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens - 1
+
+    try:
+        mol.set_charge("O1", -2)
+    except ValueError:
+        pass
+    else:
+        assert False, "Should have raised an error"
+
+
+def test_isomers():
+    # GAL and GIV are L/D isomers of galactose
+    glc = bam.Molecule.from_compound("GLC")
+    gal = bam.Molecule.from_compound("GAL")
+    giv = bam.Molecule.from_compound("GIV")
+
+    bam.dont_use_ic()
+
+    A = glc % "14bb" + gal
+    B = glc % "14bb" + giv
+
+    A.superimpose_to_residue(1, B.get_residue(1))
+
+    b_dihe = B.compute_dihedral(
+        B.get_atom("C5", residue=1),
+        B.get_atom("C4", residue=1),
+        B.get_atom("O4", residue=1),
+        B.get_atom("C1", residue=2),
+    )
+
+    a_dihe = A.compute_dihedral(
+        A.get_atom("C5", residue=1),
+        A.get_atom("C4", residue=1),
+        A.get_atom("O4", residue=1),
+        A.get_atom("C1", residue=2),
+    )
+
+    A.rotate_descendants(
+        A.get_atom("C4", residue=1),
+        A.get_atom("O4", residue=1),
+        180 - a_dihe + b_dihe,
+    )
+
+    assert np.allclose(A.get_coords(residue=1), B.get_coords(residue=1))
+    assert not np.allclose(A.get_coords(residue=2), B.get_coords(residue=2))
+
+    if base.ALLOW_VISUAL:
+        v = A.draw()
+        B.move([10, 0, 0])
+        v += B.draw(atoms=True, line_color="red")
+        v.show()
+        pass

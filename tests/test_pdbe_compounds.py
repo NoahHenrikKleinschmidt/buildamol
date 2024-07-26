@@ -225,3 +225,14 @@ def test_get_all_molecule():
             w = Warning(f"Failed for {comp}: {e}")
             print(w)
     bam.unload_all_compounds()
+
+
+def test_get_compounds_preserve_coords():
+    bam.load_sugars()
+    A = bam.get_compound("GLC")
+    B = bam.get_compound("GLC")
+
+    A.move((10, 0, 0))
+    assert not np.allclose(A.get_atom("C1").coord, B.get_atom("C1").coord)
+    C = bam.get_compound("GLC")
+    assert np.allclose(C.get_atom("C1").coord, B.get_atom("C1").coord)

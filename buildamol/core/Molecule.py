@@ -1692,7 +1692,7 @@ class Molecule(entity.BaseEntity):
         link: Union[str, "Linkage.Linkage"] = None,
         at_residue: Union[int, "entity.base_classes.Residue"] = None,
         other_residue: Union[int, "entity.base_classes.Residue"] = None,
-        use_patch: bool = True,
+        use_patch: bool = None,
         inplace: bool = True,
         other_inplace: bool = False,
         _topology=None,
@@ -1724,6 +1724,9 @@ class Molecule(entity.BaseEntity):
         """
         if not isinstance(other, Molecule):
             raise TypeError("Can only attach a Molecule to another Molecule")
+
+        if use_patch is None:
+            use_patch = utils.auxiliary.USE_IC
 
         if not inplace:
             obj = self.copy()
@@ -2007,7 +2010,7 @@ class Molecule(entity.BaseEntity):
             The optimized molecule (either the original object or a copy)
         """
         import buildamol.optimizers as optimizers
-        
+
         if residue_graph is None:
             residue_graph = self.count_atoms() > 300
 

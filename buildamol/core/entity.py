@@ -1424,6 +1424,40 @@ class BaseEntity:
 
         return self
 
+    def superimpose_to_residue(self, ref_residue, other_residue):
+        """
+        Superimpose the molecule to another molecule based on two residues.
+        This will move this molecule so that the residues are superimposed.
+
+        Parameters
+        ----------
+        ref_residue : Residue or int or str
+            The residue to superimpose to in this molecule
+        other_residue : Residue
+            The residue to superimpose to in the other molecule
+        """
+        if isinstance(ref_residue, (int, str)):
+            ref_residue = self.get_residue(ref_residue)
+        if not isinstance(other_residue, base_classes.Residue):
+            raise ValueError("other_residue must be a Residue object")
+
+        ref_atoms = tuple(ref_residue.get_atoms())
+        ref_triplet = []
+        other_triplet = []
+        for r in ref_atoms:
+            o = other_residue.get_atom(r.id)
+            if o is not None:
+                ref_triplet.append(r)
+                other_triplet.append(o)
+            if len(ref_triplet) == 3:
+                break
+        if len(ref_triplet) < 3:
+            raise ValueError(
+                f"Could not find corresponding atoms in the other residue. For this method to work 3 corresponding atoms with the same IDs are required but only {len(ref_triplet)} were found."
+            )
+
+        return self.superimpose_to_triplet(ref_triplet, other_triplet)
+
     def stack(self, axis: Union[str, np.ndarray], n: int, pad: float = 0):
         """
         Stack the molecule along an axis. This will create n copies of the molecule along the axis with a padding of pad between them.
@@ -3185,6 +3219,32 @@ class BaseEntity:
 
         return self
 
+    def set_charge(
+        self,
+        atom: Union[str, int, tuple, base_classes.Atom],
+        charge: int,
+        adjust_protonation: bool = True,
+    ):
+        """
+        Set the charge of an atom. This will automatically adjust the number of protons on the atom
+        if the charge is changed.
+
+        Parameters
+        ----------
+        atom : str or int or tuple or Atom
+            The atom whose charge should be changed
+        charge : int
+            The new charge. This is NOT the charge difference to apply but the final charge of the atom.
+        adjust_protonation : bool
+            If True, adjust the number of protons on the atom to match the charge.
+        """
+        atom = self.get_atom(atom)
+        if adjust_protonation:
+            structural.adjust_protonation(self, atom, charge)
+        else:
+            atom.charge = charge
+        return self
+
     def add_atoms(self, *atoms: base_classes.Atom, residue=None, _copy: bool = False):
         """
         Add atoms to the structure. This will automatically adjust the atom's serial number to
@@ -3996,10 +4056,12 @@ class BaseEntity:
         list
             A list of tuples of atom pairs that are bonded
         """
+        if len(residues) == 1 and isinstance(residues[0], (set, list, tuple)):
+            residues = residues[0]
         bonds = []
         for res in self.get_residues(*residues):
             bonds.extend(structural.apply_reference_bonds(res, _compounds))
-        self._add_bonds(*bonds)
+        self._set_bonds(*bonds)
         return bonds
 
     def autolabel(self):

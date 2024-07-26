@@ -1467,7 +1467,7 @@ class PDBECompounds:
                 res = chain.child_list[0]
             atom = base_classes.Atom(
                 atoms["full_ids"][i],
-                atoms["coords"][i],
+                np.array(atoms["coords"][i]),
                 atoms["serials"][i],
                 fullname=atoms["ids"][i],
                 element=atoms["elements"][i],

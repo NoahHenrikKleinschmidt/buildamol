@@ -76,6 +76,8 @@ def _segments_to_mol(id, glycan_segments, _topology=None):
             at_residue = residue_id_mapping[first]
             first_mol = mol
         else:
+            if first_name.startswith("b-") and first_name[2:].isupper():
+                first_name = first_name[2:]
             first_mol = core.molecule(first_name)
             if isinstance(first_mol, list):
                 first_mol = first_mol[0]
@@ -91,6 +93,8 @@ def _segments_to_mol(id, glycan_segments, _topology=None):
             other_residue = residue_id_mapping[second]
             second_mol = mol
         else:
+            if second_name.startswith("b-") and second_name[2:].isupper():
+                second_name = second_name[2:]
             second_mol = core.molecule(second_name)
             if isinstance(second_mol, list):
                 second_mol = second_mol[0]

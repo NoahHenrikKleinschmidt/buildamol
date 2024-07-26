@@ -2071,3 +2071,105 @@ def test_plane_from_points():
     v.draw_vector("vec", c.center_of_geometry, c.center_of_geometry + vec, color="red")
     if base.ALLOW_VISUAL:
         v.show()
+
+
+def test_adjust_protonation_hydroxyl():
+    mol = bam.read_smiles("OC")
+    mol.autolabel()
+
+    n_hydrogens = len(mol.get_atoms("H", by="element"))
+
+    O = mol.get_atom("O", by="element")
+
+    # add one proton to the oxygen
+    bam.structural.adjust_protonation(mol, O, 1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens + 1
+    mol.to_rdkit()
+
+    # remove one proton from the oxygen
+    bam.structural.adjust_protonation(mol, O, 0)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens
+    mol.to_rdkit()
+
+    # remove another proton from the oxygen
+    bam.structural.adjust_protonation(mol, O, -1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens - 1
+    mol.to_rdkit()
+
+
+def test_adjust_protonation_carbonyl():
+    mol = bam.read_smiles("C(=O)C")
+    mol.autolabel()
+
+    n_hydrogens = len(mol.get_atoms("H", by="element"))
+
+    O = mol.get_atom("O", by="element")
+
+    # add one proton to the oxygen
+    bam.structural.adjust_protonation(mol, O, 1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens + 1
+    mol.to_rdkit()
+
+    # remove one proton from the oxygen
+    bam.structural.adjust_protonation(mol, O, 0)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens
+    mol.to_rdkit()
+
+    # remove another proton from the oxygen
+    try:
+        bam.structural.adjust_protonation(mol, O, -1)
+    except ValueError:
+        pass
+    else:
+        raise RuntimeError("Should not be able to remove a proton from a carbonyl")
+
+
+def test_adjust_protonation_amino():
+    mol = bam.read_smiles("C(=O)N")
+    mol.autolabel()
+
+    n_hydrogens = len(mol.get_atoms("H", by="element"))
+
+    N = mol.get_atom("N1")
+
+    # add one proton to the nitrogen
+    bam.structural.adjust_protonation(mol, N, 1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens + 1
+    mol.to_rdkit()
+
+    # remove one proton from the nitrogen
+    bam.structural.adjust_protonation(mol, N, 0)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens
+    mol.to_rdkit()
+
+    # remove another proton from the nitrogen
+    bam.structural.adjust_protonation(mol, N, -1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens - 1
+    mol.to_rdkit()
+
+
+def test_adjust_protonation_imine():
+    mol = bam.read_smiles("CC=NC")
+    mol.autolabel()
+
+    n_hydrogens = len(mol.get_atoms("H", by="element"))
+
+    N = mol.get_atom("N", by="element")
+
+    # add one proton to the nitrogen
+    bam.structural.adjust_protonation(mol, N, 1)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens + 1
+    mol.to_rdkit()
+
+    # remove one proton from the nitrogen
+    bam.structural.adjust_protonation(mol, N, 0)
+    assert len(mol.get_atoms("H", by="element")) == n_hydrogens
+    mol.to_rdkit()
+
+    # remove another proton from the nitrogen
+    try:
+        bam.structural.adjust_protonation(mol, N, -1)
+    except ValueError:
+        pass
+    else:
+        raise RuntimeError("Should not be able to remove a proton from an imine")

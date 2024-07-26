@@ -4,6 +4,8 @@ import buildamol.structural as structural
 import numpy as np
 from typing import Union
 
+__all__ = ["peptide", "phi", "psi", "omega"]
+
 __1to3 = {
     "A": "ALA",
     "C": "CYS",

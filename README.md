@@ -1,11 +1,17 @@
 
+---
+
 ![](docs/_resources/logo_large.png)
 
 ---
+
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12581093.svg)](https://doi.org/10.5281/zenodo.12581093)
+[![Made with Python](https://img.shields.io/badge/Python->=3.10-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
 [![Documentation Status](https://readthedocs.org/projects/biobuild/badge/?version=latest)](https://biobuild.readthedocs.io/en/latest/?badge=latest)
+[![Check out - Tutorials](https://img.shields.io/badge/check_out-Tutorials-e61882)](https://biobuild.readthedocs.io/en/latest/tutorials.html)
 [![PyPI version](https://badge.fury.io/py/buildamol.svg)](https://badge.fury.io/py/buildamol)
 [![Downloads](https://static.pepy.tech/badge/buildamol/month)](https://pepy.tech/project/buildamol)
+[![code style - black](https://img.shields.io/badge/code_style-black-black)](https://black.readthedocs.io/ "Go to Black homepage")
 [![CodeFactor](https://www.codefactor.io/repository/github/noahhenrikkleinschmidt/buildamol/badge/main)](https://www.codefactor.io/repository/github/noahhenrikkleinschmidt/buildamol/overview/main)
 
 
