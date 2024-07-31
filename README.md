@@ -6,7 +6,7 @@
 ---
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12581093.svg)](https://doi.org/10.5281/zenodo.12581093)
-[![Made with Python](https://img.shields.io/badge/Python->=3.10-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
+[![Made with Python](https://img.shields.io/badge/Python->=3.8-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
 [![Documentation Status](https://readthedocs.org/projects/biobuild/badge/?version=latest)](https://biobuild.readthedocs.io/en/latest/?badge=latest)
 [![Check out - Tutorials](https://img.shields.io/badge/check_out-Tutorials-e61882)](https://biobuild.readthedocs.io/en/latest/tutorials.html)
 [![PyPI version](https://badge.fury.io/py/buildamol.svg)](https://badge.fury.io/py/buildamol)
