@@ -4016,8 +4016,8 @@ class BaseEntity:
         self._bonds.extend(_bonds)
         self._AtomGraph.add_edges_from(bonds)
         for b in _bonds:
-            self._AtomGraph.edges[*b]["bond_order"] = 1
-            self._AtomGraph.edges[*b]["bond_obj"] = b
+            self._AtomGraph.edges[b[0], b[1]]["bond_order"] = 1
+            self._AtomGraph.edges[b[0], b[1]]["bond_obj"] = b
         return bonds
 
     def apply_standard_bonds(self, _compounds=None) -> list:

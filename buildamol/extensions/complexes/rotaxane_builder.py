@@ -13,7 +13,7 @@ __all__ = ["rotaxane", "RotaxaneBuilder"]
 
 def rotaxane(
     axle: core.Molecule,
-    cycles: list[core.Molecule],
+    cycles: List[core.Molecule],
     optimize: bool = True,
     copy_axle: bool = False,
     copy_cycles: bool = False,

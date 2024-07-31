@@ -564,6 +564,15 @@ def test_infer_bonds():
     assert b.get("bond_obj", None) is not None
 
 
+def test_infer_residue_connections():
+    glc = bam.Molecule.from_compound("GLC")
+    glc.repeat(10, "14bb")
+    glc.bonds = []
+
+    connections = glc.infer_residue_connections(triplet=False)
+    assert len(connections) == 9
+
+
 def test_find_clashes():
     mol = bam.molecule("GLC")
     mol = mol.repeat(10, "14bb")

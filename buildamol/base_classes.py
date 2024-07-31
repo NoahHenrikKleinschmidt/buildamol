@@ -43,7 +43,7 @@ then all atoms, residues, chains and models will be converted to their BuildAMol
 """
 
 from copy import deepcopy
-from typing import Union
+from typing import Union, List
 
 # from uuid import uuid4
 import Bio.PDB as bio
@@ -869,7 +869,7 @@ class Chain(ID, bio.Chain.Chain):
                 f"residue must be either a string or an integer, not {residue=}"
             )
 
-    def get_residues(self, residue: Union[str, int] = None) -> "list[Residue]":
+    def get_residues(self, residue: Union[str, int] = None) -> "List[Residue]":
         """
         Get all residues in the chain.
 
@@ -880,7 +880,7 @@ class Chain(ID, bio.Chain.Chain):
 
         Returns
         -------
-        list[Residue]
+        List[Residue]
             The list of residues. If no residue argument is specified the default generator is returned.
         """
         if residue:

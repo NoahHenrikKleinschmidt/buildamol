@@ -916,7 +916,7 @@ def _modify(
     at_atom,
     delete,
     modifier_at_atom: "str",
-    modifier_deletes: list[str],
+    modifier_deletes: "List[str]",
     inplace: bool = True,
 ):
     """
@@ -938,7 +938,7 @@ def _modify(
         needs the same length as at_atom.
     modifier_at_atom : str
         The atom of the modifier molecule to attach to the molecule
-    modifier_deletes : list[str]
+    modifier_deletes : List[str]
         The atoms to delete in the modifier molecule. The first entry needs to be a direct neighbor of the modifier_at_atom.
     inplace : bool
         Whether to modify the molecule in place or return a new molecule
