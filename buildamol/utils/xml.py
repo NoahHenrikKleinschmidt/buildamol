@@ -423,7 +423,9 @@ def read_xml(filename: str) -> XMLEntry:
     XMLEntry
         The root of the XML tree
     """
-    xml = open(filename).read()
+    f = open(filename)
+    xml = f.read()
+    f.close()
     return decode_xml(xml)
 
 

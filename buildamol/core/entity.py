@@ -100,7 +100,9 @@ class BaseEntity:
         """
         if id is None:
             id = utils.filename_to_id(filename)
-        content = open(filename).read()
+        f = open(filename)
+        content = f.read()
+        f.close()
         return cls._from_pdb_string(content, id=id)
 
     @classmethod
