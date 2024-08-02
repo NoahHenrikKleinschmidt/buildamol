@@ -2,7 +2,7 @@
 Geometric descriptors for chemical Functional Groups
 """
 
-from typing import Union
+from typing import Union, List, Tuple
 import numpy as np
 from scipy.spatial.distance import cdist
 
@@ -91,9 +91,9 @@ class FunctionalGroup:
         id: str,
         rank: int,
         geometry: geometry.Geometry,
-        atoms: tuple[str],
-        connectivity: list[int],
-        constraints: list[tuple],
+        atoms: Tuple[str],
+        connectivity: List[int],
+        constraints: List[tuple],
         invertable: bool = False,
     ):
         self.id = id
@@ -216,8 +216,8 @@ class FunctionalGroup:
 
     def set_deletes(
         self,
-        nucleophile: Union[int, list[int]] = None,
-        electrophile: Union[int, list[int]] = None,
+        nucleophile: Union[int, List[int]] = None,
+        electrophile: Union[int, List[int]] = None,
     ):
         """
         Set the delete indices for the atoms that should be deleted when the functional group is used to infer a Linkage.

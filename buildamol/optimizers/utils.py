@@ -2,7 +2,7 @@
 This module contains utility functions for the optimizers.
 """
 
-from typing import Union
+from typing import Union, List
 import numpy as np
 import buildamol.optimizers.base_rotatron as Rotatron
 import buildamol.optimizers.translatron as Translatron
@@ -208,7 +208,7 @@ def auto_applier(env):
 
 def split_environment(
     env: "Rotatron.Rotatron", n: int = None
-) -> list["Rotatron.Rotatron"]:
+) -> List["Rotatron.Rotatron"]:
     """
     Split an environment into n sub-environments which are smaller and thus easier to optimize.
 
@@ -251,8 +251,8 @@ def split_environment(
 
 
 def parallel_optimize(
-    mol: "Molecule.Molecule",
-    envs: list["Rotatron.Rotatron"],
+    mol: "Molecule",
+    envs: List["Rotatron"],
     algorithm: Union[str, callable] = None,
     n_processes: int = None,
     unify_final: bool = True,
