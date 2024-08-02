@@ -50,7 +50,7 @@ BuildAMol has a comprehensive [documentation](https://biobuild.readthedocs.io/en
 
 Quick Example - Building A Dendrimer
 ------------------------------------
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://raw.githubusercontent.com/NoahHenrikKleinschmidt/buildamol/dev/docs/examples/_colab_building_polyphenylene.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/NoahHenrikKleinschmidt/buildamol/blob/dev/docs/examples/_colab_building_polyphenylene.ipynb)
 
 
 This code will model a polyphenylene dendrimer as it was originally described by [Bauer et al. (2002)](https://doi.org/10.1002/1521-3765(20020902)8:17<3858::AID-CHEM3858>3.0.CO;2-5). 
