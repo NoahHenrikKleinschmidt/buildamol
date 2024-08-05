@@ -3011,6 +3011,29 @@ class BaseEntity:
             self._model.add(chain)
         return self
 
+    def remove_chains(self, *chains: Union[int, base_classes.Chain]) -> list:
+        """
+        Remove chains from the structure
+
+        Parameters
+        ----------
+        chains : int or Chain
+            The chains to remove, either the object itself or its id
+
+        Returns
+        -------
+        list
+            The removed chains
+        """
+        _chains = []
+        for chain in chains:
+            chain = self.get_chain(chain)
+            self._model.child_list.remove(chain)
+            self._model.child_dict.pop(chain.get_id())
+            self._AtomGraph.remove_nodes_from(chain.get_atoms())
+            _chains.append(chain)
+        return _chains
+
     def add_residues(
         self,
         *residues: base_classes.Residue,
