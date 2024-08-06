@@ -3003,6 +3003,11 @@ class BaseEntity:
             This is useful if you want to add the same chain to multiple molecules, while leaving
             them and their original parent structures intakt.
         """
+        if len(chains) == 0:
+            return self
+        elif len(chains) == 1 and isinstance(chains[0], (list, set, tuple)):
+            chains = chains[0]
+
         for chain in chains:
             if _copy:
                 chain = chain.copy()
@@ -3025,6 +3030,11 @@ class BaseEntity:
         list
             The removed chains
         """
+        if len(chains) == 0:
+            return []
+        elif len(chains) == 1 and isinstance(chains[0], (list, set, tuple)):
+            chains = chains[0]
+
         _chains = []
         for chain in chains:
             chain = self.get_chain(chain)
@@ -3057,6 +3067,11 @@ class BaseEntity:
             This is useful if you want to add the same residue to multiple molecules, while leaving
             them and their original parent structures intakt.
         """
+        if len(residues) == 0:
+            return self
+        elif len(residues) == 1 and isinstance(residues[0], (list, set, tuple)):
+            residues = residues[0]
+
         rdx = len(self.residues)
         adx = sum(1 for i in self._model.get_atoms())
         for residue in residues:
@@ -3099,6 +3114,11 @@ class BaseEntity:
         list
             The removed residues
         """
+        if len(residues) == 0:
+            return []
+        elif len(residues) == 1 and isinstance(residues[0], (list, set, tuple)):
+            residues = residues[0]
+
         _residues = []
         for residue in residues:
             if isinstance(residue, int):
@@ -3290,7 +3310,9 @@ class BaseEntity:
             If True, the atoms are copied and then added to the structure.
             This will leave the original atoms (and their parent structures) untouched.
         """
-        if len(atoms) == 1 and isinstance(atoms[0], (list, tuple)):
+        if len(atoms) == 0:
+            return self
+        elif len(atoms) == 1 and isinstance(atoms[0], (list, tuple)):
             atoms = iter(atoms[0])
 
         if residue is not None:
@@ -3553,7 +3575,9 @@ class BaseEntity:
             Each atom may be specified directly (BuildAMol object)
             or by providing the serial number, the full_id or the id of the atoms.
         """
-        if len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
+        if len(bonds) == 0:
+            return self
+        elif len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
             bonds = iter(bonds[0])
 
         for bond in bonds:
@@ -3576,7 +3600,9 @@ class BaseEntity:
             Each atom may be specified directly (BuildAMol object)
             or by providing the serial number, the full_id or the id of the atoms.
         """
-        if len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
+        if len(bonds) == 0:
+            return self
+        elif len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
             bonds = iter(bonds[0])
 
         for bond in bonds:
@@ -3589,7 +3615,9 @@ class BaseEntity:
         """
         Add multiple bonds at once. This requires that the tuple objects are indeed Atoms in the structure!
         """
-        if len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
+        if len(bonds) == 0:
+            return self
+        elif len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
             bonds = iter(bonds[0])
         for bond in bonds:
             if isinstance(bond, base_classes.Bond):
@@ -3605,7 +3633,9 @@ class BaseEntity:
         by calling the method twice or certain bonds are specified multiple times in the arguments).
         This method will always set the bond order to the provided value.
         """
-        if len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
+        if len(bonds) == 0:
+            return self
+        elif len(bonds) == 1 and isinstance(bonds[0], (list, set, tuple)):
             bonds = iter(bonds[0])
         for bond in bonds:
             if isinstance(bond, base_classes.Bond):
