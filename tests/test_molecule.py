@@ -2398,3 +2398,11 @@ def test_isomers():
         v += B.draw(atoms=True, line_color="red")
         v.show()
         pass
+
+
+def test_get_residues():
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
+    residues = mol.get_residues("MAN", "BMA")
+    assert len(residues) > 0
+    residues2 = mol.get_residues(["MAN", "BMA"])
+    assert len(residues) == len(residues2)

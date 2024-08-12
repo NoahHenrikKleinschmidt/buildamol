@@ -2473,6 +2473,8 @@ class BaseEntity:
                 chain = self.get_chain(chain)
                 return chain.get_residues()
             return self._model.get_residues()
+        elif len(residues) == 1 and isinstance(residues[0], (list, set, tuple)):
+            residues = residues[0]
 
         _residues = []
         for residue in residues:
