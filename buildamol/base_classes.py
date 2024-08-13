@@ -637,6 +637,35 @@ class Residue(ID, bio.Residue.Residue):
         else:
             raise TypeError(f"atom must be either a string or an integer, not {atom=}")
 
+    def get_atoms(self, *atoms: Union[str, int]) -> "List[Atom]":
+        """
+        Get all atoms in the residue.
+
+        Parameters
+        ----------
+        atoms : str or int, optional
+            The atom name or serial number to filter by.
+
+        Returns
+        -------
+        List[Atom]
+            The list of atoms. If no atoms argument is specified the default generator is returned.
+        """
+        if len(atoms) == 0:
+            return super().get_atoms()
+        elif len(atoms) == 1 and isinstance(atoms[0], (tuple, list, set)):
+            atoms = atoms[0]
+
+        if isinstance(atoms[0], str):
+            return [i for i in self.child_list if i.id in atoms]
+        # makes no sense but for consistency
+        elif isinstance(atoms[0], int):
+            return [i for i in self.child_list if i.serial_number in atoms]
+        else:
+            raise TypeError(
+                f"atoms must be either a list, tuple, or set of string or integer, not {atoms=}"
+            )
+
     def matches(self, other) -> bool:
         """
         Check if the residue matches another residue.
@@ -869,31 +898,34 @@ class Chain(ID, bio.Chain.Chain):
                 f"residue must be either a string or an integer, not {residue=}"
             )
 
-    def get_residues(self, residue: Union[str, int] = None) -> "List[Residue]":
+    def get_residues(self, *residues: Union[str, int]) -> "List[Residue]":
         """
         Get all residues in the chain.
 
         Parameters
         ----------
-        residue : str or int, optional
-            The residue name or serial number to filter by. The default is None (normal behavior returns a generator of all residues)
+        residues : str or int, optional
+            The residue name or serial number to filter by.
 
         Returns
         -------
         List[Residue]
-            The list of residues. If no residue argument is specified the default generator is returned.
+            The list of residues. If no residues argument is specified the default generator is returned.
         """
-        if residue:
-            if isinstance(residue, str):
-                return [i for i in self.child_list if i.resname == residue]
-            # makes no sense but for consistency
-            elif isinstance(residue, int):
-                return [i for i in self.child_list if i.serial_number == residue]
-            else:
-                raise TypeError(
-                    f"residue must be either a string or an integer, not {residue=}"
-                )
-        return super().get_residues()
+        if len(residues) == 0:
+            return super().get_residues()
+        elif len(residues) == 1 and isinstance(residues[0], (tuple, list, set)):
+            residues = residues[0]
+
+        if isinstance(residues[0], str):
+            return [i for i in self.child_list if i.resname in residues]
+        # makes no sense but for consistency
+        elif isinstance(residues[0], int):
+            return [i for i in self.child_list if i.serial_number in residues]
+        else:
+            raise TypeError(
+                f"residues must be either a list, tuple, or set of string or integer, not {residues=}"
+            )
 
     def get_coords(self) -> "np.ndarray":
         """
