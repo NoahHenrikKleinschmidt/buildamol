@@ -1634,7 +1634,7 @@ def find_clashes_between(
     residues_a = r_a
     residues_b = r_b
 
-    if coarse_precheck:
+    if coarse_precheck and len(residues_a) > 1 and len(residues_b) > 1:
 
         residue_coords_a = np.array([r.center_of_mass() for r in residues_a])
         residue_coords_b = np.array([r.center_of_mass() for r in residues_b])
