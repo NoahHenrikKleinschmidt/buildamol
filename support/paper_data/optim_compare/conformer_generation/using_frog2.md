@@ -1,0 +1,1 @@
+To generate conformers using the [FROG2 Server](https://mobyle2.rpbs.univ-paris-diderot.fr/cgi-bin/portal.py#forms::Frog2) we used their web interface. We provided the SMILES string for the testing molecule and split the generated MOL2 file into multiple PDB files for convenience. All parameters were left on default settings. 

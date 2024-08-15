@@ -1,0 +1,1 @@
+To generate conformers with the [GINGER Server](https://molsoft.com/gingerdemo.html) we used their freely available Web-Demo interface, where we provided the SMILES string of the testing molecule as input. We split the generated SDF file into multiple PDB files for convenience. The auto-charge to pH7 parameter was checked (the default setting). 
