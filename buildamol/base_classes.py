@@ -571,6 +571,15 @@ class Residue(ID, bio.Residue.Residue):
         pass
 
     @property
+    def name(self):
+        """Synonym for resname."""
+        return self.resname
+
+    @name.setter
+    def name(self, value):
+        self.resname = value
+
+    @property
     def full_id(self):
         p = self.get_parent()
         if p:
