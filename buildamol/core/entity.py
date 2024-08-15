@@ -64,6 +64,7 @@ class BaseEntity:
 
         self._AtomGraph = graphs.AtomGraph(self.id, [])
         self._AtomGraph.add_nodes_from(self._model.get_atoms())
+        self._AtomGraph._molecule = self
 
         # let the molecule store a patch to use for attaching other
         # molecules to it, or which Recipe to use by default for stitching
