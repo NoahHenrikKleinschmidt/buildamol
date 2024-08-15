@@ -1,3 +1,6 @@
 PDBECompounds.pkl filter=lfs diff=lfs merge=lfs -text
 *.html -linguist-detectable
 *.ipynb linguist-language=Python
+support/paper_data/optim_compare/bam_conformers/* filter=lfs diff=lfs merge=lfs -text
+support/paper_data/optim_compare/ginger_conformers/* filter=lfs diff=lfs merge=lfs -text
+support/paper_data/optim_compare/frog2_conformers/* filter=lfs diff=lfs merge=lfs -text
