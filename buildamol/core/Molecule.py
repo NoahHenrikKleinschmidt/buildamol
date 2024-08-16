@@ -1991,7 +1991,9 @@ class Molecule(entity.BaseEntity):
             - "scipy" for a scipy-implemented gradient-based optimization
             - "swarm" for a particle swarm optimization
             - "anneal" for a simulated annealing optimization
-            - "rdkit" for an RDKit-implemented force-field-based optimization (if RDKit is installed)
+            - "rdkit" for an RDKit-implemented force-field-based optimization (defaults to MMFF, if RDKit is installed)
+            - "mmff" for an RDKit-implemented MMFF94 force-field-based optimization (if RDKit is installed)
+            - "uff" for an RDKit-implemented UFF force-field-based optimization (if RDKit is installed)
         rotatron : str
             The rotatron to use. This can be one of the following:
             - "distance" for a distance-based rotatron (default)
@@ -2012,7 +2014,7 @@ class Molecule(entity.BaseEntity):
         import buildamol.optimizers as optimizers
 
         if residue_graph is None:
-            residue_graph = self.count_atoms() > 300
+            residue_graph = self.count_atoms() > 300 and self.count_residues() > 3
 
         if not algorithm_kws:
             algorithm_kws = {}
@@ -2025,6 +2027,16 @@ class Molecule(entity.BaseEntity):
         if algorithm == "rdkit":
             new = self.copy() if not inplace else self
             out = optimizers.rdkit_optimize(new)
+            out.id = self.id
+            return out
+        elif algorithm == "mmff":
+            new = self.copy() if not inplace else self
+            out = optimizers.mmff_optimize(new)
+            out.id = self.id
+            return out
+        elif algorithm == "uff":
+            new = self.copy() if not inplace else self
+            out = optimizers.uff_optimize(new)
             out.id = self.id
             return out
         elif algorithm not in ("scipy", "genetic", "swarm", "anneal"):

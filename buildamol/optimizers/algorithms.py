@@ -15,6 +15,8 @@ __all__ = [
     "scipy_optimize",
     "rdkit_optimize",
     "anneal_optimize",
+    "mmff_optimize",
+    "uff_optimize",
     # "multiprocess_swarm_optimize",
 ]
 
@@ -764,9 +766,9 @@ _numba_wrapper_accept = aux.njit(_accept)
 # =====================================================================================
 
 
-def rdkit_optimize(mol, steps=1000):
+def mmff_optimize(mol, steps=1000):
     """
-    Optimize a molecule using RDKit's force field optimization.
+    Optimize a molecule using RDKit's MMFF force field optimization.
 
     Parameters
     ----------
@@ -787,6 +789,32 @@ def rdkit_optimize(mol, steps=1000):
     aux.AllChem.MMFFOptimizeMolecule(rdmol, maxIters=steps)
     return cls.from_rdkit(rdmol)
 
+
+def uff_optimize(mol, steps=1000):
+    """
+    Optimize a molecule using RDKit's UFF force field optimization.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to optimize
+    steps : int, optional
+        The number of steps to take, by default 1000
+
+    Returns
+    -------
+    Molecule
+        The optimized molecule
+    """
+    cls = mol.__class__
+    if not aux.HAS_RDKIT:
+        raise ImportError("RDKit is not installed")
+    rdmol = mol.to_rdkit()
+    aux.AllChem.UFFOptimizeMolecule(rdmol, maxIters=steps)
+    return cls.from_rdkit(rdmol)
+
+
+rdkit_optimize = mmff_optimize
 
 if __name__ == "__main__":
     import buildamol as bam
