@@ -2942,7 +2942,7 @@ class BaseEntity:
             H.add_hydrogens(atom2, self)
         return self
 
-    def single_bond(self, atom1, atom2, adjust_hydrogens: bool = False):
+    def single(self, atom1, atom2, adjust_hydrogens: bool = False):
         """
         Set a single bond between two atoms
 
@@ -2957,7 +2957,7 @@ class BaseEntity:
         """
         return self.set_bond_order(atom1, atom2, 1, adjust_hydrogens)
 
-    def double_bond(self, atom1, atom2, adjust_hydrogens: bool = False):
+    def double(self, atom1, atom2, adjust_hydrogens: bool = False):
         """
         Set a double bond between two atoms
 
@@ -2972,7 +2972,7 @@ class BaseEntity:
         """
         return self.set_bond_order(atom1, atom2, 2, adjust_hydrogens)
 
-    def triple_bond(self, atom1, atom2, adjust_hydrogens: bool = False):
+    def triple(self, atom1, atom2, adjust_hydrogens: bool = False):
         """
         Set a triple bond between two atoms
 
