@@ -2942,6 +2942,69 @@ class BaseEntity:
             H.add_hydrogens(atom2, self)
         return self
 
+    def single_bond(self, atom1, atom2, adjust_hydrogens: bool = False):
+        """
+        Set a single bond between two atoms
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+        adjust_hydrogens : bool
+            Whether to adjust the number of hydrogens on the atoms based on the bond order
+        """
+        return self.set_bond_order(atom1, atom2, 1, adjust_hydrogens)
+
+    def double_bond(self, atom1, atom2, adjust_hydrogens: bool = False):
+        """
+        Set a double bond between two atoms
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+        adjust_hydrogens : bool
+            Whether to adjust the number of hydrogens on the atoms based on the bond order
+        """
+        return self.set_bond_order(atom1, atom2, 2, adjust_hydrogens)
+
+    def triple_bond(self, atom1, atom2, adjust_hydrogens: bool = False):
+        """
+        Set a triple bond between two atoms
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+        adjust_hydrogens : bool
+            Whether to adjust the number of hydrogens on the atoms based on the bond order
+        """
+        return self.set_bond_order(atom1, atom2, 3, adjust_hydrogens)
+
+    def get_single_bonds(self):
+        """
+        Get all single bonds in the molecule
+        """
+        return (i for i in self.get_bonds() if i.order == 1)
+
+    def get_double_bonds(self):
+        """
+        Get all double bonds in the molecule
+        """
+        return (i for i in self.get_bonds() if i.order == 2)
+
+    def get_triple_bonds(self):
+        """
+        Get all triple bonds in the molecule
+        """
+        return (i for i in self.get_bonds() if i.order == 3)
+
     def get_residue(
         self,
         residue: Union[int, str, tuple, base_classes.Residue],
