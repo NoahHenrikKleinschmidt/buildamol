@@ -2180,16 +2180,30 @@ class BaseEntity:
         neighbor1 = self.get_neighbors(a, filter=lambda x: x.element != "H") - {b}
         neighbor2 = self.get_neighbors(b, filter=lambda x: x.element != "H") - {a}
         if len(neighbor1) == 0:
-            neighbor1 = self.get_neighbors(a) - {b}
+            return False  # neighbor1 = self.get_neighbors(a) - {b}
         if len(neighbor2) == 0:
-            neighbor2 = self.get_neighbors(b) - {a}
-        if len(neighbor1) == 0 or len(neighbor2) == 0:
-            raise ValueError("Both atoms must have at least one neighbor!")
+            return False  # neighbor2 = self.get_neighbors(b) - {a}
+        # if len(neighbor1) == 0 or len(neighbor2) == 0:
+        #     raise ValueError("Both atoms must have at least one neighbor that is!")
 
-        neighbor1 = neighbor1.pop()
-        neighbor2 = neighbor2.pop()
+        weights1 = {
+            n: n.mass
+            + sum(i.mass for i in self.get_neighbors(n))
+            + sum(b.order for b in self.get_bonds(n))
+            for n in neighbor1
+        }
+        weights2 = {
+            n: n.mass
+            + sum(i.mass for i in self.get_neighbors(n))
+            + sum(b.order for b in self.get_bonds(n))
+            for n in neighbor2
+        }
+
+        neighbor1 = max(weights1, key=weights1.get)
+        neighbor2 = max(weights2, key=weights2.get)
+
         angle = structural.angle_between(neighbor1.coord, a.coord, neighbor2.coord)
-        return angle > 100
+        return angle < 100
 
     def is_trans(
         self, *bond: Union[base_classes.Atom, tuple, base_classes.Bond]
@@ -2207,7 +2221,37 @@ class BaseEntity:
         bool
             Whether the bond is in a trans configuration
         """
-        return not self.is_cis(*bond)
+        if len(bond) == 1 and isinstance(bond[0], (tuple, base_classes.Bond)):
+            bond = bond[0]
+        a = self.get_atom(bond[0])
+        b = self.get_atom(bond[1])
+        neighbor1 = self.get_neighbors(a, filter=lambda x: x.element != "H") - {b}
+        neighbor2 = self.get_neighbors(b, filter=lambda x: x.element != "H") - {a}
+        if len(neighbor1) == 0:
+            return False  # neighbor1 = self.get_neighbors(a) - {b}
+        if len(neighbor2) == 0:
+            return False  # neighbor2 = self.get_neighbors(b) - {a}
+        # if len(neighbor1) == 0 or len(neighbor2) == 0:
+        #     raise ValueError("Both atoms must have at least one neighbor that is!")
+
+        weights1 = {
+            n: n.mass
+            + sum(i.mass for i in self.get_neighbors(n))
+            + sum(b.order for b in self.get_bonds(n))
+            for n in neighbor1
+        }
+        weights2 = {
+            n: n.mass
+            + sum(i.mass for i in self.get_neighbors(n))
+            + sum(b.order for b in self.get_bonds(n))
+            for n in neighbor2
+        }
+
+        neighbor1 = max(weights1, key=weights1.get)
+        neighbor2 = max(weights2, key=weights2.get)
+
+        angle = structural.angle_between(neighbor1.coord, a.coord, neighbor2.coord)
+        return angle > 100
 
     def search_by_constraints(self, constraints: list) -> list:
         """
@@ -2888,6 +2932,7 @@ class BaseEntity:
             Whether to adjust the number of hydrogens on the atoms based on the bond order
         """
         bond = self.get_bond(atom1, atom2)
+        atom1, atom2 = bond
         self._AtomGraph.edges[atom1, atom2]["bond_order"] = order
         bond.order = order
         if adjust_hydrogens:

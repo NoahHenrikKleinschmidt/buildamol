@@ -2406,3 +2406,72 @@ def test_get_residues():
     assert len(residues) > 0
     residues2 = mol.get_residues(["MAN", "BMA"])
     assert len(residues) == len(residues2)
+
+
+def test_cis_trans():
+    # mol = bam.query_pubchem("cis-1,2-dichloroethene")
+    # assert mol.is_cis("C1", "C2")
+    # assert not mol.is_trans("C1", "C2")
+
+    # mol.trans("C1", "C2")
+    # assert not mol.is_cis("C1", "C2")
+    # assert mol.is_trans("C1", "C2")
+
+    mol_cis = bam.read_smiles("C/C=C(C)\CC")
+    assert mol_cis.is_cis("C2", "C3")
+    assert not mol_cis.is_trans("C2", "C3")
+
+    mol_trans = bam.read_smiles("C/C=C(C)/CC")
+    assert not mol_trans.is_cis("C2", "C3")
+    assert mol_trans.is_trans("C2", "C3")
+
+
+def test_cis_trans_terminal():
+    mol_cis = bam.read_smiles("C/C=C(C)\CC")
+
+    # the terminal bond should be neither
+    mol_cis.set_bond_order("C5", "C6", 2, True)
+    assert not mol_cis.is_cis("C5", "C6")
+    assert not mol_cis.is_trans("C5", "C6")
+
+
+def test_cis_trans_partial_symmetric():
+    # this one is partially symmetric so it is neither cis nor trans
+    mol_both = bam.read_smiles("C/C(C)=C(C)\CC")
+    assert not mol_both.is_cis("C2", "C3")
+    assert not mol_both.is_trans("C2", "C3")
+
+    # this one however has two longer and two shorter branches
+    # the longer ones are in trans
+    mol_sym_trans = bam.read_smiles("C/C(CC)=C(C)\CC")
+    bond = next(bond for bond in mol_sym_trans.get_bonds() if bond.order == 2)
+    assert not mol_sym_trans.is_cis(bond)
+    assert mol_sym_trans.is_trans(bond)
+
+    # this one however has two longer and two shorter branches
+    # the longer ones are in cis
+    mol_sym_cis = bam.read_smiles("C/C(CC)=C(C)/CC")
+    bond = next(bond for bond in mol_sym_cis.get_bonds() if bond.order == 2)
+    assert mol_sym_cis.is_cis(bond)
+    assert not mol_sym_cis.is_trans(bond)
+
+
+def test_cis_trans_asymmetric():
+    # here the OH branch should outweigh the NH2 branch
+    # so it should be trans
+    mol = bam.read_smiles("C/C(C)=C(C)\CC")
+    bond = next(bond for bond in mol.get_bonds() if bond.order == 2)
+
+    mol_trans = mol.copy()
+
+    bam.amidate(mol_trans, "C1")
+    bam.hydroxylate(mol_trans, "C3")
+    assert not mol_trans.is_cis(bond)
+    assert mol_trans.is_trans(bond)
+
+    # and now vice versa
+    mol_cis = mol.copy()
+    bam.amidate(mol_cis, "C3")
+    bam.hydroxylate(mol_cis, "C1")
+    assert mol_cis.is_cis(bond)
+    assert not mol_cis.is_trans(bond)
