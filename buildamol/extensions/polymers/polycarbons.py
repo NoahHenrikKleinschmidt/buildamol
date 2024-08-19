@@ -7,6 +7,7 @@ These are constructors for simple polycarbon chains.
 # the molecules at the cost of slower (probably just a little)
 # computation times.
 
+from typing import Union
 import numpy as np
 
 import buildamol.core as core
@@ -140,7 +141,11 @@ def cyclic_alkane(n: int, include_hydrogens: bool = True) -> core.Molecule:
     return molecule
 
 
-def linear_alkene(n: int, include_hydrogens: bool = True) -> core.Molecule:
+def linear_alkene(
+    n: int,
+    include_hydrogens: bool = True,
+    double_bonds: Union[str, list, tuple, set] = "even",
+) -> core.Molecule:
     """
     Construct a linear alkene change with n carbon atoms.
 
@@ -150,6 +155,9 @@ def linear_alkene(n: int, include_hydrogens: bool = True) -> core.Molecule:
         The number of carbon atoms.
     include_hydrogens : bool, optional
         If True, infer hydrogens, by default True
+    double_bonds: str or iterable, optional
+        The positions of the double bonds. If "even", the double bonds start with the first carbon atom and alternate every two carbon atoms. If "odd", the double bonds start with the second carbon atom and alternate every two carbon atoms.
+        If a list/tuple/set, the double bonds are at the positions specified in the list.
 
     Returns
     -------
@@ -168,11 +176,25 @@ def linear_alkene(n: int, include_hydrogens: bool = True) -> core.Molecule:
 
     Cs, bonds = _make_carbons(carbon_xs, np.zeros(n, dtype=np.float64), carbon_zs)
     molecule.add_atoms(*Cs)
-    molecule.add_bonds(*bonds)
+    molecule.set_bonds(*bonds)
 
-    for i, b in enumerate(molecule.get_bonds()):
-        if i % 2 == 0:
-            b.double()
+    if isinstance(double_bonds, (list, tuple, set)):
+        for i in double_bonds:
+            molecule.double(f"C{i}", f"C{i+1}", adjust_hydrogens=False)
+    else:
+        if double_bonds == "even":
+            ref = 0
+        elif double_bonds == "odd":
+            ref = 1
+        else:
+            raise ValueError(
+                f"Invalid value for double_bonds {double_bonds}. Must be 'even', 'odd', or a list of integers"
+            )
+        for i in range(ref, n - 1, 2):
+            molecule.double(f"C{i+1}", f"C{i+2}", adjust_hydrogens=False)
+        # for i, b in enumerate(molecule.get_bonds()):
+        #     if i % 2 == ref:
+        #         b.double()
 
     if include_hydrogens:
         hydrogen_zs = carbon_zs.copy()
@@ -184,7 +206,7 @@ def linear_alkene(n: int, include_hydrogens: bool = True) -> core.Molecule:
             carbon_xs, np.zeros(n, dtype=np.float64), hydrogen_zs, 1
         )
         molecule.add_atoms(*Hs)
-        molecule.add_bonds(*bonds)
+        molecule.set_bonds(*bonds)
 
         # add terminal hydrogens
         v = structural.norm_vector(*molecule.get_atoms("C1", "C2"))
@@ -267,8 +289,13 @@ def _make_carbons(coords_x, coords_y, coords_z) -> list:
 
 
 if __name__ == "__main__":
-    alkane = linear_alkane(25)
-    alkane.to_pdb("alkane.pdb")
+    alkene = linear_alkene(25)
+    alkene.to_pdb("alkene_even.pdb")
+    alkene = linear_alkene(25, double_bonds="odd")
+    alkene.to_pdb("alkene_odd.pdb")
+    alkene = linear_alkene(25, double_bonds=[5, 10, 15, 20])
+    alkene.to_pdb("alkene_custom.pdb")
+
     # alkane.to_pdb("alkane.pdb")
     # v = alkane.draw()
     # v.viewbox(None, 20, 20)
