@@ -366,6 +366,16 @@ bond_length_by_order = {
 }
 
 
+acceptable_surplus_charge = 5
+"""
+The maximum allowed positive charge that can be left on an atom
+if no hydrogens can be further removed to balance the charge.
+
+This is used in `change_element` to prevent the creation of
+unrealistically charged atoms and thereby unlikely structures.
+"""
+
+
 def atomic_number(element: str):
     """
     Get the atomic number of an element.
@@ -2023,8 +2033,9 @@ def change_element(atom, new_element: str, _molecule):
     """
     old_element = atom.element
     atom.set_element(new_element, adjust_id=False)
+    atom.set_charge(0)
     new_connectivity = element_connectivity.get(new_element, 0)
-    reference_connectivity = element_connectivity.get(old_element, 0)
+    # reference_connectivity = element_connectivity.get(old_element, 0)
 
     if _molecule.get_degree(atom) > new_connectivity:
         neighbors = _molecule.get_neighbors(atom)
@@ -2039,14 +2050,30 @@ def change_element(atom, new_element: str, _molecule):
                     break
             loops += 1
             if loops > 100:
-                raise ValueError(
-                    f"Could not change element of atom {atom} to {new_element}. Not enough hydrogen atoms available to remove."
-                )
+                leftover_charge = _molecule.get_degree(atom) - new_connectivity
+                if leftover_charge > acceptable_surplus_charge:
+                    raise ValueError(
+                        f"Could not change element of atom {atom} to {new_element}. Not enough hydrogen atoms available to remove, and without hydrogens the atom would have a charge of {leftover_charge}! Maybe check your input or manually use `atom.set_element` to override the element."
+                    )
+                else:
+                    atom.set_charge(leftover_charge)
+                    break
 
         _molecule.remove_atoms(*to_remove)
     elif _molecule.get_degree(atom) < new_connectivity:
         hydrogenator = Hydrogenator()
         hydrogenator.add_hydrogens(atom, _molecule)
+
+        # I haven't come up with an example where this is needed, actually
+        # but it's here just in case
+        if _molecule.get_degree(atom) < new_connectivity:
+            leftover_charge = new_connectivity - _molecule.get_degree(atom)
+            if abs(leftover_charge) > acceptable_surplus_charge:
+                raise ValueError(
+                    f"Could not change element of atom {atom} to {new_element}. Not enough hydrogen atoms available to add, and without hydrogens the atom would have a charge of {leftover_charge}! Maybe check your input or manually use `atom.set_element` to override the element."
+                )
+            else:
+                atom.set_charge(leftover_charge)
 
 
 # def aromatic_to_double(bonds: list) -> list:
