@@ -34,6 +34,7 @@ BuildAmol and Chemistry
 .. nbgallery::
    examples/functional_groups
    examples/geometry_scratch
+   examples/derivator_example
 
 
 BuildAmol and Biology
@@ -65,6 +66,7 @@ More applied tutorials
 
 .. nbgallery::
 
+   examples/making_modifiers
    examples/rotaxane_easy
    examples/rotaxane_hard
    examples/building_circular
