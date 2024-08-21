@@ -1612,6 +1612,21 @@ def test_squash():
     # mol.show()
 
 
+def test_squash_2():
+    mol = bam.Molecule.from_compound("GLC")
+    bam.methylate(mol, "O3")
+
+    assert mol.count_residues() == 2
+    mol.squash()
+    assert mol.count_residues() == 1
+
+    mol.rename_atom("C", "CE")
+
+    bam.methylate(mol, "CE")
+    assert mol.count_residues() == 2
+    mol.squash()
+
+
 def test_merge():
     mol = bam.Molecule.from_compound("GLC")
 
@@ -1955,10 +1970,10 @@ def test_acetylate():
         mol.show()
 
 
-def test_amidate():
+def test_aminate():
     mol = bam.Molecule.from_smiles("CC")
     n = mol.count_atoms()
-    bam.amidate(mol, "C1")
+    bam.aminate(mol, "C1")
     m = mol.count_atoms()
     assert m > n, "No atoms seem to have been added"
     if base.ALLOW_VISUAL:
@@ -2464,14 +2479,14 @@ def test_cis_trans_asymmetric():
 
     mol_trans = mol.copy()
 
-    bam.amidate(mol_trans, "C1")
+    bam.aminate(mol_trans, "C1")
     bam.hydroxylate(mol_trans, "C3")
     assert not mol_trans.is_cis(bond)
     assert mol_trans.is_trans(bond)
 
     # and now vice versa
     mol_cis = mol.copy()
-    bam.amidate(mol_cis, "C3")
+    bam.aminate(mol_cis, "C3")
     bam.hydroxylate(mol_cis, "C1")
     assert mol_cis.is_cis(bond)
     assert not mol_cis.is_trans(bond)

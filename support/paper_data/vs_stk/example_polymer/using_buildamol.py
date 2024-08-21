@@ -19,8 +19,8 @@ polymer = unit.repeat(10, link_units)
 # make the end groups
 # (change the nitrogen at the start to an oxygen to make an aldehyde)
 polymer.change_element(polymer.get_atom("N4", residue=1), "O")
-# (amidate the other end)
-bam.amidate(polymer, at_atom=polymer.get_atom("C6", residue=-1))
+# (aminate the other end)
+bam.aminate(polymer, at_atom=polymer.get_atom("C6", residue=-1))
 
 # write the polymer to a pdb file
 polymer.to_pdb(parent / "bam_polymer.pdb")

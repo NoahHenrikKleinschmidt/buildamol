@@ -20,7 +20,7 @@ for carbon in core.get_atoms("C", by="element"):
     if carbon.id in ("C1", "C3", "C5"):
         metyhl_group = core.get_residue(-1)
         carbon = core.get_atom("C", by="element", residue=metyhl_group)
-        bam.amidate(core, carbon)
+        bam.aminate(core, carbon)
 
 # write the core to a pdb file
 core.to_pdb(parent / "bam_core.pdb")
