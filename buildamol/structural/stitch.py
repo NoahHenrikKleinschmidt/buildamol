@@ -440,8 +440,8 @@ class Stitcher(base.Connector):
         """
         Merge the source molecule into the target molecule
         """
-        self.target.add_residues(*self.source.residues)
-        self.target._bonds.extend(self.source.bonds)
+        self.target.add_residues(*self.source.get_residues())
+        self.target._bonds.extend(self.source.get_bonds())
         self.target._AtomGraph.migrate_bonds(self.source._AtomGraph)
         self.target.add_bond(self._anchors[0], self._anchors[1])
         # self.target.reindex()
