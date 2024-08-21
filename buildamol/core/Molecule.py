@@ -1289,7 +1289,9 @@ def thiolate(
     """
     resources.load_small_molecules()
     thiol = Molecule.from_compound("HOH")
-    thiol.get_atom("O").set_element("S")  # change the oxygen to sulfur
+    o = thiol.get_atom("O")
+    o.set_element("S")
+    o.id = "S"
     return _modify(mol, thiol, at_atom, delete, "S", ["H1"], inplace)
 
 
@@ -2055,19 +2057,22 @@ class Molecule(entity.BaseEntity):
         algorithm = algorithm or optimizers.auto_algorithm(self)
 
         if algorithm == "rdkit":
-            new = self.copy() if not inplace else self
-            out = optimizers.rdkit_optimize(new)
-            out.id = self.id
+            opt = optimizers.rdkit_optimize(self)
+            out = self.copy() if not inplace else self
+            for a, b in zip(out.get_atoms(), opt.get_atoms()):
+                a.set_coord(b.coord)
             return out
         elif algorithm == "mmff":
-            new = self.copy() if not inplace else self
-            out = optimizers.mmff_optimize(new)
-            out.id = self.id
+            opt = optimizers.mmff_optimize(self)
+            out = self.copy() if not inplace else self
+            for a, b in zip(out.get_atoms(), opt.get_atoms()):
+                a.set_coord(b.coord)
             return out
         elif algorithm == "uff":
-            new = self.copy() if not inplace else self
-            out = optimizers.uff_optimize(new)
-            out.id = self.id
+            opt = optimizers.uff_optimize(self)
+            out = self.copy() if not inplace else self
+            for a, b in zip(out.get_atoms(), opt.get_atoms()):
+                a.set_coord(b.coord)
             return out
         elif algorithm not in ("scipy", "genetic", "swarm", "anneal"):
             raise ValueError(f"Unknown algorithm {algorithm}")
