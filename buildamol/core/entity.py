@@ -39,7 +39,6 @@ class BaseEntity:
         "_bonds",
         "_AtomGraph",
         "_linkage",
-        "_working_chain",
         "_root_atom",
         "_attach_residue",
     )
@@ -71,7 +70,8 @@ class BaseEntity:
         # we use the same attribute for this since they are mutually exclusive and equivalent
         self._linkage = None
 
-        self._working_chain = None
+        # self._working_chain = None
+        # self._working_chain_index = None
         self._root_atom = None
         self._attach_residue = None
 
@@ -663,7 +663,7 @@ class BaseEntity:
 
     @property
     def _chain(self):
-        if self._working_chain is None:
+        if self._working_chain_index is None:
             return self.chains[-1]
         else:
             return self._working_chain
@@ -671,6 +671,17 @@ class BaseEntity:
     @_chain.setter
     def _chain(self, value):
         self._working_chain = value
+
+    @property
+    def _working_chain(self):
+        return self.chains[self._working_chain_index]
+
+    @_working_chain.setter
+    def _working_chain(self, value):
+        if value is None:
+            self._working_chain_index = None
+        else:
+            self._working_chain_index = self.chains.index(value)
 
     @property
     def root_atom(self):
@@ -1115,7 +1126,7 @@ class BaseEntity:
 
         self._model.child_dict.clear()
         self._model.child_list.clear()
-        self.add_chains(chain, adjust_seqid=False)
+        self._model.add(chain)
         self.reindex()
         return self
 
@@ -1128,7 +1139,7 @@ class BaseEntity:
             chain.add(residue)
         self._model.child_dict.clear()
         self._model.child_list.clear()
-        self.add_chains(chain, adjust_seqid=False)
+        self._model.add(chain)
         self.reindex()
         return self
 
@@ -4265,7 +4276,7 @@ class BaseEntity:
         if len(atoms) == 1 and isinstance(atoms[0], (list, tuple, set)):
             atoms = atoms[0]
         H = structural.infer.Hydrogenator()
-        if atoms:
+        if len(atoms) > 0:
             atoms = self.get_atoms(*atoms)
             for a in atoms:
                 H.add_hydrogens(a, self)
@@ -4284,7 +4295,7 @@ class BaseEntity:
         """
         if len(atoms) == 1 and isinstance(atoms[0], (list, tuple, set)):
             atoms = atoms[0]
-        if atoms:
+        if len(atoms) > 0:
             atoms = self.get_atoms(*atoms)
             hydrogens = set()
             for atom in atoms:
