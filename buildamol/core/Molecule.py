@@ -483,6 +483,7 @@ __all__ = [
     "methylate",
     "acetylate",
     "amidate",
+    "aminate",
     "hydroxylate",
     "carboxylate",
     "phenolate",
@@ -1109,6 +1110,34 @@ def hydroxylate(
     return _modify(mol, hydroxyl, at_atom, delete, "O", ["H1"], inplace)
 
 
+def aminate(
+    mol: "Molecule",
+    at_atom: Union[int, str, entity.base_classes.Atom],
+    delete: Union[int, str, entity.base_classes.Atom] = None,
+    inplace: bool = True,
+) -> "Molecule":
+    """
+    Aminate a molecule at one or more specific atoms
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to amidate
+    at_atom : int or str or Atom
+        The atom to amidate. This can be any input that will allow to obtain an Atom object from the molecule.
+        Alternatively, a list of such inputs can be provided as well.
+    delete : int or str or Atom
+        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
+        This atom needs to be in the same residue as the atom to amidate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
+        If at_atom is a list, delete can be a list of the same length or None.
+    inplace : bool
+        Whether to amidate the molecule in place or return a new molecule
+    """
+    resources.load_small_molecules()
+    amide = Molecule.from_compound("NH3")
+    return _modify(mol, amide, at_atom, delete, "N", ["HN1"], inplace)
+
+
 def amidate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
@@ -1133,8 +1162,8 @@ def amidate(
         Whether to amidate the molecule in place or return a new molecule
     """
     resources.load_small_molecules()
-    amide = Molecule.from_compound("NH3")
-    return _modify(mol, amide, at_atom, delete, "N", ["HN1"], inplace)
+    amide = Molecule.from_compound("ARF")
+    return _modify(mol, amide, at_atom, delete, "C", ["H"], inplace)
 
 
 def carboxylate(
