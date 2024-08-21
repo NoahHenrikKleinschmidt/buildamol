@@ -5,7 +5,7 @@ Usage
 -----
 1. Create a `Derivator` object with a molecule as an argument.
 2. Use the `element_changable`, `functional_group_addable`, `bond_order_changable`, and `modifiable` methods to specify the possible changes that can be made to the molecule.
-3. Use the `derive`, `all`, or `make` method to generate one or more derivative molecule(s).
+3. Use the `sample`, `all`, or `make` method to generate one or more derivative molecule(s).
 
 Example
 -------
