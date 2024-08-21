@@ -109,7 +109,9 @@ class Derivator:
         self._bond_derivables = {}
         self._modifiers = (tuple(), tuple())
 
-    def make(self, elements: tuple, bonds: tuple, groups: tuple, modifiers: tuple) -> Molecule:
+    def make(
+        self, elements: tuple, bonds: tuple, groups: tuple, modifiers: tuple
+    ) -> Molecule:
         """
         Make a specific derivative molecule.
         Provide a tuple or other ordered iterable of the same length
@@ -155,7 +157,7 @@ class Derivator:
         for modifier in modifiers:
             m = self._modifiers[0][modifier]
             m(molecule)
-        return molecule: Molecule
+        return molecule
 
     def sample(
         self,
