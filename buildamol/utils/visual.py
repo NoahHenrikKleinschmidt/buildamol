@@ -721,10 +721,10 @@ class MoleculeViewer3D(PlotlyViewer3D):
         _atom_df.set_index("atom_serial", drop=False, inplace=True)
 
         _bond_df = {
-            "a": [i[0].serial_number for i in mol.bonds],
-            "b": [i[1].serial_number for i in mol.bonds],
-            "bond_color": [self.bond_color for i in mol.bonds],
-            "bond_order": [self.bond_linewidth * i.order for i in mol.bonds],
+            "a": [i[0].serial_number for i in mol.get_bonds()],
+            "b": [i[1].serial_number for i in mol.get_bonds()],
+            "bond_color": [self.bond_color for i in mol.get_bonds()],
+            "bond_order": [self.bond_linewidth * i.order for i in mol.get_bonds()],
         }
         _bond_df = pd.DataFrame(_bond_df)
 
