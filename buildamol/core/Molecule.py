@@ -1191,6 +1191,7 @@ def carboxylate(
     """
     resources.load_small_molecules()
     carboxyl = Molecule.from_compound("CBX")
+    carboxyl.rename_atom("O1", "O").rename_atom("O2", "OXT").rename_atom("HO2", "HXT")
     return _modify(mol, carboxyl, at_atom, delete, "C", ["H"], inplace)
 
 
