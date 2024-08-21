@@ -7,8 +7,8 @@ Usage
 2. Use the `element_changable`, `functional_group_addable`, `bond_order_changable`, and `modifiable` methods to specify the possible changes that can be made to the molecule.
 3. Use the `derive`, `all`, or `make` method to generate one or more derivative molecule(s).
 
-Example 1
----------
+Example
+-------
 Let's say we have a benzene ring which we want to derivatize. Let's say further that we are interested in changing the elements of two atoms and adding one functional group to an atom.
 We can do this as follows:
 
@@ -85,15 +85,6 @@ plt.show()
 ```
 
 ![](../../../docs/examples/files/derivator_example1.png)
-
-Example 2
----------
-
-In this case we will not generate all possible derivatives, but rather generate a few random ones.
-To guide the generation we can specify probabilities for each possible change. Let's see how we can do this:
-
-1. Create the benzene molecule and derivator object
-
 """
 
 from buildamol.core import Molecule, Atom, Bond
