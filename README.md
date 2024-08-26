@@ -5,7 +5,8 @@
 
 ---
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13169192.svg)](https://doi.org/10.5281/zenodo.13169192)
+[![cite - BMC Cheminformatics](https://img.shields.io/badge/cite-BMC_Cheminformatics-50EDEA)](https://jcheminf.biomedcentral.com/articles/10.1186/s13321-024-00900-6)
+[![version DOI - 10.5281/zenodo.13169192](https://img.shields.io/badge/version_DOI-10.5281%2Fzenodo.13169192-blue)](https://doi.org/10.5281/zenodo.13169192)
 [![Made with Python](https://img.shields.io/badge/Python->=3.8-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
 [![Documentation Status](https://readthedocs.org/projects/biobuild/badge/?version=latest)](https://biobuild.readthedocs.io/en/latest/?badge=latest)
 [![Check out - Tutorials](https://img.shields.io/badge/check_out-Tutorials-e61882)](https://biobuild.readthedocs.io/en/latest/tutorials.html)
@@ -47,6 +48,20 @@ Getting Started
 ---------------
 BuildAMol has a comprehensive [documentation](https://biobuild.readthedocs.io/en/latest/) on ReadTheDocs. There you can find also also a number of **tutorials** to get you started on the API covering both basic operations as well as more complex and applied workflows such as building materials, preparing molecules for molecular dynamics, or designing protein ligands. 
 
+BuildAMol Paper
+---------------
+To learn more about the benchmarking we did and further details on the software, please check out the [BuildAMol paper](https://jcheminf.biomedcentral.com/articles/10.1186/s13321-024-00900-6). Also, if you were using BuildAMol for your project, please cite the paper :heart:
+
+```
+@article{buildamol,
+	author = {Kleinschmidt, Noah and Lemmin, Thomas},
+	journal = {Journal of Cheminformatics},
+	number = {1},
+	pages = {104},
+	title = {BuildAMol: a versatile Python toolkit for fragment-based molecular design},
+	volume = {16},
+	year = {2024}}
+```
 
 Quick Example - Building A Dendrimer
 ------------------------------------
