@@ -1107,6 +1107,7 @@ def hydroxylate(
     """
     resources.load_small_molecules()
     hydroxyl = Molecule.from_compound("HOH")
+    hydroxyl.rename_residue("HOH", "OH")
     return _modify(mol, hydroxyl, at_atom, delete, "O", ["H1"], inplace)
 
 
