@@ -20,6 +20,12 @@ Currently available extensions
 
     The Polymers extension provides a set of tools to create simple polymers
 
+.. card:: Molecular Factories
+    :link: factories
+    :link-type: ref
+
+    The Molecular Factories extension provides a set of tools to automatically generate molecular structures
+
 .. card:: Complexes
     :link: complexes
     :link-type: ref
