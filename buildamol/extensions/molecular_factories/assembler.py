@@ -74,7 +74,15 @@ from buildamol.core import linkage, Molecule
 
 
 class Assembler:
-    """ """
+    """
+    The Assembler class is a class that can be to assemble molecules from a library of fragments.
+    Each molecule is a linear chain of fragments that are attached to each other.
+
+    Parameters
+    ----------
+    fragments : list
+        A list of Molecules that serve as the fragments to be assembled.
+    """
 
     def __init__(self, fragments: list):
 
