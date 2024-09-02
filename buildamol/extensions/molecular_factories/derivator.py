@@ -14,14 +14,14 @@ We can do this as follows:
 
 1. Create the benzene molecule and derivator object
 
-```python
-import buildamol as bam
-bam.load_small_molecules()
-benzene = bam.molecule("benzene")
+.. code-block:: python
 
-# Create the derivator object
-D = bam.Derivator(benzene)
-```
+    import buildamol as bam
+    bam.load_small_molecules()
+    benzene = bam.molecule("benzene")
+
+    # Create the derivator object
+    D = bam.Derivator(benzene)
 
 2. Specify the possible changes that can be made to the molecule
 
@@ -30,61 +30,64 @@ And `C5` can be either a carbon or a nitrogen.
 Also, we are interested in possibly adding a functional group to `C3`. 
 Namely, we want to check with a hydroxyl group and a phosphate group.
 
-```python
-# set the possible elements for C1 and C5
-D.element_changable(
-    "C1",
-    ("C", "N", "O"),
-    )
-D.element_changable(
-    "C5",
-    ("C", "N"),
-    )
+.. code-block:: python
 
-# set the possible functional groups for C3
-# (the groups are functions that modify the molecule in place)
-D.functional_group_addable(
-    "C3",
-    (D.nothing, bam.hydroxylate, bam.phosphorylate),
-    )
-```
+    # set the possible elements for C1 and C5
+    D.element_changable(
+        "C1",
+        ("C", "N", "O"),
+        )
+    D.element_changable(
+        "C5",
+        ("C", "N"),
+        )
+
+    # set the possible functional groups for C3
+    # (the groups are functions that modify the molecule in place)
+    D.functional_group_addable(
+        "C3",
+        (D.nothing, bam.hydroxylate, bam.phosphorylate),
+        )
+
 
 3. Generate derivatives
 
 Since we only have a small number of changes, we can generate all possible derivatives using the `all` method.
 
-```python
-# generate all possible derivatives
-derivatives = list(D.all())
-```
+.. code-block:: python
+
+    # generate all possible derivatives
+    derivatives = list(D.all())
+
 
 4. Visualize the derivatives
 
 Now we can visualize the derivatives using the `draw2d` method.
 
-```python
-import matplotlib.pyplot as plt
+.. code-block:: python
 
-# compute the layout for the plots (looks nicer like this)
-rows = np.sqrt(len(derivatives))
-cols = np.ceil(len(derivatives) / rows)
-rows = np.round(rows)
+    import matplotlib.pyplot as plt
 
-fig, axs = plt.subplots(int(rows), int(cols), figsize=(12, 12))
-for i, molecule in enumerate(derivatives):
-    molecule.squash()
-    try:
-        img = molecule.draw2d().draw()
-        axs.flat[i].imshow(img)
-    except Exception as e:
-        print(e)
-for ax in axs.flat:
-    ax.axis("off")
+    # compute the layout for the plots (looks nicer like this)
+    rows = np.sqrt(len(derivatives))
+    cols = np.ceil(len(derivatives) / rows)
+    rows = np.round(rows)
 
-plt.show()
-```
+    fig, axs = plt.subplots(int(rows), int(cols), figsize=(12, 12))
+    for i, molecule in enumerate(derivatives):
+        molecule.squash()
+        try:
+            img = molecule.draw2d().draw()
+            axs.flat[i].imshow(img)
+        except Exception as e:
+            print(e)
+    for ax in axs.flat:
+        ax.axis("off")
 
-![](../../../docs/examples/files/derivator_example1.png)
+    plt.show()
+
+.. image:: ../../../docs/examples/files/derivator_example1.png
+
 """
 
 from buildamol.core import Molecule, Atom, Bond

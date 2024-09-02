@@ -14,38 +14,39 @@ Example
 -------
 Let's make a little toy example
 
-```python
-import buildamol as bam
-from buildamol.extensions.molecular_factories import Assembler
-import matplotlib.pyplot as plt
+.. code-block:: python
 
-# get some molecules to serve as fragments
-fragments = [
-    bam.Molecule.from_smiles("C1=CC=CC=C1", id="A").autolabel(),
-    bam.Molecule.from_smiles("CC=O", id="B").autolabel(),
-    bam.Molecule.from_smiles("COC=C", id="C").autolabel(),
-    bam.Molecule.from_smiles("C1=CCC=C1", id="D").autolabel(),
-    bam.Molecule.from_smiles("C(C)N", id="E").autolabel(),
-]
+    import buildamol as bam
+    from buildamol.extensions.molecular_factories import Assembler
+    import matplotlib.pyplot as plt
 
-# make the assembler
-assembler = Assembler(fragments)
+    # get some molecules to serve as fragments
+    fragments = [
+        bam.Molecule.from_smiles("C1=CC=CC=C1", id="A").autolabel(),
+        bam.Molecule.from_smiles("CC=O", id="B").autolabel(),
+        bam.Molecule.from_smiles("COC=C", id="C").autolabel(),
+        bam.Molecule.from_smiles("C1=CCC=C1", id="D").autolabel(),
+        bam.Molecule.from_smiles("C(C)N", id="E").autolabel(),
+    ]
+
+    # make the assembler
+    assembler = Assembler(fragments)
 
 
-# generate some molecules from 3 fragments each
-# let's make 9 molecules
-molecules = assembler.sample(n_fragments=3, n=9)
+    # generate some molecules from 3 fragments each
+    # let's make 9 molecules
+    molecules = assembler.sample(n_fragments=3, n=9)
 
-fig, axs = plt.subplots(3, 3, figsize=(12, 12))
-for mol, ax in zip(molecules, axs.flat):
-        ax.imshow(
-            mol.draw2d().draw(),
-        )
-        ax.axis("off")    
-plt.show()
-```
+    fig, axs = plt.subplots(3, 3, figsize=(12, 12))
+    for mol, ax in zip(molecules, axs.flat):
+            ax.imshow(
+                mol.draw2d().draw(),
+            )
+            ax.axis("off")    
+    plt.show()
 
-![](../../../docs/examples/files/assembler_example1.png)
+.. image:: ../../../docs/examples/files/assembler_example1.png
+
 
 Making Molecules from Arrays
 ----------------------------
@@ -54,13 +55,14 @@ We can also use the `make` method to create a specific molecule from an instruct
 This matrix is a 2D numpy array where each row corresponds to an instruction for attaching the next
 fragment onto the molecule. The columns are as follows:
 
-```
-[
-[incoming_fragment_global_index, incoming_atom_index, target_fragment_atom],
-[incoming_fragment_global_index, incoming_atom_index, target_fragment_atom]
-...
-]
-```
+.. code-block::
+
+    [
+    [incoming_fragment_global_index, incoming_atom_index, target_fragment_atom],
+    [incoming_fragment_global_index, incoming_atom_index, target_fragment_atom]
+    ...
+    ]
+
 
 The `incoming_fragment_global_index` is the index of the fragment in the fragment library (i.e. in the list).
 The `incoming_atom_index` is the index of the atom in the incoming fragment that will be attached to the target fragment (i.e. the attachment point).
@@ -69,18 +71,18 @@ The `target_fragment_atom` is the index of the atom in the target fragment that 
 Let's make a molecule from an instruction matrix. Let's take the fourth fragment molecule as a start. Then attach the second fragment molecule to it, by attaching the its second atom to the first atom of already present molecule.
 Then attach again the fourth fragment onto the molecule by attaching its first atom to the first atom of the second fragment in the molecule.
 
-```python
-matrix = np.array([
-   [3, 0, 0],
-   [1, 1, 0],
-   [3, 0, 0],
-])
+.. code-block:: python
 
-mol = assembler.make(matrix)
-mol.draw2d().show()
-```
+    matrix = np.array([
+    [3, 0, 0],
+    [1, 1, 0],
+    [3, 0, 0],
+    ])
 
-![](../../../docs/examples/files/assembler_example2.png)
+    mol = assembler.make(matrix)
+    mol.draw2d().show()
+    
+.. image:: ../../../docs/examples/files/assembler_example2.png
 
 If including this into an automatic pipeline or an optimization loop it is recommended to wrap the whole thing into a try-except block to catch any errors that might occur due to invalid matrices.
 The clue is that the atoms used for attachment should not be used more than once in the matrix. If they are used more than once, the molecule will not be able to be assembled leading to an error.
