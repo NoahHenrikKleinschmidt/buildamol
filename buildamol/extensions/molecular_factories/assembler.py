@@ -64,8 +64,26 @@ fragment onto the molecule. The columns are as follows:
 
 The `incoming_fragment_global_index` is the index of the fragment in the fragment library (i.e. in the list).
 The `incoming_atom_index` is the index of the atom in the incoming fragment that will be attached to the target fragment (i.e. the attachment point).
+The `target_fragment_atom` is the index of the atom in the target fragment that will be attached to the incoming fragment.
 
+Let's make a molecule from an instruction matrix. Let's take the fourth fragment molecule as a start. Then attach the second fragment molecule to it, by attaching the its second atom to the first atom of already present molecule.
+Then attach again the fourth fragment onto the molecule by attaching its first atom to the first atom of the second fragment in the molecule.
 
+```python
+matrix = np.array([
+   [3, 0, 0],
+   [1, 1, 0],
+   [3, 0, 0],
+])
+
+mol = assembler.make(matrix)
+mol.draw2d().show()
+```
+
+![](../../../docs/examples/files/assembler_example2.png)
+
+If including this into an automatic pipeline or an optimization loop it is recommended to wrap the whole thing into a try-except block to catch any errors that might occur due to invalid matrices.
+The clue is that the atoms used for attachment should not be used more than once in the matrix. If they are used more than once, the molecule will not be able to be assembled leading to an error.
 
 """
 
@@ -99,7 +117,7 @@ class Assembler:
             # we define all non-Hydrogen atoms as potential attachment points
             # but only those that have a hydrogen neighbor that can be removed
             # will be considered as attachment points
-            n_atoms = sum(1 for i in fragment.get_atoms() if i.element != "H")
+            # n_atoms = sum(1 for i in fragment.get_atoms() if i.element != "H")
             a = []
             for adx, atom in enumerate(fragment.get_atoms()):
                 if atom.element == "H":
@@ -128,7 +146,7 @@ class Assembler:
         fragment_or_index : int or Molecule
             The fragment for which to specify the attachment points
         points : list
-            The attachment points to specify. These must be the serial numbers of atoms onto which another fragment can be attached.
+            The attachment points to specify. These must be the indices of the atoms in the fragment as they appear in `fragment.get_atoms()` (NOT the `serial_number`!).
         """
         if isinstance(fragment_or_index, int):
             self.attachment_points[fragment_or_index] = points
@@ -262,7 +280,16 @@ if __name__ == "__main__":
     ]
 
     assembler = Assembler(fragments)
+    matrix = np.array(
+        [
+            [3, 0, 0],
+            [1, 1, 0],
+            [3, 0, 0],
+        ]
+    )
 
+    mol = assembler.make(matrix)
+    mol.draw2d().show()
     fig, axs = plt.subplots(3, 3, figsize=(12, 12))
 
     for mol, ax in zip(assembler.sample(3, 9), axs.flat):
