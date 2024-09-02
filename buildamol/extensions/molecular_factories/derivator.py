@@ -109,6 +109,22 @@ class Derivator:
         self._bond_derivables = {}
         self._modifiers = (tuple(), tuple())
 
+    @property
+    def N(self) -> int:
+        """
+        The number of possible derivatives
+        """
+        n = 1
+        for elements, _ in self._element_derivables.values():
+            n *= len(elements)
+        for orders, _ in self._bond_derivables.values():
+            n *= len(orders)
+        for groups, _ in self._functional_group_derivables.values():
+            n *= len(groups)
+        if len(self._modifiers[0]) > 0:
+            n *= len(self._modifiers[0])
+        return n
+
     def make(
         self, elements: tuple, bonds: tuple, groups: tuple, modifiers: tuple
     ) -> Molecule:

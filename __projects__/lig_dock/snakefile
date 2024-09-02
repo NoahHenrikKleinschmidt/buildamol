@@ -1,0 +1,223 @@
+
+rule remove_ions_and_waters_pdb:
+    input:
+        pdb = "{struct}/raw/{pdb_file}.pdb"
+    output:
+        pdb = "{struct}/cleaned/{pdb_file}_nowater_noion.pdb"
+    params:
+        water_identifier = "TIP3W"
+        ion_identifier = "ION"
+    python:      
+
+        from pathlib import Path
+        dir = Path(input.pdb).parent
+        cleaned = dir / "cleaned"
+        if not cleaned.exists():
+            cleaned.mkdir()
+
+        with open(input.pdb, "r") as f:
+            with open(output.pdb, "w") as g:
+                for line in f:
+                    if params.water_identifier in line or params.ion_identifier in line:
+                        continue
+                    g.write(line)   
+
+rule load_system_to_buildamol:
+    input:
+        pdb = remove_ions_and_waters_pdb.output.pdb
+    output:
+        pickle = "{struct}/cleaned/system.pkl"
+    python:
+        import buildamol as bam
+        system = bam.read_pdb(input.pdb)
+        system.save(output.pickle)
+
+rule cleanup_system:
+    input:
+        pickle = load_system_to_buildamol.output.pickle
+    output:
+        pdb = "{struct}/cleaned/system_cleaned.pdb"
+    params:
+        residues_to_rename = {"HSD": "HIS"}
+        atoms_to_rename = {}
+        residues_to_remove = []
+        atoms_to_remove = []
+
+    python:
+        import buildamol as bam
+        system = bam.Molecule.load(input.pickle)
+
+        for old, new in params.residues_to_rename.items():
+            system.rename_residues(old, new)
+        
+        for old, new in params.atoms_to_rename.items():
+            system.rename_atoms(old, new)
+        
+        for resname in params.residues_to_remove:
+            system.remove_residues(system.get_residues(resname))
+        
+        for atom in params.atoms_to_remove:
+            system.remove_atoms(system.get_atoms(atom))
+
+        # and we make sure that all elements are correct  
+        for atom in ligand.get_atoms("X", by="element"):
+            atom.element = atom.id[0]
+
+        system.save(input.pickle)
+        system.to_pdb(output.pdb)
+
+rule extract_ligand:
+    input:
+        pickle = cleanup_system.input.pickle
+        pdb = cleanup_system.output.pdb # just to ensure the order of execution
+    output:
+        ligand_pdb = "{struct}/cleaned/ligand_{ligand_resname}.pdb"
+        trimmed_pickle = "{struct}/cleaned/system_trimmed.pkl"
+        trimmed_pdb = "{struct}/cleaned/system_trimmed.pdb"
+        pocket_coord = "{struct}/pdbqt/system_trimmed_conf.txt"
+
+    params:
+        box_size = 30.0
+        
+    python:
+        from pathlib import Path
+        pdbqt_dir = Path(output.ligand_pdb).parent
+        if not pdbqt_dir.exists():
+            pdbqt_dir.mkdir()
+        
+        import buildamol as bam
+        system = bam.Molecule.load(input.pickle)
+
+        # we get the ligand position
+        ligands = system.get_residues(wildcards.ligand_resname)
+        ligand = ligands[0]
+        pos = ligand.center_of_mass
+
+        close_by = system.get_atoms(
+            filter=lambda x: bam.structural.distance_between(x.coord, pos) < params.box_size
+        )
+        chains_to_keep = set(atom.parent.parent for atom in close_by)
+        chains_to_drop = set(system.chains) - chains_to_keep
+        system.remove_chains(chains_to_drop)
+
+        system.remove_residues(ligands)
+
+        system.save(output.trimmed_pickle)
+        system.to_pdb(output.trimmed_pdb)
+
+        lig = bam.Molecule()
+        lig.add_residue(ligand)
+        lig.to_pdb(output.ligand_pdb)
+
+        coord_string = f"""
+center_x = {(pos[0]:.3f)}
+center_y = {(pos[1]:.3f)}
+center_z = {(pos[2]:.3f)}
+
+size_x = {params.box_size:.3f}
+size_y = {params.box_size:.3f}
+size_z = {params.box_size:.3f}
+""".strip()
+        with open(output.pocket_coord, "w") as f:
+            f.write(coord_string)
+
+rule prepare_derive_notebook:
+    input:
+        pdb = extract_ligand.output.ligand_pdb
+    output:
+        notebook = "{struct}/derive_ligand.ipynb"
+    python:
+        with open("_templates/derive_ligand.ipynb", "r") as f:
+            template = f.read()
+        with open(output.notebook, "w") as f:
+            f.write(
+                template.replace("<LIGANDPDB>", 
+                str(input.pdb).replace(wildcards.struct, ".")
+                )
+            )
+
+rule derive_ligand:
+    input:
+        notebook = prepare_derive_notebook.output.notebook
+    output:
+        derivative_checkfile = "{struct}/checkfile.derivatives"
+    shell:
+        jupyter nbconvert --to notebook --execute {input.notebook} --output {wildcards.struct}/derive_ligand.ipynb
+
+rule count_derivatives:
+    input:
+        checkfile = derive_ligand.output.derivative_checkfile
+    output:
+        counts = "{struct}/derivatives/counts.txt"
+    python:
+        from pathlib import Path
+        dir = Path(output.counts) / "derivatives"
+        if not dir.exists():
+            raise FileNotFoundError(f"Directory {dir} does not exist")
+
+        count = sum(1 for file in dir.glob("derivative_*.smi"))
+        with open(output.counts, "w") as f:
+            f.write(str(count))
+        
+
+rule pdb_to_pdbqt:
+    input:
+        system_pdb = extract_ligand.output.trimmed_pdb
+    output:
+        system_pdbqt = "{struct}/pdbqt/system_trimmed_target.pdbqt"
+    shell:
+        obabel {input.system_pdb} -O {output.system_pdbqt} -xr -p 7.4 --partialcharge eem
+
+rule dock:
+    input:
+        pdbqt = pdb_to_pdbqt.output.system_pdbqt,
+        pocket_coord = extract_ligand.output.pocket_coord
+        ligand_smi = "{struct}/derivatives/derivative_{i}.smi"
+    output:
+        conformer = "{struct}/docked/derivative_{i}.pdb"
+        score = "{struct}/docked/derivative_{i}.txt"
+    params:
+        num_cpus = 2
+
+    python:
+        import dockstring as ds
+        from pathlib import Path
+        from rdkit import Chem
+
+        outdir = Path(output.conformer).parent
+        if not outdir.exists():
+            outdir.mkdir()
+
+        target = ds.Target(
+            name="system_trimmed", 
+            working_dir=Path(input.pdbqt).parent,
+            targets_dir=Path(input.pdbqt).parent,
+        )
+        
+        smiles = with open(input.ligand_smi, "r") as f: f.read().strip()
+        score, aux = target.dock(smiles, num_cpus=params.num_cpus)
+        
+        with open(output.score, "w") as f:
+            f.write(f"derivative_{wildcards.i}\t{smiles}\t{score}")
+        
+        ligand = aux["ligand"]
+        for i in range(1, 10):
+            ligand.RemoveConformer(i)
+        
+        Chem.MolToPDBFile(ligand, str(output.conformer))
+
+rule dockall:
+    input:
+        pdbqt = expand("{struct}/pdbqt/system_trimmed_target.pdbqt", struct=config["structs"]),
+        pocket_coord = extract_ligand.output.pocket_coord
+        
+    output:
+        summary = "{struct}/docked/summary.tsv"
+    
+    threads: 4
+    
+    shell:
+        dock_files=$(ls {input.pdbqt})
+        for file in $dock_files; do
+            snakemake --snakefile /Users/noahhk/GIT/biobuild/__projects__/lig_dock/snakefile dock --config struct={wildcards.struct} i={wildcards.i} --cores 1
+        done
