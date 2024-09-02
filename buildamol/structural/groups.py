@@ -29,6 +29,8 @@ def add_group(group: "FunctionalGroup"):
     all_functional_groups.append(group)
     if any(i > 1 for i in group.connectivity):
         higher_order_groups.append(group)
+    if not group.applies_locally:
+        globally_applied_groups.append(group)
 
 
 __H_neighbor_funcs = {}
@@ -44,75 +46,24 @@ def _assigned_atom_and_H_neighbor(n: int):
     return __H_neighbor_funcs[n]
 
 
-class FunctionalGroup:
+class BaseFunctionalGroup:
     """
-    A functional group that can be described by a single geometry around one central atom.
-
-    Parameters
-    ----------
-    id : str
-        The identifier of the functional group.
-    geometry : geometry.Geometry
-        The geometry of the functional group.
-    atoms : str
-        The elements of the atoms. The first element is the center atom.
-        Then come all other atoms.
-    connectivity : list[int]
-        The connectivity of the atoms. Where each entry describes the bond order of the central atom to the respective other atom.
-    constraints : list
-        A list of functions that describe the constraints of the functional group.
-        Each function describes the constraints of the respective atom in the same order as they were provided in the atoms parameter.
-    invertable : bool
-        If the functional group is invertable.
-
-    Examples
-    --------
-    >>> from buildamol.structural.neighbors import constraints
-    >>> carboxyl = FunctionalGroup(
-    ...     id="carboxyl",
-    ...     rank=2,
-    ...     geometry=geometry.trigonal_planar,
-    ...     # the first atom is the center atom (carboxyl carbon)
-    ...     atoms=("C", "O", "O"),
-    ...     # the connectivity of the carbonxyl carbon to the first O is a double
-    ...     # bond and to the second O is a single bond
-    ...     connectivity=(2, 1),
-    ...     constraints=[
-    ...     None, # the carboxyl carbon has no constraints
-    ...     constraints.neighbors_exactly("C"), # the first oxygen must be connected to the carboxyl carbon only
-    ...     constraints.neighbors_exactly("C", "H") # the second oxygen must be connected to the carboxyl carbon and a hydrogen
-    ...     ],
-    ...     invertable=False
-    ... )
+    The base class for functional group objects.
+    This class should not be used to directly define specific functional group
+    instances!
     """
 
-    def __init__(
-        self,
-        id: str,
-        rank: int,
-        geometry: geometry.Geometry,
-        atoms: Tuple[str],
-        connectivity: List[int],
-        constraints: List[tuple],
-        invertable: bool = False,
-    ):
+    def __init__(self, id: str, rank: int):
         self.id = id
-        self.geometry = geometry
-        self.atoms = atoms
-        self.connectivity = connectivity
-        self._connectivity = tuple((0, i + 1) for i in range(len(connectivity)))
-        self._assignment = None
-        self._hist = self._element_hist(atoms)
-        self._set_atoms = set(atoms)
-        self.n = len(atoms)
         self.rank = rank
-        self.constraints = constraints
-        self.invertable = invertable
+        self._invertable = False
+
         self._nucleophile_bonder = None
         self._electrophile_bonder = None
         self._nucleophile_deletes = None
         self._electrophile_deletes = None
 
+        self._assignment = None
         self._assignment_cache = {}
         self._applied_connectivity_cache = {}
 
@@ -242,144 +193,13 @@ class FunctionalGroup:
         """
         return self._assignment
 
-    def find_matches(self, molecule, atoms: list):
+    def clear_cache(self):
         """
-        Find all atoms in a molecule that match the functional group.
-
-        Parameters
-        ----------
-        molecule : Molecule
-            The molecule to search in.
-        atoms : list
-            The atoms to search for.
-
-        Returns
-        -------
-        list
-            A list of tuples with the indices of the atoms that match the functional group.
+        Clear the assignment cache
         """
-        matches = []
-        self._assignment_cache.setdefault(molecule, [])
-        if self._assignment_cache[molecule]:
-            matches.extend(self._assignment_cache[molecule])
-
-        ref = self.atoms[0]
-        n = sum(1 for i in self._connectivity if 0 in i)
-        for a in atoms:
-            if any(a == assignment[0] for assignment in matches):
-                continue
-            if a.element != ref:
-                continue
-            neighs = molecule.get_neighbors(a)
-            if len(neighs) < n - 1:
-                continue
-            assignment = self._assign_atoms(molecule, [a, *neighs])
-            if len(assignment) == self.n:
-                matches.append(assignment)
-
-        self._assignment_cache[molecule].extend(matches)
-        return matches
-
-    def matches(self, molecule, atoms: list) -> bool:
-        """
-        Check if the atoms match the functional group.
-
-        Parameters
-        ----------
-        atoms : list
-            The atoms to check. The first atom must be the center atom.
-
-        Returns
-        -------
-        bool
-            True if the atoms match the functional group, False otherwise.
-        """
-        if len(atoms) < self.n:
-            return False
-        elif atoms[0].element != self.atoms[0]:
-            return False
-        elif not self._match_connectivity([(0, i + 1) for i in range(len(atoms) - 1)]):
-            return False
-        elif not self._match_elements(atoms):
-            return False
-
-        ref_coords = np.array([atom.coord for atom in atoms])
-        out_coords = self.geometry.make_coords(*ref_coords[: self.geometry.max_points])
-
-        d = cdist(out_coords, ref_coords)
-        d = d < 0.95
-        if not d.sum() == len(atoms):
-            return False
-
-        assignment = self._assign_atoms(molecule, atoms)
-        if len(assignment) != self.n:
-            return False
-
-        self._assignment_cache.setdefault(molecule, [])
-        self._assignment_cache[molecule].append(assignment)
-        return True
-
-    def apply_connectivity(self, molecule, atoms: list):
-        """
-        Apply the connectivity of the functional group to a set of atoms in a molecule.
-        All matching atoms will be identified from the list, so this method can apply connectivity
-        to multiple instances of the functional group.
-
-        Parameters
-        ----------
-        molecule : Molecule
-            The molecule to apply the bonds to.
-        atoms : list
-            The atoms to apply the bonds to.
-        """
-        for assignment in self.find_matches(molecule, atoms):
-            self._assignment = assignment
-            self._apply_connectivity(molecule, atoms)
-
-    def _apply_connectivity(self, molecule, atoms: list):
-        if self._assignment is None:
-            self._assignment = self._assign_atoms(molecule, atoms)
-
-        a = self._assignment[0]
-        bonds_a = molecule._get_bonds((a,), None)
-        self._applied_connectivity_cache.setdefault(molecule, set())
-        assigned = self._applied_connectivity_cache[molecule]
-        newly_assigned = 0
-        for cdx, c in enumerate(self.connectivity):
-
-            b = self._assignment[cdx + 1]
-            if molecule._AtomGraph.edges[a, b]["bond_order"] == c:
-                # assigned.add((a, b))
-                newly_assigned += 1
-                continue
-            elif self.invertable and ((a, b) in assigned or (b, a) in assigned):
-                newly_assigned += 1
-                continue
-
-            bonds_b = molecule._get_bonds((b,), None)
-            a_is_free = infer.has_free_valence(a, bonds_a, needed=c - 1)
-            b_is_free = infer.has_free_valence(b, bonds_b, needed=c - 1)
-            if a_is_free and b_is_free:
-                molecule.set_bond_order(a, b, c)
-                assigned.add((a, b))
-                newly_assigned += 1
-
-        if self.invertable and newly_assigned < len(self.connectivity):
-            for cdx, c in enumerate(reversed(self.connectivity)):
-                b = self._assignment[cdx + 1]
-                if (a, b) in assigned or (b, a) in assigned:
-                    continue
-                if molecule._AtomGraph.edges[a, b]["bond_order"] == c:
-                    continue
-
-                bonds_b = molecule._get_bonds((b,), None)
-                a_is_free = infer.has_free_valence(a, bonds_a, needed=c - 1)
-                b_is_free = infer.has_free_valence(b, bonds_b, needed=c - 1)
-                if a_is_free and b_is_free:
-                    molecule.set_bond_order(a, b, c)
-                    assigned.add((a, b))
-
         self._assignment = None
+        self._assignment_cache.clear()
+        self._applied_connectivity_cache.clear()
 
     def infer_electrophile_atoms(self, molecule, residue=None):
         """
@@ -453,16 +273,66 @@ class FunctionalGroup:
 
         return bonder, deletes
 
-    def _infer_deletes(self, molecule, residue, assignment, bonder, deletes):
-        if deletes is None:
-            return None
+    def find_matches(self, molecule, atoms: list):
+        """
+        Find all atoms in a molecule that match the functional group.
 
-        _deletes = []
-        if callable(deletes):
-            _deletes = deletes(molecule, residue, bonder, assignment)
-        else:
-            _deletes = [assignment[i] for i in deletes]
-        return _deletes
+        Parameters
+        ----------
+        molecule : Molecule
+            The molecule to search in.
+        atoms : list
+            The atoms to consider.
+
+        Returns
+        -------
+        list
+            A list of tuples with the indices of the atoms that match the functional group.
+        """
+        raise NotImplementedError(
+            "This method should be implemented by a specific subclass"
+        )
+
+    def matches(self, molecule, atoms: list) -> bool:
+        """
+        Check if the atoms match the functional group.
+
+        Parameters
+        ----------
+        atoms : list
+            The atoms to check. The first atom must be the center atom.
+
+        Returns
+        -------
+        bool
+            True if the atoms match the functional group, False otherwise.
+        """
+        raise NotImplementedError(
+            "This method should be implemented by a specific subclass"
+        )
+
+    def apply_connectivity(self, molecule, atoms: list):
+        """
+        Apply the connectivity of the functional group to a set of atoms in a molecule.
+        All matching atoms will be identified from the list, so this method can apply connectivity
+        to multiple instances of the functional group.
+
+        Parameters
+        ----------
+        molecule : Molecule
+            The molecule to apply the bonds to.
+        atoms : list
+            The atoms to apply the bonds to.
+        """
+        if self._assignment is not None:
+            self._apply_connectivity(molecule, atoms)
+            return
+        for assignment in self.find_matches(molecule, atoms):
+            self._assignment = assignment
+            self._apply_connectivity(molecule, atoms)
+
+    def _apply_connectivity(molecule, atoms):
+        raise NotImplemented("This method should be implemented by a specitic subclass")
 
     def _assign_atoms(self, molecule, atoms: list):
         """
@@ -475,6 +345,144 @@ class FunctionalGroup:
         atoms : list
             The atoms to assign to the functional group.
         """
+        raise NotImplementedError(
+            "This method should be implemented by a specific subclass"
+        )
+
+    def _infer_deletes(self, molecule, residue, assignment, bonder, deletes):
+        if deletes is None:
+            return None
+
+        _deletes = []
+        if callable(deletes):
+            _deletes = deletes(molecule, residue, bonder, assignment)
+        else:
+            _deletes = [assignment[i] for i in deletes]
+        return _deletes
+
+    def __repr__(self) -> str:
+        return f"FunctionalGroup({self.id})"
+
+    def __str__(self) -> str:
+        return f"Functional group '{self.id}'"
+
+
+class FunctionalGroup(BaseFunctionalGroup):
+    """
+    A functional group that can be described by a single geometry around one central atom.
+
+    Parameters
+    ----------
+    id : str
+        The identifier of the functional group.
+    geometry : geometry.Geometry
+        The geometry of the functional group.
+    atoms : str
+        The elements of the atoms. The first element is the center atom.
+        Then come all other atoms.
+    connectivity : list[int]
+        The connectivity of the atoms. Where each entry describes the bond order of the central atom to the respective other atom.
+    constraints : list
+        A list of functions that describe the constraints of the functional group.
+        Each function describes the constraints of the respective atom in the same order as they were provided in the atoms parameter.
+    invertable : bool
+        If the functional group is invertable.
+
+    Examples
+    -------
+    >>> from buildamol.structural.neighbors import constraints
+    >>> carboxyl = FunctionalGroup(
+    ...     id="carboxyl",
+    ...     rank=2,
+    ...     geometry=geometry.trigonal_planar,
+    ...     # the first atom is the center atom (carboxyl carbon)
+    ...     atoms=("C", "O", "O"),
+    ...     # the connectivity of the carbonxyl carbon to the first O is a double
+    ...     # bond and to the second O is a single bond
+    ...     connectivity=(2, 1),
+    ...     constraints=[
+    ...     None, # the carboxyl carbon has no constraints
+    ...     constraints.neighbors_exactly("C"), # the first oxygen must be connected to the carboxyl carbon only
+    ...     constraints.neighbors_exactly("C", "H") # the second oxygen must be connected to the carboxyl carbon and a hydrogen
+    ...     ],
+    ...     invertable=False
+    ... )
+    """
+
+    def __init__(
+        self,
+        id: str,
+        rank: int,
+        geometry: geometry.Geometry,
+        atoms: Tuple[str],
+        connectivity: List[int],
+        constraints: List[tuple],
+        invertable: bool = False,
+    ):
+        BaseFunctionalGroup.__init__(self, id, rank)
+        self._invertable = invertable
+        self.geometry = geometry
+        self.atoms = atoms
+        self.connectivity = connectivity
+        self._connectivity = tuple((0, i + 1) for i in range(len(connectivity)))
+        self._assignment = None
+        self._hist = self._element_hist(atoms)
+        self._set_atoms = set(atoms)
+        self.n = len(atoms)
+        self.constraints = constraints
+
+        self.applies_locally = True
+
+    def find_matches(self, molecule, atoms: list):
+        matches = []
+        self._assignment_cache.setdefault(molecule, [])
+        if self._assignment_cache[molecule]:
+            matches.extend(self._assignment_cache[molecule])
+
+        ref = self.atoms[0]
+        n = sum(1 for i in self._connectivity if 0 in i)
+        for a in atoms:
+            if any(a == assignment[0] for assignment in matches):
+                continue
+            if a.element != ref:
+                continue
+            neighs = molecule.get_neighbors(a)
+            if len(neighs) < n - 1:
+                continue
+            assignment = self._assign_atoms(molecule, [a, *neighs])
+            if len(assignment) == self.n:
+                matches.append(assignment)
+
+        self._assignment_cache[molecule].extend(matches)
+        return matches
+
+    def matches(self, molecule, atoms: list) -> bool:
+        if len(atoms) < self.n:
+            return False
+        elif atoms[0].element != self.atoms[0]:
+            return False
+        elif not self._match_connectivity([(0, i + 1) for i in range(len(atoms) - 1)]):
+            return False
+        elif not self._match_elements(atoms):
+            return False
+
+        ref_coords = np.array([atom.coord for atom in atoms])
+        out_coords = self.geometry.make_coords(*ref_coords[: self.geometry.max_points])
+
+        d = cdist(out_coords, ref_coords)
+        d = d < 0.95
+        if not d.sum() == len(atoms):
+            return False
+
+        assignment = self._assign_atoms(molecule, atoms)
+        if len(assignment) != self.n:
+            return False
+
+        self._assignment_cache.setdefault(molecule, [])
+        self._assignment_cache[molecule].append(assignment)
+        return True
+
+    def _assign_atoms(self, molecule, atoms: list):
         matches = {}
         G = molecule._AtomGraph
         atoms = list(atoms)
@@ -491,6 +499,52 @@ class FunctionalGroup:
                     atoms.remove(a)
                     break
         return matches
+
+    def _apply_connectivity(self, molecule, atoms: list):
+        if self._assignment is None:
+            self._assignment = self._assign_atoms(molecule, atoms)
+
+        a = self._assignment[0]
+        bonds_a = molecule._get_bonds((a,), None)
+        self._applied_connectivity_cache.setdefault(molecule, set())
+        assigned = self._applied_connectivity_cache[molecule]
+        newly_assigned = 0
+        for cdx, c in enumerate(self.connectivity):
+
+            b = self._assignment[cdx + 1]
+            if not molecule._AtomGraph.has_edge(a, b):
+                continue
+            if molecule._AtomGraph.edges[a, b]["bond_order"] == c:
+                newly_assigned += 1
+                continue
+            elif self._invertable and ((a, b) in assigned or (b, a) in assigned):
+                newly_assigned += 1
+                continue
+
+            bonds_b = molecule._get_bonds((b,), None)
+            a_is_free = infer.has_free_valence(a, bonds_a, needed=c - 1)
+            b_is_free = infer.has_free_valence(b, bonds_b, needed=c - 1)
+            if a_is_free and b_is_free:
+                molecule.set_bond_order(a, b, c)
+                assigned.add((a, b))
+                newly_assigned += 1
+
+        if self._invertable and newly_assigned < len(self.connectivity):
+            for cdx, c in enumerate(reversed(self.connectivity)):
+                b = self._assignment[cdx + 1]
+                if (a, b) in assigned or (b, a) in assigned:
+                    continue
+                if molecule._AtomGraph.edges[a, b]["bond_order"] == c:
+                    continue
+
+                bonds_b = molecule._get_bonds((b,), None)
+                a_is_free = infer.has_free_valence(a, bonds_a, needed=c - 1)
+                b_is_free = infer.has_free_valence(b, bonds_b, needed=c - 1)
+                if a_is_free and b_is_free:
+                    molecule.set_bond_order(a, b, c)
+                    assigned.add((a, b))
+
+        self._assignment = None
 
     @staticmethod
     def _element_hist(elements):
@@ -516,12 +570,6 @@ class FunctionalGroup:
             if c not in connectivity:
                 return False
         return True
-
-    def __repr__(self) -> str:
-        return f"FunctionalGroup({self.id})"
-
-    def __str__(self) -> str:
-        return f"Functional group '{self.id}'"
 
 
 carbonyl = FunctionalGroup(
@@ -607,41 +655,6 @@ alkyne = FunctionalGroup(
 )
 
 
-def _aromatic_constraint(G, a):
-
-    # first check if we have a circle of 6 carbons
-    neighbors = G.get_cycle(a)
-    if not neighbors:
-        return False
-
-    carbons = [i for i in neighbors if i.element == "C"]
-    if len(carbons) != 6:
-        return False
-
-    coords = np.array([i.coord for i in carbons])
-    part_a, part_b = np.split(coords, 2)
-    plane_a = base.plane_vector(part_a[1] - part_a[0], part_a[2] - part_a[0])
-    plane_b = base.plane_vector(part_b[1] - part_b[0], part_b[2] - part_b[0])
-
-    if abs((plane_a + plane_b).sum()) < 0.05:
-        return True
-    elif abs((plane_a - plane_b).sum()) < 0.05:
-        return True
-
-    return False
-
-
-aromatic = FunctionalGroup(
-    "aromatic",
-    3,
-    geometry.trigonal_planar,
-    ("C", "C", "C"),
-    (2, 1),
-    (_aromatic_constraint,) * 3,
-    invertable=True,
-)
-
-
 hydroxyl = FunctionalGroup(
     "hydroxyl",
     1,
@@ -696,6 +709,108 @@ thiol.set_reactivity(
 )
 
 
+class AromaticGroup(BaseFunctionalGroup):
+    """
+    A special functional group to handle aromatic rings
+    """
+
+    def __init__(self, *args, **kwargs):
+        BaseFunctionalGroup.__init__(self, id="aromatic", rank=6)
+        self.applies_locally = False
+        self.seen = []
+        self.seen_atoms = set()
+
+    def clear_cache(self):
+        super().clear_cache()
+        self.seen.clear()
+        self.seen_atoms.clear()
+
+    def matches(self, molecule, atoms: list):
+        current = len(self._assignment_cache.get(molecule, []))
+        return len(self.find_matches(molecule, atoms)) > current
+
+    def find_matches(self, molecule, atoms: list):
+        matches = []
+        if molecule not in self._assignment_cache:
+            self.clear_cache()
+        self._assignment_cache.setdefault(molecule, [])
+        if self._assignment_cache[molecule]:
+            matches.extend(self._assignment_cache[molecule])
+
+        for a in atoms:
+            if a.element != "C":
+                continue
+            if a in self.seen_atoms:
+                continue
+            cycle = molecule._AtomGraph.get_cycle(a)
+            if cycle is None:
+                continue
+            if len(cycle) != 6:
+                continue
+            if not all(i.element == "C" for i in cycle):
+                continue
+            if cycle in self.seen:
+                continue
+
+            coords = np.array([i.coord for i in cycle])
+
+            part_a, part_b = coords[:3], coords[3:]
+            plane_a = base.plane_vector(part_a[1] - part_a[0], part_a[2] - part_a[0])
+            plane_b = base.plane_vector(part_b[1] - part_a[0], part_b[2] - part_a[0])
+
+            # if (not abs((plane_a + plane_b).sum()) < 0.05) or (
+            #     abs((plane_a - plane_b).sum()) < 0.05
+            # ):
+            if abs(sum(abs(plane_a) - abs(plane_b))) > 0.05:
+                self.seen.append(cycle)
+                self.seen_atoms.update(cycle)
+                continue
+
+            carbons = self._assign_atoms(molecule, tuple(cycle))
+            matches.append(carbons)
+            self.seen_atoms.update(cycle)
+            self.seen.append(cycle)
+
+        self._assignment_cache[molecule].extend(matches)
+        return matches
+
+    def _apply_connectivity(self, molecule, atoms: List):
+        if self._assignment is None:
+            self._assignment = self._assign_atoms(molecule, atoms)
+
+        molecule.set_bond_order(self._assignment[0], self._assignment[1], 2)
+        molecule.set_bond_order(self._assignment[1], self._assignment[2], 1)
+        molecule.set_bond_order(self._assignment[2], self._assignment[3], 2)
+        molecule.set_bond_order(self._assignment[3], self._assignment[4], 1)
+        molecule.set_bond_order(self._assignment[4], self._assignment[5], 2)
+        molecule.set_bond_order(self._assignment[0], self._assignment[5], 1)
+
+    def _assign_atoms(self, molecule, atoms: list):
+        a1 = atoms[0]
+        matches = {0: a1}
+        a2, a6 = molecule.get_neighbors(
+            a1, filter=lambda x: x.element == "C" and x in atoms
+        )
+        matches[1] = a2
+        matches[5] = a6
+        a3 = molecule.get_neighbors(
+            a2, filter=lambda x: x.element == "C" and x is not a1 and x in atoms
+        ).pop()
+        a5 = molecule.get_neighbors(
+            a6, filter=lambda x: x.element == "C" and x is not a1 and x in atoms
+        ).pop()
+        matches[2] = a3
+        matches[4] = a5
+
+        a4 = molecule.get_neighbors(
+            a5, filter=lambda x: x.element == "C" and x is not a6 and x in atoms
+        ).pop()
+        matches[3] = a4
+        return matches
+
+
+aromatic = AromaticGroup()
+
 higher_order_groups = [
     carbonyl,
     carboxyl,
@@ -706,6 +821,13 @@ higher_order_groups = [
 ]
 """
 Functional groups that contain bonds with a higher order than only single bonds.
+"""
+
+globally_applied_groups = [aromatic]
+"""
+Functional groups whose definitions span not only directly neighboring groups but a larger set of atoms
+
+(this list is used by the `structural.infer.infer_bond_orders` function)
 """
 
 all_functional_groups = [
@@ -748,7 +870,7 @@ if __name__ == "__main__":
 
         atoms = mol.atoms
 
-        # matches = aromatic.find_matches(mol, atoms)
+        matches = aromatic.find_matches(mol, atoms)
         # if len(matches) == 0:
         #     raise ValueError("No matches found")
 
