@@ -2017,23 +2017,38 @@ def test_infer_reactivity_atoms_from_groups():
 
 
 def test_infer_bond_orders():
-    mols = [
-        "2-butene",
-        "NAG",
-        "TYR",
-        "acetylbenzene",
-    ]
-    for mol in mols:
-        mol = bam.molecule(mol)
+    mols = {
+        "2-butene": 1,
+        "NAG": 1,
+        "TYR": 4,
+        "C(=O)C(C1=CC=CC=C1)C": 4,
+        "O=C(C)C1CCCCC1": 1,
+    }
+    for m, n_double_bonds in mols.items():
+        mol = bam.molecule(m)
         for bond in mol.get_bonds():
             mol.set_bond_order(*bond, 1)
 
         bam.structural.infer_bond_orders(mol)
-        assert any(bond.is_double() for bond in mol.get_bonds()), (
-            "No double bonds found in molecule" + mol.id
-        )
+        assert (
+            sum(1 for i in mol.get_double_bonds()) == n_double_bonds
+        ), f"wrong number of double bonds for {m=}"
         if base.ALLOW_VISUAL:
             mol.show()
+
+
+def test_infer_bond_orders_2():
+    mol = bam.read_smiles("NCc1cccc(NC(=O)Cc2ccccc2)c1")
+    double_bonds = [i for i in mol.get_bonds() if i.order == 2]
+    for b in double_bonds:
+        mol.single(*b)
+    assert len([i for i in mol.get_bonds() if i.order == 2]) == 0
+
+    mol.infer_bonds(infer_bond_orders=True)
+
+    assert len([i for i in mol.get_bonds() if i.order == 2]) == len(double_bonds)
+
+    pass
 
 
 def test_match_aromatic():

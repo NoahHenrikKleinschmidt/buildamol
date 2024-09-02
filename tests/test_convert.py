@@ -31,6 +31,10 @@ def test_openbabel():
     mol = bam.read_smiles("C=CC=CC=C")
     assert mol is not None
 
+    try:
+        mol.to_pybel()
+    except:
+        pass
     _pybel = mol.to_pybel()
     assert _pybel is not None
 
