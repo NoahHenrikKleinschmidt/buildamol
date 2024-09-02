@@ -1981,18 +1981,31 @@ def infer_bond_orders(molecule):
     import buildamol.structural.groups as groups
 
     group_matches = {}
+    _assigned_atoms = set()
+
+    groups_to_apply = sorted(
+        groups.higher_order_groups, key=lambda x: x.rank, reverse=True
+    )
     for atom in molecule.get_atoms():
         neighbors = molecule.get_neighbors(atom)
         atoms = (atom, *neighbors)
-        connectivity = [(0, i + 1) for i in range(len(neighbors))]
 
-        for group in groups.higher_order_groups:
+        for group in groups_to_apply:
+            if atoms in group_matches:
+                continue
+            if all(i in _assigned_atoms for i in atoms):
+                continue
             if group.matches(molecule, atoms):
-                if atoms in group_matches:
-                    if group_matches[atoms][0].rank < group.rank:
-                        group_matches[atoms] = (group, group._assignment)
-                else:
-                    group_matches[atoms] = (group, group._assignment)
+                if any(
+                    i in _assigned_atoms
+                    for i in group._assignment_cache[molecule][-1].values()
+                ):
+                    continue
+                group_matches[atoms] = (
+                    group,
+                    group._assignment_cache[molecule][-1],
+                )
+                _assigned_atoms.update(group._assignment_cache[molecule][-1].values())
 
     for atoms, (group, assignment) in group_matches.items():
         group._assignment = assignment
