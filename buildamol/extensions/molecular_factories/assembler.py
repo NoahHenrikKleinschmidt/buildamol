@@ -45,7 +45,7 @@ Let's make a little toy example
             ax.axis("off")    
     plt.show()
 
-.. image:: ../../../docs/examples/files/assembler_example1.png
+.. image:: examples/files/assembler_example1.png
 
 
 Making Molecules from Arrays
@@ -82,7 +82,7 @@ Then attach again the fourth fragment onto the molecule by attaching its first a
     mol = assembler.make(matrix)
     mol.draw2d().show()
     
-.. image:: ../../../docs/examples/files/assembler_example2.png
+.. image:: examples/files/assembler_example2.png
 
 If including this into an automatic pipeline or an optimization loop it is recommended to wrap the whole thing into a try-except block to catch any errors that might occur due to invalid matrices.
 The clue is that the atoms used for attachment should not be used more than once in the matrix. If they are used more than once, the molecule will not be able to be assembled leading to an error.

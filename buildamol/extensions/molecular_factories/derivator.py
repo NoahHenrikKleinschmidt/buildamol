@@ -86,7 +86,7 @@ Now we can visualize the derivatives using the `draw2d` method.
 
     plt.show()
 
-.. image:: ../../../docs/examples/files/derivator_example1.png
+.. image:: examples/files/derivator_example1.png
 
 """
 
