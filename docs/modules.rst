@@ -1,7 +1,7 @@
-biobuild
-========
+buildamol
+=========
 
 .. toctree::
    :maxdepth: 4
 
-   biobuild
+   buildamol
