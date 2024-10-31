@@ -4213,7 +4213,7 @@ class BaseEntity:
             A list of tuples of atom pairs that are bonded
         """
         bonds = structural.apply_reference_bonds(self._base_struct, _compounds)
-        self._add_bonds(*bonds)
+        self._set_bonds(*bonds)
         return bonds
 
     def apply_standard_bonds_for(self, *residues, _compounds=None) -> list:
