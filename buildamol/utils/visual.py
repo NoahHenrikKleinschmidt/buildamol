@@ -69,9 +69,27 @@ class Chem2DViewer:
     molecule
         The molecule to view. This may be any object that holds
         a biopython structure e.g. a Molecule, AtomGraph, or ResidueGraph.
+    highlight_color : str
+        The color to use for highlighting atoms and bonds.
+    linewidth : float
+            The linewidth of the bonds.
+    atoms : str
+        The label to use for the atoms.
+        This can be any of the following:
+        - "element" (default)
+        - "serial" (the atom serial number)
+        - "id" (the atom id / name)
+        - None (no label)
+        - any function that takes an (rdkit) atom and returns a string
     """
 
-    def __init__(self, molecule, highlight_color: str = "cyan"):
+    def __init__(
+        self,
+        molecule,
+        highlight_color: str = "cyan",
+        linewidth: float = 1,
+        atoms: str = None,
+    ):
         if Chem is None:
             raise ImportError(
                 "rdkit is not available. Please install it and be sure to use a compatible environment."
@@ -88,11 +106,37 @@ class Chem2DViewer:
             )
         mol.RemoveAllConformers()
         self.mol = mol
+
+        if atoms is not None:
+            if atoms == "element":
+                atoms = lambda atom: atom.GetSymbol()
+            elif atoms == "serial":
+                atoms = lambda atom: str(atom.GetPDBResidueInfo().GetSerialNumber())
+            elif atoms == "id":
+                atoms = lambda atom: atom.GetPDBResidueInfo().GetName().strip()
+            elif callable(atoms):
+                pass
+            else:
+                raise ValueError(f"Unsupported atom label: {atoms}")
+
+            for a in mol.GetAtoms():
+                a.SetProp("atomLabel", atoms(a))
+
         self._atoms_to_highlight = []
         self._bonds_to_highlight = []
         self.highlight_color = highlight_color
+        self.linewidth = linewidth
+        self.options = Draw.MolDrawOptions()
+        self._custom_colors = {}
 
-    def draw(self, draw_hydrogens: bool = False, width: int = 1000, height: int = 500):
+    def draw(
+        self,
+        draw_hydrogens: bool = False,
+        width: int = 1000,
+        height: int = 500,
+        transparent: bool = True,
+        **kwargs,
+    ):
         """
         Generate the 2D image.
 
@@ -104,20 +148,65 @@ class Chem2DViewer:
             The width of the image in pixels.
         height : int
             The height of the image in pixels.
+        **kwargs
+            Any additional arguments to pass to `MolToImage`.
+            These will be assembled into a `MolDrawOptions` object
+            so be sure to use the right keys.
         """
         if not draw_hydrogens:
             mol = Chem.rdmolops.RemoveHs(self.mol)
         else:
             mol = self.mol
+
+        d = Draw.MolDrawOptions()
+        for k in self.options.__dir__():
+            if not k.startswith("_") and not callable(getattr(self.options, k)):
+                setattr(d, k, getattr(self.options, k))
+
+        d.bondLineWidth = self.linewidth
+        d.clearBackground = not transparent
+        for k, v in kwargs.items():
+            setattr(d, k, v)
+
+        d.updateAtomPalette(self._custom_colors)
+
         return Draw.MolToImage(
             mol,
             size=(width, height),
             highlightAtoms=self._atoms_to_highlight,
             highlightBonds=self._bonds_to_highlight,
             highlightColor=colors.to_rgb(self.highlight_color),
+            options=d,
         )
 
-    def show(self, draw_hydrogens: bool = False):
+    def set_colors(self, _element_colors: dict):
+        """
+        Set the colors for the atoms.
+
+        Parameters
+        ----------
+        _element_colors : dict
+            A dictionary mapping element symbols to colors.
+            The keys should be elementy symbols (i.e. 6 for carbon, etc.)
+            and the values should be RGB tuples.
+        """
+        self._custom_colors.update(_element_colors)
+        return self
+
+    def set_options(self, **kwargs):
+        """
+        Set the default drawing options.
+
+        Parameters
+        ----------
+        **kwargs
+            Any additional arguments to pass to `MolDrawOptions`.
+        """
+        for k, v in kwargs.items():
+            setattr(self.options, k, v)
+        return self
+
+    def show(self, draw_hydrogens: bool = False, **kwargs):
         """
         Show the molecule
 
@@ -125,8 +214,10 @@ class Chem2DViewer:
         ----------
         draw_hydrogens : bool
             Whether to draw hydrogens.
+        **kwargs
+            Any additional keyword arguments to pass to `draw`.
         """
-        return self.draw(draw_hydrogens=draw_hydrogens).show()
+        return self.draw(draw_hydrogens=draw_hydrogens, **kwargs).show()
 
     def highlight_atoms(self, *atoms):
         """
@@ -970,18 +1061,21 @@ if __name__ == "__main__":
     bam.load_sugars()
     man = bam.molecule("MAN")
 
-    v = MoleculeViewer3D()
-    v.link(man)
-    v.setup()
-    v.show()
-    man.repeat(5, "14bb")
-    # v = Chem2DViewer(man)
+    v = Chem2DViewer(man)
+    v.show(linewidth=5)
+    pass
+    # v = MoleculeViewer3D()
+    # v.link(man)
+    # v.setup()
     # v.show()
+    # man.repeat(5, "14bb")
+    # # v = Chem2DViewer(man)
+    # # v.show()
 
-    v = MoleculeViewer3D()
-    v.link(man)
-    v.setup()
-    v.show()
+    # v = MoleculeViewer3D()
+    # v.link(man)
+    # v.setup()
+    # v.show()
     # atoms = man.atoms[:10]
     # v.draw_atoms(*atoms)
     # v.show()

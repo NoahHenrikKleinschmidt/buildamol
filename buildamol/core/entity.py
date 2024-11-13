@@ -816,17 +816,41 @@ class BaseEntity:
         viewer.view.setStyle(viewer.style)
         return viewer
 
-    def chem2dview(self, *args, **kwargs):
+    def chem2dview(
+        self,
+        linewidth: float = 1.0,
+        atoms: str = None,
+        highlight_color: str = "cyan",
+        **kwargs,
+    ):
         """
         View the molecule in 2D through RDKit
+
+        Parameters
+        ----------
+        linewidth : float
+            The linewidth of the bonds.
+        atoms : str
+            The label to use for the atoms.
+            This can be any of the following:
+            - "element" (default)
+            - "serial" (the atom serial number)
+            - "id" (the atom id / name)
+            - None (no label)
+            - any function that takes an (rdkit) atom and returns a string
+        highlight_color : str
+            The color to use for highlighting atoms
         """
-        return utils.visual.Chem2DViewer(self)
+        viewer = utils.visual.Chem2DViewer(
+            self, highlight_color=highlight_color, linewidth=linewidth, atoms=atoms
+        )
+        return viewer
 
     draw2d = chem2dview
 
     def show2d(self, *args, **kwargs):
         """
-        View the molecule in 2D through RDKit
+        View the molecule in 2D
         """
         viewer = self.draw2d(*args, **kwargs)
         viewer.show()
