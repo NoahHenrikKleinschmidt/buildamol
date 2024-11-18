@@ -266,7 +266,10 @@ class Chem2DViewer:
         """
         if isinstance(atoms, (list, tuple, set)) and len(atoms) == 1:
             atoms = atoms[0]
+        elif len(atoms) == 1:
+            atoms = [atoms]
         self._atoms_to_highlight.extend(atoms)
+        return self
 
     def _rdkit_atom_from_buildamol_atom(self, atom, mol=None):
         mol = mol or self.mol
@@ -286,8 +289,12 @@ class Chem2DViewer:
         bonds : list
             The bonds (tuples of BuildAMol Atoms) to highlight.
         """
-
+        if isinstance(bonds, (list, tuple, set)) and len(bonds) == 1:
+            bonds = bonds[0]
+        elif len(bonds) == 0:
+            bonds = [bonds]
         self._bonds_to_highlight.extend(bonds)
+        return self
 
 
 class Py3DmolViewer:
@@ -569,6 +576,7 @@ class PlotlyViewer3D:
                 template="simple_white",
             )
         )
+        return self
 
     def viewbox(self, xlim=None, ylim=None, zlim=None):
         if isinstance(xlim, (int, float)):
@@ -584,9 +592,11 @@ class PlotlyViewer3D:
                 zaxis=dict(range=zlim),
             )
         )
+        return self
 
     def update_layout(self, **kwargs):
         self.figure.update_layout(**kwargs)
+        return self
 
     def draw_point(
         self,
@@ -610,6 +620,7 @@ class PlotlyViewer3D:
             **kwargs,
         )
         self.add(new)
+        return self
 
     def draw_vector(
         self,
@@ -637,6 +648,7 @@ class PlotlyViewer3D:
             legendgroup=legendgroup,
         )
         self.add(new)
+        return self
 
     def draw_edges(
         self,
@@ -660,6 +672,7 @@ class PlotlyViewer3D:
                 showlegend=showlegend,
                 legendgroup=name,
             )
+        return self
 
     def draw_points(
         self,
@@ -700,6 +713,7 @@ class PlotlyViewer3D:
                 showlegends[idx],
                 **kwargs,
             )
+        return self
 
     def highlight_atoms(
         self,
@@ -738,6 +752,7 @@ class PlotlyViewer3D:
             )
             atom_scatter.append(new)
         self.add(atom_scatter)
+        return self
 
     def highlight_residues(
         self,
@@ -770,6 +785,7 @@ class PlotlyViewer3D:
             self.opacity = _op
             bonds.loc[:, "bond_order"] = bonds["bond_order"] - linewidth
         self.add(residue_traces)
+        return self
 
     def draw_atoms(
         self,
@@ -790,6 +806,7 @@ class PlotlyViewer3D:
             showlegend=showlegend,
             hoverinfo=hoverinfo,
         )
+        return self
 
     def draw_residues(
         self,
@@ -803,6 +820,7 @@ class PlotlyViewer3D:
         self.highlight_residues(
             *residues, bond_colors=bond_colors, opacity=opacity, linewidth=linewidth
         )
+        return self
 
     def draw_atom(self, atom, id=None, color=None, opacity=None, size=None):
         if color is None:
@@ -818,6 +836,7 @@ class PlotlyViewer3D:
             opacity,
             size,
         )
+        return self
 
     def draw_bond(
         self,
@@ -831,12 +850,13 @@ class PlotlyViewer3D:
         self.draw_vector(
             f"{atom_a.id}-{atom_b.id}",
             atom_a.coord,
-            atom_b.coord - atom_a.coord,
+            atom_b.coord,
             color,
             linewidth,
             showlegend,
             elongate=elongate,
         )
+        return self
 
 
 class MoleculeViewer3D(PlotlyViewer3D):
