@@ -833,10 +833,12 @@ class BaseEntity:
         atoms : str
             The label to use for the atoms.
             This can be any of the following:
-            - "element" (default)
+            - None (default, element symbols, except for carbon)
+            - "element" (force element symbols, even for carbon)
             - "serial" (the atom serial number)
             - "id" (the atom id / name)
-            - None (no label)
+            - "resid" (the residue serial number + atom id)
+            - "off" (no labels)
             - any function that takes an (rdkit) atom and returns a string
         highlight_color : str
             The color to use for highlighting atoms

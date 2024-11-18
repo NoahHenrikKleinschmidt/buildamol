@@ -76,10 +76,12 @@ class Chem2DViewer:
     atoms : str
         The label to use for the atoms.
         This can be any of the following:
-        - "element" (default)
+        - None (element, except for carbons)
+        - "element" (elements, even for carbons)
         - "serial" (the atom serial number)
         - "id" (the atom id / name)
-        - None (no label)
+        - "resid" (atom id + parent residue)
+        - "off" (no label)
         - any function that takes an (rdkit) atom and returns a string
     """
 
@@ -114,6 +116,14 @@ class Chem2DViewer:
                 atoms = lambda atom: str(atom.GetPDBResidueInfo().GetSerialNumber())
             elif atoms == "id":
                 atoms = lambda atom: atom.GetPDBResidueInfo().GetName().strip()
+            elif atoms == "off":
+                atoms = lambda atom: ""
+            elif atoms == "resid":
+
+                def atoms(atom):
+                    info = atom.GetPDBResidueInfo()
+                    return f"{info.GetName().strip()}@{info.GetResidueName().strip()}[{info.GetResidueNumber()}]"
+
             elif callable(atoms):
                 pass
             else:
@@ -134,7 +144,7 @@ class Chem2DViewer:
         draw_hydrogens: bool = False,
         width: int = 1000,
         height: int = 500,
-        transparent: bool = True,
+        background: tuple = None,
         **kwargs,
     ):
         """
@@ -148,35 +158,61 @@ class Chem2DViewer:
             The width of the image in pixels.
         height : int
             The height of the image in pixels.
+        background : tuple
+            The background color to use. Use `None` for a transparent background.
         **kwargs
             Any additional arguments to pass to `MolToImage`.
             These will be assembled into a `MolDrawOptions` object
-            so be sure to use the right keys.
+            so be sure to use the right keys. You can provide a `options` argument
+            that maps to a *fully set up* `MolDrawOptions` object that will be used
+            as is.
         """
         if not draw_hydrogens:
             mol = Chem.rdmolops.RemoveHs(self.mol)
         else:
             mol = self.mol
 
-        d = Draw.MolDrawOptions()
-        for k in self.options.__dir__():
-            if not k.startswith("_") and not callable(getattr(self.options, k)):
-                setattr(d, k, getattr(self.options, k))
+        if "options" in kwargs:
+            d = kwargs.pop("options")
+        else:
+            d = Draw.MolDrawOptions()
+            for k in self.options.__dir__():
+                if not k.startswith("_") and not callable(getattr(self.options, k)):
+                    setattr(d, k, getattr(self.options, k))
 
-        d.bondLineWidth = self.linewidth
-        d.clearBackground = not transparent
-        for k, v in kwargs.items():
-            setattr(d, k, v)
+            d.bondLineWidth = self.linewidth
 
-        d.updateAtomPalette(self._custom_colors)
+            if background is None:
+                d.clearBackground = False
+            else:
+                d.setBackgroundColour(background)
+
+            for k, v in kwargs.items():
+                setattr(d, k, v)
+
+            d.updateAtomPalette(self._custom_colors)
+
+        kws = {}
+        if len(self._atoms_to_highlight):
+            kws["highlightAtoms"] = [
+                self._rdkit_atom_from_buildamol_atom(atom, mol).GetIdx()
+                for atom in self._atoms_to_highlight
+            ]
+        if len(self._bonds_to_highlight):
+            kws["highlightBonds"] = [
+                mol.GetBondBetweenAtoms(
+                    self._rdkit_atom_from_buildamol_atom(a, mol).GetIdx(),
+                    self._rdkit_atom_from_buildamol_atom(b, mol).GetIdx(),
+                ).GetIdx()
+                for a, b in self._bonds_to_highlight
+            ]
 
         return Draw.MolToImage(
             mol,
             size=(width, height),
-            highlightAtoms=self._atoms_to_highlight,
-            highlightBonds=self._bonds_to_highlight,
             highlightColor=colors.to_rgb(self.highlight_color),
             options=d,
+            **kws,
         )
 
     def set_colors(self, _element_colors: dict):
@@ -228,7 +264,18 @@ class Chem2DViewer:
         atoms : list
             The BuildAMol Atoms to highlight.
         """
-        self._atoms_to_highlight.extend(atom.serial_number for atom in atoms)
+        if isinstance(atoms, (list, tuple, set)) and len(atoms) == 1:
+            atoms = atoms[0]
+        self._atoms_to_highlight.extend(atoms)
+
+    def _rdkit_atom_from_buildamol_atom(self, atom, mol=None):
+        mol = mol or self.mol
+        atom = next(
+            _atom
+            for _atom in mol.GetAtoms()
+            if _atom.GetPDBResidueInfo().GetSerialNumber() == atom.serial_number
+        )
+        return atom
 
     def highlight_bonds(self, *bonds):
         """
@@ -240,10 +287,7 @@ class Chem2DViewer:
             The bonds (tuples of BuildAMol Atoms) to highlight.
         """
 
-        self._bonds_to_highlight.extend(
-            self.mol.GetBondBetweenAtoms(a.serial_number, b.serial_number).GetIdx()
-            for a, b in bonds
-        )
+        self._bonds_to_highlight.extend(bonds)
 
 
 class Py3DmolViewer:
@@ -1062,6 +1106,7 @@ if __name__ == "__main__":
     man = bam.molecule("MAN")
 
     v = Chem2DViewer(man)
+    v.highlight_atoms(man.atoms[:3])
     v.show(linewidth=5)
     pass
     # v = MoleculeViewer3D()
