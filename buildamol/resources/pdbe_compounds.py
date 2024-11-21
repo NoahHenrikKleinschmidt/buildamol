@@ -917,6 +917,30 @@ class PDBECompounds:
         """
         return [i["formula"] for i in self._compounds.values()]
 
+    @property
+    def molecules(self) -> list:
+        """
+        Get a list of all compound molecules.
+
+        Returns
+        -------
+        list
+            A list of all compound molecules.
+        """
+        return [self._molecule(i) for i in self.ids]
+
+    def iter_molecules(self):
+        """
+        Iterate over all compound molecules.
+
+        Returns
+        -------
+        iterator
+            An iterator over all compound molecules.
+        """
+        for i in self.ids:
+            yield self._molecule(i)
+
     def save(self, filename: str = None) -> None:
         """
         Save the PDBECompounds object to a `pickle` file.
