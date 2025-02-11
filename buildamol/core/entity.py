@@ -674,6 +674,8 @@ class BaseEntity:
 
     @property
     def _working_chain(self):
+        if self._working_chain_index is None:
+            return self.chains[-1]
         return self.chains[self._working_chain_index]
 
     @_working_chain.setter
@@ -4026,7 +4028,7 @@ class BaseEntity:
 
         return bonds
 
-    def infer_bonds_for(self, *residues, max_bond_length: float = None):
+    def infer_bonds_for(self, *residues, max_bond_length: float = None, infer_bond_orders: bool = False):
         """
         Infer bonds between atoms in the structure for a specific set of residues
 
@@ -4037,6 +4039,9 @@ class BaseEntity:
         max_bond_length : float
             The maximum distance between atoms to consider them bonded.
             If None, the default value is 1.6 Angstroms.
+        infer_bond_orders : bool
+            Whether to infer the bond orders (double and tripple bonds) based on registered functional groups.
+            This will slow the inference down, however.
 
         Returns
         -------
@@ -4045,9 +4050,19 @@ class BaseEntity:
         """
         bonds = []
         for res in self.get_residues(*residues):
-            bonds.extend(
-                structural.infer_bonds(res, max_bond_length, restrict_residues=False)
-            )
+            if infer_bond_orders:
+                s = base_classes.Structure("tmp")
+                m = base_classes.Model(0)
+                c = base_classes.Chain("A")
+                s.add(m)
+                m.add(c)
+                c.link(res)
+                tmp = BaseEntity(s)
+                tmp.infer_bonds(max_bond_length=max_bond_length, infer_bond_orders=True)
+                incoming = tmp._bonds
+            else:
+                incoming = structural.infer_bonds(res, max_bond_length, restrict_residues=False)
+            bonds.extend(incoming)
         self._set_bonds(*bonds)
         return bonds
 

@@ -2490,3 +2490,22 @@ def test_cis_trans_asymmetric():
     bam.hydroxylate(mol_cis, "C1")
     assert mol_cis.is_cis(bond)
     assert not mol_cis.is_trans(bond)
+
+def test_infer_bonds_for_with_orders():
+    bam.load_amino_acids()
+    mol = bam.Molecule.from_compound("TYR")
+    mol.bonds = []
+    mol.infer_bonds_for(1, infer_bond_orders=True)
+    assert sum(1 for i in mol.get_double_bonds()) == 4
+
+def test_infer_bonds_for_with_orders_larger():
+    bam.load_amino_acids()
+    from buildamol.extensions.bio.proteins import peptide
+
+    mol = peptide("YSYSA")
+    mol.bonds = []
+    mol.infer_bonds_for(1, infer_bond_orders=True)
+    assert sum(1 for i in mol.get_double_bonds()) == 4
+    mol.infer_bonds_for(3, infer_bond_orders=True)
+    assert sum(1 for i in mol.get_double_bonds()) == 8
+    mol.show()
