@@ -1132,6 +1132,84 @@ class BaseEntity:
         self._set_bonds(*other.get_bonds())
         return self
 
+    def cleanup(
+        self,
+        remove_empty_models: bool = True,
+        remove_empty_chains: bool = True,
+        remove_empty_residues: bool = True,
+        reindex: bool = True,
+        remove_hydrogens: bool = False,
+        add_hydrogens: bool = False,
+        apply_standard_bonds: bool = False,
+        infer_bonds: bool = False,
+    ):
+        """
+        Clean up the molecule by removing empty models, chains, and residues. This can optionally also reindex the atoms and residues, remove or add hydrogen atoms, and apply standard bonds or infer bonds.
+
+        Parameters
+        ----------
+        remove_empty_models : bool
+            Whether to remove empty models
+        remove_empty_chains : bool
+            Whether to remove empty chains
+        remove_empty_residues : bool
+            Whether to remove empty residues
+        reindex : bool
+            Whether to reindex the atoms and residues after cleaning up
+        remove_hydrogens : bool
+            Whether to remove all hydrogen atoms
+        add_hydrogens : bool
+            Whether to add all hydrogen atoms
+        apply_standard_bonds : bool
+            Whether to apply standard connectivity based on loaded compounds (see `load_compounds`)
+        infer_bonds : bool
+            Whether to infer bonds from the atom positions and element types
+        """
+        if remove_empty_models:
+            self.remove_empty_models()
+        if remove_empty_chains:
+            self.remove_empty_chains()
+        if remove_empty_residues:
+            self.remove_empty_residues()
+        if reindex:
+            self.reindex()
+        if remove_hydrogens and add_hydrogens:
+            raise ValueError("Cannot remove and add hydrogens at the same time")
+        elif remove_hydrogens:
+            self.remove_hydrogens()
+        elif add_hydrogens:
+            self.add_hydrogens()
+        if apply_standard_bonds:
+            self.apply_standard_bonds()
+        if infer_bonds:
+            self.infer_bonds(restrict_residues=False)
+        return self
+
+    def remove_empty_models(self):
+        """
+        Remove all empty models from the molecule
+        """
+        for model in self.models:
+            if len(model) == 0:
+                self.remove_model(model)
+        return self
+
+    def remove_empty_chains(self):
+        """
+        Remove all empty chains from the molecule
+        """
+        to_remove = [c for c in self.get_chains() if len(c) == 0]
+        self.remove_chains(*to_remove)
+        return self
+
+    def remove_empty_residues(self):
+        """
+        Remove all empty residues from the molecule
+        """
+        to_remove = [r for r in self.get_residues() if len(r) == 0]
+        self.remove_residues(*to_remove)
+        return self
+
     def clear(self):
         """
         Clear the molecule of all models, chains, residues, and atoms.
