@@ -2509,3 +2509,35 @@ def test_infer_bonds_for_with_orders_larger():
     mol.infer_bonds_for(3, infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 8
     mol.show()
+
+def test_from_pdb_with_charges():
+    from pathlib import Path
+    for f in Path("files").glob("tyrosine_ph*.pdb"):
+        ph = int(f.name.split("ph")[1].split(".")[0])
+        mol = bam.read_pdb(f)
+
+        O2 = mol.get_atom("O2")
+        N1 = mol.get_atom("N1")
+
+        if ph <= 9:
+            assert N1.charge == 1
+        else:
+            assert N1.charge == 0
+        
+        if ph <= 4:
+            assert O2.charge == 0
+        else:
+            assert O2.charge == -1
+
+        smi = f.with_suffix(".smi")
+        from rdkit import Chem
+        rdmol = Chem.MolFromSmiles(smi.read_text())
+        assert rdmol.GetNumAtoms() == mol.count_atoms()
+
+        for atom in mol.atoms:
+            rdatom = rdmol.GetAtomWithIdx(atom.serial_number - 1)
+            assert rdatom.GetSymbol() == atom.element
+            assert rdatom.GetFormalCharge() == atom.charge
+            atom_id = rdatom.GetPDBResidueInfo().GetName().strip()
+            assert atom_id == atom.id
+
