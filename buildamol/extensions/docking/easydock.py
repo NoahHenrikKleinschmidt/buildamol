@@ -1,3 +1,7 @@
+"""
+Docking module for BuildAMol using the `easydock` package.
+"""
+
 import buildamol.core as core
 import buildamol.utils.auxiliary as aux
 
@@ -202,11 +206,11 @@ class Docker:
             pdb_string = data["pdb_block"]
             with open(self.working_directory / f"{id}.pdb", "w") as f:
                 f.write(pdb_string)
-            out.append(
-                core.Molecule.from_pdb(
+            new = core.Molecule.from_pdb(
                     self.working_directory / f"{id}.pdb", id=id, model="all"
                 )
-            )
+            new.docking_score = data["docking_score"]
+            out.append(new)
 
         # if only one ligand was docked, reduce the dimensionality of the output
         if len(out) == 1:
