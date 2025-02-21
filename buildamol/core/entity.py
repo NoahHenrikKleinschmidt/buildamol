@@ -300,6 +300,42 @@ class BaseEntity:
         return cls.from_rdkit(rdmol)
 
     @classmethod
+    def from_pdbqt(cls, filename:str):
+        """
+        Make a Molecule from a PDBQT file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the PDBQT file
+        """
+        atoms = utils.pdbqt.read_pdbqt(filename)
+        new = cls.empty(id=filename)
+        new.remove_chains("A")
+
+        for atom in atoms:
+
+            _, serial, id, resid, resname, chain, coord, charge, _ = atom
+            atom = base_classes.Atom.new(
+                id,
+                coord=coord,
+                serial_number=serial,
+            )
+            
+            chain = new.get_chain(chain)
+            if chain is None:
+                chain = base_classes.Chain.new(chain)
+                new.add_chains(chain)
+
+            residue = new.get_residue(resid)
+            if residue is None:
+                residue = base_classes.Residue.new(resname=resname, icode=resid)
+                chain.add(residue)
+            
+            residue.add(atom)
+        return new
+
+    @classmethod
     def _from_dict(cls, _dict):
         """
         Make a Molecule from a JSON dictionary
@@ -3478,6 +3514,14 @@ class BaseEntity:
             atom.id = new_name
         return self
 
+    def drop_atom_names(self):
+        """
+        Turn all atom ids (e.g. "CA") into element symbols (e.g. "C")
+        """
+        for atom in self.get_atoms():
+            atom.id = atom.element
+        return self
+
     def change_element(
         self,
         atom: Union[int, base_classes.Atom],
@@ -4640,16 +4684,6 @@ class BaseEntity:
         """
         utils.pdb.write_pdb(self, filename, symmetric=symmetric)
 
-        # io = bio.PDBIO()
-        # io.set_structure(self._base_struct)
-        # io.save(filename)
-        # utils.pdb.write_connect_lines(self, filename)
-        # with open(filename, "r") as f:
-        #     content = f.read()
-        # content = utils.remove_nonprintable(content)
-        # with open(filename, "w") as f:
-        #     f.write(content)
-
     def to_cif(self, filename: str):
         """
         Write the molecule to a CIF file
@@ -4679,6 +4713,17 @@ class BaseEntity:
             Path to the Mol file
         """
         utils.sdmol.write_mol(self, filename)
+
+    def to_pdbqt(self, filename: str):
+        """
+        Write the molecule to a PDBQT file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the PDBQT file
+        """
+        utils.pdbqt.write_pdbqt(self, filename)
 
     def to_json(
         self,

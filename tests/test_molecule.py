@@ -2541,3 +2541,20 @@ def test_from_pdb_with_charges():
             atom_id = rdatom.GetPDBResidueInfo().GetName().strip()
             assert atom_id == atom.id
 
+def test_to_and_from_pdbqt():
+    mol = bam.Molecule.from_compound("TYR")
+    mol.drop_atom_names()
+    mol.to_pdbqt("tyr.pdbqt")
+    
+    mol2 = bam.Molecule.from_pdbqt("tyr.pdbqt")
+    
+    mol.to_rdkit()
+    mol2.to_rdkit()
+
+    for i, j in zip(mol.atoms, mol2.atoms):
+        assert i.element == j.element
+        assert i.charge == j.charge
+        assert i.id == j.id
+        assert i.coord == j.coord
+    
+    os.remove("tyr.pdbqt")

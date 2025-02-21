@@ -28,6 +28,7 @@ try to detect the type of user provided input and generate a molecule from it. C
 - A PDB file
 - A CIF file
 - A MOL file
+- A PDBQT file
 - A JSON file
 - An XML file
 - A SMILES string
@@ -752,7 +753,11 @@ def molecule(mol=None) -> "Molecule":
             or _mol.endswith(".sd")
         ):
             return Molecule.from_molfile(mol)
-
+        elif _mol.endswith(".pdbqt"):
+            return Molecule.from_pdbqt(mol)
+        elif _mol.endswith(".smi") or _mol.endswith(".smiles"):
+            return Molecule.from_smiles(open(mol).read().strip())
+        
     if " " not in mol:
         try:
             return Molecule.from_smiles(mol)
