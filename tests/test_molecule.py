@@ -2558,3 +2558,26 @@ def test_to_and_from_pdbqt():
         assert i.coord == j.coord
     
     os.remove("tyr.pdbqt")
+
+def test_read_multimodel_pdb():
+    f = "tests/files/multimodel.pdb"
+    mols = bam.read_pdb(f, multimodel=True)
+    assert isinstance(mols, list)
+    assert len(mols) == 3
+    assert all([len(i.models) == 1 for i in mols])
+
+    mols = bam.read_pdb(f, multimodel=True, model=[1, 2])
+    assert isinstance(mols, list)
+    assert len(mols) == 2
+    assert all([len(i.models) == 1 for i in mols])
+
+    mol_with_models = bam.read_pdb(f, multimodel=False, model="all")
+    assert len(mol_with_models.models) == 3
+
+    mol_with_models = bam.Molecule.from_pdb(f, model="all") 
+    assert len(mol_with_models.models) == 3
+
+
+    mol3 = bam.read_pdb(f, multimodel=False, model=3)
+    assert len(mol3.models) == 1
+    

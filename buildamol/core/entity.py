@@ -103,9 +103,23 @@ class BaseEntity:
             id = utils.filename_to_id(filename)
         f = open(filename)
         content = f.read()
+        _model = model
+        if model != "all":
+            start = content.find(f"MODEL {_model}")
+            if start == -1:
+                models = utils.pdb.find_models(filename)
+                _model = models[0]
+                start = content.find(f"MODEL {_model}")
+            end = content.find("ENDMDL", start)
+            content = content[start:end]
         f.close()
-        return cls._from_pdb_string(content, id=id)
+        new = cls._from_pdb_string(content, id=id)
+        new.cleanup()
+        if not has_atom_ids:
+            new.autolabel()
 
+        return new
+    
     @classmethod
     def _from_pdb_string(cls, string, id: str = None):
         """
@@ -154,7 +168,7 @@ class BaseEntity:
                     serial_number=atom_info["serial"],
                     coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
                     occupancy=atom_info["occ"],
-                    pqr_charge=eval(f"{atom_info['charge']}+0"),
+                    pqr_charge=int(atom_info.get('charge', 0) or 0),
                     element=atom_info["element"],
                 )
                 residues[res_seq].add(atom)

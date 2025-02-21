@@ -494,7 +494,7 @@ __all__ = [
 
 
 def read_pdb(
-    filename: str, id: str = None, multimodel: bool = False, has_atom_ids: bool = True
+    filename: str, id: str = None, multimodel: bool = False, model: int=None, has_atom_ids: bool = True
 ) -> "Molecule":
     """
     Read a PDB file and return a molecule.
@@ -506,7 +506,10 @@ def read_pdb(
     id : str
         The id of the molecule
     multimodel : bool
-        Whether to read all models and return a list of molecules.
+        Whether to read all models and return a list of molecules. If False only one model is read by default.
+        If you desire that all models are read into a single molecule rather than into a list of separate molecules you can use the following tweak: `multimodel=False, model='all'` (this does not work with model=<some list> though...)
+    model : int or str
+        The model number to read. If None, all models are read. This can be a list or tuple of integers or strings to read multiple models.
     has_atom_ids : bool
         Whether the PDB file contains atom ids. If the file does not, the atom ids can be auto-generated if this is set to false.
 
@@ -516,15 +519,24 @@ def read_pdb(
         The molecule or a list of molecules if multimodel is True
     """
     if multimodel:
-        models = utils.pdb.find_models(filename)
+        if model is None:
+            models = utils.pdb.find_models(filename) 
+        elif isinstance(model, (int, str)):
+            models = [str(model)]
+        elif isinstance(model, (list, tuple, set)):
+            models = [str(m) for m in model]
+        else:
+            raise ValueError("model must be an integer (or string), a list of integers (or strings) or None (to read all models)")
         molecules = []
         for model in models:
+            if model.isdigit():
+                model = int(model)
             new = Molecule.from_pdb(
                 filename, id=id, model=model, has_atom_ids=has_atom_ids
             )
             molecules.append(new)
         return molecules
-    return Molecule.from_pdb(filename, id=id)
+    return Molecule.from_pdb(filename, id=id, model=model, has_atom_ids=has_atom_ids)
 
 
 def write_pdb(mol: "Molecule", filename: str) -> None:
