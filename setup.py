@@ -34,6 +34,7 @@ setuptools.setup(
         "buildamol.extensions.molecular_dynamics",
         "buildamol.extensions.molecular_dynamics.atom_typing",
         "buildamol.extensions.molecular_factories",
+        "buildamol.extensions.docking",
     ],
     install_requires=[
         "numpy",
