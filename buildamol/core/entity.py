@@ -104,12 +104,13 @@ class BaseEntity:
         f = open(filename)
         content = f.read()
         _model = model
-        if model != "all":
+        if model and model != "all":
             start = content.find(f"MODEL {_model}")
             if start == -1:
                 models = utils.pdb.find_models(filename)
-                _model = models[0]
-                start = content.find(f"MODEL {_model}")
+                if len(models) != 0:
+                    _model = models[0]
+                    start = content.find(f"MODEL {_model}")
             end = content.find("ENDMDL", start)
             content = content[start:end]
         f.close()
@@ -2562,11 +2563,10 @@ class BaseEntity:
         models = []
         for model in self.get_models():
             new = self.__class__.empty(id=self.id)
-            new._base_struct.child_list.clear()
-            new._base_struct.child_dict.clear()
-            model.parent = new._base_struct
+            new.remove_model(0)
             model.id = 0
             new.add_model(model)
+            new.set_model(0)
             models.append(new)
         return models
 
@@ -2601,6 +2601,7 @@ class BaseEntity:
             bond.atom2 = atom_mapping[bond.atom2.serial_number]
         del atom_mapping
         self._model = new_model
+        self.update_atom_graph()
         return self
 
     def get_model(self, model: int = None) -> base_classes.Model:
@@ -2670,6 +2671,7 @@ class BaseEntity:
             model = self.get_model(model)
         self._base_struct.child_list.remove(model)
         self._base_struct.child_dict.pop(model.get_id())
+        self.remove_chains(model.child_list)
         return self
 
     def get_structure(self) -> base_classes.Structure:

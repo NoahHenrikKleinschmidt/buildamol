@@ -2580,4 +2580,16 @@ def test_read_multimodel_pdb():
 
     mol3 = bam.read_pdb(f, multimodel=False, model=3)
     assert len(mol3.models) == 1
+
+def test_split_models_multimodel():
+    f = "tests/files/multimodel.pdb"
+    mol = bam.Molecule.from_pdb(f, model="all")
+    mols = mol.split_models()
+    assert len(mols) == 3
+    assert all([len(i.models) == 1 for i in mols])
+    assert all([i.models[0].id == 0 for i in mols])
     
+    for m in mols:
+        _m = m.model
+        assert _m.parent is m.structure
+        assert m.atoms[0].parent.parent.parent is _m
