@@ -610,6 +610,14 @@ class BaseEntity:
         """
         return sum(a.mass for a in self.atoms)
 
+    @property
+    def charge(self):
+        """
+        The total charge of the molecule
+        """
+        return sum(a.charge for a in self.get_atoms())
+
+    
     def get_atom_triplets(self):
         """
         Compute triplets of three consequtively bonded atoms
@@ -1130,6 +1138,21 @@ class BaseEntity:
 
         self.add_chains(*other.chains)
         self._set_bonds(*other.get_bonds())
+        return self
+
+    def _overwrite_with(self, other):
+        """
+        Overwrite the current molecule with another one. This will remove all chains, residues, and atoms from the current molecule and add all chains, residues, and atoms from the other molecule.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to overwrite this one with
+        """
+        self._base_struct = other._base_struct
+        self._model = other._model
+        self._AtomGraph = other._AtomGraph
+        self._bonds = other._bonds
         return self
 
     def cleanup(
@@ -4383,6 +4406,17 @@ class BaseEntity:
         structural.relabel_hydrogens(self)
         return self
 
+    def has_hydrogens(self) -> bool:
+        """
+        Check if the structure has hydrogen atoms
+
+        Returns
+        -------
+        bool
+            True if the structure has hydrogen atoms, False otherwise
+        """
+        return any(atom.element == "H" for atom in self.get_atoms())
+
     def add_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
         """
         Infer missing hydrogens in the structure.
@@ -4423,6 +4457,25 @@ class BaseEntity:
         else:
             self._remove_atoms(*self.get_atoms("H", by="element"))
         return self
+
+    def adjust_to_ph(self, ph: Union[float, int, tuple], inplace: bool = True, **kwargs):
+        """
+        Adjust the protonation state and charges to match a certain pH
+
+        Note
+        ----
+        This requires `rdkit` and `molscrub` packages to be installed!
+
+        Parameters
+        ----------
+        ph : float or tuple
+            The pH value to adjust the structure to. If a tuple is given, a pH range can be specified as (low, high).
+        inplace : bool
+            If True, the structure is modified in place, otherwise a new structure is returned.
+        **kwargs
+            Additional keyword arguments to pass to the `scrub` class of the `molscrub` package.
+        """
+        return structural.adjust_to_ph(self, ph=ph, inplace=inplace, **kwargs)
 
     def get_quartets(self):
         """
@@ -4804,6 +4857,25 @@ class BaseEntity:
             [atom.coord for atom in self.get_atoms(*atom_selector, **atom_selectors)]
         )
 
+    def set_coords(self, coords: np.ndarray, *atom_selector, **atom_selectors):
+        """
+        Set the coordinates of the atoms in the molecule
+
+        Parameters
+        ----------
+        coords : np.ndarray
+            The new coordinates
+        atom_selectors
+            Arguments or keyword arguments to pass to get_atoms(). If None, all atoms are selected.
+            The number and order of atoms in the selection must match the number and order of coordinates.
+        """
+        if not "keep_order" in atom_selectors:
+            atom_selectors["keep_order"] = True
+        atoms = self.get_atoms(*atom_selector, **atom_selectors)
+        for atom, coord in zip(atoms, coords):
+            atom.coord = coord
+        return self
+
     def get_bond_array(self) -> np.ndarray:
         """
         Get the bonds of the atoms in the molecule
@@ -4838,6 +4910,8 @@ class BaseEntity:
             mask[bond.atom1.serial_number - 1, bond.atom2.serial_number - 1] = 1
             mask[bond.atom2.serial_number - 1, bond.atom1.serial_number - 1] = 1
         return mask
+
+    
 
     # def infer_missing_atoms(self, _topology=None, _compounds=None):
     #     """

@@ -3,6 +3,7 @@ Functions to infer structural data such as missing atom coordinates, bond connec
 """
 
 import re
+from typing import Union
 import pandas as pd
 import networkx as nx
 from collections import defaultdict
@@ -19,6 +20,7 @@ import buildamol.resources as resources
 import buildamol.structural.base as base
 import buildamol.structural.neighbors as neighbors
 import buildamol.structural.geometry as geometry
+import buildamol.utils.auxiliary as aux
 
 # might cause circular imports!
 import buildamol.base_classes as base_classes
@@ -924,6 +926,78 @@ def adjust_protonation(molecule, atom, new_charge):
 
     return molecule
 
+def adjust_to_ph(molecule, ph: Union[float, int, tuple], inplace:bool=True, **kwargs):
+    """
+    Adjust the protonation state of a molecule to suit a specific pH range
+    
+    Note
+    ----
+    This requires that `rdkit` and `molscrub` packages are installed!
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to adjust the protonation state in.
+    ph : Union(float, int, tuple)
+        The pH value or range of pH values to adjust the protonation state to.
+        If a single value is provided, the molecule will be adjusted to that pH.
+        If a tuple is provided, the molecule will be adjusted to the pH range (low, high)
+    inplace : bool
+        Whether to adjust the molecule inplace or return a new molecule.
+
+    **kwargs
+        Any keyword arguments to pass to the `molscrub.Scrub` class.
+
+    Returns
+    -------
+    Molecule
+        The molecule with the adjusted protonation state 
+    """
+    if not aux.has_package("scrubber") or not aux.has_package("rdkit"):
+        raise ImportError(
+            "The `molscrub` and `rdkit` packages are required for this function."
+        )
+    if not inplace:
+        molecule = molecule.copy()
+    mol = molecule.remove_hydrogens().to_rdkit()
+
+    if isinstance(ph, (float, int)):
+        pH_low = ph
+        pH_high = None
+    elif isinstance(ph, (tuple, list, np.ndarray)):
+        pH_low, pH_high = ph
+    else:
+        raise ValueError(
+            f"Invalid pH value or range provided. Expected float, int, or tuple, got {type(pH)}."
+        )
+    
+    from scrubber import Scrub
+    skip_tautomers = kwargs.pop("skip_tautomers", True)
+    scrub = Scrub(
+        ph_high=pH_high,
+        ph_low=pH_low,
+        skip_tautomers=skip_tautomers,
+        **kwargs
+)
+    out = scrub(mol)
+    if len(out) == 0:
+        raise ValueError("Could not adjust the protonation state of the molecule. Try a different pH value or range or manually run the molecule through `molscrub` to investigate potential error sources.")
+
+    if len(out) > 1:
+        _out = []
+        for i in out:
+            _out.append(molecule.__class__.from_rdkit(i))
+        out = _out
+        for i in out:
+            i.id = molecule.id
+    else:
+        out = molecule.__class__.from_rdkit(out[0])
+        molecule._base_struct = out._base_struct
+        molecule._model = out._model
+        molecule._bonds = out._bonds
+        molecule._AtomGraph = out._AtomGraph
+        out = molecule
+    return out
 
 def relabel_hydrogens(molecule):
     """

@@ -2188,3 +2188,60 @@ def test_adjust_protonation_imine():
         pass
     else:
         raise RuntimeError("Should not be able to remove a proton from an imine")
+
+def test_adjust_protonation_based_on_ph_inplace_false():
+    bam.load_amino_acids()
+    tyr = bam.molecule("TYR")
+
+    
+    for ph in (1, 5, 7, 9, 15):
+        o = bam.structural.adjust_to_ph(tyr, ph=ph, inplace=False)
+        assert o is not None
+        assert o is not tyr
+        assert isinstance(o, bam.Molecule)
+
+       
+        O2 = o.get_atom("OXT")
+        N1 = o.get_atom("N")
+
+        if ph <= 9:
+            assert N1.charge == 1
+        else:
+            assert N1.charge == 0
+        
+        if ph <= 4:
+            assert O2.charge == 0
+        else:
+            assert O2.charge == -1
+
+        if base.ALLOW_VISUAL:
+            o.show2d()
+
+
+def test_adjust_protonation_based_on_ph_inplace_true():
+    bam.load_amino_acids()
+    tyr = bam.molecule("TYR")
+
+    
+    for ph in (1, 5, 7, 9, 15):
+        o = bam.structural.adjust_to_ph(tyr, ph=ph, inplace=True)
+        assert o is not None
+        assert o is tyr
+        assert isinstance(o, bam.Molecule)
+
+       
+        O2 = o.get_atom("OXT")
+        N1 = o.get_atom("N")
+
+        if ph <= 9:
+            assert N1.charge == 1
+        else:
+            assert N1.charge == 0
+        
+        if ph <= 4:
+            assert O2.charge == 0
+        else:
+            assert O2.charge == -1
+
+        if base.ALLOW_VISUAL:
+            o.show2d()
