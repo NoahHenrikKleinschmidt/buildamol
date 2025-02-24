@@ -1239,12 +1239,12 @@ class BaseEntity:
         infer_bonds : bool
             Whether to infer bonds from the atom positions and element types
         """
-        if remove_empty_models:
-            self.remove_empty_models()
-        if remove_empty_chains:
-            self.remove_empty_chains()
         if remove_empty_residues:
             self.remove_empty_residues()
+        if remove_empty_chains:
+            self.remove_empty_chains()
+        if remove_empty_models:
+            self.remove_empty_models()
         if reindex:
             self.reindex()
         if remove_hydrogens and add_hydrogens:
@@ -1293,6 +1293,8 @@ class BaseEntity:
         self._AtomGraph.clear()
         self._AtomGraph.clear_cache()
         self._bonds.clear()
+        self._model = None
+        return self
 
     def squash(self, chain_id: str = "A", resname: str = "UNK"):
         """
@@ -2556,18 +2558,25 @@ class BaseEntity:
     def get_models(self):
         return self._base_struct.get_models()
 
-    def split_models(self) -> list:
+    def split_models(self, _copy: bool = False) -> list:
         """
         Split the molecule into multiple molecules, each containing one of the models.
         """
         models = []
-        for model in self.get_models():
+        for model in self.models:
             new = self.__class__.empty(id=self.id)
-            new.remove_model(0)
-            model.id = 0
-            new.add_model(model)
-            new.set_model(0)
+            new.remove_chains("A")
+            m = model.copy() if _copy else model
+            new.add_chains(m.child_list)
+            for bond in self._bonds:
+                i, j = bond.atom1, bond.atom2
+                order = bond.order
+                new._set_bond(new.get_atom(i.serial_number), new.get_atom(j.serial_number), order)
+            new.update_atom_graph() # for some reason...
             models.append(new)
+        
+        if not _copy:
+            self.clear()
         return models
 
     def set_model(self, model: int):
@@ -4181,7 +4190,7 @@ class BaseEntity:
             A list of tuples of atom pairs that are bonded
         """
         bonds = structural.infer_bonds(
-            self._base_struct, max_bond_length, restrict_residues
+            self._model, max_bond_length, restrict_residues
         )
         self._set_bonds(*bonds)
         if infer_bond_orders:
