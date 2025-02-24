@@ -44,6 +44,7 @@ BuildAmol and Biology
    examples/bio_extension
    examples/glycosylation
    examples/ligand_design
+   examples/docking
 
 BuildAmol and Materials
 -----------------------
