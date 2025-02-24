@@ -2584,12 +2584,29 @@ def test_read_multimodel_pdb():
 def test_split_models_multimodel():
     f = "tests/files/multimodel.pdb"
     mol = bam.Molecule.from_pdb(f, model="all")
-    mols = mol.split_models()
+    mol.infer_bonds(max_bond_length=1.5, restrict_residues=False, infer_bond_orders=True)
+    mols = mol.split_models(False)
     assert len(mols) == 3
     assert all([len(i.models) == 1 for i in mols])
     assert all([i.models[0].id == 0 for i in mols])
     
+    try:
+        mol.get_atom(1)
+        mol._atoms
+    except:
+        pass
+    else:
+        assert False, "Should have raised an error"
+
     for m in mols:
-        _m = m.model
+        a = m.get_atom(1)
+        assert a is not None
+        _m = m._model
+        assert _m is m.model
+        assert any(i is a for i in m.get_atoms())
+        assert any(i is a for i in m.atoms)
+        assert any(i is a for i in m._AtomGraph.nodes)
         assert _m.parent is m.structure
-        assert m.atoms[0].parent.parent.parent is _m
+        assert a is m._atoms[0]
+        assert m._atoms[0].parent.parent.parent is _m
+        assert m.atoms[0].parent.parent.parent  is _m
