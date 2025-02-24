@@ -215,6 +215,9 @@ class Docker:
         # if only one ligand was docked, reduce the dimensionality of the output
         if len(out) == 1:
             out = out[0]
+
+        # remove the temporary directory
+        self.working_directory.rmdir()
         return out
 
 
