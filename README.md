@@ -6,7 +6,7 @@
 ---
 
 [![cite - BMC Cheminformatics](https://img.shields.io/badge/cite-BMC_Cheminformatics-50EDEA)](https://jcheminf.biomedcentral.com/articles/10.1186/s13321-024-00900-6)
-[![version DOI - 10.5281/zenodo.13169192](https://img.shields.io/badge/version_DOI-10.5281%2Fzenodo.13169192-blue)](https://doi.org/10.5281/zenodo.13169192)
+[![version DOI - 10.5281/zenodo.12581092](https://img.shields.io/badge/version_DOI-10.5281%2Fzenodo.12581092-blue)](https://doi.org/10.5281/zenodo.12581092)
 [![Made with Python](https://img.shields.io/badge/Python->=3.8-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
 [![Documentation Status](https://readthedocs.org/projects/biobuild/badge/?version=latest)](https://biobuild.readthedocs.io/en/latest/?badge=latest)
 [![Check out - Tutorials](https://img.shields.io/badge/check_out-Tutorials-e61882)](https://biobuild.readthedocs.io/en/latest/tutorials.html)
