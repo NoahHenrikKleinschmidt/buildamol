@@ -103,9 +103,24 @@ class BaseEntity:
             id = utils.filename_to_id(filename)
         f = open(filename)
         content = f.read()
+        _model = model
+        if model and model != "all":
+            start = content.find(f"MODEL {_model}")
+            if start == -1:
+                models = utils.pdb.find_models(filename)
+                if len(models) != 0:
+                    _model = models[0]
+                    start = content.find(f"MODEL {_model}")
+            end = content.find("ENDMDL", start)
+            content = content[start:end]
         f.close()
-        return cls._from_pdb_string(content, id=id)
+        new = cls._from_pdb_string(content, id=id)
+        new.cleanup()
+        if not has_atom_ids:
+            new.autolabel()
 
+        return new
+    
     @classmethod
     def _from_pdb_string(cls, string, id: str = None):
         """
@@ -154,7 +169,7 @@ class BaseEntity:
                     serial_number=atom_info["serial"],
                     coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
                     occupancy=atom_info["occ"],
-                    pqr_charge=eval(f"{atom_info['charge']}+0"),
+                    pqr_charge=int(atom_info.get('charge', 0) or 0),
                     element=atom_info["element"],
                 )
                 residues[res_seq].add(atom)
@@ -298,6 +313,42 @@ class BaseEntity:
         """
         rdmol = utils.sdmol.read_mol(filename)
         return cls.from_rdkit(rdmol)
+
+    @classmethod
+    def from_pdbqt(cls, filename:str):
+        """
+        Make a Molecule from a PDBQT file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the PDBQT file
+        """
+        atoms = utils.pdbqt.read_pdbqt(filename)
+        new = cls.empty(id=filename)
+        new.remove_chains("A")
+
+        for atom in atoms:
+
+            _, serial, id, resid, resname, chain, coord, charge, _ = atom
+            atom = base_classes.Atom.new(
+                id,
+                coord=coord,
+                serial_number=serial,
+            )
+            
+            chain = new.get_chain(chain)
+            if chain is None:
+                chain = base_classes.Chain.new(chain)
+                new.add_chains(chain)
+
+            residue = new.get_residue(resid)
+            if residue is None:
+                residue = base_classes.Residue.new(resname=resname, icode=resid)
+                chain.add(residue)
+            
+            residue.add(atom)
+        return new
 
     @classmethod
     def _from_dict(cls, _dict):
@@ -610,6 +661,14 @@ class BaseEntity:
         """
         return sum(a.mass for a in self.atoms)
 
+    @property
+    def charge(self):
+        """
+        The total charge of the molecule
+        """
+        return sum(a.charge for a in self.get_atoms())
+
+    
     def get_atom_triplets(self):
         """
         Compute triplets of three consequtively bonded atoms
@@ -674,6 +733,8 @@ class BaseEntity:
 
     @property
     def _working_chain(self):
+        if self._working_chain_index is None:
+            return self.chains[-1]
         return self.chains[self._working_chain_index]
 
     @_working_chain.setter
@@ -816,17 +877,43 @@ class BaseEntity:
         viewer.view.setStyle(viewer.style)
         return viewer
 
-    def chem2dview(self, *args, **kwargs):
+    def chem2dview(
+        self,
+        linewidth: float = 1.0,
+        atoms: str = None,
+        highlight_color: str = "cyan",
+        **kwargs,
+    ):
         """
         View the molecule in 2D through RDKit
+
+        Parameters
+        ----------
+        linewidth : float
+            The linewidth of the bonds.
+        atoms : str
+            The label to use for the atoms.
+            This can be any of the following:
+            - None (default, element symbols, except for carbon)
+            - "element" (force element symbols, even for carbon)
+            - "serial" (the atom serial number)
+            - "id" (the atom id / name)
+            - "resid" (the residue serial number + atom id)
+            - "off" (no labels)
+            - any function that takes an (rdkit) atom and returns a string
+        highlight_color : str
+            The color to use for highlighting atoms
         """
-        return utils.visual.Chem2DViewer(self)
+        viewer = utils.visual.Chem2DViewer(
+            self, highlight_color=highlight_color, linewidth=linewidth, atoms=atoms
+        )
+        return viewer
 
     draw2d = chem2dview
 
     def show2d(self, *args, **kwargs):
         """
-        View the molecule in 2D through RDKit
+        View the molecule in 2D
         """
         viewer = self.draw2d(*args, **kwargs)
         viewer.show()
@@ -1104,6 +1191,99 @@ class BaseEntity:
         self._set_bonds(*other.get_bonds())
         return self
 
+    def _overwrite_with(self, other):
+        """
+        Overwrite the current molecule with another one. This will remove all chains, residues, and atoms from the current molecule and add all chains, residues, and atoms from the other molecule.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to overwrite this one with
+        """
+        self._base_struct = other._base_struct
+        self._model = other._model
+        self._AtomGraph = other._AtomGraph
+        self._bonds = other._bonds
+        return self
+
+    def cleanup(
+        self,
+        remove_empty_models: bool = True,
+        remove_empty_chains: bool = True,
+        remove_empty_residues: bool = True,
+        reindex: bool = True,
+        remove_hydrogens: bool = False,
+        add_hydrogens: bool = False,
+        apply_standard_bonds: bool = False,
+        infer_bonds: bool = False,
+    ):
+        """
+        Clean up the molecule by removing empty models, chains, and residues. This can optionally also reindex the atoms and residues, remove or add hydrogen atoms, and apply standard bonds or infer bonds.
+
+        Parameters
+        ----------
+        remove_empty_models : bool
+            Whether to remove empty models
+        remove_empty_chains : bool
+            Whether to remove empty chains
+        remove_empty_residues : bool
+            Whether to remove empty residues
+        reindex : bool
+            Whether to reindex the atoms and residues after cleaning up
+        remove_hydrogens : bool
+            Whether to remove all hydrogen atoms
+        add_hydrogens : bool
+            Whether to add all hydrogen atoms
+        apply_standard_bonds : bool
+            Whether to apply standard connectivity based on loaded compounds (see `load_compounds`)
+        infer_bonds : bool
+            Whether to infer bonds from the atom positions and element types
+        """
+        if remove_empty_residues:
+            self.remove_empty_residues()
+        if remove_empty_chains:
+            self.remove_empty_chains()
+        if remove_empty_models:
+            self.remove_empty_models()
+        if reindex:
+            self.reindex()
+        if remove_hydrogens and add_hydrogens:
+            raise ValueError("Cannot remove and add hydrogens at the same time")
+        elif remove_hydrogens:
+            self.remove_hydrogens()
+        elif add_hydrogens:
+            self.add_hydrogens()
+        if apply_standard_bonds:
+            self.apply_standard_bonds()
+        if infer_bonds:
+            self.infer_bonds(restrict_residues=False)
+        return self
+
+    def remove_empty_models(self):
+        """
+        Remove all empty models from the molecule
+        """
+        for model in self.models:
+            if len(model) == 0:
+                self.remove_model(model)
+        return self
+
+    def remove_empty_chains(self):
+        """
+        Remove all empty chains from the molecule
+        """
+        to_remove = [c for c in self.get_chains() if len(c) == 0]
+        self.remove_chains(*to_remove)
+        return self
+
+    def remove_empty_residues(self):
+        """
+        Remove all empty residues from the molecule
+        """
+        to_remove = [r for r in self.get_residues() if len(r) == 0]
+        self.remove_residues(*to_remove)
+        return self
+
     def clear(self):
         """
         Clear the molecule of all models, chains, residues, and atoms.
@@ -1113,6 +1293,8 @@ class BaseEntity:
         self._AtomGraph.clear()
         self._AtomGraph.clear_cache()
         self._bonds.clear()
+        self._model = None
+        return self
 
     def squash(self, chain_id: str = "A", resname: str = "UNK"):
         """
@@ -2376,19 +2558,25 @@ class BaseEntity:
     def get_models(self):
         return self._base_struct.get_models()
 
-    def split_models(self) -> list:
+    def split_models(self, _copy: bool = False) -> list:
         """
         Split the molecule into multiple molecules, each containing one of the models.
         """
         models = []
-        for model in self.get_models():
+        for model in self.models:
             new = self.__class__.empty(id=self.id)
-            new._base_struct.child_list.clear()
-            new._base_struct.child_dict.clear()
-            model.parent = new._base_struct
-            model.id = 0
-            new.add_model(model)
+            new.remove_chains("A")
+            m = model.copy() if _copy else model
+            new.add_chains(m.child_list)
+            for bond in self._bonds:
+                i, j = bond.atom1, bond.atom2
+                order = bond.order
+                new._set_bond(new.get_atom(i.serial_number), new.get_atom(j.serial_number), order)
+            new.update_atom_graph() # for some reason...
             models.append(new)
+        
+        if not _copy:
+            self.clear()
         return models
 
     def set_model(self, model: int):
@@ -2422,6 +2610,7 @@ class BaseEntity:
             bond.atom2 = atom_mapping[bond.atom2.serial_number]
         del atom_mapping
         self._model = new_model
+        self.update_atom_graph()
         return self
 
     def get_model(self, model: int = None) -> base_classes.Model:
@@ -2491,6 +2680,7 @@ class BaseEntity:
             model = self.get_model(model)
         self._base_struct.child_list.remove(model)
         self._base_struct.child_dict.pop(model.get_id())
+        self.remove_chains(model.child_list)
         return self
 
     def get_structure(self) -> base_classes.Structure:
@@ -3349,6 +3539,14 @@ class BaseEntity:
             atom.id = new_name
         return self
 
+    def drop_atom_names(self):
+        """
+        Turn all atom ids (e.g. "CA") into element symbols (e.g. "C")
+        """
+        for atom in self.get_atoms():
+            atom.id = atom.element
+        return self
+
     def change_element(
         self,
         atom: Union[int, base_classes.Atom],
@@ -3992,7 +4190,7 @@ class BaseEntity:
             A list of tuples of atom pairs that are bonded
         """
         bonds = structural.infer_bonds(
-            self._base_struct, max_bond_length, restrict_residues
+            self._model, max_bond_length, restrict_residues
         )
         self._set_bonds(*bonds)
         if infer_bond_orders:
@@ -4000,7 +4198,7 @@ class BaseEntity:
 
         return bonds
 
-    def infer_bonds_for(self, *residues, max_bond_length: float = None):
+    def infer_bonds_for(self, *residues, max_bond_length: float = None, infer_bond_orders: bool = False):
         """
         Infer bonds between atoms in the structure for a specific set of residues
 
@@ -4011,6 +4209,9 @@ class BaseEntity:
         max_bond_length : float
             The maximum distance between atoms to consider them bonded.
             If None, the default value is 1.6 Angstroms.
+        infer_bond_orders : bool
+            Whether to infer the bond orders (double and tripple bonds) based on registered functional groups.
+            This will slow the inference down, however.
 
         Returns
         -------
@@ -4019,9 +4220,19 @@ class BaseEntity:
         """
         bonds = []
         for res in self.get_residues(*residues):
-            bonds.extend(
-                structural.infer_bonds(res, max_bond_length, restrict_residues=False)
-            )
+            if infer_bond_orders:
+                s = base_classes.Structure("tmp")
+                m = base_classes.Model(0)
+                c = base_classes.Chain("A")
+                s.add(m)
+                m.add(c)
+                c.link(res)
+                tmp = BaseEntity(s)
+                tmp.infer_bonds(max_bond_length=max_bond_length, infer_bond_orders=True)
+                incoming = tmp._bonds
+            else:
+                incoming = structural.infer_bonds(res, max_bond_length, restrict_residues=False)
+            bonds.extend(incoming)
         self._set_bonds(*bonds)
         return bonds
 
@@ -4213,7 +4424,7 @@ class BaseEntity:
             A list of tuples of atom pairs that are bonded
         """
         bonds = structural.apply_reference_bonds(self._base_struct, _compounds)
-        self._add_bonds(*bonds)
+        self._set_bonds(*bonds)
         return bonds
 
     def apply_standard_bonds_for(self, *residues, _compounds=None) -> list:
@@ -4264,6 +4475,17 @@ class BaseEntity:
         structural.relabel_hydrogens(self)
         return self
 
+    def has_hydrogens(self) -> bool:
+        """
+        Check if the structure has hydrogen atoms
+
+        Returns
+        -------
+        bool
+            True if the structure has hydrogen atoms, False otherwise
+        """
+        return any(atom.element == "H" for atom in self.get_atoms())
+
     def add_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
         """
         Infer missing hydrogens in the structure.
@@ -4304,6 +4526,25 @@ class BaseEntity:
         else:
             self._remove_atoms(*self.get_atoms("H", by="element"))
         return self
+
+    def adjust_to_ph(self, ph: Union[float, int, tuple], inplace: bool = True, **kwargs):
+        """
+        Adjust the protonation state and charges to match a certain pH
+
+        Note
+        ----
+        This requires `rdkit` and `molscrub` packages to be installed!
+
+        Parameters
+        ----------
+        ph : float or tuple
+            The pH value to adjust the structure to. If a tuple is given, a pH range can be specified as (low, high).
+        inplace : bool
+            If True, the structure is modified in place, otherwise a new structure is returned.
+        **kwargs
+            Additional keyword arguments to pass to the `scrub` class of the `molscrub` package.
+        """
+        return structural.adjust_to_ph(self, ph=ph, inplace=inplace, **kwargs)
 
     def get_quartets(self):
         """
@@ -4468,16 +4709,6 @@ class BaseEntity:
         """
         utils.pdb.write_pdb(self, filename, symmetric=symmetric)
 
-        # io = bio.PDBIO()
-        # io.set_structure(self._base_struct)
-        # io.save(filename)
-        # utils.pdb.write_connect_lines(self, filename)
-        # with open(filename, "r") as f:
-        #     content = f.read()
-        # content = utils.remove_nonprintable(content)
-        # with open(filename, "w") as f:
-        #     f.write(content)
-
     def to_cif(self, filename: str):
         """
         Write the molecule to a CIF file
@@ -4507,6 +4738,17 @@ class BaseEntity:
             Path to the Mol file
         """
         utils.sdmol.write_mol(self, filename)
+
+    def to_pdbqt(self, filename: str):
+        """
+        Write the molecule to a PDBQT file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the PDBQT file
+        """
+        utils.pdbqt.write_pdbqt(self, filename)
 
     def to_json(
         self,
@@ -4685,6 +4927,25 @@ class BaseEntity:
             [atom.coord for atom in self.get_atoms(*atom_selector, **atom_selectors)]
         )
 
+    def set_coords(self, coords: np.ndarray, *atom_selector, **atom_selectors):
+        """
+        Set the coordinates of the atoms in the molecule
+
+        Parameters
+        ----------
+        coords : np.ndarray
+            The new coordinates
+        atom_selectors
+            Arguments or keyword arguments to pass to get_atoms(). If None, all atoms are selected.
+            The number and order of atoms in the selection must match the number and order of coordinates.
+        """
+        if not "keep_order" in atom_selectors:
+            atom_selectors["keep_order"] = True
+        atoms = self.get_atoms(*atom_selector, **atom_selectors)
+        for atom, coord in zip(atoms, coords):
+            atom.coord = coord
+        return self
+
     def get_bond_array(self) -> np.ndarray:
         """
         Get the bonds of the atoms in the molecule
@@ -4719,6 +4980,8 @@ class BaseEntity:
             mask[bond.atom1.serial_number - 1, bond.atom2.serial_number - 1] = 1
             mask[bond.atom2.serial_number - 1, bond.atom1.serial_number - 1] = 1
         return mask
+
+    
 
     # def infer_missing_atoms(self, _topology=None, _compounds=None):
     #     """

@@ -241,10 +241,19 @@ def _split_atom_line(line) -> tuple:
         "occ": float(line[54:60].strip()),
         "temp": float(line[60:66].strip()),
         "element": line[76:78].strip(),
-        "charge": eval(line[78:80] + "0"),
+        "charge": _parse_charge(line),
     }
     return info
 
+_plusminus = ("+", "-")
+def _parse_charge(line):
+    charge = line[78:80].strip()
+    if len(charge) == 0:
+        return 0
+    elif charge[0] in _plusminus:
+        return int(charge)
+    elif charge[-1] in _plusminus:
+        return int(charge[::-1])
 
 def make_connect_table(mol, symmetric=True):
     """

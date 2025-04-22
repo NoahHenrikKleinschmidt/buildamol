@@ -2490,3 +2490,123 @@ def test_cis_trans_asymmetric():
     bam.hydroxylate(mol_cis, "C1")
     assert mol_cis.is_cis(bond)
     assert not mol_cis.is_trans(bond)
+
+def test_infer_bonds_for_with_orders():
+    bam.load_amino_acids()
+    mol = bam.Molecule.from_compound("TYR")
+    mol.bonds = []
+    mol.infer_bonds_for(1, infer_bond_orders=True)
+    assert sum(1 for i in mol.get_double_bonds()) == 4
+
+def test_infer_bonds_for_with_orders_larger():
+    bam.load_amino_acids()
+    from buildamol.extensions.bio.proteins import peptide
+
+    mol = peptide("YSYSA")
+    mol.bonds = []
+    mol.infer_bonds_for(1, infer_bond_orders=True)
+    assert sum(1 for i in mol.get_double_bonds()) == 4
+    mol.infer_bonds_for(3, infer_bond_orders=True)
+    assert sum(1 for i in mol.get_double_bonds()) == 8
+    mol.show()
+
+def test_from_pdb_with_charges():
+    from pathlib import Path
+    for f in Path("files").glob("tyrosine_ph*.pdb"):
+        ph = int(f.name.split("ph")[1].split(".")[0])
+        mol = bam.read_pdb(f)
+
+        O2 = mol.get_atom("O2")
+        N1 = mol.get_atom("N1")
+
+        if ph <= 9:
+            assert N1.charge == 1
+        else:
+            assert N1.charge == 0
+        
+        if ph <= 4:
+            assert O2.charge == 0
+        else:
+            assert O2.charge == -1
+
+        smi = f.with_suffix(".smi")
+        from rdkit import Chem
+        rdmol = Chem.MolFromSmiles(smi.read_text())
+        assert rdmol.GetNumAtoms() == mol.count_atoms()
+
+        for atom in mol.atoms:
+            rdatom = rdmol.GetAtomWithIdx(atom.serial_number - 1)
+            assert rdatom.GetSymbol() == atom.element
+            assert rdatom.GetFormalCharge() == atom.charge
+            atom_id = rdatom.GetPDBResidueInfo().GetName().strip()
+            assert atom_id == atom.id
+
+def test_to_and_from_pdbqt():
+    mol = bam.Molecule.from_compound("TYR")
+    mol.drop_atom_names()
+    mol.to_pdbqt("tyr.pdbqt")
+    
+    mol2 = bam.Molecule.from_pdbqt("tyr.pdbqt")
+    
+    mol.to_rdkit()
+    mol2.to_rdkit()
+
+    for i, j in zip(mol.atoms, mol2.atoms):
+        assert i.element == j.element
+        assert i.charge == j.charge
+        assert i.id == j.id
+        assert i.coord == j.coord
+    
+    os.remove("tyr.pdbqt")
+
+def test_read_multimodel_pdb():
+    f = "tests/files/multimodel.pdb"
+    mols = bam.read_pdb(f, multimodel=True)
+    assert isinstance(mols, list)
+    assert len(mols) == 3
+    assert all([len(i.models) == 1 for i in mols])
+
+    mols = bam.read_pdb(f, multimodel=True, model=[1, 2])
+    assert isinstance(mols, list)
+    assert len(mols) == 2
+    assert all([len(i.models) == 1 for i in mols])
+
+    mol_with_models = bam.read_pdb(f, multimodel=False, model="all")
+    assert len(mol_with_models.models) == 3
+
+    mol_with_models = bam.Molecule.from_pdb(f, model="all") 
+    assert len(mol_with_models.models) == 3
+
+
+    mol3 = bam.read_pdb(f, multimodel=False, model=3)
+    assert len(mol3.models) == 1
+
+def test_split_models_multimodel():
+    f = "tests/files/multimodel.pdb"
+    mol = bam.Molecule.from_pdb(f, model="all")
+    mol.infer_bonds(max_bond_length=1.5, restrict_residues=False, infer_bond_orders=True)
+    mols = mol.split_models(False)
+    assert len(mols) == 3
+    assert all([len(i.models) == 1 for i in mols])
+    assert all([i.models[0].id == 0 for i in mols])
+    
+    try:
+        mol.get_atom(1)
+        mol._atoms
+    except:
+        pass
+    else:
+        assert False, "Should have raised an error"
+
+    for m in mols:
+        a = m.get_atom(1)
+        assert a is not None
+        _m = m._model
+        assert _m is m.model
+        assert any(i is a for i in m.get_atoms())
+        assert any(i is a for i in m.atoms)
+        assert any(i is a for i in m._AtomGraph.nodes)
+        assert _m.parent is m.structure
+        assert a is m._atoms[0]
+        assert m._atoms[0].parent.parent.parent is _m
+        assert m.atoms[0].parent.parent.parent  is _m
