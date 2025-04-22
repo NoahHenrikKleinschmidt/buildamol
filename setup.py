@@ -33,6 +33,7 @@ setuptools.setup(
         "buildamol.extensions.bio.nucleic_acids",
         "buildamol.extensions.molecular_dynamics",
         "buildamol.extensions.molecular_dynamics.atom_typing",
+        "buildamol.extensions.molecular_dynamics.solvate",
         "buildamol.extensions.molecular_factories",
         "buildamol.extensions.docking",
     ],
