@@ -2683,6 +2683,28 @@ class BaseEntity:
         self.remove_chains(model.child_list)
         return self
 
+
+    def split_residues(self):
+        """
+        Split the molecule into separate residues, creating a list of new molecules, each with a single residue.
+        """
+        out = [None] * sum(1 for i in self.get_residues())
+        for i, residue in enumerate(self.get_residues()):
+            new_struct = base_classes.Structure(0)
+            new_model = base_classes.Model(1)
+            new_struct.add(new_model)
+            new_chain = base_classes.Chain("A")
+            new_model.add(new_chain)
+
+            new = self.__class__(new_struct)
+
+            bonds_to_add = self.get_bonds(residue)
+            self.remove_residues(residue)
+            new.add_residues(residue)
+            new.set_bonds(bonds_to_add)
+            out[i] = new
+
+        return out
     def get_structure(self) -> base_classes.Structure:
         return self._base_struct
 
