@@ -3044,6 +3044,78 @@ class BaseEntity:
 
         return next(_atom, None)
 
+    def set_parent(
+        self,
+        obj: Union[
+            base_classes.Atom,
+            base_classes.Residue,
+            base_classes.Chain,
+            base_classes.Model,
+        ],
+        parent: Union[base_classes.Residue, base_classes.Chain, base_classes.Model],
+    ):
+        """
+        Reassign a structural component like an Atom to a new parent object.
+
+        Parameters
+        ----------
+        obj : Atom or Residue or Chain or Model
+            The object to assign to another parent
+        parent : Residue or Chain or Model
+            The new parent object
+        """
+        if isinstance(obj, (list, set, tuple)):
+            for o in obj:
+                self.set_parent(o, parent)
+            return self
+
+        if isinstance(obj, base_classes.Atom) and not isinstance(
+            parent, base_classes.Residue
+        ):
+            raise ValueError("Atoms can only be assigned to Residues")
+        elif isinstance(obj, base_classes.Residue) and not isinstance(
+            parent, base_classes.Chain
+        ):
+            raise ValueError("Residues can only be assigned to Chains")
+        elif isinstance(obj, base_classes.Chain) and not isinstance(
+            parent, base_classes.Model
+        ):
+            raise ValueError("Chains can only be assigned to Models")
+        elif isinstance(obj, base_classes.Model) and not isinstance(
+            parent, base_classes.Structure
+        ):
+            raise ValueError("Models can only be assigned to Structures")
+        elif not any(
+            isinstance(obj, i)
+            for i in [
+                base_classes.Atom,
+                base_classes.Residue,
+                base_classes.Chain,
+                base_classes.Model,
+            ]
+        ):
+            raise ValueError(
+                f"Object must be an Atom, Residue, Chain or Model, got {type(obj)}"
+            )
+        elif not any(
+            isinstance(parent, i)
+            for i in [base_classes.Residue, base_classes.Chain, base_classes.Model]
+        ):
+            raise ValueError(
+                f"Parent must be a Residue, Chain or Model, got {type(parent)}"
+            )
+
+        current_parent = obj.get_parent()
+        if current_parent is parent:
+            return self
+        elif current_parent is None:
+            parent.add(obj)
+            return self
+
+        current_parent.detach_child(obj.get_id())
+        parent.add(obj)
+        return self
+
     def get_bond(
         self,
         atom1: Union[int, str, tuple, base_classes.Atom],
