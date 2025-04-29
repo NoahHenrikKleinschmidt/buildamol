@@ -2672,3 +2672,14 @@ def test_can_split_at_residues():
 
         if base.ALLOW_VISUAL:
             i.show()
+
+
+def test_can_split_contiguous():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = mol.copy().move([10, 5, 5])
+    mol.merge(mol2)
+    assert len(mol.residues) == 2
+    mol.squash()
+    assert len(mol.residues) == 1
+    mol.split_contiguous()
+    assert len(mol.residues) == 2

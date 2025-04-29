@@ -926,10 +926,13 @@ def adjust_protonation(molecule, atom, new_charge):
 
     return molecule
 
-def adjust_to_ph(molecule, ph: Union[float, int, tuple], inplace:bool=True, **kwargs):
+
+def adjust_to_ph(
+    molecule, ph: Union[float, int, tuple], inplace: bool = True, **kwargs
+):
     """
     Adjust the protonation state of a molecule to suit a specific pH range
-    
+
     Note
     ----
     This requires that `rdkit` and `molscrub` packages are installed!
@@ -951,7 +954,7 @@ def adjust_to_ph(molecule, ph: Union[float, int, tuple], inplace:bool=True, **kw
     Returns
     -------
     Molecule
-        The molecule with the adjusted protonation state 
+        The molecule with the adjusted protonation state
     """
     if not aux.has_package("scrubber") or not aux.has_package("rdkit"):
         raise ImportError(
@@ -970,18 +973,18 @@ def adjust_to_ph(molecule, ph: Union[float, int, tuple], inplace:bool=True, **kw
         raise ValueError(
             f"Invalid pH value or range provided. Expected float, int, or tuple, got {type(pH)}."
         )
-    
+
     from scrubber import Scrub
+
     skip_tautomers = kwargs.pop("skip_tautomers", True)
     scrub = Scrub(
-        ph_high=pH_high,
-        ph_low=pH_low,
-        skip_tautomers=skip_tautomers,
-        **kwargs
-)
+        ph_high=pH_high, ph_low=pH_low, skip_tautomers=skip_tautomers, **kwargs
+    )
     out = scrub(mol)
     if len(out) == 0:
-        raise ValueError("Could not adjust the protonation state of the molecule. Try a different pH value or range or manually run the molecule through `molscrub` to investigate potential error sources.")
+        raise ValueError(
+            "Could not adjust the protonation state of the molecule. Try a different pH value or range or manually run the molecule through `molscrub` to investigate potential error sources."
+        )
 
     if len(out) > 1:
         _out = []
@@ -998,6 +1001,7 @@ def adjust_to_ph(molecule, ph: Union[float, int, tuple], inplace:bool=True, **kw
         molecule._AtomGraph = out._AtomGraph
         out = molecule
     return out
+
 
 def relabel_hydrogens(molecule):
     """
@@ -1526,6 +1530,50 @@ def get_left_hydrogen_neighbor(molecule, atom):
     if np.dot(cross, H_vecs[1]) > 0:
         return Hs[0]
     return Hs[1]
+
+
+def split_into_contiguous_residues(molecule, target_residues: list = None):
+    """
+    In case a molecule contains residues that include multiple contiguous atom groups,
+    split these into multiple residues. Note that the residues that are split will be removed from the molecule!
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to split into contiguous residues.
+    target_residues : list
+        A list of residues to split. If None, all residues will be split.
+    """
+    if not molecule.count_bonds():
+        raise ValueError(
+            "The molecule has no bonds. Cannot split into contiguous residues due to missing connectivity information. First add bonds, for example by running `molecule.infer_bonds()`."
+        )
+
+    atom_graph = molecule.get_atom_graph()
+
+    if target_residues is not None:
+        target_residues = molecule.get_residues(target_residues)
+        other_residues = [
+            res for res in molecule.get_residues() if res not in target_residues
+        ]
+        atom_nodes_to_drop = set()
+        for res in other_residues:
+            atom_nodes_to_drop.update(res.child_list)
+        atom_graph.remove_nodes_from(atom_nodes_to_drop)
+
+    contiguous_subgraphs = nx.connected_components(atom_graph)
+    old_residues_to_remove = set()
+    for i, subgraph in enumerate(contiguous_subgraphs):
+        new_residue = base_classes.Residue(resname=f"UNL_{i+1}")
+        molecule.add_residues(new_residue)
+        for atom in subgraph:
+            current_residue = atom.parent
+            current_residue.detach_child(atom.get_id())
+            new_residue.add(atom)
+            old_residues_to_remove.add(current_residue)
+
+    molecule.remove_residues(old_residues_to_remove)
+    return molecule
 
 
 def get_right_hydrogen_neighbor(molecule, atom):

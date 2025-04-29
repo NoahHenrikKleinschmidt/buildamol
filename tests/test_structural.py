@@ -2189,18 +2189,17 @@ def test_adjust_protonation_imine():
     else:
         raise RuntimeError("Should not be able to remove a proton from an imine")
 
+
 def test_adjust_protonation_based_on_ph_inplace_false():
     bam.load_amino_acids()
     tyr = bam.molecule("TYR")
 
-    
     for ph in (1, 5, 7, 9, 15):
         o = bam.structural.adjust_to_ph(tyr, ph=ph, inplace=False)
         assert o is not None
         assert o is not tyr
         assert isinstance(o, bam.Molecule)
 
-       
         O2 = o.get_atom("OXT")
         N1 = o.get_atom("N")
 
@@ -2208,7 +2207,7 @@ def test_adjust_protonation_based_on_ph_inplace_false():
             assert N1.charge == 1
         else:
             assert N1.charge == 0
-        
+
         if ph <= 4:
             assert O2.charge == 0
         else:
@@ -2222,14 +2221,12 @@ def test_adjust_protonation_based_on_ph_inplace_true():
     bam.load_amino_acids()
     tyr = bam.molecule("TYR")
 
-    
     for ph in (1, 5, 7, 9, 15):
         o = bam.structural.adjust_to_ph(tyr, ph=ph, inplace=True)
         assert o is not None
         assert o is tyr
         assert isinstance(o, bam.Molecule)
 
-       
         O2 = o.get_atom("OXT")
         N1 = o.get_atom("N")
 
@@ -2237,7 +2234,7 @@ def test_adjust_protonation_based_on_ph_inplace_true():
             assert N1.charge == 1
         else:
             assert N1.charge == 0
-        
+
         if ph <= 4:
             assert O2.charge == 0
         else:
@@ -2245,3 +2242,36 @@ def test_adjust_protonation_based_on_ph_inplace_true():
 
         if base.ALLOW_VISUAL:
             o.show2d()
+
+
+def test_split_contiguous_residues():
+    mol = base.FILES / "metal_complex_with_meoh.pdb"
+    mol = bam.read_pdb(mol)
+    Cu = mol.get_atom("Cu", by="element")
+    assert len(mol.residues) == 1
+    bam.structural.split_into_contiguous_residues(mol)
+    assert len(mol.residues) == 2
+    assert Cu.parent.name.startswith("UNL_")
+
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_split_contiguous_residues_with_targets():
+    mol = bam.read_pdb(base.FILES / "metal_complex_with_meoh.pdb")
+    other = mol.copy().move([20, 0, 0])
+    Cu = mol.get_atom("Cu", by="element")
+    mol.merge(other)
+    assert len(mol.residues) == 2
+    bam.structural.split_into_contiguous_residues(mol, target_residues=[Cu.parent])
+    assert len(mol.residues) == 3
+    assert Cu.parent.name.startswith("UNL_")
+
+
+def test_split_contiguous_residues_multiple_residues():
+    mol = bam.read_pdb(base.FILES / "metal_complex_with_meoh.pdb")
+    other = mol.copy().move([20, 0, 0])
+    mol.merge(other)
+    assert len(mol.residues) == 2
+    bam.structural.split_into_contiguous_residues(mol)
+    assert len(mol.residues) == 4

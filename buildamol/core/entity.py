@@ -1,7 +1,7 @@
 """
 The base class for classes storing and manipulating molecular structures
-This houses most of the essential functionality of the library for most users. 
-The ``Molecule`` class adds additional features on top. 
+This houses most of the essential functionality of the library for most users.
+The ``Molecule`` class adds additional features on top.
 """
 
 from copy import deepcopy
@@ -120,7 +120,7 @@ class BaseEntity:
             new.autolabel()
 
         return new
-    
+
     @classmethod
     def _from_pdb_string(cls, string, id: str = None):
         """
@@ -169,7 +169,7 @@ class BaseEntity:
                     serial_number=atom_info["serial"],
                     coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
                     occupancy=atom_info["occ"],
-                    pqr_charge=int(atom_info.get('charge', 0) or 0),
+                    pqr_charge=int(atom_info.get("charge", 0) or 0),
                     element=atom_info["element"],
                 )
                 residues[res_seq].add(atom)
@@ -315,7 +315,7 @@ class BaseEntity:
         return cls.from_rdkit(rdmol)
 
     @classmethod
-    def from_pdbqt(cls, filename:str):
+    def from_pdbqt(cls, filename: str):
         """
         Make a Molecule from a PDBQT file
 
@@ -336,7 +336,7 @@ class BaseEntity:
                 coord=coord,
                 serial_number=serial,
             )
-            
+
             chain = new.get_chain(chain)
             if chain is None:
                 chain = base_classes.Chain.new(chain)
@@ -346,7 +346,7 @@ class BaseEntity:
             if residue is None:
                 residue = base_classes.Residue.new(resname=resname, icode=resid)
                 chain.add(residue)
-            
+
             residue.add(atom)
         return new
 
@@ -668,7 +668,6 @@ class BaseEntity:
         """
         return sum(a.charge for a in self.get_atoms())
 
-    
     def get_atom_triplets(self):
         """
         Compute triplets of three consequtively bonded atoms
@@ -2571,10 +2570,12 @@ class BaseEntity:
             for bond in self._bonds:
                 i, j = bond.atom1, bond.atom2
                 order = bond.order
-                new._set_bond(new.get_atom(i.serial_number), new.get_atom(j.serial_number), order)
-            new.update_atom_graph() # for some reason...
+                new._set_bond(
+                    new.get_atom(i.serial_number), new.get_atom(j.serial_number), order
+                )
+            new.update_atom_graph()  # for some reason...
             models.append(new)
-        
+
         if not _copy:
             self.clear()
         return models
@@ -2683,6 +2684,19 @@ class BaseEntity:
         self.remove_chains(model.child_list)
         return self
 
+    def split_contiguous(self, target_residues: list = None):
+        """
+        Split residues that contain multiple contiguous atom groups into separate residues.
+        Residues that are split will be removed from the molecule and replaced with the new residues labeled "UNL_X" where X is a counter.
+        The indexing is **not** affected by this operation (i.e. atom serials are not changed).
+
+        Parameters
+        ----------
+        target_residues : list
+            A list of residues to split. If None, all residues are split.
+        """
+        structural.split_into_contiguous_residues(self, target_residues)
+        return self
 
     def split_residues(self):
         """
@@ -2705,6 +2719,7 @@ class BaseEntity:
             out[i] = new
 
         return out
+
     def get_structure(self) -> base_classes.Structure:
         return self._base_struct
 
@@ -4283,16 +4298,16 @@ class BaseEntity:
         list
             A list of tuples of atom pairs that are bonded
         """
-        bonds = structural.infer_bonds(
-            self._model, max_bond_length, restrict_residues
-        )
+        bonds = structural.infer_bonds(self._model, max_bond_length, restrict_residues)
         self._set_bonds(*bonds)
         if infer_bond_orders:
             structural.infer_bond_orders(self)
 
         return bonds
 
-    def infer_bonds_for(self, *residues, max_bond_length: float = None, infer_bond_orders: bool = False):
+    def infer_bonds_for(
+        self, *residues, max_bond_length: float = None, infer_bond_orders: bool = False
+    ):
         """
         Infer bonds between atoms in the structure for a specific set of residues
 
@@ -4325,7 +4340,9 @@ class BaseEntity:
                 tmp.infer_bonds(max_bond_length=max_bond_length, infer_bond_orders=True)
                 incoming = tmp._bonds
             else:
-                incoming = structural.infer_bonds(res, max_bond_length, restrict_residues=False)
+                incoming = structural.infer_bonds(
+                    res, max_bond_length, restrict_residues=False
+                )
             bonds.extend(incoming)
         self._set_bonds(*bonds)
         return bonds
@@ -4621,7 +4638,9 @@ class BaseEntity:
             self._remove_atoms(*self.get_atoms("H", by="element"))
         return self
 
-    def adjust_to_ph(self, ph: Union[float, int, tuple], inplace: bool = True, **kwargs):
+    def adjust_to_ph(
+        self, ph: Union[float, int, tuple], inplace: bool = True, **kwargs
+    ):
         """
         Adjust the protonation state and charges to match a certain pH
 
@@ -5074,8 +5093,6 @@ class BaseEntity:
             mask[bond.atom1.serial_number - 1, bond.atom2.serial_number - 1] = 1
             mask[bond.atom2.serial_number - 1, bond.atom1.serial_number - 1] = 1
         return mask
-
-    
 
     # def infer_missing_atoms(self, _topology=None, _compounds=None):
     #     """
