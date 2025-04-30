@@ -2683,3 +2683,17 @@ def test_can_split_contiguous():
     assert len(mol.residues) == 1
     mol.split_contiguous()
     assert len(mol.residues) == 2
+
+
+def test_can_split_contiguous_with_targets():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = mol.copy().move([10, 5, 5])
+    mol.merge(mol2)
+    assert len(mol.residues) == 2
+    mol.squash()
+    assert len(mol.residues) == 1
+    mol2 = mol.copy().move([5, 10, 10])
+    mol.merge(mol2)
+    assert len(mol.residues) == 2
+    mol.split_contiguous(target_residues=[1])
+    assert len(mol.residues) == 3
