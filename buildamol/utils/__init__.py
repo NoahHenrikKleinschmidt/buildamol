@@ -16,6 +16,7 @@ import buildamol.utils.sdmol as sdmol
 import buildamol.utils.ic as ic
 import buildamol.utils.auxiliary as auxiliary
 import buildamol.utils.pdbqt as pdbqt
+import buildamol.utils.xyz as xyz
 
 from buildamol.utils.auxiliary import *
 from buildamol.utils.defaults import *

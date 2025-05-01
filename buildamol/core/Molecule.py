@@ -31,6 +31,7 @@ try to detect the type of user provided input and generate a molecule from it. C
 - A PDBQT file
 - A JSON file
 - An XML file
+- An XYZ file
 - A SMILES string
 - An InChI string
 - An IUPAC name or abbreviation, or any name that matches a known compound synonym that is associated with the PubChem database
@@ -63,7 +64,11 @@ offers already a number of convenient methods to easily generate molecules direc
 - `Molecule.from_molfile` to generate a molecule from a MOL file
 - `Molecule.from_json` to generate a molecule from a JSON file
 - `Molecule.from_xml` to generate a molecule from an XML file
-- `Molecule.empty` to generate an empty molecule
+- `Molecule.from_pdbqt` to generate a molecule from a PDBQT file
+- `Molecule.from_pybel` to generate a molecule from an OpenBabel molecule object
+- `Molecule.from_xyz` to generate a molecule from an XYZ file
+- `Molecule.empty` to generate an empty molecule (contains a model and chain)
+- `Molecule.new` to generate an empty molecule (contains a model, chain and residue)
 
 
 Hence, if we know that "glucose" is already available in our local PDBECompounds database, we can generate the molecule also as follows:
@@ -494,7 +499,11 @@ __all__ = [
 
 
 def read_pdb(
-    filename: str, id: str = None, multimodel: bool = False, model: int=None, has_atom_ids: bool = True
+    filename: str,
+    id: str = None,
+    multimodel: bool = False,
+    model: int = None,
+    has_atom_ids: bool = True,
 ) -> "Molecule":
     """
     Read a PDB file and return a molecule.
@@ -520,13 +529,15 @@ def read_pdb(
     """
     if multimodel:
         if model is None:
-            models = utils.pdb.find_models(filename) 
+            models = utils.pdb.find_models(filename)
         elif isinstance(model, (int, str)):
             models = [str(model)]
         elif isinstance(model, (list, tuple, set)):
             models = [str(m) for m in model]
         else:
-            raise ValueError("model must be an integer (or string), a list of integers (or strings) or None (to read all models)")
+            raise ValueError(
+                "model must be an integer (or string), a list of integers (or strings) or None (to read all models)"
+            )
         molecules = []
         for model in models:
             if model.isdigit():
@@ -767,9 +778,11 @@ def molecule(mol=None) -> "Molecule":
             return Molecule.from_molfile(mol)
         elif _mol.endswith(".pdbqt"):
             return Molecule.from_pdbqt(mol)
+        elif _mol.endswith(".xyz"):
+            return Molecule.from_xyz(mol)
         elif _mol.endswith(".smi") or _mol.endswith(".smiles"):
             return Molecule.from_smiles(open(mol).read().strip())
-        
+
     if " " not in mol:
         try:
             return Molecule.from_smiles(mol)

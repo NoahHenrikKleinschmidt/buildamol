@@ -315,6 +315,33 @@ class BaseEntity:
         return cls.from_rdkit(rdmol)
 
     @classmethod
+    def from_xyz(cls, filename: str):
+        """
+        Make a Molecule from an XYZ file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the XYZ file
+        """
+        with open(filename, "r") as f:
+            f.readline()
+            mol_id = f.readline().strip()
+        structure = structural.make_empty_structure(mol_id)
+        new = cls(structure)
+        residue = base_classes.Residue.new(
+            resname="MOL",
+        )
+        new.add_residues(residue)
+        for atom_tuple in utils.xyz.iter_xyz(filename):
+            atom = base_classes.Atom.new(
+                atom_tuple[0],
+                coord=atom_tuple[1:],
+            )
+            new.add_atoms(atom)
+        return new
+
+    @classmethod
     def from_pdbqt(cls, filename: str):
         """
         Make a Molecule from a PDBQT file
@@ -325,7 +352,8 @@ class BaseEntity:
             Path to the PDBQT file
         """
         atoms = utils.pdbqt.read_pdbqt(filename)
-        new = cls.empty(id=filename)
+        structure = structural.make_empty_structure(filename)
+        new = cls(structure)
         new.remove_chains("A")
 
         for atom in atoms:
@@ -4916,6 +4944,17 @@ class BaseEntity:
         """
         xml = utils.xml.encode_molecule(self, atom_attributes)
         utils.xml.write_xml(filename, xml)
+
+    def to_xyz(self, filename: str):
+        """
+        Write the molecule to an XYZ file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the XYZ file
+        """
+        utils.xyz.write_xyz(self, filename)
 
     def to_openmm(self):
         """

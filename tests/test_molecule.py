@@ -2697,3 +2697,28 @@ def test_can_split_contiguous_with_targets():
     assert len(mol.residues) == 2
     mol.split_contiguous(target_residues=[1])
     assert len(mol.residues) == 3
+
+
+def test_to_xyz():
+    mol = bam.Molecule.from_compound("GLC")
+    outfile = "test.xyz"
+    mol.to_xyz(outfile)
+    assert os.path.exists(outfile)
+    with open(outfile) as f:
+        lines = f.readlines()
+        assert len(lines) == mol.count_atoms() + 2
+        assert lines[0].strip() == str(mol.count_atoms())
+        assert lines[1].strip() == "GLC"
+    os.remove(outfile)
+
+
+def test_from_xyz():
+    mol = bam.Molecule.from_compound("GLC")
+    outfile = "test.xyz"
+    mol.to_xyz(outfile)
+    mol2 = bam.Molecule.from_xyz(outfile)
+    assert len(mol.atoms) == len(mol2.atoms)
+    assert len(mol2.bonds) == 0
+    mol2.infer_bonds(infer_bond_orders=True)
+    assert len(mol2.bonds) == len(mol.bonds)
+    os.remove(outfile)
