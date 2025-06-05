@@ -2492,25 +2492,42 @@ def test_cis_trans_asymmetric():
     assert not mol_cis.is_trans(bond)
 
 
-def test_infer_bonds_for_with_orders():
+def test_infer_bonds_for_residues_with_orders():
     bam.load_amino_acids()
     mol = bam.Molecule.from_compound("TYR")
     mol.bonds = []
-    mol.infer_bonds_for(1, infer_bond_orders=True)
+    mol.infer_bonds_for(mol.get_residue(1), infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 4
 
 
-def test_infer_bonds_for_with_orders_larger():
+def test_infer_bonds_for_residues_with_orders_larger():
     bam.load_amino_acids()
     from buildamol.extensions.bio.proteins import peptide
 
     mol = peptide("YSYSA")
     mol.bonds = []
-    mol.infer_bonds_for(1, infer_bond_orders=True)
+    mol.infer_bonds_for(mol.get_residue(1), infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 4
-    mol.infer_bonds_for(3, infer_bond_orders=True)
+    mol.bonds = []
+    mol.infer_bonds_for_residues(1, 3, infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 8
-    mol.show()
+
+
+def test_infer_bonds_for_atoms():
+    mol = bam.read_smiles("CC(=O)CC")
+    mol.bonds = []
+    carbons = mol.get_atoms("C", by="element")
+    mol.infer_bonds_for_atoms(carbons, infer_bond_orders=False)
+    assert mol.count_bonds() == len(carbons) - 1
+
+
+def test_infer_bonds_for_atoms_with_orders():
+    mol = bam.read_smiles("CC(=O)CC")
+    mol.bonds = []
+    atoms = mol.get_atoms("C", by="element") + mol.get_atoms("O", by="element")
+    mol.infer_bonds_for_atoms(atoms, infer_bond_orders=True)
+    assert mol.count_bonds() == len(atoms) - 1
+    assert sum(1 for i in mol.get_double_bonds()) == 1
 
 
 def test_from_pdb_with_charges():

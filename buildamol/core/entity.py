@@ -11,6 +11,9 @@ import warnings
 import Bio.PDB as bio
 import numpy as np
 
+from deprecated import deprecated
+from deprecated.sphinx import versionchanged
+
 import buildamol.base_classes as base_classes
 import buildamol.core.Linkage as Linkage
 import buildamol.structural as structural
@@ -4333,7 +4336,7 @@ class BaseEntity:
 
         return bonds
 
-    def infer_bonds_for(
+    def infer_bonds_for_residues(
         self, *residues, max_bond_length: float = None, infer_bond_orders: bool = False
     ):
         """
@@ -4374,6 +4377,93 @@ class BaseEntity:
             bonds.extend(incoming)
         self._set_bonds(*bonds)
         return bonds
+
+    def infer_bonds_for_atoms(
+        self,
+        *atoms: Union[base_classes.Atom],
+        max_bond_length: float = None,
+        infer_bond_orders: bool = False,
+    ):
+        """
+        Infer bonds between atoms in the structure for a specific set of atoms
+
+        Parameters
+        ----------
+        atoms
+            The atoms to consider
+        max_bond_length : float
+            The maximum distance between atoms to consider them bonded.
+            If None, the default value is 1.6 Angstroms.
+        infer_bond_orders : bool
+            Whether to infer the bond orders (double and tripple bonds) based on registered functional groups.
+            This will slow the inference down, however.
+
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded
+        """
+        if isinstance(atoms[0], (list, set, tuple)):
+            atoms = atoms[0]
+        atoms = [self.get_atom(atom) for atom in atoms]
+        return self.infer_bonds_for(
+            *atoms, max_bond_length=max_bond_length, infer_bond_orders=infer_bond_orders
+        )
+
+    @versionchanged(
+        reason="infer_bonds_for now works with both residues and individual atoms but only accepts Residue and Atom objects as input and cannot search for them via serial numbers or ids. To keep using the old behavior where only residues were supported via any identifier use the `infer_bonds_for_residues` method instead.",
+        version="1.2.10",
+    )
+    def infer_bonds_for(
+        self,
+        *residues_or_atoms: Union[base_classes.Residue, base_classes.Atom],
+        max_bond_length: float = None,
+        infer_bond_orders: bool = False,
+    ):
+        """
+        Infer bonds between atoms in the structure for a specific set of residues or atoms
+
+        Parameters
+        ----------
+        residues_or_atoms
+            The residues or atoms to consider
+        max_bond_length : float
+            The maximum distance between atoms to consider them bonded.
+            If None, the default value is 1.6 Angstroms.
+        infer_bond_orders : bool
+            Whether to infer the bond orders (double and tripple bonds) based on registered functional groups.
+            This will slow the inference down, however.
+
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded
+        """
+        s = base_classes.Structure("tmp")
+        m = base_classes.Model(0)
+        c = base_classes.Chain("A")
+        res = base_classes.Residue("A", "A", 0)
+        s.add(m)
+        m.add(c)
+        c.add(res)
+        atoms = [i for i in residues_or_atoms if isinstance(i, base_classes.Atom)]
+        residues = [i for i in residues_or_atoms if isinstance(i, base_classes.Residue)]
+        if not len(atoms) and not len(residues):
+            raise ValueError(
+                "At least one residue or atom must be provided to infer bonds for."
+            )
+        for atom in atoms:
+            res.link(atom)
+        for residue in residues:
+            for atom in residue.child_list:
+                res.link(atom)
+        tmp = BaseEntity(s)
+        tmp.infer_bonds(
+            max_bond_length=max_bond_length, infer_bond_orders=infer_bond_orders
+        )
+        incoming = tmp._bonds
+        self._set_bonds(*incoming)
+        return incoming
 
     def get_residue_connections(
         self,
