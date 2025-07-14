@@ -172,7 +172,7 @@ def sequence(mol: core.Molecule, unknown: Union[str, callable] = "X") -> str:
     total_seq = []
     for chain in mol.get_chains():
         chain_seq = [None] * len(chain.child_list)
-        for r, res in enumerate(chain.get_residues()):
+        for r, res in enumerate(chain.child_list):
             name = _3to1.get(res.name, None)
             if name is None:
                 name = _unknown(mol, res)
