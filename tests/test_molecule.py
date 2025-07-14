@@ -2769,3 +2769,16 @@ def test_model_can_access_chains_custom():
     assert (
         len(list(model.get_chains())) == len(model.child_list) == model.count_chains()
     )
+
+
+def test_collapse_chains():
+
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
+    mol.merge(mol.copy().move([50, 0, 0]))
+
+    n_residues = mol.count_residues()
+    n_chains = mol.count_chains()
+
+    mol.collapse_chains()
+    assert mol.count_chains() == n_chains
+    assert mol.count_residues() == n_chains

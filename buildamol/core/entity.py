@@ -1355,6 +1355,32 @@ class BaseEntity:
         self.reindex()
         return self
 
+    def collapse_chains(self, resnames: list = None):
+        """
+        Turn each chain of the molecule into a single residue but preserve the the chains.
+
+        Parameters
+        ----------
+        resnames : list, optional
+            A list of residue names to use for the residues. If None, the residue names are taken from the first residue in each chain.
+            A string can also be given to use the same name for all residues.
+        """
+        if resnames is None:
+            resnames = [chain.child_list[0].name for chain in self.get_chains()]
+        elif isinstance(resnames, str):
+            resnames = [resnames] * self.count_chains()
+
+        for chain, resname in zip(self.get_chains(), resnames):
+            residue = base_classes.Residue(resname)
+            for atom in chain.get_atoms():
+                residue.add(atom)
+            chain.child_dict.clear()
+            chain.child_list.clear()
+            chain.add(residue)
+
+        self.reindex()
+        return self
+
     def get_attach_residue(self):
         """
         Get the residue that is used for attaching other molecules to this one.
