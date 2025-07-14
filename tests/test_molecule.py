@@ -2739,3 +2739,33 @@ def test_from_xyz():
     mol2.infer_bonds(infer_bond_orders=True)
     assert len(mol2.bonds) == len(mol.bonds)
     os.remove(outfile)
+
+
+def test_residue_can_access_atoms_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    res = mol.get_residue(1)
+    assert len(res.atoms) == len(res.child_list)
+    assert len(res.get_atoms("C1", "C2")) == 2
+    assert len(list(res.get_atoms())) == len(res.child_list) == res.count_atoms()
+
+
+def test_chain_can_access_residues_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    chain = mol.get_chain("A")
+    assert len(chain.residues) == len(chain.child_list)
+    assert len(chain.get_residues("GLC")) == 1
+    assert (
+        len(list(chain.get_residues()))
+        == len(chain.child_list)
+        == chain.count_residues()
+    )
+
+
+def test_model_can_access_chains_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    model = mol.get_model(0)
+    assert len(model.chains) == len(model.child_list)
+    assert len(model.get_chains("A")) == 1
+    assert (
+        len(list(model.get_chains())) == len(model.child_list) == model.count_chains()
+    )
