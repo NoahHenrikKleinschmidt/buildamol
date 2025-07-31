@@ -2722,3 +2722,21 @@ def test_from_xyz():
     mol2.infer_bonds(infer_bond_orders=True)
     assert len(mol2.bonds) == len(mol.bonds)
     os.remove(outfile)
+
+
+def test_reversed_linkage_stitch():
+    mol1 = bam.Molecule.from_compound("GLC")
+    mol2 = bam.Molecule.from_smiles("CCN")
+
+    b14_link = bam.linkage("N1", "O4")
+    out_fwd = bam.connect(mol2, mol1, b14_link)
+
+    b14_link.reverse()
+    out_rev = bam.connect(mol1, mol2, b14_link)
+    assert out_fwd.count_atoms() == out_rev.count_atoms()
+
+    # now the link should not be applicable in this direction
+    # but the reverse again should be fine - this should be automatically
+    # applied
+    out_rev_auto_applied = bam.connect(mol2, mol1, b14_link)
+    assert out_fwd.count_atoms() == out_rev_auto_applied.count_atoms()
