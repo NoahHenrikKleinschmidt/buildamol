@@ -1801,15 +1801,46 @@ class Molecule(entity.BaseEntity):
             if not link:
                 raise ValueError("Cannot attach a molecule without a patch defined")
 
-        if not other_inplace:
-            _other = other.copy()
-        else:
-            _other = other
-
         if isinstance(link, str):
             if not _topology:
                 _topology = resources.get_default_topology()
             link = _topology.get_patch(link)
+
+        # check if link can be applied
+        other_is_source = link.can_be_source(other, residue=other_residue)
+        self_is_target = link.can_be_target(obj, residue=at_residue)
+
+        forward_is_fine = other_is_source and self_is_target
+
+        # check if the link can be applied in reverse
+        reverse_is_fine = False
+        if not forward_is_fine:
+            other_is_target = link.can_be_target(other, residue=other_residue)
+            self_is_source = link.can_be_source(obj, residue=at_residue)
+            reverse_is_fine = other_is_target and self_is_source
+
+        if not (forward_is_fine or reverse_is_fine):
+            raise ValueError(
+                "It looks like this link cannot be applied to the given molecules. Please check the link definitions again and make sure anchors and deleters are present."
+            )
+
+        # automatically reverse the link if it is not applicable in the current direction
+        if not forward_is_fine and reverse_is_fine:
+            print(
+                "[info] The link in the current direction is not applicable to the molecules but the reverse is. Automatically reversing the link. If this is not intended, please review the linkage definition or molecules (target vs source)."
+            )
+            if link.has_IC:
+                print("[warning] Reversing a patch with internal coordinates! This will remove the internal coordinates!")
+                link = link.copy()
+                link.remove_internal_coordinates()
+                link.reverse(inplace=True)
+            else:
+                link = link.reverse(inplace=False)
+
+        if not other_inplace:
+            _other = other.copy()
+        else:
+            _other = other
 
         if link.has_IC and use_patch:
             obj.patch_attach(
