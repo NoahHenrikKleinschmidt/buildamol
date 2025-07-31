@@ -2492,25 +2492,42 @@ def test_cis_trans_asymmetric():
     assert not mol_cis.is_trans(bond)
 
 
-def test_infer_bonds_for_with_orders():
+def test_infer_bonds_for_residues_with_orders():
     bam.load_amino_acids()
     mol = bam.Molecule.from_compound("TYR")
     mol.bonds = []
-    mol.infer_bonds_for(1, infer_bond_orders=True)
+    mol.infer_bonds_for(mol.get_residue(1), infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 4
 
 
-def test_infer_bonds_for_with_orders_larger():
+def test_infer_bonds_for_residues_with_orders_larger():
     bam.load_amino_acids()
     from buildamol.extensions.bio.proteins import peptide
 
     mol = peptide("YSYSA")
     mol.bonds = []
-    mol.infer_bonds_for(1, infer_bond_orders=True)
+    mol.infer_bonds_for(mol.get_residue(1), infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 4
-    mol.infer_bonds_for(3, infer_bond_orders=True)
+    mol.bonds = []
+    mol.infer_bonds_for_residues(1, 3, infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 8
-    mol.show()
+
+
+def test_infer_bonds_for_atoms():
+    mol = bam.read_smiles("CC(=O)CC")
+    mol.bonds = []
+    carbons = mol.get_atoms("C", by="element")
+    mol.infer_bonds_for_atoms(carbons, infer_bond_orders=False)
+    assert mol.count_bonds() == len(carbons) - 1
+
+
+def test_infer_bonds_for_atoms_with_orders():
+    mol = bam.read_smiles("CC(=O)CC")
+    mol.bonds = []
+    atoms = mol.get_atoms("C", by="element") + mol.get_atoms("O", by="element")
+    mol.infer_bonds_for_atoms(atoms, infer_bond_orders=True)
+    assert mol.count_bonds() == len(atoms) - 1
+    assert sum(1 for i in mol.get_double_bonds()) == 1
 
 
 def test_from_pdb_with_charges():
@@ -2722,6 +2739,49 @@ def test_from_xyz():
     mol2.infer_bonds(infer_bond_orders=True)
     assert len(mol2.bonds) == len(mol.bonds)
     os.remove(outfile)
+
+
+def test_residue_can_access_atoms_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    res = mol.get_residue(1)
+    assert len(res.atoms) == len(res.child_list)
+    assert len(res.get_atoms("C1", "C2")) == 2
+    assert len(list(res.get_atoms())) == len(res.child_list) == res.count_atoms()
+
+
+def test_chain_can_access_residues_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    chain = mol.get_chain("A")
+    assert len(chain.residues) == len(chain.child_list)
+    assert len(chain.get_residues("GLC")) == 1
+    assert (
+        len(list(chain.get_residues()))
+        == len(chain.child_list)
+        == chain.count_residues()
+    )
+
+
+def test_model_can_access_chains_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    model = mol.get_model(0)
+    assert len(model.chains) == len(model.child_list)
+    assert len(model.get_chains("A")) == 1
+    assert (
+        len(list(model.get_chains())) == len(model.child_list) == model.count_chains()
+    )
+
+
+def test_collapse_chains():
+
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
+    mol.merge(mol.copy().move([50, 0, 0]))
+
+    n_residues = mol.count_residues()
+    n_chains = mol.count_chains()
+
+    mol.collapse_chains()
+    assert mol.count_chains() == n_chains
+    assert mol.count_residues() == n_chains
 
 
 def test_reversed_linkage_stitch():

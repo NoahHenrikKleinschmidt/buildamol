@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="buildamol",
-    version="1.2.9",
+    version="1.2.10",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@unibe.ch",
     description="A fragment-based molecular assembly toolkit for python.",
@@ -54,6 +54,7 @@ setuptools.setup(
         "scikit-learn",
         "ipywidgets",  # "ipywidgets<8.0.1", # I don't remember why the 8.0.1 was there
         "attrs",
+        "Deprecated",
     ],
     optional_requires={
         "visual": ["py3Dmol", "nglview"],
