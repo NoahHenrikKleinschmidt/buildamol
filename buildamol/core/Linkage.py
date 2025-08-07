@@ -3,11 +3,11 @@ Linkage definitions
 ===================
 
 A linkage is a connection between two _molecules_. At its core each linkage simply defines two atoms that should be connected,
-and what atoms to remove in the process. It is a "pseudo" chemical reaction, so to speak. 
+and what atoms to remove in the process. It is a "pseudo" chemical reaction, so to speak.
 
 Building on the CHARMM force field, BuildAMol distinguishes two kinds of linkages: patches and recipies.
 
-A **patch** is a linkage that can be applied purely geometrically and does not require numeric optimization. This is because a 
+A **patch** is a linkage that can be applied purely geometrically and does not require numeric optimization. This is because a
 patch includes geometric data in form of _internal coordinates_ of the atoms in the immediate vicinity of the newly formed bond.
 Using this data, BuildAMol is able to attach molecule to one another through simple matrix transformations. Conesquently, patches
 are the most efficient way to connect molecules and are preferable to **recipes** - the other type of linkage.
@@ -32,7 +32,7 @@ wrappers available to create either a patch or recipe, respectively, which requi
         id = "my_link"
     )
 
-    
+
 
 
 Pre-defined patches
@@ -69,7 +69,7 @@ A custom linkage can be added to the list of pre-defined patches by using the `a
     .. code-block:: python
 
         resources.add_linkage(my_link)
-        # performs the same as 
+        # performs the same as
         resources.add_patch(my_link)
 
         # check for a specific linkage
@@ -85,7 +85,7 @@ to the ``Molecule``'s ``attach`` method or any other function that requires a li
 
 .. code-block:: python
 
-    import buildamol as bam 
+    import buildamol as bam
 
     mol1 = bam.read_pdb("my_molecule.pdb")
     mol2 = bam.read_pdb("my_other_molecule.pdb")
@@ -96,13 +96,17 @@ to the ``Molecule``'s ``attach`` method or any other function that requires a li
     # works the same as doing
     some_patch = bam.get_patch("some_patch")
     mol1.attach(mol2, some_patch)
-    
+
 
 """
 
 import buildamol.base_classes as base_classes
 import buildamol.utils as utils
 import buildamol.structural.neighbors as neighbors
+
+from warnings import warn
+from copy import deepcopy
+
 
 __all__ = ["Linkage", "recipe", "patch", "linkage"]
 
@@ -944,6 +948,52 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             ic.atom4 = prefix(ic.atom4)
 
         return super().add_internal_coordinates(ic)
+
+    def copy(self) -> "Linkage":
+        """
+        Create a copy of the `Linkage` instance.
+
+        Returns
+        -------
+        Linkage
+            A new `Linkage` instance that is a copy of the original.
+        """
+        return deepcopy(self)
+
+    def reverse(self, inplace: bool = True) -> "Linkage":
+        """
+        Reverse the linkage, i.e. swap the atoms in the bond and the deletes.
+
+        Parameters
+        ----------
+        inplace : bool, optional
+            If True, the linkage will be reversed in place. If False, a new reversed linkage
+            will be returned. Default is True.
+
+        Returns
+        -------
+        Linkage
+            The reversed linkage if `inplace` is False, otherwise None.
+        """
+        if self.has_IC:
+            raise ValueError(
+                "Currently, a linkage  with internal coordinates cannot be reversed. Please, remove the internal coordinates first."
+            )
+        if not inplace:
+            obj = deepcopy(self)
+            return obj.reverse(inplace=True)
+
+        a, b = self.bond
+        if a.startswith("1"):
+            a = "2" + a[1:]
+        if b.startswith("2"):
+            b = "1" + b[1:]
+        self.bond = (b, a)
+
+        self._delete_ids = [
+            ("2" + i[1:]) if i[0] == "1" else ("1" + i[1:]) for i in self._delete_ids
+        ]
+        return self
 
     def to_json(self, filename: str):
         """

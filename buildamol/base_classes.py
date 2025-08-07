@@ -5,14 +5,14 @@ tuple. This makes each object unique and allows for easy comparison where `a == 
 Consequently, the `__hash__` method is overwritten to use the UUID4 as the hash.
 
 .. warning::
-    
+
     Each class has its own `copy` method that returns a deep copy of the object with a new UUID4. So `a.copy() == a` is `False`, while a standard `deepcopy(a) == a` is `True` since the UUID4 will not have been updated automatically.
 
 Converting to and from `biopython`
 ----------------------------------
 
 Each BuildAMol class can be generated from a biopython class using the `from_biopython` class method. And each BuildAMol class has a `to_biopython` method that returns the pure-biopython equivalent.
-It is important to note, that for most purposes, however, the BuildAMol classes should work fine as trop-in replacements for the original biopython classes. 
+It is important to note, that for most purposes, however, the BuildAMol classes should work fine as trop-in replacements for the original biopython classes.
 
 .. code-block:: python
 
@@ -23,7 +23,7 @@ It is important to note, that for most purposes, however, the BuildAMol classes 
     atom = Atom.from_biopython(bio_atom)
 
     assert atom == bio_atom # False since atom uses a UUID4 as its identifier
-    assert atom.to_biopython() == bio_atom # True 
+    assert atom.to_biopython() == bio_atom # True
 
 The conversion from and to biopython works hierarchically, so if an entire biopython structure is converted to BuildAMol
 then all atoms, residues, chains and models will be converted to their BuildAMol equivalents.
@@ -39,7 +39,7 @@ then all atoms, residues, chains and models will be converted to their BuildAMol
     atoms = list(structure.get_atoms())
     bio_atoms = list(bio_structure.get_atoms())
     assert len(atoms) == len(bio_atoms) # True
-    
+
 """
 
 from copy import deepcopy
@@ -625,6 +625,16 @@ class Residue(ID, bio.Residue.Residue):
         """
         return np.array([atom.coord for atom in self.get_atoms()])
 
+    @property
+    def atoms(self):
+        return sorted(self.get_atoms(), key=lambda x: x.serial_number)
+
+    def count_atoms(self) -> int:
+        """
+        Count the number of atoms in the residue.
+        """
+        return len(self.child_list)
+
     def get_atom(self, atom: Union[str, int]) -> Atom:
         """
         Get an atom by its name or serial number.
@@ -877,6 +887,16 @@ class Chain(ID, bio.Chain.Chain):
         if not isinstance(residue, Residue):
             residue = Residue.from_biopython(residue)
         bio.Chain.Chain.add(self, residue)
+
+    @property
+    def residues(self):
+        return sorted(self.get_residues(), key=lambda x: x.serial_number)
+
+    def count_residues(self) -> int:
+        """
+        Count the number of residues in the chain.
+        """
+        return len(self.child_list)
 
     def get_residue(self, residue: Union[str, int]) -> Residue:
         """
@@ -1147,6 +1167,71 @@ class Model(bio.Model.Model, ID):
         if not isinstance(chain, Chain):
             chain = Chain.from_biopython(chain)
         bio.Model.Model.add(self, chain)
+
+    @property
+    def chains(self):
+        """
+        Get the chains in the model.
+        """
+        return sorted(self.get_chains(), key=lambda x: x.id)
+
+    def count_chains(self) -> int:
+        """
+        Count the number of chains in the model.
+        """
+        return len(self.child_list)
+
+    def get_chain(self, chain: Union[str, int]) -> Chain:
+        """
+        Get a chain by its id.
+
+        Parameters
+        ----------
+        chain : str or int
+            The chain id.
+
+        Returns
+        -------
+        Chain
+            The chain.
+        """
+        if isinstance(chain, int):
+            return next((i for j, i in enumerate(self.child_list) if j == chain), None)
+        elif isinstance(chain, str):
+            return next((i for i in self.child_list if i.id == chain), None)
+        else:
+            raise TypeError(
+                f"chain must be either a string or an integer, not {chain=}"
+            )
+
+    def get_chains(self, *chains: Union[str, int]) -> "List[Chain]":
+        """
+        Get all chains in the model.
+
+        Parameters
+        ----------
+        chains : str or int, optional
+            The chain id to filter by.
+
+        Returns
+        -------
+        List[Chain]
+            The list of chains. If no chains argument is specified the default generator is returned.
+        """
+        if len(chains) == 0:
+            return super().get_chains()
+        elif len(chains) == 1 and isinstance(chains[0], (tuple, list, set)):
+            chains = chains[0]
+
+        if isinstance(chains[0], str):
+            return [i for i in self.child_list if i.id in chains]
+        # makes no sense but for consistency
+        elif isinstance(chains[0], int):
+            return [i for j, i in enumerate(self.child_list) if j in chains]
+        else:
+            raise TypeError(
+                f"chains must be either a list, tuple, or set of string or integer, not {chains=}"
+            )
 
     def get_coords(self) -> "np.ndarray":
         """

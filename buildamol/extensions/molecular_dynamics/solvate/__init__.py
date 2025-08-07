@@ -2,7 +2,7 @@
 An extension to facilitate solvating molecules in a box of water.
 """
 
-AVAILABLE_SOLVATION_BACKENDS = ["pdbfixer"]
+AVAILABLE_SOLVATION_BACKENDS = ["pdbfixer", "biobb"]
 
 SOLVATION_BACKEND = AVAILABLE_SOLVATION_BACKENDS[0]
 

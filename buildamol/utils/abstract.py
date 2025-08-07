@@ -236,6 +236,12 @@ class AbstractEntity_with_IC(AbstractEntity):
         else:
             raise ValueError(f"Unknown mode {mode}")
 
+    def remove_internal_coordinates(self):
+        """
+        Remove all internal coordinates
+        """
+        self.internal_coordinates.clear()
+
 
 @attr.s(hash=True)
 class AbstractAtom:

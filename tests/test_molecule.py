@@ -2491,27 +2491,48 @@ def test_cis_trans_asymmetric():
     assert mol_cis.is_cis(bond)
     assert not mol_cis.is_trans(bond)
 
-def test_infer_bonds_for_with_orders():
+
+def test_infer_bonds_for_residues_with_orders():
     bam.load_amino_acids()
     mol = bam.Molecule.from_compound("TYR")
     mol.bonds = []
-    mol.infer_bonds_for(1, infer_bond_orders=True)
+    mol.infer_bonds_for(mol.get_residue(1), infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 4
 
-def test_infer_bonds_for_with_orders_larger():
+
+def test_infer_bonds_for_residues_with_orders_larger():
     bam.load_amino_acids()
     from buildamol.extensions.bio.proteins import peptide
 
     mol = peptide("YSYSA")
     mol.bonds = []
-    mol.infer_bonds_for(1, infer_bond_orders=True)
+    mol.infer_bonds_for(mol.get_residue(1), infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 4
-    mol.infer_bonds_for(3, infer_bond_orders=True)
+    mol.bonds = []
+    mol.infer_bonds_for_residues(1, 3, infer_bond_orders=True)
     assert sum(1 for i in mol.get_double_bonds()) == 8
-    mol.show()
+
+
+def test_infer_bonds_for_atoms():
+    mol = bam.read_smiles("CC(=O)CC")
+    mol.bonds = []
+    carbons = mol.get_atoms("C", by="element")
+    mol.infer_bonds_for_atoms(carbons, infer_bond_orders=False)
+    assert mol.count_bonds() == len(carbons) - 1
+
+
+def test_infer_bonds_for_atoms_with_orders():
+    mol = bam.read_smiles("CC(=O)CC")
+    mol.bonds = []
+    atoms = mol.get_atoms("C", by="element") + mol.get_atoms("O", by="element")
+    mol.infer_bonds_for_atoms(atoms, infer_bond_orders=True)
+    assert mol.count_bonds() == len(atoms) - 1
+    assert sum(1 for i in mol.get_double_bonds()) == 1
+
 
 def test_from_pdb_with_charges():
     from pathlib import Path
+
     for f in Path("files").glob("tyrosine_ph*.pdb"):
         ph = int(f.name.split("ph")[1].split(".")[0])
         mol = bam.read_pdb(f)
@@ -2523,7 +2544,7 @@ def test_from_pdb_with_charges():
             assert N1.charge == 1
         else:
             assert N1.charge == 0
-        
+
         if ph <= 4:
             assert O2.charge == 0
         else:
@@ -2531,6 +2552,7 @@ def test_from_pdb_with_charges():
 
         smi = f.with_suffix(".smi")
         from rdkit import Chem
+
         rdmol = Chem.MolFromSmiles(smi.read_text())
         assert rdmol.GetNumAtoms() == mol.count_atoms()
 
@@ -2541,13 +2563,14 @@ def test_from_pdb_with_charges():
             atom_id = rdatom.GetPDBResidueInfo().GetName().strip()
             assert atom_id == atom.id
 
+
 def test_to_and_from_pdbqt():
     mol = bam.Molecule.from_compound("TYR")
     mol.drop_atom_names()
     mol.to_pdbqt("tyr.pdbqt")
-    
+
     mol2 = bam.Molecule.from_pdbqt("tyr.pdbqt")
-    
+
     mol.to_rdkit()
     mol2.to_rdkit()
 
@@ -2556,8 +2579,9 @@ def test_to_and_from_pdbqt():
         assert i.charge == j.charge
         assert i.id == j.id
         assert i.coord == j.coord
-    
+
     os.remove("tyr.pdbqt")
+
 
 def test_read_multimodel_pdb():
     f = "tests/files/multimodel.pdb"
@@ -2574,22 +2598,24 @@ def test_read_multimodel_pdb():
     mol_with_models = bam.read_pdb(f, multimodel=False, model="all")
     assert len(mol_with_models.models) == 3
 
-    mol_with_models = bam.Molecule.from_pdb(f, model="all") 
+    mol_with_models = bam.Molecule.from_pdb(f, model="all")
     assert len(mol_with_models.models) == 3
-
 
     mol3 = bam.read_pdb(f, multimodel=False, model=3)
     assert len(mol3.models) == 1
 
+
 def test_split_models_multimodel():
     f = "tests/files/multimodel.pdb"
     mol = bam.Molecule.from_pdb(f, model="all")
-    mol.infer_bonds(max_bond_length=1.5, restrict_residues=False, infer_bond_orders=True)
+    mol.infer_bonds(
+        max_bond_length=1.5, restrict_residues=False, infer_bond_orders=True
+    )
     mols = mol.split_models(False)
     assert len(mols) == 3
     assert all([len(i.models) == 1 for i in mols])
     assert all([i.models[0].id == 0 for i in mols])
-    
+
     try:
         mol.get_atom(1)
         mol._atoms
@@ -2609,4 +2635,168 @@ def test_split_models_multimodel():
         assert _m.parent is m.structure
         assert a is m._atoms[0]
         assert m._atoms[0].parent.parent.parent is _m
-        assert m.atoms[0].parent.parent.parent  is _m
+        assert m.atoms[0].parent.parent.parent is _m
+
+
+def test_can_reassign_atoms():
+
+    mol = bam.Molecule.from_compound("GLC")
+    atom = mol.get_atom("C1")
+    new_res = bam.Residue("C1_only")
+    mol.add_residues(new_res)
+    mol.set_parent(atom, new_res)
+    assert atom.parent is new_res
+    assert atom in new_res.child_list
+    assert atom is new_res.get_atom(atom.id)
+
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_can_reassign_residue():
+    mol = bam.Molecule.from_compound("GLC")
+    new_chain = bam.Chain("B")
+    mol.add_chains(new_chain)
+    mol.set_parent(mol.get_residue(1), new_chain)
+    assert mol.get_residue(1).parent is new_chain
+    assert len(mol.get_chain("A").child_list) == 0
+    assert len(mol.get_chain("B").child_list) == 1
+
+
+def test_can_reassign_chain():
+    mol = bam.Molecule.from_compound("GLC")
+    chainA = mol.get_chain("A")
+    mol.add_model()
+    new_model = mol.get_model(1)
+    mol.set_parent(chainA, new_model)
+    assert chainA.parent is new_model
+    assert len(new_model.child_list) == 1
+    assert len(mol.get_model(0).child_list) == 0
+
+
+def test_can_split_at_residues():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = mol.copy().move([10, 5, 5])
+    mol.merge(mol2)
+    assert len(mol.residues) == 2
+    out = mol.split_residues()
+    assert len(out) == 2
+    assert len(mol.residues) == 0
+    for i in out:
+        assert len(i.residues) == 1
+        assert len(i.atoms) > 0
+        assert len(i.bonds) > 0
+
+        if base.ALLOW_VISUAL:
+            i.show()
+
+
+def test_can_split_contiguous():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = mol.copy().move([10, 5, 5])
+    mol.merge(mol2)
+    assert len(mol.residues) == 2
+    mol.squash()
+    assert len(mol.residues) == 1
+    mol.split_contiguous()
+    assert len(mol.residues) == 2
+
+
+def test_can_split_contiguous_with_targets():
+    mol = bam.Molecule.from_compound("GLC")
+    mol2 = mol.copy().move([10, 5, 5])
+    mol.merge(mol2)
+    assert len(mol.residues) == 2
+    mol.squash()
+    assert len(mol.residues) == 1
+    mol2 = mol.copy().move([5, 10, 10])
+    mol.merge(mol2)
+    assert len(mol.residues) == 2
+    mol.split_contiguous(target_residues=[1])
+    assert len(mol.residues) == 3
+
+
+def test_to_xyz():
+    mol = bam.Molecule.from_compound("GLC")
+    outfile = "test.xyz"
+    mol.to_xyz(outfile)
+    assert os.path.exists(outfile)
+    with open(outfile) as f:
+        lines = f.readlines()
+        assert len(lines) == mol.count_atoms() + 2
+        assert lines[0].strip() == str(mol.count_atoms())
+        assert lines[1].strip() == "GLC"
+    os.remove(outfile)
+
+
+def test_from_xyz():
+    mol = bam.Molecule.from_compound("GLC")
+    outfile = "test.xyz"
+    mol.to_xyz(outfile)
+    mol2 = bam.Molecule.from_xyz(outfile)
+    assert len(mol.atoms) == len(mol2.atoms)
+    assert len(mol2.bonds) == 0
+    mol2.infer_bonds(infer_bond_orders=True)
+    assert len(mol2.bonds) == len(mol.bonds)
+    os.remove(outfile)
+
+
+def test_residue_can_access_atoms_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    res = mol.get_residue(1)
+    assert len(res.atoms) == len(res.child_list)
+    assert len(res.get_atoms("C1", "C2")) == 2
+    assert len(list(res.get_atoms())) == len(res.child_list) == res.count_atoms()
+
+
+def test_chain_can_access_residues_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    chain = mol.get_chain("A")
+    assert len(chain.residues) == len(chain.child_list)
+    assert len(chain.get_residues("GLC")) == 1
+    assert (
+        len(list(chain.get_residues()))
+        == len(chain.child_list)
+        == chain.count_residues()
+    )
+
+
+def test_model_can_access_chains_custom():
+    mol = bam.Molecule.from_compound("GLC")
+    model = mol.get_model(0)
+    assert len(model.chains) == len(model.child_list)
+    assert len(model.get_chains("A")) == 1
+    assert (
+        len(list(model.get_chains())) == len(model.child_list) == model.count_chains()
+    )
+
+
+def test_collapse_chains():
+
+    mol = bam.Molecule.from_pdb(base.MAN9PDB)
+    mol.merge(mol.copy().move([50, 0, 0]))
+
+    n_residues = mol.count_residues()
+    n_chains = mol.count_chains()
+
+    mol.collapse_chains()
+    assert mol.count_chains() == n_chains
+    assert mol.count_residues() == n_chains
+
+
+def test_reversed_linkage_stitch():
+    mol1 = bam.Molecule.from_compound("GLC")
+    mol2 = bam.Molecule.from_smiles("CCN")
+
+    b14_link = bam.linkage("N1", "O4")
+    out_fwd = bam.connect(mol2, mol1, b14_link)
+
+    b14_link.reverse()
+    out_rev = bam.connect(mol1, mol2, b14_link)
+    assert out_fwd.count_atoms() == out_rev.count_atoms()
+
+    # now the link should not be applicable in this direction
+    # but the reverse again should be fine - this should be automatically
+    # applied
+    out_rev_auto_applied = bam.connect(mol2, mol1, b14_link)
+    assert out_fwd.count_atoms() == out_rev_auto_applied.count_atoms()

@@ -1,7 +1,7 @@
 """
 The base class for classes storing and manipulating molecular structures
-This houses most of the essential functionality of the library for most users. 
-The ``Molecule`` class adds additional features on top. 
+This houses most of the essential functionality of the library for most users.
+The ``Molecule`` class adds additional features on top.
 """
 
 from copy import deepcopy
@@ -10,6 +10,9 @@ import warnings
 
 import Bio.PDB as bio
 import numpy as np
+
+from deprecated import deprecated
+from deprecated.sphinx import versionchanged
 
 import buildamol.base_classes as base_classes
 import buildamol.core.Linkage as Linkage
@@ -120,7 +123,7 @@ class BaseEntity:
             new.autolabel()
 
         return new
-    
+
     @classmethod
     def _from_pdb_string(cls, string, id: str = None):
         """
@@ -169,7 +172,7 @@ class BaseEntity:
                     serial_number=atom_info["serial"],
                     coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
                     occupancy=atom_info["occ"],
-                    pqr_charge=int(atom_info.get('charge', 0) or 0),
+                    pqr_charge=int(atom_info.get("charge", 0) or 0),
                     element=atom_info["element"],
                 )
                 residues[res_seq].add(atom)
@@ -315,7 +318,34 @@ class BaseEntity:
         return cls.from_rdkit(rdmol)
 
     @classmethod
-    def from_pdbqt(cls, filename:str):
+    def from_xyz(cls, filename: str):
+        """
+        Make a Molecule from an XYZ file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the XYZ file
+        """
+        with open(filename, "r") as f:
+            f.readline()
+            mol_id = f.readline().strip()
+        structure = structural.make_empty_structure(mol_id)
+        new = cls(structure)
+        residue = base_classes.Residue.new(
+            resname="MOL",
+        )
+        new.add_residues(residue)
+        for atom_tuple in utils.xyz.iter_xyz(filename):
+            atom = base_classes.Atom.new(
+                atom_tuple[0],
+                coord=atom_tuple[1:],
+            )
+            new.add_atoms(atom)
+        return new
+
+    @classmethod
+    def from_pdbqt(cls, filename: str):
         """
         Make a Molecule from a PDBQT file
 
@@ -325,7 +355,8 @@ class BaseEntity:
             Path to the PDBQT file
         """
         atoms = utils.pdbqt.read_pdbqt(filename)
-        new = cls.empty(id=filename)
+        structure = structural.make_empty_structure(filename)
+        new = cls(structure)
         new.remove_chains("A")
 
         for atom in atoms:
@@ -336,7 +367,7 @@ class BaseEntity:
                 coord=coord,
                 serial_number=serial,
             )
-            
+
             chain = new.get_chain(chain)
             if chain is None:
                 chain = base_classes.Chain.new(chain)
@@ -346,7 +377,7 @@ class BaseEntity:
             if residue is None:
                 residue = base_classes.Residue.new(resname=resname, icode=resid)
                 chain.add(residue)
-            
+
             residue.add(atom)
         return new
 
@@ -668,7 +699,6 @@ class BaseEntity:
         """
         return sum(a.charge for a in self.get_atoms())
 
-    
     def get_atom_triplets(self):
         """
         Compute triplets of three consequtively bonded atoms
@@ -1322,6 +1352,32 @@ class BaseEntity:
         self._model.child_dict.clear()
         self._model.child_list.clear()
         self._model.add(chain)
+        self.reindex()
+        return self
+
+    def collapse_chains(self, resnames: list = None):
+        """
+        Turn each chain of the molecule into a single residue but preserve the the chains.
+
+        Parameters
+        ----------
+        resnames : list, optional
+            A list of residue names to use for the residues. If None, the residue names are taken from the first residue in each chain.
+            A string can also be given to use the same name for all residues.
+        """
+        if resnames is None:
+            resnames = [chain.child_list[0].name for chain in self.get_chains()]
+        elif isinstance(resnames, str):
+            resnames = [resnames] * self.count_chains()
+
+        for chain, resname in zip(self.get_chains(), resnames):
+            residue = base_classes.Residue(resname)
+            for atom in chain.get_atoms():
+                residue.add(atom)
+            chain.child_dict.clear()
+            chain.child_list.clear()
+            chain.add(residue)
+
         self.reindex()
         return self
 
@@ -2571,10 +2627,12 @@ class BaseEntity:
             for bond in self._bonds:
                 i, j = bond.atom1, bond.atom2
                 order = bond.order
-                new._set_bond(new.get_atom(i.serial_number), new.get_atom(j.serial_number), order)
-            new.update_atom_graph() # for some reason...
+                new._set_bond(
+                    new.get_atom(i.serial_number), new.get_atom(j.serial_number), order
+                )
+            new.update_atom_graph()  # for some reason...
             models.append(new)
-        
+
         if not _copy:
             self.clear()
         return models
@@ -2682,6 +2740,42 @@ class BaseEntity:
         self._base_struct.child_dict.pop(model.get_id())
         self.remove_chains(model.child_list)
         return self
+
+    def split_contiguous(self, target_residues: list = None):
+        """
+        Split residues that contain multiple contiguous atom groups into separate residues.
+        Residues that are split will be removed from the molecule and replaced with the new residues labeled "UNL_X" where X is a counter.
+        The indexing is **not** affected by this operation (i.e. atom serials are not changed).
+
+        Parameters
+        ----------
+        target_residues : list
+            A list of residues to split. If None, all residues are split.
+        """
+        structural.split_into_contiguous_residues(self, target_residues)
+        return self
+
+    def split_residues(self):
+        """
+        Split the molecule into separate residues, creating a list of new molecules, each with a single residue.
+        """
+        out = [None] * sum(1 for i in self.get_residues())
+        for i, residue in enumerate(self.get_residues()):
+            new_struct = base_classes.Structure(0)
+            new_model = base_classes.Model(1)
+            new_struct.add(new_model)
+            new_chain = base_classes.Chain("A")
+            new_model.add(new_chain)
+
+            new = self.__class__(new_struct)
+
+            bonds_to_add = self.get_bonds(residue)
+            self.remove_residues(residue)
+            new.add_residues(residue)
+            new.set_bonds(bonds_to_add)
+            out[i] = new
+
+        return out
 
     def get_structure(self) -> base_classes.Structure:
         return self._base_struct
@@ -3021,6 +3115,78 @@ class BaseEntity:
             )
 
         return next(_atom, None)
+
+    def set_parent(
+        self,
+        obj: Union[
+            base_classes.Atom,
+            base_classes.Residue,
+            base_classes.Chain,
+            base_classes.Model,
+        ],
+        parent: Union[base_classes.Residue, base_classes.Chain, base_classes.Model],
+    ):
+        """
+        Reassign a structural component like an Atom to a new parent object.
+
+        Parameters
+        ----------
+        obj : Atom or Residue or Chain or Model
+            The object to assign to another parent
+        parent : Residue or Chain or Model
+            The new parent object
+        """
+        if isinstance(obj, (list, set, tuple)):
+            for o in obj:
+                self.set_parent(o, parent)
+            return self
+
+        if isinstance(obj, base_classes.Atom) and not isinstance(
+            parent, base_classes.Residue
+        ):
+            raise ValueError("Atoms can only be assigned to Residues")
+        elif isinstance(obj, base_classes.Residue) and not isinstance(
+            parent, base_classes.Chain
+        ):
+            raise ValueError("Residues can only be assigned to Chains")
+        elif isinstance(obj, base_classes.Chain) and not isinstance(
+            parent, base_classes.Model
+        ):
+            raise ValueError("Chains can only be assigned to Models")
+        elif isinstance(obj, base_classes.Model) and not isinstance(
+            parent, base_classes.Structure
+        ):
+            raise ValueError("Models can only be assigned to Structures")
+        elif not any(
+            isinstance(obj, i)
+            for i in [
+                base_classes.Atom,
+                base_classes.Residue,
+                base_classes.Chain,
+                base_classes.Model,
+            ]
+        ):
+            raise ValueError(
+                f"Object must be an Atom, Residue, Chain or Model, got {type(obj)}"
+            )
+        elif not any(
+            isinstance(parent, i)
+            for i in [base_classes.Residue, base_classes.Chain, base_classes.Model]
+        ):
+            raise ValueError(
+                f"Parent must be a Residue, Chain or Model, got {type(parent)}"
+            )
+
+        current_parent = obj.get_parent()
+        if current_parent is parent:
+            return self
+        elif current_parent is None:
+            parent.add(obj)
+            return self
+
+        current_parent.detach_child(obj.get_id())
+        parent.add(obj)
+        return self
 
     def get_bond(
         self,
@@ -4189,16 +4355,16 @@ class BaseEntity:
         list
             A list of tuples of atom pairs that are bonded
         """
-        bonds = structural.infer_bonds(
-            self._model, max_bond_length, restrict_residues
-        )
+        bonds = structural.infer_bonds(self._model, max_bond_length, restrict_residues)
         self._set_bonds(*bonds)
         if infer_bond_orders:
             structural.infer_bond_orders(self)
 
         return bonds
 
-    def infer_bonds_for(self, *residues, max_bond_length: float = None, infer_bond_orders: bool = False):
+    def infer_bonds_for_residues(
+        self, *residues, max_bond_length: float = None, infer_bond_orders: bool = False
+    ):
         """
         Infer bonds between atoms in the structure for a specific set of residues
 
@@ -4231,10 +4397,99 @@ class BaseEntity:
                 tmp.infer_bonds(max_bond_length=max_bond_length, infer_bond_orders=True)
                 incoming = tmp._bonds
             else:
-                incoming = structural.infer_bonds(res, max_bond_length, restrict_residues=False)
+                incoming = structural.infer_bonds(
+                    res, max_bond_length, restrict_residues=False
+                )
             bonds.extend(incoming)
         self._set_bonds(*bonds)
         return bonds
+
+    def infer_bonds_for_atoms(
+        self,
+        *atoms: Union[base_classes.Atom],
+        max_bond_length: float = None,
+        infer_bond_orders: bool = False,
+    ):
+        """
+        Infer bonds between atoms in the structure for a specific set of atoms
+
+        Parameters
+        ----------
+        atoms
+            The atoms to consider
+        max_bond_length : float
+            The maximum distance between atoms to consider them bonded.
+            If None, the default value is 1.6 Angstroms.
+        infer_bond_orders : bool
+            Whether to infer the bond orders (double and tripple bonds) based on registered functional groups.
+            This will slow the inference down, however.
+
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded
+        """
+        if isinstance(atoms[0], (list, set, tuple)):
+            atoms = atoms[0]
+        atoms = [self.get_atom(atom) for atom in atoms]
+        return self.infer_bonds_for(
+            *atoms, max_bond_length=max_bond_length, infer_bond_orders=infer_bond_orders
+        )
+
+    @versionchanged(
+        reason="infer_bonds_for now works with both residues and individual atoms but only accepts Residue and Atom objects as input and cannot search for them via serial numbers or ids. To keep using the old behavior where only residues were supported via any identifier use the `infer_bonds_for_residues` method instead.",
+        version="1.2.10",
+    )
+    def infer_bonds_for(
+        self,
+        *residues_or_atoms: Union[base_classes.Residue, base_classes.Atom],
+        max_bond_length: float = None,
+        infer_bond_orders: bool = False,
+    ):
+        """
+        Infer bonds between atoms in the structure for a specific set of residues or atoms
+
+        Parameters
+        ----------
+        residues_or_atoms
+            The residues or atoms to consider
+        max_bond_length : float
+            The maximum distance between atoms to consider them bonded.
+            If None, the default value is 1.6 Angstroms.
+        infer_bond_orders : bool
+            Whether to infer the bond orders (double and tripple bonds) based on registered functional groups.
+            This will slow the inference down, however.
+
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded
+        """
+        s = base_classes.Structure("tmp")
+        m = base_classes.Model(0)
+        c = base_classes.Chain("A")
+        res = base_classes.Residue("A", "A", 0)
+        s.add(m)
+        m.add(c)
+        c.add(res)
+        atoms = [i for i in residues_or_atoms if isinstance(i, base_classes.Atom)]
+        residues = [i for i in residues_or_atoms if isinstance(i, base_classes.Residue)]
+        if not len(atoms) and not len(residues):
+            raise ValueError(
+                "At least one residue or atom must be provided to infer bonds for."
+            )
+        for atom in atoms:
+            res.link(atom)
+        for residue in residues:
+            for atom in residue.child_list:
+                res.link(atom)
+        tmp = BaseEntity(s)
+        tmp.infer_bonds(
+            max_bond_length=max_bond_length, infer_bond_orders=infer_bond_orders
+        )
+        incoming = tmp._bonds
+        self._set_bonds(*incoming)
+        return incoming
 
     def get_residue_connections(
         self,
@@ -4527,7 +4782,9 @@ class BaseEntity:
             self._remove_atoms(*self.get_atoms("H", by="element"))
         return self
 
-    def adjust_to_ph(self, ph: Union[float, int, tuple], inplace: bool = True, **kwargs):
+    def adjust_to_ph(
+        self, ph: Union[float, int, tuple], inplace: bool = True, **kwargs
+    ):
         """
         Adjust the protonation state and charges to match a certain pH
 
@@ -4804,6 +5061,17 @@ class BaseEntity:
         xml = utils.xml.encode_molecule(self, atom_attributes)
         utils.xml.write_xml(filename, xml)
 
+    def to_xyz(self, filename: str):
+        """
+        Write the molecule to an XYZ file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the XYZ file
+        """
+        utils.xyz.write_xyz(self, filename)
+
     def to_openmm(self):
         """
         Convert the molecule to an OpenMM Topology
@@ -4980,8 +5248,6 @@ class BaseEntity:
             mask[bond.atom1.serial_number - 1, bond.atom2.serial_number - 1] = 1
             mask[bond.atom2.serial_number - 1, bond.atom1.serial_number - 1] = 1
         return mask
-
-    
 
     # def infer_missing_atoms(self, _topology=None, _compounds=None):
     #     """
