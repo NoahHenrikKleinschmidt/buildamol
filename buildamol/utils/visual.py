@@ -11,6 +11,8 @@ import matplotlib.colors as colors
 import buildamol.utils as utils
 import buildamol.utils.auxiliary as aux
 
+import periodictable
+
 Draw = aux.Draw
 Chem = aux.Chem
 
@@ -82,7 +84,7 @@ class Chem2DViewer:
         - "id" (the atom id / name)
         - "resid" (atom id + parent residue)
         - "off" (no label)
-        - any function that takes an (rdkit) atom and returns a string
+        - any function that takes an (rdkit) atom and returns a string (deprecated, use `label_atoms` instead)
     """
 
     def __init__(
@@ -96,12 +98,18 @@ class Chem2DViewer:
             raise ImportError(
                 "rdkit is not available. Please install it and be sure to use a compatible environment."
             )
+        self._raw_molecule = None
+        self._raw_is_rdkit = False
         if hasattr(molecule, "to_rdkit"):
             mol = molecule.to_rdkit()
+            self._raw_molecule = molecule
         elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
             mol = molecule._molecule.to_rdkit()
+            self._raw_molecule = molecule
         elif "Chem" in str(molecule.__class__.mro()[0]):
             mol = molecule
+            self._raw_molecule = molecule
+            self._raw_is_rdkit = True
         else:
             raise ValueError(
                 f"Unsupported molecule type: {molecule.__class__.__name__}"
@@ -125,7 +133,9 @@ class Chem2DViewer:
                     return f"{info.GetName().strip()}@{info.GetResidueName().strip()}[{info.GetResidueNumber()}]"
 
             elif callable(atoms):
-                pass
+                aux.warnings.deprecated(
+                    "Providing a callable to the `atoms` argument is deprecated. This feature will be removed in future versions. Please use the `label_atoms` method instead."
+                )
             else:
                 raise ValueError(f"Unsupported atom label: {atoms}")
 
@@ -138,6 +148,86 @@ class Chem2DViewer:
         self.linewidth = linewidth
         self.options = Draw.MolDrawOptions()
         self._custom_colors = {}
+
+    def label_atoms(self, func_or_mapping, rdkit: bool = None):
+        """
+        Generate custom atom labels
+
+        Parameters
+        ----------
+        func_or_mapping : callable or dict
+            Either a function that takes an atom and returns a string. Or a dictionary mapping atoms to strings.
+            Only one type of key can be included in the dictionary!
+            Supported dictionary keys are:
+            - BuildAMol Atoms
+            - RDKit Atoms
+            - atom serial numbers (int)
+            - atom ids (str) (will match all atoms with that id)
+        rdkit : bool
+            Whether the function takes an RDKit atom or a BuildAMol atom.
+        """
+        if rdkit is False and self._raw_is_rdkit:
+            raise ValueError(
+                "The underlying molecule is an RDKit molecule. Cannot perform BuildAMol operations on RDKit Atoms. Please set `rdkit=True`."
+            )
+
+        if isinstance(func_or_mapping, dict):
+            # allow for Atoms as well under the hood
+            first_key = next(iter(func_or_mapping.keys()))
+            if hasattr(first_key, "GetPDBResidueInfo"):
+                func_or_mapping = {
+                    atom.GetPDBResidueInfo().GetSerialNumber(): label
+                    for atom, label in func_or_mapping.items()
+                }
+            elif hasattr(first_key, "element") and hasattr(first_key, "serial_number"):
+                func_or_mapping = {
+                    atom.serial_number: label for atom, label in func_or_mapping.items()
+                }
+            elif isinstance(first_key, str):
+                _func_or_mapping = {}
+                for key, label in func_or_mapping.items():
+                    matching_atoms = self._raw_molecule.get_atoms(key)
+                    for atom in matching_atoms:
+                        _func_or_mapping[atom.serial_number] = label
+                func_or_mapping = _func_or_mapping
+
+            elif not isinstance(first_key, int):
+                raise ValueError(
+                    "When providing a mapping, the keys must be either BuildAMol Atoms, RDKit Atoms, or atom serial numbers (ints)."
+                )
+
+            def default_label(atom):
+                element = atom.GetSymbol()
+                is_carbon = element == "C"
+                if is_carbon:
+                    return ""
+                else:
+                    return element
+
+            func = lambda atom: func_or_mapping.get(
+                atom.GetPDBResidueInfo().GetSerialNumber(), default_label(atom)
+            )
+            for a in self.mol.GetAtoms():
+                a.SetProp("atomLabel", func(a))
+            return self
+
+        elif callable(func_or_mapping):
+            func = func_or_mapping
+        else:
+            raise ValueError(
+                f"func_or_mapping must be a callable or a dictionary, got {type(func_or_mapping)}."
+            )
+
+        if rdkit or (rdkit is None and self._raw_is_rdkit):
+            for a in self.mol.GetAtoms():
+                a.SetProp("atomLabel", func(a))
+        else:
+
+            for a in self.mol.GetAtoms():
+                serial = a.GetPDBResidueInfo().GetSerialNumber()
+                bam_atom = self._raw_molecule.get_atom(serial, by="serial")
+                a.SetProp("atomLabel", str(func(bam_atom)))
+        return self
 
     def draw(
         self,
@@ -255,7 +345,7 @@ class Chem2DViewer:
         """
         return self.draw(draw_hydrogens=draw_hydrogens, **kwargs).show()
 
-    def highlight_atoms(self, *atoms):
+    def highlight_atoms(self, *atoms, color):
         """
         Highlight atoms in the molecule.
 
@@ -273,12 +363,33 @@ class Chem2DViewer:
 
     def _rdkit_atom_from_buildamol_atom(self, atom, mol=None):
         mol = mol or self.mol
-        atom = next(
-            _atom
-            for _atom in mol.GetAtoms()
-            if _atom.GetPDBResidueInfo().GetSerialNumber() == atom.serial_number
-        )
-        return atom
+        if hasattr(atom, "GetPDBResidueInfo"):
+            return atom
+        elif hasattr(atom, "serial_number"):
+            _atom = next(
+                (
+                    _atom
+                    for _atom in mol.GetAtoms()
+                    if _atom.GetPDBResidueInfo().GetSerialNumber() == atom.serial_number
+                ),
+                None,
+            )
+            if _atom is None:
+                raise ValueError(f"Atom {atom} did not have an RDKit equivalent.")
+        elif isinstance(atom, int):
+            _atom = next(
+                (_atom for _atom in mol.GetAtoms() if _atom.GetIdx() == atom),
+                None,
+            )
+            if _atom is None:
+                raise ValueError(
+                    f"Atom with index {atom} did not have an RDKit equivalent."
+                )
+        else:
+            raise ValueError(
+                f"Unsupported atom type: {atom.__class__.__name__}. The input has to be a BuildAMol Atom, an RDKit Atom, or an atom index (int)."
+            )
+        return _atom
 
     def highlight_bonds(self, *bonds):
         """
@@ -1124,9 +1235,10 @@ if __name__ == "__main__":
 
     bam.load_sugars()
     man = bam.molecule("MAN")
-
+    man = man % "14bb" * 2
     v = Chem2DViewer(man)
-    v.highlight_atoms(man.atoms[:3])
+    v.label_atoms({o: "an O atom" for o in man.get_atoms("O", by="element")})
+    v.highlight_atoms(1, 2, 3)
     v.show(linewidth=5)
     pass
     # v = MoleculeViewer3D()
