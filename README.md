@@ -22,17 +22,18 @@ It allows for an easy modeling process inside a Jupyter Notebook  or can be inte
 
 BuildAMol allows users to:
 --------------------------
-- build any larger molecular structure they like
+- build any larger molecular structure they like with full control
+- automate molecular modeling tasks (e.g. see the [Ligand Design Pipeline](https://biobuild.readthedocs.io/en/latest/examples/ligand_design.html) or [Molecular Derivatives](https://biobuild.readthedocs.io/en/latest/examples/derivator_example.html) examples)
 - improve the conformation of an existing structure
-- convert data formats
 - visualize the structures as they build them
 - quickly obtain molecular structures for chemical compounds
+- convert data formats
 
 BuildAMol cannot:
 -----------------
-- imitate real-life chemical reaction mechanisms
+- model real-life chemical reaction mechanisms
 - perform molecular dynamics or quantum chemistry computations
-- generate molecules _for_ the user out of the blue - the user needs to know what they want to build...
+- generate molecules _for_ the user out of the blue - the user needs to to have some idea of what to build or how to build it...
 
 
 Installing BuildAMol
@@ -63,7 +64,7 @@ To learn more about the benchmarking we did and further details on the software,
 	year = {2024}}
 ```
 
-Quick Example - Building A Dendrimer
+Example 1 - Building A Dendrimer
 ------------------------------------
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/NoahHenrikKleinschmidt/buildamol/blob/dev/docs/examples/_colab_building_polyphenylene.ipynb)
 
