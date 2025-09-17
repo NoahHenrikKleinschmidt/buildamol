@@ -305,10 +305,8 @@ class Chem2DViewer:
         radius
             The radius to use for highlighting. This can be a float or a callable that takes an atom and returns a float.
         """
-        if isinstance(atoms, (list, tuple, set)) and len(atoms) == 1:
+        if isinstance(atoms[0], (list, tuple, set)) and len(atoms) == 1:
             atoms = atoms[0]
-        elif len(atoms) == 1:
-            atoms = [atoms]
 
         a = atoms[0]
         if isinstance(a, (str, int)):
@@ -351,10 +349,9 @@ class Chem2DViewer:
         color
             The color to use for highlighting. This can be either a string or a tuple of RGB values, or a callable that takes a bond and returns a color.
         """
-        if isinstance(bonds, (list, tuple, set)) and len(bonds) == 1:
+        if isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
             bonds = bonds[0]
-        elif len(bonds) == 0:
-            bonds = [bonds]
+
 
         if callable(color):
             bonds = {bond: color(bond) for bond in bonds}
