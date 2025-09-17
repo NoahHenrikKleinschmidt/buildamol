@@ -418,3 +418,34 @@ class DummyBar:
 
     def update(self, *args, **kwargs):
         pass
+
+
+class AtomIterator:
+    """
+    Dummy class defining the `get_atoms` method for iterating over atoms in a list
+    """
+
+    def __init__(self, atoms):
+        self._atoms = atoms
+        self._index = 0
+
+    def __len__(self):
+        return len(self._atoms)
+
+    def get_atoms(self):
+        yield from self._atoms
+
+    def __iter__(self):
+        yield from self._atoms
+
+
+def deprecation_warning(message):
+    """
+    Issue a deprecation warning
+
+    Parameters
+    ----------
+    message : str
+        The warning message
+    """
+    warnings.warn(message, DeprecationWarning, stacklevel=2)

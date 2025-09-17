@@ -71,12 +71,16 @@ class Chem2DViewer:
     molecule
         The molecule to view. This may be any object that holds
         a biopython structure e.g. a Molecule, AtomGraph, or ResidueGraph.
+    drawer: str
+        The 2D drawer to use. This can be any of:
+            - png (default, uses `MolDraw2DCairo`, requires cairo to be installed)
+            - svg (uses `MolDraw2DSVG`)
     highlight_color : str
-        The color to use for highlighting atoms and bonds.
+        The color to use for highlighting atoms and bonds (deprecated, specify a color when calling `highlight_atoms` or `highlight_bonds` instead).
     linewidth : float
-            The linewidth of the bonds.
+            The linewidth of the bonds (deprecated, specify a linewidth when calling the `draw` method instead).
     atoms : str
-        The label to use for the atoms.
+        The label to use for the atoms (deprecated, specify a label when calling the `label_atoms` method instead).
         This can be any of the following:
         - None (element, except for carbons)
         - "element" (elements, even for carbons)
@@ -84,20 +88,28 @@ class Chem2DViewer:
         - "id" (the atom id / name)
         - "resid" (atom id + parent residue)
         - "off" (no label)
-        - any function that takes an (rdkit) atom and returns a string (deprecated, use `label_atoms` instead)
+        - any function that takes an (rdkit) atom and returns a string.
     """
 
     def __init__(
         self,
         molecule,
-        highlight_color: str = "cyan",
-        linewidth: float = 1,
+        drawer: str = "png",
+        highlight_color: str = None,
+        linewidth: float = None,
         atoms: str = None,
     ):
         if Chem is None:
             raise ImportError(
                 "rdkit is not available. Please install it and be sure to use a compatible environment."
             )
+
+        drawer = drawer.strip().lower()
+        if drawer not in ("svg", "png"):
+            raise ValueError(f"Unsupported drawer: {drawer}")
+
+        self._drawer_type = drawer
+
         self._raw_molecule = None
         self._raw_is_rdkit = False
         if hasattr(molecule, "to_rdkit"):
@@ -118,6 +130,9 @@ class Chem2DViewer:
         self.mol = mol
 
         if atoms is not None:
+            aux.deprecation_warning(
+                "The `atoms` argument is deprecated and will be removed in future versions. Please use the `label_atoms` method instead."
+            )
             if atoms == "element":
                 atoms = lambda atom: atom.GetSymbol()
             elif atoms == "serial":
@@ -133,9 +148,7 @@ class Chem2DViewer:
                     return f"{info.GetName().strip()}@{info.GetResidueName().strip()}[{info.GetResidueNumber()}]"
 
             elif callable(atoms):
-                aux.warnings.deprecated(
-                    "Providing a callable to the `atoms` argument is deprecated. This feature will be removed in future versions. Please use the `label_atoms` method instead."
-                )
+                pass
             else:
                 raise ValueError(f"Unsupported atom label: {atoms}")
 
@@ -143,9 +156,20 @@ class Chem2DViewer:
                 a.SetProp("atomLabel", atoms(a))
 
         self._atoms_to_highlight = []
-        self._bonds_to_highlight = []
-        self.highlight_color = highlight_color
-        self.linewidth = linewidth
+        self._atoms_highlight_colors = {}
+        self._atoms_highlight_radii = {}
+        self._bonds_to_highlight = {}
+
+        if highlight_color is not None:
+            aux.deprecation_warning(
+                "The `highlight_color` argument is deprecated and will be removed in future versions. Please specify a color when calling `highlight_atoms` or `highlight_bonds` instead."
+            )
+        if linewidth is not None:
+            aux.deprecation_warning(
+                "The `linewidth` argument is deprecated and will be removed in future versions. Please specify a linewidth when calling the `draw` method instead."
+            )
+        self.highlight_color = highlight_color or "cyan"
+        self.linewidth = linewidth or 1
         self.options = Draw.MolDrawOptions()
         self._custom_colors = {}
 
@@ -155,23 +179,64 @@ class Chem2DViewer:
 
         Parameters
         ----------
-        func_or_mapping : callable or dict
-            Either a function that takes an atom and returns a string. Or a dictionary mapping atoms to strings.
+        func_or_mapping : str, callable or dict
+            If a string is provided it has to be one of the following:
+            - "element" (elements, even for carbons)
+            - "serial" (the atom serial number)
+            - "id" (the atom id / name)
+            - "resid" (atom id + parent residue)
+            - "off" (no label)
+            Alternatively, either a function that takes an atom and returns a string. Or a dictionary mapping atoms to strings.
             Only one type of key can be included in the dictionary!
             Supported dictionary keys are:
             - BuildAMol Atoms
-            - RDKit Atoms
             - atom serial numbers (int)
             - atom ids (str) (will match all atoms with that id)
         rdkit : bool
             Whether the function takes an RDKit atom or a BuildAMol atom.
         """
+        if isinstance(func_or_mapping, str):
+            if func_or_mapping == "element":
+                func_or_mapping = lambda atom: atom.GetSymbol()
+            elif func_or_mapping == "serial":
+                func_or_mapping = lambda atom: str(
+                    atom.GetPDBResidueInfo().GetSerialNumber()
+                )
+            elif func_or_mapping == "id":
+                func_or_mapping = (
+                    lambda atom: atom.GetPDBResidueInfo().GetName().strip()
+                )
+            elif func_or_mapping == "off":
+                func_or_mapping = lambda atom: ""
+            elif func_or_mapping == "resid":
+                func_or_mapping = (
+                    lambda atom: f"{atom.GetPDBResidueInfo().GetName().strip()}@{atom.GetPDBResidueInfo().GetResidueName().strip()}[{atom.GetPDBResidueInfo().GetResidueNumber()}]"
+                )
+            else:
+                raise ValueError(
+                    f"Unsupported atom label for string identifier: '{func_or_mapping}'. Supported are 'element', 'serial', 'id', 'resid', and 'off'."
+                )
+            rdkit = True
+
         if rdkit is False and self._raw_is_rdkit:
             raise ValueError(
                 "The underlying molecule is an RDKit molecule. Cannot perform BuildAMol operations on RDKit Atoms. Please set `rdkit=True`."
             )
 
-        if isinstance(func_or_mapping, dict):
+        if callable(func_or_mapping):
+            try:
+
+                test_atom = next(iter(self.mol.GetAtoms()))
+                func_or_mapping(test_atom)
+                rdkit = True
+            except Exception:
+                if self._raw_is_rdkit:
+                    raise ValueError(
+                        "The underlying molecule is an RDKit molecule. Cannot perform BuildAMol operations on RDKit Atoms. Please set `rdkit=True`."
+                    )
+                rdkit = False
+
+        elif isinstance(func_or_mapping, dict):
             # allow for Atoms as well under the hood
             first_key = next(iter(func_or_mapping.keys()))
             if hasattr(first_key, "GetPDBResidueInfo"):
@@ -211,99 +276,121 @@ class Chem2DViewer:
                 a.SetProp("atomLabel", func(a))
             return self
 
-        elif callable(func_or_mapping):
-            func = func_or_mapping
         else:
             raise ValueError(
-                f"func_or_mapping must be a callable or a dictionary, got {type(func_or_mapping)}."
+                f"func_or_mapping must be a valid string identifier, a callable or a dictionary, got {type(func_or_mapping)}."
             )
 
         if rdkit or (rdkit is None and self._raw_is_rdkit):
             for a in self.mol.GetAtoms():
-                a.SetProp("atomLabel", func(a))
+                a.SetProp("atomLabel", str(func_or_mapping(a)))
         else:
 
             for a in self.mol.GetAtoms():
                 serial = a.GetPDBResidueInfo().GetSerialNumber()
                 bam_atom = self._raw_molecule.get_atom(serial, by="serial")
-                a.SetProp("atomLabel", str(func(bam_atom)))
+                a.SetProp("atomLabel", str(func_or_mapping(bam_atom)))
         return self
 
-    def draw(
-        self,
-        draw_hydrogens: bool = False,
-        width: int = 1000,
-        height: int = 500,
-        background: tuple = None,
-        **kwargs,
-    ):
+    def highlight_atoms(self, *atoms, color, radius=0.3):
         """
-        Generate the 2D image.
+        Highlight atoms in the molecule.
 
         Parameters
         ----------
-        draw_hydrogens : bool
-            Whether to draw hydrogens.
-        width : int
-            The width of the image in pixels.
-        height : int
-            The height of the image in pixels.
-        background : tuple
-            The background color to use. Use `None` for a transparent background.
-        **kwargs
-            Any additional arguments to pass to `MolToImage`.
-            These will be assembled into a `MolDrawOptions` object
-            so be sure to use the right keys. You can provide a `options` argument
-            that maps to a *fully set up* `MolDrawOptions` object that will be used
-            as is.
+        atoms : list
+            The Atoms to highlight.
+        color
+            The color to use for highlighting. This can be either a string, a tuple of RGB values, or a callable that takes an atom and returns a color.
+        radius
+            The radius to use for highlighting. This can be a float or a callable that takes an atom and returns a float.
         """
-        if not draw_hydrogens:
-            mol = Chem.rdmolops.RemoveHs(self.mol)
+        if isinstance(atoms, (list, tuple, set)) and len(atoms) == 1:
+            atoms = atoms[0]
+        elif len(atoms) == 1:
+            atoms = [atoms]
+
+        a = atoms[0]
+        if isinstance(a, (str, int)):
+            if self._raw_is_rdkit:
+                raise ValueError(
+                    "When providing atom ids or serial numbers the underlying molecule cannot be an RDKit molecule. Please provide RDKit or BuildAMol Atoms directly."
+                )
+            atoms = self._raw_molecule.get_atoms(atoms)
+        elif hasattr(a, "element") and hasattr(a, "serial_number"):
+            pass
+        elif hasattr(a, "GetPDBResidueInfo"):
+            if not self._raw_is_rdkit:
+                atoms = [
+                    self._raw_molecule.get_atom(a.GetPDBResidueInfo().GetSerialNumber())
+                    for a in atoms
+                ]
+
+        self._atoms_to_highlight.extend(atoms)
+        if callable(color):
+            color = {atom: color(atom) for atom in atoms}
         else:
-            mol = self.mol
+            color = {atom: color for atom in atoms}
+        self._atoms_highlight_colors.update(color)
 
-        if "options" in kwargs:
-            d = kwargs.pop("options")
+        if callable(radius):
+            radius = {atom: radius(atom) for atom in atoms}
         else:
-            d = Draw.MolDrawOptions()
-            for k in self.options.__dir__():
-                if not k.startswith("_") and not callable(getattr(self.options, k)):
-                    setattr(d, k, getattr(self.options, k))
+            radius = {atom: radius for atom in atoms}
+        self._atoms_highlight_radii.update(radius)
+        return self
 
-            d.bondLineWidth = self.linewidth
+    def highlight_bonds(self, *bonds, color=None):
+        """
+        Highlight bonds in the molecule.
 
-            if background is None:
-                d.clearBackground = False
-            else:
-                d.setBackgroundColour(background)
+        Parameters
+        ----------
+        bonds : list
+            The bonds (tuples of BuildAMol Atoms) to highlight.
+        color
+            The color to use for highlighting. This can be either a string or a tuple of RGB values, or a callable that takes a bond and returns a color.
+        """
+        if isinstance(bonds, (list, tuple, set)) and len(bonds) == 1:
+            bonds = bonds[0]
+        elif len(bonds) == 0:
+            bonds = [bonds]
 
-            for k, v in kwargs.items():
-                setattr(d, k, v)
+        if callable(color):
+            bonds = {bond: color(bond) for bond in bonds}
+        else:
+            bonds = {bond: color or self.highlight_color for bond in bonds}
 
-            d.updateAtomPalette(self._custom_colors)
+        self._bonds_to_highlight.update(bonds)
+        return self
 
-        kws = {}
-        if len(self._atoms_to_highlight):
-            kws["highlightAtoms"] = [
-                self._rdkit_atom_from_buildamol_atom(atom, mol).GetIdx()
-                for atom in self._atoms_to_highlight
-            ]
-        if len(self._bonds_to_highlight):
-            kws["highlightBonds"] = [
-                mol.GetBondBetweenAtoms(
-                    self._rdkit_atom_from_buildamol_atom(a, mol).GetIdx(),
-                    self._rdkit_atom_from_buildamol_atom(b, mol).GetIdx(),
-                ).GetIdx()
-                for a, b in self._bonds_to_highlight
-            ]
+    def highlight_residues(self, *residues, color):
+        """
+        Highlight all bonds and atoms in the given residues.
 
-        return Draw.MolToImage(
-            mol,
-            size=(width, height),
-            highlightColor=colors.to_rgb(self.highlight_color),
-            options=d,
-            **kws,
-        )
+        Parameters
+        ----------
+        residues : list
+            The residues (BuildAMol Residue objects) whose bonds to highlight.
+        color
+            The color to use for highlighting. This can be either a string or a tuple of RGB values, or a callable that takes a bond and returns a color.
+        """
+        if self._raw_is_rdkit:
+            raise ValueError(
+                "When providing residues the underlying molecule cannot be an RDKit molecule. Please provide RDKit or BuildAMol Atoms directly."
+            )
+        if isinstance(residues[0], (list, tuple, set)) and len(residues) == 1:
+            residues = residues[0]
+
+        bonds = []
+        atoms = []
+        for residue in residues:
+            residue = self._raw_molecule.get_residue(residue)
+            atoms.extend(residue.get_atoms())
+            bonds.extend(self._raw_molecule.get_bonds(residue))
+
+        self.highlight_bonds(*bonds, color=color).highlight_atoms(*atoms, color=color)
+        return self
 
     def set_colors(self, _element_colors: dict):
         """
@@ -316,6 +403,15 @@ class Chem2DViewer:
             The keys should be elementy symbols (i.e. 6 for carbon, etc.)
             and the values should be RGB tuples.
         """
+        _element_colors = {
+            key: colors.to_rgba(value) for key, value in _element_colors.items()
+        }
+        keys = list(_element_colors.keys())
+        for k in keys:
+            if isinstance(k, str):
+                _k = periodictable.elements.symbol(k).number
+                _element_colors[_k] = _element_colors.pop(k)
+
         self._custom_colors.update(_element_colors)
         return self
 
@@ -328,9 +424,98 @@ class Chem2DViewer:
         **kwargs
             Any additional arguments to pass to `MolDrawOptions`.
         """
+        aux.deprecation_warning(
+            "The `set_options` method is deprecated and will be removed in future versions. Provide drawing options directly as kwargs to the `draw` method instead."
+        )
         for k, v in kwargs.items():
-            setattr(self.options, k, v)
+            if not k.startswith("_") and hasattr(self.options, k):
+                setattr(self.options, k, v)
         return self
+
+    def draw(
+        self,
+        draw_hydrogens: bool = False,
+        linewidth: float = 1,
+        fontsize: float = 20,
+        width: int = 1000,
+        height: int = 500,
+        background: tuple = None,
+        **kwargs,
+    ):
+        """
+        Generate the 2D image.
+
+        Parameters
+        ----------
+        draw_hydrogens : bool
+            Whether to draw hydrogens.
+        linewidth: float
+            The linewidth of the bonds.
+        fontsize : float
+            The font size of the atom labels.
+        width : int
+            The width of the image in pixels.
+        height : int
+            The height of the image in pixels.
+        background : tuple
+            The background color to use. Use `None` for a transparent background.
+        **kwargs
+            Any additional arguments to pass to the `MolDrawOptions` of the RDKit drawer (either `MolDraw2DSVG` or `MolDraw2DCairo`).
+
+        Returns
+        -------
+        str or PIL.Image.Image
+            The SVG string (if drawer is "svg") or a PIL Image (if drawer is "png").
+        """
+        if not draw_hydrogens:
+            mol = Chem.rdmolops.RemoveHs(self.mol)
+        else:
+            mol = self.mol
+
+        drawer = (
+            Draw.rdMolDraw2D.MolDraw2DSVG(width, height)
+            if self._drawer_type == "svg"
+            else Draw.rdMolDraw2D.MolDraw2DCairo(width, height)
+        )
+
+        draw_options = drawer.drawOptions()
+
+        for k, v in self.options.__dict__.items():
+            setattr(draw_options, k, v)
+
+        for k, v in self.options.__dict__.items():
+            setattr(draw_options, k, v)
+        for k, v in kwargs.items():
+            if not k.startswith("_") and hasattr(draw_options, k):
+                setattr(draw_options, k, v)
+
+        draw_options.bondLineWidth = linewidth
+        if self._custom_colors:
+            draw_options.updateAtomPalette(self._custom_colors)
+
+        draw_options.fixedFontSize = fontsize
+
+        if background is None:
+            draw_options.clearBackground = False
+        else:
+            if isinstance(background, str):
+                background = colors.to_rgba(background)
+            draw_options.setBackgroundColour(colors.to_rgba(background))
+
+        kws = self._prepare_highlighting(mol, draw_hydrogens)
+
+        drawer.DrawMoleculeWithHighlights(mol, legend="", **kws)
+        drawer.FinishDrawing()
+        if self._drawer_type == "svg":
+            svg = drawer.GetDrawingText()
+            return svg
+        else:
+            from PIL import Image
+            from io import BytesIO
+
+            img = drawer.GetDrawingText()
+            img = Image.open(BytesIO(img))
+            return img
 
     def show(self, draw_hydrogens: bool = False, **kwargs):
         """
@@ -343,23 +528,89 @@ class Chem2DViewer:
         **kwargs
             Any additional keyword arguments to pass to `draw`.
         """
-        return self.draw(draw_hydrogens=draw_hydrogens, **kwargs).show()
+        if self._drawer_type == "svg":
+            dpi = kwargs.pop("dpi", 300)
+        out = self.draw(draw_hydrogens=draw_hydrogens, **kwargs)
+        if self._drawer_type == "svg":
+            # turn SVG string into a PIL image
+            from io import BytesIO
+            from svglib.svglib import svg2rlg
+            from reportlab.graphics import renderPM
 
-    def highlight_atoms(self, *atoms, color):
-        """
-        Highlight atoms in the molecule.
+            img = svg2rlg(BytesIO(out.encode("utf-8")))
+            img = renderPM.drawToPIL(img, dpi=dpi)
+            img.show()
 
-        Parameters
-        ----------
-        atoms : list
-            The BuildAMol Atoms to highlight.
-        """
-        if isinstance(atoms, (list, tuple, set)) and len(atoms) == 1:
-            atoms = atoms[0]
-        elif len(atoms) == 1:
-            atoms = [atoms]
-        self._atoms_to_highlight.extend(atoms)
-        return self
+        else:
+            out.show()
+
+    def _prepare_highlighting(self, mol, include_hydrogens: bool):
+        kws = {}
+        has_atoms_to_highlight = len(self._atoms_to_highlight) > 0
+        has_bonds_to_highlight = len(self._bonds_to_highlight) > 0
+
+        kws["highlight_atom_map"] = {}
+        kws["highlight_bond_map"] = {}
+        kws["highlight_radii"] = {}
+        kws["highlight_linewidth_multipliers"] = {}
+
+        if not has_atoms_to_highlight and not has_bonds_to_highlight:
+            return kws
+
+        if not include_hydrogens:
+            atom_filter = lambda atom: atom.element != "H"
+            bond_filter = lambda bond: (
+                bond[0].element != "H" and bond[1].element != "H"
+            )
+        else:
+            atom_filter = lambda atom: True
+            bond_filter = lambda bond: True
+
+        if has_atoms_to_highlight:
+            highlight_atom_map = {
+                atom: [colors.to_rgba(color)]
+                for atom, color in self._atoms_highlight_colors.items()
+                if atom_filter(atom)
+            }
+            highlight_radii = {
+                atom: radius
+                for atom, radius in self._atoms_highlight_radii.items()
+                if atom_filter(atom)
+            }
+
+            highlight_atom_map = {
+                self._rdkit_atom_from_buildamol_atom(atom, mol).GetIdx(): color
+                for atom, color in highlight_atom_map.items()
+            }
+            highlight_radii = {
+                self._rdkit_atom_from_buildamol_atom(atom, mol).GetIdx(): radius
+                for atom, radius in highlight_radii.items()
+            }
+
+            kws["highlight_atom_map"] = highlight_atom_map
+            kws["highlight_radii"] = highlight_radii
+
+        if has_bonds_to_highlight:
+
+            highlight_bond_map = {
+                idx: color
+                for idx, color in self._bonds_to_highlight.items()
+                if bond_filter(idx)
+            }
+
+            highlight_bond_map = {
+                bond.GetIdx(): [colors.to_rgba(color)]
+                for (atom1, atom2), color in highlight_bond_map.items()
+                if (
+                    bond := mol.GetBondBetweenAtoms(
+                        self._rdkit_atom_from_buildamol_atom(atom1, mol).GetIdx(),
+                        self._rdkit_atom_from_buildamol_atom(atom2, mol).GetIdx(),
+                    )
+                )
+            }
+            kws["highlight_bond_map"] = highlight_bond_map
+
+        return kws
 
     def _rdkit_atom_from_buildamol_atom(self, atom, mol=None):
         mol = mol or self.mol
@@ -390,22 +641,6 @@ class Chem2DViewer:
                 f"Unsupported atom type: {atom.__class__.__name__}. The input has to be a BuildAMol Atom, an RDKit Atom, or an atom index (int)."
             )
         return _atom
-
-    def highlight_bonds(self, *bonds):
-        """
-        Highlight bonds in the molecule.
-
-        Parameters
-        ----------
-        bonds : list
-            The bonds (tuples of BuildAMol Atoms) to highlight.
-        """
-        if isinstance(bonds, (list, tuple, set)) and len(bonds) == 1:
-            bonds = bonds[0]
-        elif len(bonds) == 0:
-            bonds = [bonds]
-        self._bonds_to_highlight.extend(bonds)
-        return self
 
 
 class Py3DmolViewer:
@@ -443,6 +678,8 @@ class Py3DmolViewer:
             raise ImportError(
                 "py3Dmol and/or rdkit are not available. Please install them and be sure to use a compatible (Jupyter) environment."
             )
+        if isinstance(molecule, (list, tuple, set)):
+            molecule = aux.AtomIterator(molecule)
         if not hasattr(molecule, "get_atoms"):
             raise ValueError(
                 f"Unsupported molecule type: {molecule.__class__.__name__}. The input has to be a Py3DmolViewer, Molecule, or any other class with an 'get_atoms' method that can be converted to PDB."
@@ -1236,10 +1473,23 @@ if __name__ == "__main__":
     bam.load_sugars()
     man = bam.molecule("MAN")
     man = man % "14bb" * 2
-    v = Chem2DViewer(man)
-    v.label_atoms({o: "an O atom" for o in man.get_atoms("O", by="element")})
-    v.highlight_atoms(1, 2, 3)
-    v.show(linewidth=5)
+    man.change_element(1, "Au")
+    v = Chem2DViewer(man, drawer="png")
+    v.label_atoms(lambda a: a.GetSymbol())
+    v.highlight_atoms(
+        man.atoms,
+        color=lambda a: (0, 0, 1, ((a.mass or 0) / man.mass) ** 0.5),
+        # radius=lambda a: 0.2 + 0.2 * (a.mass or 0),
+    )
+
+    v.highlight_bonds(man.get_bonds(man.get_residue(1)), color="blue")
+    v.highlight_residues(1, color=(1, 1, 0, 0.3))
+    v.set_colors(
+        {
+            6: "pink",
+        }
+    )
+    v.show(draw_hydrogens=False, linewidth=5, background="white")
     pass
     # v = MoleculeViewer3D()
     # v.link(man)
