@@ -64,8 +64,8 @@ To learn more about the benchmarking we did and further details on the software,
 	year = {2024}}
 ```
 
-Example 1 - Building A Dendrimer
-------------------------------------
+Example 1 - Building A Dendrimer From Scratch
+---------------------------------------------
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/NoahHenrikKleinschmidt/buildamol/blob/dev/docs/examples/_colab_building_polyphenylene.ipynb)
 
 
@@ -108,3 +108,48 @@ mol.to_pdb("polyphenylene.pdb")
 ```
 
 ![](support/graphics/polyphenylene.gif)
+
+Example 2 - Making a Glycan-Aspirin Conjugate
+---------------------------------------------
+
+There are also a bunch of already available extensions to make life easier when constructing certain kinds of molecules. For example, we can build Glycans directly from commonly used IUPAC notation. We can also exploit BuildAMol's various inference-level tools to determine how to connect molecular fragments together. In the example below we create a glycan-drug conjugate, automatically searching for the right atoms to use for connecting the molecules.
+
+```python
+import buildamol as bam
+from buildamol.structural.groups import carboxyl
+from buildamol.structural import constraints
+from buildamol.extensions.bio import glycans
+
+# construct a small glycan
+glycan = glycans.glycan("Neu5Ac(a2-3)Gal(b1-4)GlcNAc")
+
+# and now create a conjugate with a drug-like molecule
+# e.g. aspirin
+aspirin = bam.molecule("aspirin")
+
+# find the right atoms to define a linkage 
+# (here: connect the Nitrogen atom of the last sugar residue 
+# to the carbonyl Carbon of the carboxyl group of aspirin, while splitting of an acetonic acid)
+N = glycan.get_atom("N", by="element", residue=-1)
+C_next_to_N = glycan.search_by_constraints(
+	[
+  		constraints.has_double_bond_with("O"),
+        is_neighbor_of_N := lambda _, atom: N in glycan.get_neighbors(atom),		
+	]
+)[0][0]
+
+aspirin_carboxyl_atoms = carboxyl.find_matches(aspirin, aspirin.atoms)[0]
+C_of_COOH, O_of_COOH, OH_of_COOH = aspirin_carboxyl_atoms.values()
+
+link = bam.linkage(
+	N, C_of_COOH, 
+	delete_in_target=[C_next_to_N], # and implicitly everything downstream
+	delete_in_source=[OH_of_COOH]
+)
+
+# now create the conjugate
+conjugate = bam.connect(glycan, aspirin, link)
+conjugate.draw2d().highlight_residues(-1, color="yellow").draw()
+```
+![](docs/_resources/glycan_drug_conjugate.png)
+
