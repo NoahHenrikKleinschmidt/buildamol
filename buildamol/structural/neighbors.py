@@ -795,6 +795,47 @@ class constraints:
         lambda graph, node: len(graph.get_neighbors(node, n)) <= m
     )
 
+    has_bond_of_order_with = lambda order, element: (
+        lambda graph, node: any(
+            bond.order == order
+            for bond in graph._src._molecule.get_bonds(node)
+            if bond.get_other_atom(node).element == element
+        )
+    )
+
+    has_double_bond_with = lambda element: (
+        lambda graph, node: any(
+            bond.order == 2 and bond.get_other_atom(node).element == element
+            for bond in graph._src._molecule.get_bonds(node)
+        )
+    )
+    has_triple_bond_with = lambda element: (
+        lambda graph, node: any(
+            bond.order == 3 and bond.get_other_atom(node).element == element
+            for bond in graph._src._molecule.get_bonds(node)
+        )
+    )
+    has_single_bond_with = lambda element: (
+        lambda graph, node: any(
+            bond.order == 1 and bond.get_other_atom(node).element == element
+            for bond in graph._src._molecule.get_bonds(node)
+        )
+    )
+
+    has_bond_order_hist = lambda hist: (
+        lambda graph, node: all(
+            hist[i]
+            == sum(
+                1 for bond in graph._src._molecule.get_bonds(node) if bond.order == i
+            )
+            for i in hist
+        )
+    )
+    """
+    The node has the specified number of bonds for each bond order
+    Hist is a dictionary with bond orders as keys and the number of bonds as values
+    """
+
     def multi_constraint(*funcs):
         """
         Combine multiple constraints into one
