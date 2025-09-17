@@ -1693,6 +1693,32 @@ class Bond:
         """
         return self.atom1 - self.atom2
 
+    def get_other_atom(self, atom: Atom) -> Atom:
+        """
+        Get the other atom in the bond.
+
+        Parameters
+        ----------
+        atom : Atom
+            The atom to get the other atom for.
+
+        Returns
+        -------
+        Atom
+            The other atom in the bond.
+
+        Raises
+        ------
+        ValueError
+            If the atom is not in the bond.
+        """
+        if atom == self.atom1:
+            return self.atom2
+        elif atom == self.atom2:
+            return self.atom1
+        else:
+            raise ValueError("Atom not in bond.")
+
     def to_vector(self) -> "np.ndarray":
         """
         Convert the bond to a vector.
