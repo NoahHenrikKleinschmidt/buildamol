@@ -95,8 +95,6 @@ def fatty_acid(
         for hydrogen in mol.get_hydrogens(carbon):
             hydrogen.id = f"H{idx+1}{hydrogen.id[-1]}"
 
-    mol.rename_atom("O1", "O").rename_atom("O2", "OXT").rename_atom("HO2", "HXT")
-
     # make it all just one residue
     mol = mol.squash()
     mol.rename_residue(1, id)

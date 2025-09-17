@@ -687,7 +687,7 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             True if the linkage can be applied to the molecule, False otherwise.
         """
         if residue is None:
-            residue = molecule.attach_residue
+            residue = molecule.attach_residue or -1
         else:
             residue = molecule.get_residue(residue)
 
@@ -728,7 +728,7 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             True if the linkage can be applied to the molecule, False otherwise.
         """
         if residue is None:
-            residue = molecule.attach_residue
+            residue = molecule.attach_residue or -1
         else:
             residue = molecule.get_residue(residue)
 
