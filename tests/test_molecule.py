@@ -2105,7 +2105,8 @@ def test_react_with2():
         bam.structural.groups.carboxyl,
         bam.structural.groups.hydroxyl,
         inplace=False,
-    ).react_with(
+    )
+    out = out.react_with(
         mol, bam.structural.groups.carboxyl, bam.structural.groups.amine, inplace=False
     )
     assert out.count_residues() == 3
@@ -2800,3 +2801,57 @@ def test_reversed_linkage_stitch():
     # applied
     out_rev_auto_applied = bam.connect(mol2, mol1, b14_link)
     assert out_fwd.count_atoms() == out_rev_auto_applied.count_atoms()
+
+
+def test_linkage_with_auto_downstream_deletes():
+
+    mol = bam.get_compound("GlcNAc")[0]
+    should_be_gone = mol.get_descendants("C2", "N2")
+    should_be_gone.add(mol.get_atom("N2"))
+
+    bam.benzylate(mol, "C2", delete="N2")
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+    assert all(atom not in mol.atoms for atom in should_be_gone)
+
+
+def test_linkage_with_auto_downstream_deletes_multiple_residues():
+    mol = bam.get_compound("GlcNAc")[0]
+    mol = mol.repeat(3, "14bb")
+
+    v = mol.plotly()
+    assert mol.count_residues() == 3
+
+    bam.acetylate(
+        mol, mol.get_atom("O4", residue=1), delete=mol.get_atom("C1", residue=2)
+    )
+    if base.ALLOW_VISUAL:
+        v += mol.plotly(line_color="red")
+        v.show()
+
+    assert mol.count_residues() == 2
+
+
+def test_reverse_linkage_with_auto_downstream_deletes():
+
+    A = bam.Molecule.from_smiles("CCN").autolabel()
+    B = bam.Molecule.from_smiles("CC(=O)O").autolabel()
+
+    link = bam.linkage(
+        "C1",
+        "C1",
+        delete_in_source=B.get_neighbors(
+            "C1", filter=lambda x: x.element == "O" and B.get_hydrogen(x) is not None
+        ),
+    )
+
+    out1 = bam.connect(A, B, link)
+    out2 = bam.connect(B, A, link)
+
+    link.reverse()
+    out3 = bam.connect(B, A, link)
+    out4 = bam.connect(A, B, link)
+
+    assert out1.to_smiles() == out4.to_smiles()
+    assert out2.to_smiles() == out3.to_smiles()

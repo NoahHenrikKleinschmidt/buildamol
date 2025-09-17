@@ -1017,7 +1017,7 @@ def _modify(
         modifier.adjust_bond_length(modifier_at_atom, modifier_deletes[0], dist)
 
     l = Linkage.linkage(
-        at_atom.id, modifier_at_atom.id, [delete.id], modifier_deletes, id="MODIFY"
+        at_atom.id, modifier_at_atom, [delete], modifier_deletes, id="MODIFY"
     )
     mol = mol.attach(modifier, l, at_residue=at_residue, inplace=inplace)
     return mol
@@ -1830,7 +1830,9 @@ class Molecule(entity.BaseEntity):
                 "[info] The link in the current direction is not applicable to the molecules but the reverse is. Automatically reversing the link. If this is not intended, please review the linkage definition or molecules (target vs source)."
             )
             if link.has_IC:
-                print("[warning] Reversing a patch with internal coordinates! This will remove the internal coordinates!")
+                print(
+                    "[warning] Reversing a patch with internal coordinates! This will remove the internal coordinates!"
+                )
                 link = link.copy()
                 link.remove_internal_coordinates()
                 link.reverse(inplace=True)
@@ -1947,10 +1949,21 @@ class Molecule(entity.BaseEntity):
 
         if recipe:
             target_atom, source_atom = recipe._stitch_ref_atoms
+
+            # for compatibility with older versions
+            if not hasattr(recipe, "_automatically_delete_downstream_atoms"):
+                recipe._automatically_delete_downstream_atoms = True
+
+            if recipe._automatically_delete_downstream_atoms:
+                _, _, remove_atoms, other_remove_atoms = recipe.identify_atoms(
+                    self, other, at_residue, other_residue
+                )
+            else:
+                remove_atoms, other_remove_atoms = recipe.deletes
             return self.stitch_attach(
                 other,
-                remove_atoms=recipe.deletes[0],
-                other_remove_atoms=recipe.deletes[1],
+                remove_atoms=remove_atoms,
+                other_remove_atoms=other_remove_atoms,
                 at_atom=target_atom,
                 other_at_atom=source_atom,
                 at_residue=at_residue,

@@ -165,6 +165,7 @@ def patch(
         internal_coordinates=internal_coordinates,
         id=id,
         description=description,
+        automatically_delete_downstream_atoms=False,  # patches should not automatically delete downstream atoms
     )
 
 
@@ -175,6 +176,7 @@ def recipe(
     delete_in_source=None,
     id: str = None,
     description: str = None,
+    automatically_delete_downstream_atoms: bool = True,
 ) -> "Linkage":
     """
     Make a new `Linkage` instance that describes a "recipe" to connect two molecules.
@@ -197,6 +199,7 @@ def recipe(
         The id of the linkage.
     description : str, optional
         A description of the linkage.
+    automatically_delete_downstream_atoms : bool, optional
 
     Returns
     -------
@@ -210,6 +213,7 @@ def recipe(
         delete_in_source=delete_in_source,
         id=id,
         description=description,
+        automatically_delete_downstream_atoms=automatically_delete_downstream_atoms,
     )
 
 
@@ -221,6 +225,7 @@ def linkage(
     internal_coordinates: dict = None,
     id: str = None,
     description: str = None,
+    automatically_delete_downstream_atoms: bool = True,
 ) -> "Linkage":
     """
     Make a new `Linkage` instance to connect two molecules together.
@@ -253,6 +258,10 @@ def linkage(
         The ID of the linkage.
     description : str, optional
         A description of the linkage.
+    automatically_delete_downstream_atoms : bool, optional
+        Whether to automatically delete all atoms downstream of a linker and deleted atom.
+        This is useful for linkers that are part of a larger group that should be removed
+        (e.g. a carboxyl group) without having to specify all atoms to delete manually.
 
     Returns
     -------
@@ -260,7 +269,11 @@ def linkage(
         The new linkage instance.
     """
     # make a new linkage
-    new_linkage = Linkage(id=id, description=description)
+    new_linkage = Linkage(
+        id=id,
+        description=description,
+        automatically_delete_downstream_atoms=automatically_delete_downstream_atoms,
+    )
 
     atom1 = getattr(atom1, "id", atom1)
     atom2 = getattr(atom2, "id", atom2)
@@ -271,11 +284,9 @@ def linkage(
     # add the atoms to delete
     if delete_in_target is not None:
         for i in delete_in_target:
-            i = getattr(i, "id", i)
             new_linkage.add_delete(i, "target")
     if delete_in_source is not None:
         for i in delete_in_source:
-            i = getattr(i, "id", i)
             new_linkage.add_delete(i, "source")
 
     # add the internal coordinates
@@ -301,6 +312,10 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         The ID of the linkage.
     description : str, optional
         An additional description of the linkage.
+    automatically_delete_downstream_atoms : bool, optional
+        Whether to automatically delete all atoms downstream of a linker and deleted atom.
+        This is useful for linkers that are part of a larger group that should be removed
+        (e.g. a carboxyl group) without having to specify all atoms to delete manually.
 
     Attributes
     ----------
@@ -319,14 +334,26 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         The atom IDs of the atoms in the linkage.
     """
 
-    def __init__(self, id=None, description: str = None) -> None:
+    def __init__(
+        self,
+        id=None,
+        description: str = None,
+        automatically_delete_downstream_atoms: bool = False,
+    ) -> None:
         super().__init__(id)
         self._delete_ids = []
         self.description = description
+        self._automatically_delete_downstream_atoms = (
+            automatically_delete_downstream_atoms
+        )
 
     @classmethod
     def from_bond(
-        cls, bond: base_classes.Bond, id: str = None, description: str = None
+        cls,
+        bond: base_classes.Bond,
+        id: str = None,
+        description: str = None,
+        automatically_delete_downstream_atoms: bool = True,
     ) -> "Linkage":
         """
         Make a new `Linkage` instance from a bond.
@@ -340,7 +367,11 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         description : str, optional
             An additional description of the linkage.
         """
-        new = cls(id=id, description=description)
+        new = cls(
+            id=id,
+            description=description,
+            automatically_delete_downstream_atoms=automatically_delete_downstream_atoms,
+        )
         new.atom1 = bond.atom1
         new.atom2 = bond.atom2
         return new
@@ -352,6 +383,7 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         egroup: "FunctionalGroup",
         nmol: "Molecule",
         ngroup: "FunctionalGroup",
+        automatically_delete_downstream_atoms: bool = True,
     ):
         """
         Create a new `Linkage` instance from two functional groups.
@@ -380,6 +412,7 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             [i.id for i in e_deletes] if e_deletes else None,
             [i.id for i in n_deletes] if n_deletes else None,
             id=f"{egroup.id}_{ngroup.id}",
+            automatically_delete_downstream_atoms=automatically_delete_downstream_atoms,
         )
 
     @property
@@ -556,10 +589,10 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         delete_in_source : list of Atom
             The atoms to delete in the source molecule.
         """
+        target_residue = target_residue or target.attach_residue or -1
         atom1 = target.get_atom(self._stitch_ref_atoms[0], residue=target_residue)
-        source_residue = source_residue or source.attach_residue
 
-        target_residue = target_residue or target.attach_residue
+        source_residue = source_residue or source.attach_residue or -1
         atom2 = source.get_atom(self._stitch_ref_atoms[1], residue=source_residue)
 
         if atom1 is None:
@@ -582,19 +615,26 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                     f"No atom to delete in the target molecule was provided and no Hydrogen atom was found bound to the first atom in the bond."
                 )
         else:
-
             for i in self.deletes[0]:
+                if isinstance(i, tuple) and len(i) == 1:
+                    i = i[0]
                 atom = target.get_atom(i, residue=target_residue)
                 if atom is None:
                     raise ValueError(
                         f"The atom with ID '{i}' could not be found in the target molecule."
                     )
                 delete_in_target.append(atom)
+                if self._automatically_delete_downstream_atoms and atom.element != "H":
+                    downstream = target.get_descendants(atom1, atom)
+                    for a in downstream:
+                        if a not in delete_in_target:
+                            delete_in_target.append(a)
 
             if len(delete_in_target) != len(self.deletes[0]):
-                raise ValueError(
-                    "Not all atoms to delete in the target molecule could be found."
-                )
+                if not self._automatically_delete_downstream_atoms:
+                    raise ValueError(
+                        "Not all atoms to delete in the target molecule could be found."
+                    )
 
         delete_in_source = []
         if len(self.deletes[1]) == 0:
@@ -607,19 +647,27 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 )
         else:
             for i in self.deletes[1]:
+                if isinstance(i, tuple) and len(i) == 1:
+                    i = i[0]
                 atom = source.get_atom(i, residue=source_residue)
                 if atom is None:
                     raise ValueError(
                         f"The atom with ID '{i}' could not be found in the source molecule."
                     )
                 delete_in_source.append(atom)
+                if self._automatically_delete_downstream_atoms and atom.element != "H":
+                    downstream = source.get_descendants(atom2, atom)
+                    for a in downstream:
+                        if a not in delete_in_source:
+                            delete_in_source.append(a)
 
             if len(delete_in_source) != len(self.deletes[1]):
-                raise ValueError(
-                    "Not all atoms to delete in the source molecule could be found."
-                )
+                if not self._automatically_delete_downstream_atoms:
+                    raise ValueError(
+                        "Not all atoms to delete in the source molecule could be found."
+                    )
 
-        return atom1, atom2, delete_in_target, delete_in_source
+        return atom1, atom2, list(set(delete_in_target)), list(set(delete_in_source))
 
     def can_be_target(self, molecule, residue=None):
         """
@@ -654,6 +702,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 return False
         else:
             for i in self.deletes[0]:
+                if isinstance(i, tuple) and len(i) == 1:
+                    i = i[0]
                 atom = molecule.get_atom(i, residue=residue)
                 if atom is None:
                     return False
@@ -693,6 +743,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 return False
         else:
             for i in self.deletes[1]:
+                if isinstance(i, tuple) and len(i) == 1:
+                    i = i[0]
                 atom = molecule.get_atom(i, residue=residue)
                 if atom is None:
                     return False
@@ -889,15 +941,9 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                 )
         else:
             if _from == "source":
-                if isinstance(id, str):
-                    id = "2" + id
-                else:
-                    id = ("2", *id)
+                id = ("2", id)
             elif _from == "target":
-                if isinstance(id, str):
-                    id = "1" + id
-                else:
-                    id = ("1", *id)
+                id = ("1", id)
             else:
                 raise ValueError(
                     "The _from argument must be either 'source' or 'target'."
@@ -990,9 +1036,17 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             b = "1" + b[1:]
         self.bond = (b, a)
 
-        self._delete_ids = [
-            ("2" + i[1:]) if i[0] == "1" else ("1" + i[1:]) for i in self._delete_ids
-        ]
+        _delete_ids = [None] * len(self._delete_ids)
+        for idx, i in enumerate(self._delete_ids):
+            placement, id = i
+            if isinstance(id, tuple) and len(id) == 1:
+                id = id[0]
+            if placement == "1":
+                _delete_ids[idx] = ("2", id)
+            elif placement == "2":
+                _delete_ids[idx] = ("1", id)
+
+        self._delete_ids = _delete_ids
         return self
 
     def to_json(self, filename: str):

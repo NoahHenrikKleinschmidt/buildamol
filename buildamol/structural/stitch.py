@@ -203,9 +203,13 @@ class Stitcher(base.Connector):
                 )
             ]
         else:
+            _target_removals = (
+                i[0] if isinstance(i, tuple) and len(i) == 1 else i
+                for i in target_removals
+            )
             _target_removals = [
                 self.target.get_atom(atom, residue=self._target_residue)
-                for atom in target_removals
+                for atom in _target_removals
             ]
         if len(source_removals) == 0:
             _source_removals = [
@@ -216,9 +220,13 @@ class Stitcher(base.Connector):
                 )
             ]
         else:
+            _source_removals = (
+                i[0] if isinstance(i, tuple) and len(i) == 1 else i
+                for i in source_removals
+            )
             _source_removals = [
                 self.source.get_atom(atom, residue=self._source_residue)
-                for atom in source_removals
+                for atom in _source_removals
             ]
         return (set(_target_removals), set(_source_removals))
 
