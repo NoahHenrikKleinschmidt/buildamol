@@ -847,3 +847,102 @@ class constraints:
             Each of these must take a graph and a node as arguments and return a boolean.
         """
         return lambda graph, node: all(f(graph, node) for f in funcs)
+
+
+class constraints_v2:
+    """
+    Structural constraints for use not with the Neighborhood classes but with the Molecule class directly and only take one atom as argument.
+    """
+
+    none = lambda atom: True
+    """
+    No constraints
+    """
+
+    has_element = lambda element: (lambda atom: atom.element.lower() == element.lower())
+    """
+    The atom has the specified element
+    """
+
+    not_has_element = lambda element: (
+        lambda atom: atom.element.lower() != element.lower()
+    )
+    """
+    The atom does not have the specified element
+    """
+
+    has_any_element_of = lambda *args: (
+        lambda atom: atom.element.lower() in (i.lower() for i in args)
+    )
+    """
+    The atom has any of the specified elements
+    """
+
+    not_has_any_element_of = lambda *args: (
+        lambda atom: atom.element.lower() not in (i.lower() for i in args)
+    )
+    """
+    The atom does not have any of the specified elements
+    """
+
+    has_neighbor_hist = lambda hist: (
+        lambda atom: all(
+            hist[i] == sum(1 for j in atom.get_neighbors() if j.element == i)
+            for i in hist
+        )
+    )
+    """
+    The atom has the specified number of neighbors for each element
+    Hist is a dictionary with element symbols as keys and the number of neighbors as values
+    """
+
+    extended_has_neighbor_hist = lambda n, hist: (
+        lambda atom: all(
+            hist[i] == sum(1 for j in atom.get_extended_neighbors(n) if j.element == i)
+            for i in hist
+        )
+    )
+    """
+    The atom has the specified number of neighbors for each element within n bonds
+    Hist is a dictionary with element symbols as keys and the number of neighbors as values
+    """
+
+    has_bond_order_hist = lambda hist: (
+        lambda atom: all(
+            hist[i] == sum(1 for bond in atom.get_bonds() if bond.order == i)
+            for i in hist
+        )
+    )
+    """
+    The atom has the specified number of bonds for each bond order
+    Hist is a dictionary with bond orders as keys and the number of bonds as values
+    """
+
+    has_bonds_of_order = lambda order: (
+        lambda atom: any(bond.order == order for bond in atom.get_bonds())
+    )
+    """
+    The atom has at least one bond of the specified order
+    """
+
+    has_double_bonds = lambda atom: any(bond.order == 2 for bond in atom.get_bonds())
+    has_triple_bonds = lambda atom: any(bond.order == 3 for bond in atom.get_bonds())
+    has_single_bonds = lambda atom: any(bond.order == 1 for bond in atom.get_bonds())
+
+    has_n_bonds = lambda n: (lambda atom: len(atom.get_bonds()) == n)
+
+    has_bond_of_order_with = lambda order, element: (
+        lambda atom: any(
+            bond.order == order and bond.get_other_atom(atom).element == element
+            for bond in atom.get_bonds()
+        )
+    )
+    has_single_bond_with = lambda element: constraints_v2.has_bond_of_order_with(
+        1, element
+    )
+    has_double_bond_with = lambda element: constraints_v2.has_bond_of_order_with(
+        2, element
+    )
+    has_triple_bond_with = lambda element: constraints_v2.has_bond_of_order_with(
+        3, element
+    )

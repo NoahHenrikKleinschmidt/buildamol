@@ -466,6 +466,7 @@ import Bio.PDB as bio
 
 import buildamol.core.entity as entity
 import buildamol.core.Linkage as Linkage
+import buildamol.core.reaction as reaction
 import buildamol.utils as utils
 import buildamol.structural as structural
 import buildamol.resources as resources
@@ -890,11 +891,12 @@ def connect(
 def react(
     mol_a: "Molecule",
     mol_b: "Molecule",
-    egroup: "FunctionalGroup",
-    ngroup: "FunctionalGroup",
+    egroup: "FunctionalGroup" = None,
+    ngroup: "FunctionalGroup" = None,
     a_is_electrophile: bool = True,
     at_residue_a: Union[int, "bio.Residue.Residue"] = None,
     at_residue_b: Union[int, "bio.Residue.Residue"] = None,
+    reaction: "reaction.Reaction" = None,
     copy_a: bool = True,
     copy_b: bool = True,
 ) -> "Molecule":
@@ -917,6 +919,9 @@ def react(
         The residue of the first molecule to connect to. If an integer is provided, the seqid must be used, starting at 1.
     at_residue_b : int or bio.PDB.Residue
         The residue of the second molecule to connect to. If an integer is provided, the seqid must be used, starting at 1.
+    reaction : Reaction
+        A specific Reaction instance to use **instead** of functional groups.
+        If given the other functional group and residue arguments are ignored.
     copy_a : bool
         Whether to copy the first molecule before connecting
     copy_b : bool
@@ -928,6 +933,21 @@ def react(
     Molecule
         The connected molecule
     """
+    if reaction is not None:
+        if not isinstance(reaction, reaction.Reaction):
+            raise ValueError(
+                f"reaction must be an instance of the Reaction class, got {type(reaction)}"
+            )
+        if not reaction.can_apply(mol_a, mol_b):
+            raise ValueError(
+                "The provided reaction cannot be applied to the given molecules"
+            )
+        if copy_a:
+            mol_a = mol_a.copy()
+        if copy_b:
+            mol_b = mol_b.copy()
+        return reaction.apply(mol_a, mol_b, inplace=True)
+
     new = mol_a.react_with(
         mol_b,
         egroup,
