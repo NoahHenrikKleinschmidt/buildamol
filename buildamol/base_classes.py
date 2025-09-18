@@ -458,7 +458,23 @@ class Atom(ID, bio.Atom.Atom):
         if filter:
             return {a for a in out if filter(a)}
         return out
-    
+
+    def get_hydrogens(self) -> set:
+        """
+        Get all hydrogen neighbors of an atom.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        set
+            A set of hydrogen neighbors, if they exist, an empty set otherwise
+        """
+        return self.get_neighbors(n=1, filter=lambda a: a.element == "H")
+
     def get_equatorial_neighbor(self):
         """
         Get the equatorial neighbor of an atom, if the atom is in a ring structure.
@@ -479,7 +495,7 @@ class Atom(ID, bio.Atom.Atom):
                 "Only atoms that are part of a Molecule have information about connectivity."
             )
         return molecule.get_equatorial_neighbor(self)
-    
+
     def get_axial_neighbor(self):
         """
         Get the axial neighbor of an atom, if the atom is in a ring structure.
@@ -538,7 +554,7 @@ class Atom(ID, bio.Atom.Atom):
                 "Only atoms that are part of a Molecule have information about connectivity."
             )
         return molecule.get_left_hydrogen(self)
-    
+
     def get_right_hydrogen(self):
         """
         Get the "right-protruding" hydrogen neighbor of an atom with two hydrogens and two non-hydrogen neighbors.
