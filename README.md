@@ -117,7 +117,7 @@ There are also a bunch of already available extensions to make life easier when 
 ```python
 import buildamol as bam
 from buildamol.structural.groups import carboxyl
-from buildamol.structural import constraints
+from buildamol.structural import constraints_v2 as constraints
 from buildamol.extensions.bio import glycans
 
 # construct a small glycan
@@ -131,12 +131,7 @@ aspirin = bam.molecule("aspirin")
 # (here: connect the Nitrogen atom of the last sugar residue 
 # to the carbonyl Carbon of the carboxyl group of aspirin, while splitting of an acetonic acid)
 N = glycan.get_atom("N", by="element", residue=-1)
-C_next_to_N = glycan.search_by_constraints(
-	[
-  		constraints.has_double_bond_with("O"),
-        is_neighbor_of_N := lambda _, atom: N in glycan.get_neighbors(atom),		
-	]
-)[0][0]
+C_next_to_N = N.get_neighbors(filter=constraints.has_double_bond_with("O")).pop()
 
 aspirin_carboxyl_atoms = carboxyl.find_matches(aspirin, aspirin.atoms)[0]
 C_of_COOH, O_of_COOH, OH_of_COOH = aspirin_carboxyl_atoms.values()

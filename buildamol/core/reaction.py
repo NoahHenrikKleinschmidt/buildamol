@@ -176,6 +176,98 @@ class Reaction:
         self._memory["delete_in_source"] = valid_deletes2
         return True
 
+    def set(
+        self,
+        atom1: Union[base_classes.Atom, callable] = None,
+        atom2: Union[base_classes.Atom, callable] = None,
+        delete_in_target: Union[List, callable] = None,
+        delete_in_source: Union[List, callable] = None,
+        bond_order: int = None,
+    ):
+        """
+        Set new parameters for the reaction.
+
+        Parameters
+        ----------
+        atom1 : Union[Atom, callable], optional
+            The atom in the target molecule to which the source molecule will be connected.
+            This can be an Atom object or a callable that takes a Molecule and returns an Atom
+        atom2 : Union[Atom, callable], optional
+            The atom in the source molecule which will be connected to the target molecule.
+            This can be an Atom object or a callable that takes a Molecule and returns an Atom
+        delete_in_target : Union[List, callable], optional
+            A list of atoms in the target molecule to be deleted upon connection,
+            or a callable that takes the atom1 and the target molecule and returns such a list.
+            Default Hydrogen-deletion is applied if None.
+        delete_in_source : Union[List, callable], optional
+            A list of atoms in the source molecule to be deleted upon connection,
+            or a callable that takes the atom2 and the source molecule and returns such a list.
+            Default Hydrogen-deletion is applied if None.
+        bond_order : int, optional
+            The bond order of the new bond formed between atom1 and atom2. Default is 1 (single bond).
+        """
+        if atom1 is not None:
+            self._atom1 = atom1
+        if atom2 is not None:
+            self._atom2 = atom2
+        if delete_in_target is not None:
+            self._delete_in_target = self._check_delete_callable_signature(
+                delete_in_target
+            )
+        if delete_in_source is not None:
+            self._delete_in_source = self._check_delete_callable_signature(
+                delete_in_source
+            )
+        if bond_order is not None:
+            self._bond_order = bond_order
+
+    def with_reactivity(
+        self,
+        atom1: Union[base_classes.Atom, callable] = None,
+        atom2: Union[base_classes.Atom, callable] = None,
+        delete_in_target: Union[List, callable] = None,
+        delete_in_source: Union[List, callable] = None,
+        bond_order: int = None,
+    ):
+        """
+        Create a new Reaction with modified parameters.
+
+        Parameters
+        ----------
+        atom1 : Union[Atom, callable], optional
+            The atom in the target molecule to which the source molecule will be connected.
+            This can be an Atom object or a callable that takes a Molecule and returns an Atom
+        atom2 : Union[Atom, callable], optional
+            The atom in the source molecule which will be connected to the target molecule.
+            This can be an Atom object or a callable that takes a Molecule and returns an Atom
+        delete_in_target : Union[List, callable], optional
+            A list of atoms in the target molecule to be deleted upon connection,
+            or a callable that takes the atom1 and the target molecule and returns such a list.
+            Default Hydrogen-deletion is applied if None.
+        delete_in_source : Union[List, callable], optional
+            A list of atoms in the source molecule to be deleted upon connection,
+            or a callable that takes the atom2 and the source molecule and returns such a list.
+            Default Hydrogen-deletion is applied if None.
+        bond_order : int, optional
+            The bond order of the new bond formed between atom1 and atom2. Default is 1 (single bond).
+
+        Returns
+        -------
+        Reaction
+            A new Reaction object with the modified parameters.
+        """
+        from copy import deepcopy
+
+        new_reaction = deepcopy(self)
+        new_reaction.set(
+            atom1=atom1,
+            atom2=atom2,
+            delete_in_target=delete_in_target,
+            delete_in_source=delete_in_source,
+            bond_order=bond_order,
+        )
+        return new_reaction
+
     def _find_deletes_for_anchors(self, target, source, atom1, atom2):
 
         delete_in_target = None

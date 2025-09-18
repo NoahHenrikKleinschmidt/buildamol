@@ -32,10 +32,10 @@ BuildAmol and Chemistry
 -----------------------
 
 .. nbgallery::
+   examples/reaction
    examples/functional_groups
    examples/geometry_scratch
    examples/derivator_example
-
 
 BuildAmol and Biology
 ---------------------

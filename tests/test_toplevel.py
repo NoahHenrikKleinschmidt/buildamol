@@ -52,3 +52,82 @@ def test_connect():
     assert out is not glc2
     assert len(out.residues) == 2
     bam.unload_sugars()
+
+
+def test_reaction_can_apply_with_single_target():
+    A = bam.molecule("OCCO")
+    B = bam.molecule("c1ccccc1C")
+
+    R = bam.Reaction(
+        atom1=lambda mol: mol.get_atoms(
+            "C",
+            by="element",
+            filter=bam.structural.constraints_v2.has_single_bond_with("O"),
+        ).pop(),
+        atom2=lambda mol: 1,
+        delete_in_target=lambda atom: atom.get_neighbors(
+            filter=bam.structural.constraints_v2.has_element("O")
+        ),
+        delete_in_source=lambda atom: atom.get_hydrogens().pop(),
+    )
+    assert R.can_apply(A, B)
+
+    out1 = R(A, B)
+
+    atom1 = A.get_atoms(
+        "C",
+        by="element",
+        filter=bam.structural.constraints_v2.has_single_bond_with("O"),
+    ).pop()
+    atom2 = B.get_atom(1)
+
+    R = bam.Reaction(
+        atom1=atom1,
+        atom2=atom2,
+        delete_in_target=atom1.get_neighbors(
+            filter=bam.structural.constraints_v2.has_element("O")
+        ).pop(),
+        delete_in_source=atom2.get_hydrogens().pop(),
+    )
+    assert R.can_apply(A, B)
+    out2 = R(A, B)
+    assert out1.to_smiles() == out2.to_smiles()
+
+
+def test_reaction_can_apply_with_multiple_targets():
+    A = bam.molecule("OCCO")
+    B = bam.molecule("c1ccccc1C")
+
+    R = bam.Reaction(
+        atom1=lambda mol: mol.get_atoms(
+            "C",
+            by="element",
+            filter=bam.structural.constraints_v2.has_single_bond_with("O"),
+        ),
+        atom2=lambda mol: 1,
+        delete_in_target=lambda atom: atom.get_neighbors(
+            filter=bam.structural.constraints_v2.has_element("O")
+        ),
+    )
+    assert R.can_apply(A, B)
+
+    out1 = R(A, B)
+
+    atom1 = A.get_atoms(
+        "C",
+        by="element",
+        filter=bam.structural.constraints_v2.has_single_bond_with("O"),
+    )
+    atom2 = B.get_atom(1)
+
+    R = bam.Reaction(
+        atom1=atom1,
+        atom2=atom2,
+        delete_in_target=lambda atom: atom.get_neighbors(
+            filter=bam.structural.constraints_v2.has_element("O")
+        ).pop(),
+        delete_in_source=atom2.get_hydrogens().pop(),
+    )
+    assert R.can_apply(A, B)
+    out2 = R(A, B)
+    assert out1.to_smiles() == out2.to_smiles()
