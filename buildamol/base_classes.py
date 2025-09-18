@@ -263,6 +263,13 @@ class Atom(ID, bio.Atom.Atom):
         return Atom.new(element, **kwargs)
 
     @property
+    def weight(self):
+        """
+        The atom mass (synonym for mass).
+        """
+        return self.mass
+
+    @property
     def charge(self):
         """
         The atom charge.
@@ -419,6 +426,210 @@ class Atom(ID, bio.Atom.Atom):
         self.coord += vector
         return self
 
+    def get_neighbors(
+        self, n: int = 1, mode: str = "upto", filter: callable = None
+    ) -> set:
+        """
+        Get the neighboring atoms of this atom within n bonds.
+
+        Parameters
+        ----------
+        n : int
+            The number of bonds to search for neighbors.
+        mode : str, optional
+            The mode to use for searching for neighbors. The default is "upto", which will return all neighbors within n bonds.
+            Other options are "at" which will return only neighbors that are exactly n bonds away.
+        filter : callable, optional
+            A function that takes an atom as input and returns True if the atom should be included in the output. The default is None.
+
+        Returns
+        -------
+        set
+            A set of neighboring atoms.
+        """
+        if mode not in ("upto", "at"):
+            raise ValueError("mode must be either 'upto' or 'at'")
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        out = molecule._AtomGraph.get_neighbors(self, n, mode)
+        if filter:
+            return {a for a in out if filter(a)}
+        return out
+    
+    def get_equatorial_neighbor(self):
+        """
+        Get the equatorial neighbor of an atom, if the atom is in a ring structure.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The equatorial neighbor, if it exists, None otherwise
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return molecule.get_equatorial_neighbor(self)
+    
+    def get_axial_neighbor(self):
+        """
+        Get the axial neighbor of an atom, if the atom is in a ring structure.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The axial neighbor, if it exists, None otherwise
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return molecule.get_axial_neighbor(self)
+
+    def get_left_hydrogen(self):
+        """
+        Get the "left-protruding" hydrogen neighbor of an atom with two hydrogens and two non-hydrogen neighbors.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The left hydrogen, if it exists, None otherwise
+
+        Example
+        -------
+        In a molecule:
+        ```
+                   H_B
+                   |
+            CH3 -- C -- CH2 -- OH
+                   |
+                   H_A
+        ```
+        We want to get the left and right hydrogens of the central C atom (labeled only C).
+        Using part of the logic behind R/S nomenclature for chiral centers, we prioritize the non-H neighbors
+        and then rotate the molecule such that the highest order non-H neighbor points toward the user and the other
+        non-H neighbor points away. The left and right hydrogens are then determined based on their orientation in this view.
+
+        In this case, the left hydrogen is H_A and the right hydrogen is H_B.
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return molecule.get_left_hydrogen(self)
+    
+    def get_right_hydrogen(self):
+        """
+        Get the "right-protruding" hydrogen neighbor of an atom with two hydrogens and two non-hydrogen neighbors.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The right hydrogen, if it exists, None otherwise
+
+        Example
+        -------
+        In a molecule:
+        ```
+                   H_B
+                   |
+            CH3 -- C -- CH2 -- OH
+                   |
+                   H_A
+        ```
+        We want to get the left and right hydrogens of the central C atom (labeled only C).
+        Using part of the logic behind R/S nomenclature for chiral centers, we prioritize the non-H neighbors
+        and then rotate the molecule such that the highest order non-H neighbor points toward the user and the other
+        non-H neighbor points away. The left and right hydrogens are then determined based on their orientation in this view.
+
+        In this case, the left hydrogen is H_A and the right hydrogen is H_B.
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return molecule.get_right_hydrogen(self)
+
+    def get_axial_hydrogen(self):
+        """
+        Get the axial hydrogen neighbor of an atom, if the atom is in a ring structure.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The axial hydrogen, if it exists, None otherwise
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return molecule.get_axial_hydrogen(self)
+
+    def get_equatorial_hydrogen(self):
+        """
+        Get the equatorial hydrogen neighbor of an atom, if the atom is in a ring structure.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            The equatorial hydrogen, if it exists, None otherwise
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return molecule.get_equatorial_hydrogen(self)
+
+    def get_bonds(self) -> list:
+        """
+        Get a list of all bonds that this atom is part of.
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return molecule._get_bonds(self, None, either_way=True)
+
     @staticmethod
     def _infer_element_from_id(id: str) -> str:
         """
@@ -456,6 +667,13 @@ class Atom(ID, bio.Atom.Atom):
             element = id = id.strip()
 
         return id, element
+
+    @property
+    def molecule(self):
+        p = self.parent
+        while p is not None and getattr(p, "parent", None):
+            p = p.parent
+        return getattr(p, "_molecule", None)
 
     def __repr__(self):
         return f"Atom({self.id}, {self.serial_number})"
@@ -685,6 +903,52 @@ class Residue(ID, bio.Residue.Residue):
                 f"atoms must be either a list, tuple, or set of string or integer, not {atoms=}"
             )
 
+    def get_bonds(self, residue_internal: bool = True) -> list:
+        """
+        Get a list of all bonds with participating atoms that belong to this residue.
+
+        Parameters
+        ----------
+        residue_internal : bool, optional
+            Whether to only return bonds that are internal to this residue. Or also include bonds to atoms outside of this residue. The default is True.
+        """
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only residues that are part of a Molecule have information about connectivity."
+            )
+        return molecule.get_bonds(self, residue_internal=residue_internal)
+
+    def get_neighbors(
+        self, n: int = 1, mode: str = "upto", filter: callable = None
+    ) -> set:
+        """
+        Get the neighboring residues of this residue as they appear in the topology ResidueGraph.
+
+        Parameters
+        ----------
+        n : int
+            The number of bonds to search for neighbors.
+        mode : str, optional
+            The mode to use for searching for neighbors. The default is "upto", which will return all neighbors within n bonds.
+            Other options are "at" which will return only neighbors that are exactly n bonds away.
+        filter : callable, optional
+            A function that takes a residue as input and returns True if the residue should be included in the output. The default is None.
+        """
+        if mode not in ("upto", "at"):
+            raise ValueError("mode must be either 'upto' or 'at'")
+        molecule = self.molecule
+        if molecule is None:
+            raise ValueError(
+                "Only residues that are part of a Molecule have information about connectivity."
+            )
+        out = molecule.get_residue_graph(detailed=False, locked=False).get_neighbors(
+            self, n, mode
+        )
+        if filter:
+            return {r for r in out if filter(r)}
+        return out
+
     def matches(self, other) -> bool:
         """
         Check if the residue matches another residue.
@@ -798,6 +1062,21 @@ class Residue(ID, bio.Residue.Residue):
         for atom in new.get_atoms():
             ID._new_id(atom)
         return new
+
+    @property
+    def molecule(self):
+        p = self.parent
+        while p is not None and getattr(p, "parent", None):
+            p = p.parent
+        return getattr(p, "_molecule", None)
+
+    def __hash__(self):
+        return ID.__hash__(self)
+
+    def __eq__(self, other):
+        if not isinstance(other, Residue):
+            return False
+        return ID.__eq__(self, other)
 
     def __repr__(self):
         return f"Residue({self.resname}, {self.serial_number})"
@@ -1064,6 +1343,13 @@ class Chain(ID, bio.Chain.Chain):
         """
         del self.child_dict[residue.get_id()]
         self.child_list.remove(residue)
+
+    @property
+    def molecule(self):
+        p = self.parent
+        while p is not None and getattr(p, "parent", None):
+            p = p.parent
+        return getattr(p, "_molecule", None)
 
     def __repr__(self):
         return f"Chain({self._id})"
@@ -1342,6 +1628,20 @@ class Model(bio.Model.Model, ID):
         self.child_dict[chain.get_id()] = chain
         self.child_list.append(chain)
 
+    def unlink(self, chain):
+        """
+        Unlink a chain from this model's child_list without touching the chain's own parent references.
+        """
+        del self.child_dict[chain.get_id()]
+        self.child_list.remove(chain)
+
+    @property
+    def molecule(self):
+        p = self.parent
+        while p is not None and getattr(p, "parent", None):
+            p = p.parent
+        return getattr(p, "_molecule", None)
+
     def __repr__(self):
         return f"Model({self._id})"
 
@@ -1381,12 +1681,14 @@ class Structure(ID, bio.Structure.Structure):
         "child_list",
         "child_dict",
         "xtra",
+        "_molecule",
     )
 
     def __init__(self, id):
         ID.__init__(self)
         super(bio.Structure.Structure, self).__init__(id)
         self.level = "S"
+        self._molecule = None
 
     @classmethod
     def new(cls, id: str) -> "Structure":
@@ -1570,6 +1872,22 @@ class Structure(ID, bio.Structure.Structure):
         """
         self.child_dict[model.get_id()] = model
         self.child_list.append(model)
+
+    def unlink(self, model):
+        """
+        Unlink a model from this structure's child_list without touching the model's own parent references.
+        """
+        del self.child_dict[model.get_id()]
+        self.child_list.remove(model)
+
+    @property
+    def molecule(self):
+        return self._molecule
+
+    def __eq__(self, other):
+        if not isinstance(other, Structure):
+            return False
+        return self._ID__id == other._ID__id
 
     def __repr__(self):
         return f"Structure({self._id})"

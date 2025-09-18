@@ -57,6 +57,8 @@ class BaseEntity:
         self._base_struct = structure
         self._id = structure.id
 
+        self._base_struct._molecule = self
+
         self._model = self._base_struct.child_list[model]
         if len(self._model.child_list) == 0:
             raise ValueError("The model is empty")
