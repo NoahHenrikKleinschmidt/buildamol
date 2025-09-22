@@ -3118,6 +3118,46 @@ class BaseEntity:
 
         return next(_atom, None)
 
+    def get_atoms_within(
+        self, anchor: Union[base_classes.Atom, np.ndarray], distance: float
+    ) -> set:
+        """
+        Get all atoms within a certain distance from an anchor point.
+
+        Parameters
+        ----------
+        anchor : Atom or np.ndarray
+            The anchor point. This can be either an Atom object or a 3D coordinate as a numpy array.
+        distance : float
+            The distance threshold.
+
+        Returns
+        -------
+        set
+            A set of atoms within the specified distance from the anchor point.
+        """
+        if isinstance(anchor, np.ndarray):
+            if anchor.shape != (3,):
+                raise ValueError("Anchor coordinate must be a 3D vector")
+            anchor_coord = anchor
+
+        if not isinstance(anchor, base_classes.Atom):
+            atom = self.get_atom(anchor)
+            if atom is None:
+                raise ValueError(f"Atom {anchor} not found in the molecule")
+            anchor = atom
+
+        if isinstance(anchor, base_classes.Atom):
+            anchor_coord = anchor.coord
+        else:
+            raise ValueError("Anchor must be either an Atom or a 3D numpy array")
+
+        nearby_atoms = set()
+        for atom in self._model.get_atoms():
+            if np.linalg.norm(atom.coord - anchor_coord) <= distance:
+                nearby_atoms.add(atom)
+        return nearby_atoms
+
     def set_parent(
         self,
         obj: Union[
