@@ -55,6 +55,42 @@ class Reaction:
             "delete_in_source": None,
         }
 
+    @classmethod
+    def from_reactivities(
+        cls,
+        nucleophile: "Reactivity",
+        electrophile: "Reactivity",
+        bond_order: int = 1,
+        target_is_electrophile: bool = True,
+    ):
+        """
+        Set up a Reaction from two Reactivity objects, one for the nucleophile (source) and one for the electrophile (target).
+        This is a convenience method to quickly create a Reaction from predefined Reactivity patterns.
+
+        Parameters
+        ----------
+        nucleophile : Reactivity
+            The Reactivity object defining the nucleophilic behavior of the source molecule.
+        electrophile : Reactivity
+            The Reactivity object defining the electrophilic behavior of the target molecule.
+        bond_order : int, optional
+            The bond order of the new bond formed between the nucleophile and electrophile. Default is 1 (single bond).
+        target_is_electrophile : bool, optional
+            Set to False to modify the roles of nucleophile and electrophile, i.e. the target molecule is the nucleophile and the source molecule is the electrophile.
+        """
+        atom1, delete_in_target = electrophile.as_electrophile()
+        atom2, delete_in_source = nucleophile.as_nucleophile()
+        if not target_is_electrophile:
+            atom1, atom2 = atom2, atom1
+            delete_in_target, delete_in_source = delete_in_source, delete_in_target
+        return cls(
+            atom1=atom1,
+            atom2=atom2,
+            delete_in_target=delete_in_target,
+            delete_in_source=delete_in_source,
+            bond_order=bond_order,
+        )
+
     def apply(
         self, target: "Molecule", source: "Molecule", inplace: bool = False
     ) -> "Molecule":
@@ -85,8 +121,8 @@ class Reaction:
                     self._memory["atom2"][0].parent,
                 )
             else:
-                target.attach_residue = self._memory["atom1"][0].parent
-                source.attach_residue = self._memory["atom2"][0].parent
+                target.attach_residue = self._memory["atom1"][0].parent.serial_number
+                source.attach_residue = self._memory["atom2"][0].parent.serial_number
                 target = self._apply_link(
                     target, source, link, inplace_a=inplace, inplace_b=inplace
                 )
@@ -176,7 +212,7 @@ class Reaction:
         self._memory["delete_in_source"] = valid_deletes2
         return True
 
-    def set(
+    def set_reactivity(
         self,
         atom1: Union[base_classes.Atom, callable] = None,
         atom2: Union[base_classes.Atom, callable] = None,
@@ -259,7 +295,7 @@ class Reaction:
         from copy import deepcopy
 
         new_reaction = deepcopy(self)
-        new_reaction.set(
+        new_reaction.set_reactivity(
             atom1=atom1,
             atom2=atom2,
             delete_in_target=delete_in_target,

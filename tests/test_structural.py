@@ -2275,3 +2275,112 @@ def test_split_contiguous_residues_multiple_residues():
     assert len(mol.residues) == 2
     bam.structural.split_into_contiguous_residues(mol)
     assert len(mol.residues) == 4
+
+
+def test_basic_reactivity():
+    from buildamol.structural import constraints_v2 as constraints
+
+    mol1 = bam.read_smiles("CC(=O)O").add_hydrogens()
+    mol1.autolabel()
+    mol2 = bam.read_smiles("NCC").add_hydrogens()
+    mol2.autolabel()
+
+    def amine_nucleophile_linker(mol: bam.Molecule):
+        N = mol.get_atoms(
+            "N", by="element", filter=constraints.has_neighbor_hist({"H": 2, "C": 1})
+        )
+        if len(N) == 0:
+            raise
+        return N
+
+    amine_reactivity = bam.structural.Reactivity(
+        nucleophile_linker=amine_nucleophile_linker,
+    )
+
+    def carboxyl_electrophile_linker(mol: bam.Molecule):
+        C = mol.get_atoms(
+            "C",
+            by="element",
+            filter=constraints.has_neighbor_hist({"O": 2, "C": 1}),
+        )
+        if len(C) == 0:
+            raise
+        return C
+
+    def carboxyl_electrophile_deleter(atom, mol):
+        filter = constraints.multiple_and(
+            constraints.has_element("O"),
+            constraints.has_single_bond_with("C"),
+        )
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+    carboxyl_reactivity = bam.structural.Reactivity(
+        electrophile_linker=carboxyl_electrophile_linker,
+        electrophile_deleter=carboxyl_electrophile_deleter,
+    )
+
+    reaction = bam.Reaction.from_reactivity(amine_reactivity, carboxyl_reactivity)
+
+    out = reaction(mol1, mol2)
+    if base.ALLOW_VISUAL:
+        out.show()
+    assert out is not None
+
+
+def test_reactivity_two_sites():
+    from buildamol.structural import constraints_v2 as constraints
+
+    mol1 = bam.read_smiles("O=C(O)C(=O)O").add_hydrogens()
+    mol1.autolabel()
+    mol2 = bam.read_smiles("NCCN").add_hydrogens()
+    mol2.autolabel()
+
+    def amine_nucleophile_linker(mol: bam.Molecule):
+        N = mol.get_atoms(
+            "N", by="element", filter=constraints.has_neighbor_hist({"H": 2, "C": 1})
+        )
+        if len(N) == 0:
+            raise
+        return N
+
+    amine_reactivity = bam.structural.Reactivity(
+        nucleophile_linker=amine_nucleophile_linker,
+    )
+
+    def carboxyl_electrophile_linker(mol: bam.Molecule):
+        C = mol.get_atoms(
+            "C",
+            by="element",
+            filter=constraints.has_neighbor_hist({"O": 2, "C": 1}),
+        )
+        if len(C) == 0:
+            raise
+        return C
+
+    def carboxyl_electrophile_deleter(atom, mol):
+        filter = constraints.multiple_and(
+            constraints.has_element("O"),
+            constraints.has_single_bond_with("C"),
+        )
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+    carboxyl_reactivity = bam.structural.Reactivity(
+        electrophile_linker=carboxyl_electrophile_linker,
+        electrophile_deleter=carboxyl_electrophile_deleter,
+    )
+
+    reaction = bam.Reaction.from_reactivity(amine_reactivity, carboxyl_reactivity)
+
+    out = reaction(mol1, mol2)
+    if base.ALLOW_VISUAL:
+        out.show()
+    assert out is not None
+    assert out.count_residues() == 3
+
+    carboxyl_reactivity.set_steric_constraints(n_target_sites=1)
+    reaction2 = bam.Reaction.from_reactivity(amine_reactivity, carboxyl_reactivity)
+    out2 = reaction2(mol1, mol2)
+    if base.ALLOW_VISUAL:
+        out2.show()
+    assert out2 is not None
+    assert out2.count_residues() == 2
