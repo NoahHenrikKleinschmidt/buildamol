@@ -2369,7 +2369,7 @@ def test_reactivity_two_sites():
         electrophile_deleter=carboxyl_electrophile_deleter,
     )
 
-    reaction = bam.Reaction.from_reactivity(amine_reactivity, carboxyl_reactivity)
+    reaction = bam.Reaction.from_reactivities(amine_reactivity, carboxyl_reactivity)
 
     out = reaction(mol1, mol2)
     if base.ALLOW_VISUAL:
@@ -2378,7 +2378,7 @@ def test_reactivity_two_sites():
     assert out.count_residues() == 3
 
     carboxyl_reactivity.set_steric_constraints(n_target_sites=1)
-    reaction2 = bam.Reaction.from_reactivity(amine_reactivity, carboxyl_reactivity)
+    reaction2 = bam.Reaction.from_reactivities(amine_reactivity, carboxyl_reactivity)
     out2 = reaction2(mol1, mol2)
     if base.ALLOW_VISUAL:
         out2.show()
