@@ -946,3 +946,21 @@ class constraints_v2:
     has_triple_bond_with = lambda element: constraints_v2.has_bond_of_order_with(
         3, element
     )
+
+    neighbors_any = lambda *args: (
+        lambda atom: any(i in (j.element for j in atom.get_neighbors()) for i in args)
+    )
+
+    neighbors_all = lambda *args: (
+        lambda atom: all(i in (j.element for j in atom.get_neighbors()) for i in args)
+    )
+    neighbors_exactly = lambda *args: (
+        lambda atom: set(j.element for j in atom.get_neighbors()) == set(args)
+    )
+
+    multiple_and = lambda *funcs: (lambda atom: all(f(atom) for f in funcs))
+    multiple_or = lambda *funcs: (lambda atom: any(f(atom) for f in funcs))
+    inverse = lambda func: (lambda atom: not func(atom))
+
+    multiple_nand = lambda *funcs: (lambda atom: not all(f(atom) for f in funcs))
+    multiple_nor = lambda *funcs: (lambda atom: not any(f(atom) for f in funcs))
