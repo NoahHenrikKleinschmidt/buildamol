@@ -925,9 +925,15 @@ class constraints_v2:
     The atom has at least one bond of the specified order
     """
 
-    has_double_bonds = lambda atom: any(bond.order == 2 for bond in atom.get_bonds())
-    has_triple_bonds = lambda atom: any(bond.order == 3 for bond in atom.get_bonds())
-    has_single_bonds = lambda atom: any(bond.order == 1 for bond in atom.get_bonds())
+    has_double_bonds = lambda: lambda atom: any(
+        bond.order == 2 for bond in atom.get_bonds()
+    )
+    has_triple_bonds = lambda: lambda atom: any(
+        bond.order == 3 for bond in atom.get_bonds()
+    )
+    has_single_bonds = lambda: lambda atom: any(
+        bond.order == 1 for bond in atom.get_bonds()
+    )
 
     has_n_bonds = lambda n: (lambda atom: len(atom.get_bonds()) == n)
 
