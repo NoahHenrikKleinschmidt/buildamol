@@ -965,8 +965,41 @@ class constraints_v2:
     )
 
     and_ = lambda *funcs: (lambda atom: all(f(atom) for f in funcs))
+    """
+    Combine multiple constraints with a logical AND
+    as (all(f(atom) for f in funcs))
+    """
     or_ = lambda *funcs: (lambda atom: any(f(atom) for f in funcs))
+    """
+    Combine multiple constraints with a logical OR
+    as (any(f(atom) for f in funcs))
+    """
     not_ = lambda func: (lambda atom: not func(atom))
+    """
+    Negate a constraint function
+    as (not func(atom))
+    """
 
     nand_ = lambda *funcs: (lambda atom: not all(f(atom) for f in funcs))
+    """
+    Combine multiple constraints with a logical NAND
+    as (not all(f(atom) for f in funcs))
+    """
+
     nor_ = lambda *funcs: (lambda atom: not any(f(atom) for f in funcs))
+    """
+    Combine multiple constraints with a logical NOR
+    as (not any(f(atom) for f in funcs))
+    """
+
+    xor_ = lambda func1, func2: (lambda atom: func1(atom) != func2(atom))
+    """
+    Combine two constraints with a logical XOR
+    as (func1(atom) != func2(atom))
+    """
+
+    xnor_ = lambda func1, func2: (lambda atom: func1(atom) == func2(atom))
+    """
+    Combine two constraints with a logical XNOR
+    as (func1(atom) == func2(atom))
+    """
