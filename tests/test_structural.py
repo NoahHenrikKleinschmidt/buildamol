@@ -2308,7 +2308,7 @@ def test_basic_reactivity():
         return C
 
     def carboxyl_electrophile_deleter(atom, mol):
-        filter = constraints.multiple_and(
+        filter = constraints.and_(
             constraints.has_element("O"),
             constraints.has_single_bond_with("C"),
         )
@@ -2358,7 +2358,7 @@ def test_reactivity_two_sites():
         return C
 
     def carboxyl_electrophile_deleter(atom, mol):
-        filter = constraints.multiple_and(
+        filter = constraints.and_(
             constraints.has_element("O"),
             constraints.has_single_bond_with("C"),
         )
@@ -2384,3 +2384,183 @@ def test_reactivity_two_sites():
         out2.show()
     assert out2 is not None
     assert out2.count_residues() == 2
+
+
+def test_hydroxyl_reactivity():
+
+    mol = bam.read_smiles("CCO").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import HydroxylReactivity
+
+    hydroxyl = HydroxylReactivity()
+
+    reaction = bam.Reaction.from_reactivities(hydroxyl, hydroxyl)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_carboxyl_reactivity():
+
+    mol = bam.read_smiles("CC(=O)O").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import CarboxylReactivity
+
+    carboxyl = CarboxylReactivity()
+
+    reaction = bam.Reaction.from_reactivities(carboxyl, carboxyl)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_amine_reactivity():
+
+    mol = bam.read_smiles("CCN").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import AmineReactivity
+
+    amine = AmineReactivity()
+
+    reaction = bam.Reaction.from_reactivities(amine, amine)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_thiol_reactivity():
+
+    mol = bam.read_smiles("CCS").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import ThiolReactivity
+
+    thiol = ThiolReactivity()
+
+    reaction = bam.Reaction.from_reactivities(thiol, thiol)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_reactivty_two_possible_sites_select_more_open_one():
+    mol = bam.read_smiles("CNCCN").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import AmineReactivity
+
+    amine = AmineReactivity().set_steric_constraints(n_target_sites=1)
+
+    reaction = bam.Reaction.from_reactivities(amine, amine)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_reactivity_no_possible_sites():
+    mol = bam.read_smiles("CCO").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import AmineReactivity
+
+    amine = AmineReactivity()
+
+    reaction = bam.Reaction.from_reactivities(amine, amine)
+    out = None
+    try:
+        out = reaction(mol, mol.copy())
+    except:
+        pass
+
+    assert out is None, "Should not have been able to react because no amine present"
+
+
+def test_amide_reactivity():
+
+    mol = bam.read_smiles("CC(=O)N").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import AmideReactivity
+
+    amide = AmideReactivity()
+
+    reaction = bam.Reaction.from_reactivities(amide, amide)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_ester_reactivity():
+
+    mol = bam.read_smiles("OCC(=O)OC").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import EsterReactivity
+
+    ester = EsterReactivity()
+
+    reaction = bam.Reaction.from_reactivities(ester, ester)
+    out = None
+    try:
+        out = reaction(mol.copy(), mol.copy())
+    except:
+        pass
+
+    assert (
+        out is None
+    ), "Should not have been able to react because ester is not nucleophilic"
+
+    from buildamol.structural.reactivity import HydroxylReactivity
+
+    hydroxyl = HydroxylReactivity()
+
+    reaction = bam.Reaction.from_reactivities(hydroxyl, ester)
+    out = reaction(mol.copy(), mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_phosphate_reactivity():
+
+    mol = bam.read_smiles("COP(=O)(O)O").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import PhosphateReactivity
+
+    phosphate = PhosphateReactivity()
+
+    reaction = bam.Reaction.from_reactivities(phosphate, phosphate)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_alkyl_halide_reactivity():
+
+    mol = bam.read_smiles("OCCCCl").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import (
+        AlkylHalideReactivity,
+        HydroxylReactivity,
+    )
+
+    alkyl_halide = AlkylHalideReactivity()
+    hydroxyl = HydroxylReactivity()
+
+    reaction = bam.Reaction.from_reactivities(hydroxyl, alkyl_halide)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2

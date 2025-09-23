@@ -200,3 +200,304 @@ class Reactivity:
             return atoms
         else:
             return atoms[: self._steric_n_target_sites]
+
+
+class ReactionError(Exception):
+    pass
+
+
+from buildamol.structural.neighbors import constraints_v2 as constraints
+
+
+class CarboxylReactivity(Reactivity):
+    """
+    Predefined reactivity pattern for carboxylic acids
+    Can act as both nucleophile and electrophile.
+    """
+
+    def nucleophile_linker(self, mol: core.Molecule):
+        C = self.electrophile_linker(mol)
+        O = set()
+        for c in C:
+            O.update(
+                mol.get_neighbors(
+                    c,
+                    filter=constraints.and_(
+                        constraints.has_element("O"),
+                        constraints.has_single_bond_with("C"),
+                    ),
+                )
+            )
+        if len(O) == 0:
+            raise ReactionError("No carboxylic acid found")
+        return O
+
+    def electrophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_double_bond_with("O"),
+            constraints.has_single_bond_with("O"),
+            constraints.not_(constraints.neighbors_any("N", "S", "P")),
+        )
+
+        C = mol.get_atoms("C", by="element", filter=filter)
+        if len(C) == 0:
+            raise ReactionError("No carboxylic acid found")
+        return C
+
+    def electrophile_deleter(
+        self,
+        atom: base_classes.Atom,
+        mol: core.Molecule,
+    ):
+        filter = constraints.and_(
+            constraints.has_element("O"),
+            constraints.has_single_bond_with("C"),
+        )
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+
+class AmideReactivity(Reactivity):
+    """
+    Predefined reactivity pattern for amide groups
+    Can act as both nucleophile and electrophile.
+    """
+
+    def nucleophile_linker(self, mol: core.Molecule):
+        C = self.electrophile_linker(mol)
+        N = set()
+        for c in C:
+            N.update(
+                mol.get_neighbors(
+                    c,
+                    filter=constraints.and_(
+                        constraints.has_element("N"),
+                        constraints.has_single_bond_with("C"),
+                    ),
+                )
+            )
+        if len(N) == 0:
+            raise ReactionError("No amide group found")
+        return N
+
+    def electrophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_double_bond_with("O"),
+            constraints.has_single_bond_with("N"),
+            constraints.not_(constraints.neighbors_any("S", "P")),
+        )
+
+        C = mol.get_atoms("C", by="element", filter=filter)
+        if len(C) == 0:
+            raise ReactionError("No amide group found")
+        return C
+
+    def electrophile_deleter(
+        self,
+        atom: base_classes.Atom,
+        mol: core.Molecule,
+    ):
+        filter = constraints.has_element("N")
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+
+class EsterReactivity(CarboxylReactivity):
+    def nucleophile_linker(self, mol):
+        raise NotImplementedError("Ester cannot act as nucleophile")
+
+
+class HydroxylReactivity(Reactivity):
+    """
+    Predefined reactivity pattern for hydroxyl groups
+    Can act as both nucleophile and electrophile.
+    """
+
+    def nucleophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_element("O"),
+            constraints.has_single_bond_with("C"),
+            constraints.not_(constraints.neighbors_any("N", "S", "P")),
+        )
+        O = mol.get_atoms("O", by="element", filter=filter)
+        if len(O) == 0:
+            raise ReactionError("No hydroxyl group found")
+        return O
+
+    def electrophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_single_bond_with("O"),
+            constraints.not_(constraints.has_double_bonds()),
+            constraints.not_(constraints.neighbors_any("N", "S", "P")),
+        )
+        C = mol.get_atoms("C", by="element", filter=filter)
+        if len(C) == 0:
+            raise ReactionError("No hydroxyl group found")
+        return C
+
+    def electrophile_deleter(
+        self,
+        atom: base_classes.Atom,
+        mol: core.Molecule,
+    ):
+        filter = constraints.has_element("O")
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+
+class AmineReactivity(Reactivity):
+    """
+    Predefined reactivity pattern for amine groups
+    Can act as both nucleophile and electrophile.
+    """
+
+    def nucleophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_single_bond_with("C"),
+            constraints.not_(constraints.neighbors_any("O", "S", "P")),
+        )
+        N = mol.get_atoms("N", by="element", filter=filter)
+        if len(N) == 0:
+            raise ReactionError("No amine group found")
+        return N
+
+    def electrophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_single_bond_with("N"),
+            constraints.not_(constraints.neighbors_any("O", "S", "P")),
+        )
+        C = mol.get_atoms("C", by="element", filter=filter)
+        if len(C) == 0:
+            raise ReactionError("No amine group found")
+        return C
+
+    def electrophile_deleter(
+        self,
+        atom: base_classes.Atom,
+        mol: core.Molecule,
+    ):
+        filter = constraints.has_element("N")
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+
+class ThiolReactivity(Reactivity):
+    """
+    Predefined reactivity pattern for thiol groups
+    Can act as both nucleophile and electrophile.
+    """
+
+    def nucleophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_single_bond_with("C"),
+            constraints.not_(constraints.neighbors_any("N", "O", "P")),
+        )
+        S = mol.get_atoms("S", by="element", filter=filter)
+        if len(S) == 0:
+            raise ReactionError("No thiol group found")
+        return S
+
+    def electrophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_single_bond_with("S"),
+            constraints.not_(constraints.has_double_bonds()),
+            constraints.not_(constraints.neighbors_any("N", "O", "P")),
+        )
+        C = mol.get_atoms("C", by="element", filter=filter)
+        if len(C) == 0:
+            raise ReactionError("No thiol group found")
+        return C
+
+    def electrophile_deleter(
+        self,
+        atom: base_classes.Atom,
+        mol: core.Molecule,
+    ):
+        filter = constraints.has_element("S")
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+
+class AlkylHalideReactivity(Reactivity):
+    """
+    Predefined reactivity pattern for alkyl halides
+    Can act as electrophile.
+    """
+
+    def nucleophile_linker(self, mol: core.Molecule):
+        raise NotImplementedError("Alkyl halide cannot act as nucleophile")
+
+    def electrophile_linker(self, mol: core.Molecule):
+        halides = ("F", "CL", "BR", "I")
+        filter = constraints.neighbors_any(*halides)
+        C = mol.get_atoms("C", by="element", filter=filter)
+        halide_neighbors = [
+            mol.get_neighbors(c, filter=constraints.has_any_element_of(*halides)).pop()
+            for c in C
+        ]
+        C = zip(C, halide_neighbors)
+        C = sorted(C, key=lambda c: halides.index(c[1].element))
+        C = [c[0] for c in C]
+        if len(C) == 0:
+            raise ReactionError("No alkyl halide group found")
+        return C
+
+    def electrophile_deleter(
+        self,
+        atom: base_classes.Atom,
+        mol: core.Molecule,
+    ):
+        filter = constraints.has_any_element_of(*{"F", "CL", "BR", "I"})
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+
+class PhosphateReactivity(Reactivity):
+    """
+    Predefined reactivity pattern for phosphate groups
+    Can act as both nucleophile and electrophile.
+    """
+
+    def nucleophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_double_bond_with("O"),
+            constraints.has_single_bond_with("O"),
+            constraints.not_(constraints.neighbors_any("N", "S", "C")),
+        )
+
+        P = mol.get_atoms("P", by="element", filter=filter)
+        O = set()
+        for p in P:
+            O.update(
+                mol.get_neighbors(
+                    p,
+                    filter=constraints.and_(
+                        constraints.has_element("O"),
+                        constraints.has_single_bond_with("P"),
+                    ),
+                )
+            )
+        if len(O) == 0:
+            raise ReactionError("No phosphate group found")
+        return O
+
+    def electrophile_linker(self, mol: core.Molecule):
+        O = self.nucleophile_linker(mol)
+        C = set()
+        for o in O:
+            C.update(
+                mol.get_neighbors(
+                    o,
+                    filter=constraints.has_element("C"),
+                ),
+            )
+        if len(O) == 0:
+            raise ReactionError("No phosphate group found")
+        if len(C) == 0:
+            return O
+        return C
+
+    def electrophile_deleter(
+        self,
+        atom: base_classes.Atom,
+        mol: core.Molecule,
+    ):
+        filter = constraints.and_(
+            constraints.has_element("O"),
+            constraints.has_single_bond_with("P"),
+        )
+        return mol.get_neighbors(atom, filter=filter).pop()
