@@ -209,7 +209,7 @@ class ReactionError(Exception):
 from buildamol.structural.neighbors import constraints_v2 as constraints
 
 
-class CarboxylReactivity(Reactivity):
+class Carboxyl(Reactivity):
     """
     Predefined reactivity pattern for carboxylic acids
     Can act as both nucleophile and electrophile.
@@ -256,7 +256,7 @@ class CarboxylReactivity(Reactivity):
         return mol.get_neighbors(atom, filter=filter).pop()
 
 
-class AmideReactivity(Reactivity):
+class Amide(Reactivity):
     """
     Predefined reactivity pattern for amide groups
     Can act as both nucleophile and electrophile.
@@ -300,12 +300,12 @@ class AmideReactivity(Reactivity):
         return mol.get_neighbors(atom, filter=filter).pop()
 
 
-class EsterReactivity(CarboxylReactivity):
+class Ester(Carboxyl):
     def nucleophile_linker(self, mol):
         raise NotImplementedError("Ester cannot act as nucleophile")
 
 
-class HydroxylReactivity(Reactivity):
+class Hydroxyl(Reactivity):
     """
     Predefined reactivity pattern for hydroxyl groups
     Can act as both nucleophile and electrophile.
@@ -342,7 +342,7 @@ class HydroxylReactivity(Reactivity):
         return mol.get_neighbors(atom, filter=filter).pop()
 
 
-class AmineReactivity(Reactivity):
+class Amine(Reactivity):
     """
     Predefined reactivity pattern for amine groups
     Can act as both nucleophile and electrophile.
@@ -377,7 +377,7 @@ class AmineReactivity(Reactivity):
         return mol.get_neighbors(atom, filter=filter).pop()
 
 
-class ThiolReactivity(Reactivity):
+class Thiol(Reactivity):
     """
     Predefined reactivity pattern for thiol groups
     Can act as both nucleophile and electrophile.
@@ -413,7 +413,7 @@ class ThiolReactivity(Reactivity):
         return mol.get_neighbors(atom, filter=filter).pop()
 
 
-class AlkylHalideReactivity(Reactivity):
+class AlkylHalide(Reactivity):
     """
     Predefined reactivity pattern for alkyl halides
     Can act as electrophile.
@@ -446,7 +446,7 @@ class AlkylHalideReactivity(Reactivity):
         return mol.get_neighbors(atom, filter=filter).pop()
 
 
-class PhosphateReactivity(Reactivity):
+class Phosphate(Reactivity):
     """
     Predefined reactivity pattern for phosphate groups
     Can act as both nucleophile and electrophile.
