@@ -2564,3 +2564,53 @@ def test_alkyl_halide_reactivity():
     if base.ALLOW_VISUAL:
         out.show2d()
     assert len(out.residues) == 2
+
+
+def test_ketone_reactivity():
+
+    mol = bam.read_smiles("OC(CC)C(=O)C").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Ketone
+
+    ketone = Ketone()
+
+    reaction = bam.Reaction.from_reactivities(ketone, ketone)
+    out = None
+    try:
+        out = reaction(mol.copy(), mol.copy())
+    except:
+        pass
+
+    assert (
+        out is None
+    ), "Should not have been able to react because ketone is not nucleophilic"
+
+    from buildamol.structural.reactivity import Hydroxyl
+
+    hydroxyl = Hydroxyl()
+    reaction = bam.Reaction.from_reactivities(hydroxyl, ketone)
+
+    out = reaction(mol.copy(), mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_aldehyde_reactivity():
+
+    mol = bam.read_smiles("CCO").add_hydrogens()
+    mol.autolabel()
+    mol2 = bam.molecule("benzaldehyde").add_hydrogens()
+    from buildamol.structural.reactivity import Aldehyde, Hydroxyl
+
+    aldehyde = Aldehyde()
+    hydroxyl = Hydroxyl()
+
+    reaction = bam.Reaction.from_reactivities(
+        hydroxyl, aldehyde, target_is_electrophile=False
+    )
+    out = reaction(mol.copy(), mol2.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2

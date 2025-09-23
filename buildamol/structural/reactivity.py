@@ -305,6 +305,62 @@ class Ester(Carboxyl):
         raise NotImplementedError("Ester cannot act as nucleophile")
 
 
+class Aldehyde(Reactivity):
+    def nucleophile_linker(self, mol):
+        raise NotImplementedError("Aldehyde cannot act as nucleophile")
+
+    def electrophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_double_bond_with("O"),
+            constraints.has_single_bond_with("C"),
+            constraints.not_(constraints.neighbors_any("N", "S", "P")),
+        )
+
+        C = mol.get_atoms("C", by="element", filter=filter)
+        if len(C) == 0:
+            raise ReactionError("No aldehyde group found")
+        return C
+
+
+class Ketone(Reactivity):
+    def nucleophile_linker(self, mol):
+        raise NotImplementedError("Ketone cannot act as nucleophile")
+
+    def electrophile_linker(self, mol: core.Molecule):
+        filter = constraints.and_(
+            constraints.has_double_bond_with("O"),
+            constraints.has_neighbor_hist({"C": 2, "O": 1}),
+        )
+
+        C = mol.get_atoms("C", by="element", filter=filter)
+        if len(C) == 0:
+            raise ReactionError("No ketone group found")
+        return C
+
+    def electrophile_deleter(
+        self,
+        atom: base_classes.Atom,
+        mol: core.Molecule,
+    ):
+        neighbors = list(mol.get_neighbors(atom, filter=constraints.has_element("C")))
+        if len(neighbors) != 2:
+            raise ReactionError("Ketone carbon does not have two carbon neighbors")
+        a, b = neighbors[:2]
+
+        a_neighbors_hist = sum(n.atomic_number for n in mol.get_neighbors(a, n=3))
+        b_neighbors_hist = sum(n.atomic_number for n in mol.get_neighbors(b, n=3))
+        if a_neighbors_hist != b_neighbors_hist:
+            if a_neighbors_hist < b_neighbors_hist:
+                return b
+            return a
+
+        descendants_a = mol.get_descendants(atom, a)
+        descendants_b = mol.get_descendants(atom, b)
+        if len(descendants_a) < len(descendants_b):
+            return a
+        return b
+
+
 class Hydroxyl(Reactivity):
     """
     Predefined reactivity pattern for hydroxyl groups
