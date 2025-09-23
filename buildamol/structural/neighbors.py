@@ -964,9 +964,9 @@ class constraints_v2:
         lambda atom: set(j.element for j in atom.get_neighbors()) == set(args)
     )
 
-    multiple_and = lambda *funcs: (lambda atom: all(f(atom) for f in funcs))
-    multiple_or = lambda *funcs: (lambda atom: any(f(atom) for f in funcs))
-    inverse = lambda func: (lambda atom: not func(atom))
+    and_ = lambda *funcs: (lambda atom: all(f(atom) for f in funcs))
+    or_ = lambda *funcs: (lambda atom: any(f(atom) for f in funcs))
+    not_ = lambda func: (lambda atom: not func(atom))
 
-    multiple_nand = lambda *funcs: (lambda atom: not all(f(atom) for f in funcs))
-    multiple_nor = lambda *funcs: (lambda atom: not any(f(atom) for f in funcs))
+    nand_ = lambda *funcs: (lambda atom: not all(f(atom) for f in funcs))
+    nor_ = lambda *funcs: (lambda atom: not any(f(atom) for f in funcs))
