@@ -126,10 +126,10 @@ class Reactivity:
         """
         new = self.__class__()
         new.set_reactivity(
-            nucleophile_linker=nucleophile_linker or self.nucleophile_linker,
-            electrophile_linker=electrophile_linker or self.electrophile_linker,
-            nucleophile_deleter=nucleophile_deleter or self.nucleophile_deleter,
-            electrophile_deleter=electrophile_deleter or self.electrophile_deleter,
+            nucleophile_linker=nucleophile_linker or self._nucleophile_linker,
+            electrophile_linker=electrophile_linker or self._electrophile_linker,
+            nucleophile_deleter=nucleophile_deleter or self._nucleophile_deleter,
+            electrophile_deleter=electrophile_deleter or self._electrophile_deleter,
         )
         return new
 
@@ -312,9 +312,9 @@ class Carboxyl(Reactivity):
 
     def nucleophile_linker(self, mol: core.Molecule):
         C = self.electrophile_linker(mol)
-        O = set()
+        O = []
         for c in C:
-            O.update(
+            O.extend(
                 mol.get_neighbors(
                     c,
                     filter=constraints.and_(
@@ -359,9 +359,9 @@ class Amide(Reactivity):
 
     def nucleophile_linker(self, mol: core.Molecule):
         C = self.electrophile_linker(mol)
-        N = set()
+        N = []
         for c in C:
-            N.update(
+            N.extend(
                 mol.get_neighbors(
                     c,
                     filter=constraints.and_(
@@ -629,9 +629,9 @@ class Phosphate(Reactivity):
         )
 
         P = mol.get_atoms("P", by="element", filter=filter)
-        O = set()
+        O = []
         for p in P:
-            O.update(
+            O.extend(
                 mol.get_neighbors(
                     p,
                     filter=constraints.and_(
@@ -646,9 +646,9 @@ class Phosphate(Reactivity):
 
     def electrophile_linker(self, mol: core.Molecule):
         O = self.nucleophile_linker(mol)
-        C = set()
+        C = []
         for o in O:
-            C.update(
+            C.extend(
                 mol.get_neighbors(
                     o,
                     filter=constraints.has_element("C"),

@@ -2639,3 +2639,34 @@ def test_aldehyde_reactivity():
     if base.ALLOW_VISUAL:
         out.show2d()
     assert len(out.residues) == 2
+
+
+def test_multisite_react2():
+    from buildamol.extensions.polymers.polycarbons import cyclic_alkane
+
+    # create two cyclic alkanes
+    # (one larger that we hydroxylate at odd positions,
+    # the other smaller that we amidate at position 1)
+    A = cyclic_alkane(24)
+    A = bam.aminate(A, list(range(1, 24, 4)))
+    A = A.squash().autolabel()
+    n_attachment_points = sum(1 for i in A.atoms if i.element == "N")
+
+    B = cyclic_alkane(6)
+    B = bam.amidate(B, 1)
+    B = B.squash().autolabel()
+
+    from buildamol.structural.reactivity import Amine, Amide
+
+    reaction = bam.Reaction.from_reactivities(
+        nucleophile=Amide(),
+        electrophile=Amine(),
+    )
+
+    out = reaction(A, B)
+    if base.ALLOW_VISUAL:
+        out.show2d()
+        out.show3d()
+    assert out.count_residues() == n_attachment_points + 1
+    for bond in out.bonds:
+        assert bond.length < 3, "All bonds should be reasonable"

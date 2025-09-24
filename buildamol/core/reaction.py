@@ -122,6 +122,7 @@ class Reaction:
         if isinstance(link, list):
             if not inplace:
                 target = target.copy()
+                source = source.copy()
             for l, (atom1, atom2) in zip(
                 link, zip(self._memory["atom1"], self._memory["atom2"])
             ):
@@ -143,8 +144,8 @@ class Reaction:
                     self._memory["atom2"][0].parent,
                 )
             else:
-                target.attach_residue = self._memory["atom1"][0].parent.serial_number
-                source.attach_residue = self._memory["atom2"][0].parent.serial_number
+                target.attach_residue = self._memory["atom1"][0].parent
+                source.attach_residue = self._memory["atom2"][0].parent
                 target = self._apply_link(
                     target, source, link, inplace_a=inplace, inplace_b=inplace
                 )
@@ -163,8 +164,8 @@ class Reaction:
         )
         if self._bond_order > 1:
             out.set_bond_order(
-                atom1.serial_number,
-                atom2.serial_number,
+                atom1,
+                atom2,
                 self._bond_order,
                 adjust_hydrogens=True,
             )
