@@ -911,9 +911,9 @@ class BaseEntity:
 
     def chem2dview(
         self,
-        linewidth: float = 1.0,
+        linewidth: float = None,
         atoms: str = None,
-        highlight_color: str = "cyan",
+        highlight_color: str = None,
         **kwargs,
     ):
         """

@@ -896,7 +896,7 @@ def react(
     a_is_electrophile: bool = True,
     at_residue_a: Union[int, "bio.Residue.Residue"] = None,
     at_residue_b: Union[int, "bio.Residue.Residue"] = None,
-    reaction: "reaction.Reaction" = None,
+    reaction: "Reaction" = None,
     copy_a: bool = True,
     copy_b: bool = True,
 ) -> "Molecule":
@@ -934,7 +934,7 @@ def react(
         The connected molecule
     """
     if reaction is not None:
-        if not isinstance(reaction, reaction.Reaction):
+        if not "Reaction" in str(type(reaction).__mro__[0]):
             raise ValueError(
                 f"reaction must be an instance of the Reaction class, got {type(reaction)}"
             )
