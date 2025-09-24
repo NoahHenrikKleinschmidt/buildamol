@@ -128,8 +128,8 @@ class Reaction:
                 if target is source:
                     l.apply(target, source, atom1.parent, atom2.parent)
                 else:
-                    target.attach_residue = atom1.parent.serial_number
-                    source.attach_residue = atom2.parent.serial_number
+                    target.set_attach_residue(atom1.parent)
+                    source.set_attach_residue(atom2.parent)
                     target = self._apply_link(
                         target, source, l, inplace_a=True, inplace_b=inplace
                     )
