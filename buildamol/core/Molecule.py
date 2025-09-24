@@ -1072,8 +1072,8 @@ def phosphorylate(
         The phosphorylated molecule
     """
     resources.load_small_molecules()
-    phos = Molecule.from_compound("PO4")
-    return _modify(mol, phos, at_atom, delete, "P", ["O2"], inplace)
+    phos = Molecule.from_compound("PO4").add_hydrogens()
+    return _modify(mol, phos, at_atom, delete, "O2", ["HO2"], inplace)
 
 
 def methylate(
