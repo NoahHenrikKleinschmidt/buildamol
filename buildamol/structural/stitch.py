@@ -245,12 +245,7 @@ class Stitcher(base.Connector):
             obj = mapping[i]
 
             for atom in removals:
-                bonds = (
-                    i
-                    for i in obj._bonds
-                    if atom in i
-                    # if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
-                )
+                bonds = obj._get_bonds(atom, None)
                 for bond in bonds:
                     # obj._bonds.remove(bond)
                     obj._remove_bond(*bond)
