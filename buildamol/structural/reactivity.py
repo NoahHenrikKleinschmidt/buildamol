@@ -28,6 +28,7 @@ class Reactivity:
         self._steric_distance = None
         self._steric_max_neighbors = None
         self._steric_n_target_sites = None
+        self._serves_target = False
 
         if args or kwargs:
             self.set_reactivity(*args, **kwargs)
@@ -132,16 +133,18 @@ class Reactivity:
         )
         return new
 
-    def as_nucleophile(self):
+    def as_nucleophile(self, serves_target: bool):
         """
         Get the nucleophilic linker and deleter functions.
         """
+        self._serves_target = serves_target
         return self._nucleophile_linker_call, self._nucleophile_deleter_call
 
-    def as_electrophile(self):
+    def as_electrophile(self, serves_target: bool):
         """
         Get the electrophilic linker and deleter functions.
         """
+        self._serves_target = serves_target
         return self._electrophile_linker_call, self._electrophile_deleter_call
 
     def _linker_call_wrapper(self, func: callable, mol: core.Molecule):
@@ -151,13 +154,15 @@ class Reactivity:
         atoms = self._default_steric_constraint_func(mol, atoms)
         if isinstance(atoms, base_classes.Atom):
             return [atoms]
-        return list(atoms)
+        if self._serves_target:
+            return list(atoms)
+        else:
+            return next(iter(atoms))
 
     def _nucleophile_linker_call(self, mol: core.Molecule):
         if self._nucleophile_linker is None:
             raise NotImplementedError("Nucleophile linker function not defined")
         linker = self._linker_call_wrapper(self._nucleophile_linker, mol)
-        linker = linker[0]
         return linker
 
     def _electrophile_linker_call(self, mol: core.Molecule):
@@ -369,9 +374,8 @@ class Hydroxyl(Reactivity):
 
     def nucleophile_linker(self, mol: core.Molecule):
         filter = constraints.and_(
-            constraints.has_element("O"),
             constraints.has_single_bond_with("C"),
-            constraints.not_(constraints.neighbors_any("N", "S", "P")),
+            constraints.neighbors_exactly("H", "C"),
         )
         O = mol.get_atoms("O", by="element", filter=filter)
         if len(O) == 0:
@@ -379,12 +383,15 @@ class Hydroxyl(Reactivity):
         return O
 
     def electrophile_linker(self, mol: core.Molecule):
+        nucleophile_O = self.nucleophile_linker(mol)
         filter = constraints.and_(
-            constraints.has_single_bond_with("O"),
-            constraints.not_(constraints.has_double_bonds()),
+            constraints.has_element("C"),
             constraints.not_(constraints.neighbors_any("N", "S", "P")),
         )
-        C = mol.get_atoms("C", by="element", filter=filter)
+        C = []
+        for o in nucleophile_O:
+            c = mol.get_neighbors(o, filter=filter).pop()
+            C.append(c)
         if len(C) == 0:
             raise ReactionError("No hydroxyl group found")
         return C

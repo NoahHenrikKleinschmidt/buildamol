@@ -78,8 +78,12 @@ class Reaction:
         target_is_electrophile : bool, optional
             Set to False to modify the roles of nucleophile and electrophile, i.e. the target molecule is the nucleophile and the source molecule is the electrophile.
         """
-        atom1, delete_in_target = electrophile.as_electrophile()
-        atom2, delete_in_source = nucleophile.as_nucleophile()
+        atom1, delete_in_target = electrophile.as_electrophile(
+            serves_target=target_is_electrophile
+        )
+        atom2, delete_in_source = nucleophile.as_nucleophile(
+            serves_target=not target_is_electrophile
+        )
         if not target_is_electrophile:
             atom1, atom2 = atom2, atom1
             delete_in_target, delete_in_source = delete_in_source, delete_in_target
@@ -141,8 +145,8 @@ class Reaction:
         )
         if self._bond_order > 1:
             out.set_bond_order(
-                atom1,
-                atom2,
+                atom1.serial_number,
+                atom2.serial_number,
                 self._bond_order,
                 adjust_hydrogens=True,
             )
