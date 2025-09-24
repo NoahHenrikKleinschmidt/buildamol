@@ -31,6 +31,17 @@ in a specific way.
    :undoc-members:
    :show-inheritance:
 
+
+The `Reaction` module
+---------------------
+
+The `Reaction` module defines the `Reaction` class that is used to model chemical reactions between molecules.
+
+.. autoclass:: buildamol.core.Reaction
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 The `base` module
 -----------------
 

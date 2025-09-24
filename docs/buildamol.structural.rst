@@ -38,17 +38,19 @@ Among these are connections, or atom labels.
          :undoc-members:
          :show-inheritance:
 
-Functional Groups
------------------
+Reactivities
+------------
 
-The `groups` module contains methods for describing functional groups in a molecule in order to guide connectivity between fragments.
+The `reactivity` module contains methods for defining reactivities of atom groups (i.e. functional groups) in a molecule in order to guide connectivity between fragments.
+These reactivities can be used in conjunction with the `Reaction` class to define how molecules should react with each other. They are the successors of the older `FunctionalGroup` classes.
 
-.. dropdown:: Functional Groups
+.. dropdown:: Reactivities
       
-   .. automodule:: buildamol.structural.groups
+   .. automodule:: buildamol.structural.reactivity
       :members:
       :undoc-members:
       :show-inheritance:
+
 
 Molecular Geometries
 --------------------
@@ -63,6 +65,21 @@ Defined are the basic geometries: linear, trigonal planar, tetrahedral, trigonal
       :undoc-members:
       :show-inheritance:
 
+Functional Groups
+-----------------
+
+.. important::
+
+   Functional groups have now been superseded by the more general `Reactivity` classes! Please refer to the `Reactivity` tutorial for more information.
+
+The `groups` module contains methods for describing functional groups in a molecule in order to guide connectivity between fragments.
+
+.. dropdown:: Functional Groups
+      
+   .. automodule:: buildamol.structural.groups
+      :members:
+      :undoc-members:
+      :show-inheritance:
 
 Graph Neighborhood in Molecular Structures
 ------------------------------------------
