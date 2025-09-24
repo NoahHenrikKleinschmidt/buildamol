@@ -33,6 +33,7 @@ BuildAmol and Chemistry
 
 .. nbgallery::
    examples/reaction
+   examples/reactivity
    examples/functional_groups
    examples/geometry_scratch
    examples/derivator_example
