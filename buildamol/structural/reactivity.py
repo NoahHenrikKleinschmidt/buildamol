@@ -133,9 +133,92 @@ class Reactivity:
         )
         return new
 
+    def find_atoms(
+        self,
+        mol: core.Molecule,
+        role: str,
+        serves_target: bool,
+    ):
+        """
+        Find reactive atoms in the given molecule based on the specified reactivity pattern.
+
+        Parameters
+        ----------
+        mol : Molecule
+            The molecule in which to find reactive atoms.
+        serves_target : bool
+            If True, the linker function will return all identified nucleophilic sites. If False, it will return only the most accessible site based on steric constraints.
+        role : str, optional
+            Specify whether to find 'nucleophile' or 'electrophile' atoms.
+
+        Returns
+        -------
+        linkers : list of Atom or Atom
+            The identified reactive atoms based on the specified role and steric constraints.
+        deleters : list of Atom or Atom
+            The atoms to be deleted during the reaction based on the specified role.
+        """
+        if role == "nucleophile":
+            linker, deleter = self.as_nucleophile(serves_target)
+        elif role == "electrophile":
+            linker, deleter = self.as_electrophile(serves_target)
+        else:
+            raise ValueError("Role must be either 'nucleophile' or 'electrophile'")
+        linkers = linker(mol)
+        if serves_target:
+            deleters = [deleter(a, mol) for a in linkers]
+        else:
+            deleters = deleter(linkers, mol)
+        return linkers, deleters
+
+    def find_nucleophilic_atoms(self, mol: core.Molecule, serves_target: bool):
+        """
+        Find nucleophilic atoms in the given molecule based on the specified reactivity pattern.
+
+        Parameters
+        ----------
+        mol : core.Molecule
+            The molecule in which to find nucleophilic atoms.
+        serves_target : bool
+            If True, the linker function will return all identified nucleophilic sites. If False, it will return only the most accessible site based on steric constraints.
+
+        Returns
+        -------
+        linkers : list of base_classes.Atom or base_classes.Atom
+            The identified nucleophilic atoms based on steric constraints.
+        deleters : list of base_classes.Atom or base_classes.Atom
+            The atoms to be deleted during the reaction.
+        """
+        return self.find_atoms(mol, role="nucleophile", serves_target=serves_target)
+
+    def find_electrophilic_atoms(self, mol: core.Molecule, serves_target: bool):
+        """
+        Find electrophilic atoms in the given molecule based on the specified reactivity pattern.
+
+        Parameters
+        ----------
+        mol : core.Molecule
+            The molecule in which to find electrophilic atoms.
+        serves_target : bool
+            If True, the linker function will return all identified nucleophilic sites. If False, it will return only the most accessible site based on steric constraints.
+
+        Returns
+        -------
+        linkers : list of base_classes.Atom or base_classes.Atom
+            The identified electrophilic atoms based on steric constraints.
+        deleters : list of base_classes.Atom or base_classes.Atom
+            The atoms to be deleted during the reaction.
+        """
+        return self.find_atoms(mol, role="electrophile", serves_target=serves_target)
+
     def as_nucleophile(self, serves_target: bool):
         """
         Get the nucleophilic linker and deleter functions.
+
+        Parameters
+        ----------
+        serves_target : bool
+            If True, the linker function will return all identified nucleophilic sites. If False, it will return only the most accessible site based on steric constraints.
         """
         self._serves_target = serves_target
         return self._nucleophile_linker_call, self._nucleophile_deleter_call
@@ -143,6 +226,11 @@ class Reactivity:
     def as_electrophile(self, serves_target: bool):
         """
         Get the electrophilic linker and deleter functions.
+
+        Parameters
+        ----------
+        serves_target : bool
+            If True, the linker function will return all identified nucleophilic sites. If False, it will return only the most accessible site based on steric constraints.
         """
         self._serves_target = serves_target
         return self._electrophile_linker_call, self._electrophile_deleter_call
@@ -191,6 +279,8 @@ class Reactivity:
     def _default_steric_constraint_func(
         self, mol: core.Molecule, atoms: list[base_classes.Atom]
     ):
+        if not isinstance(atoms, (list, set, tuple)):
+            atoms = [atoms]
         # count close by atoms to get the most accessible site
         if self._steric_max_neighbors is not None:
             atoms = filter(
