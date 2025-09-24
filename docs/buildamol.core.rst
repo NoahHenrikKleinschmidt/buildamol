@@ -73,5 +73,6 @@ in situations where multiple identical molecules are connected to each other. Al
 
    buildamol.core.Molecule
    buildamol.core.Linkage
+   buildamol.core.reaction
    buildamol.core.base
 

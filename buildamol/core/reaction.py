@@ -98,6 +98,24 @@ class Reaction:
     def apply(
         self, target: "Molecule", source: "Molecule", inplace: bool = False
     ) -> "Molecule":
+        """
+        Apply the reaction to two molecules, creating a new molecule with the linkage applied.
+        This is the same as calling the Reaction object directly.
+
+        Parameters
+        ----------
+        target : Molecule
+            The target molecule to which the source molecule will be connected.
+        source : Molecule
+            The source molecule which will be connected to the target molecule.
+        inplace : bool, optional
+            If True, modify the target molecule in place. If False, create a copy of the target molecule. Default is False.
+
+        Returns
+        -------
+        Molecule
+            A new Molecule object with the linkage applied.
+        """
         if not self.can_apply(target, source):
             raise ValueError("Cannot create linkage: preconditions not met.")
         link = self.create_linkage(target, source)
@@ -153,6 +171,25 @@ class Reaction:
         return out
 
     def create_linkage(self, target: "Molecule", source: "Molecule") -> "Linkage":
+        """
+        Create one or more Linkage object(s) based on the current reaction parameters and the provided molecules.
+        This does not modify the molecules, it only creates the Linkage object(s).
+
+        This method is automatically called by the `apply` method. It requires that `can_apply` has been called beforehand to ensure that the reaction can be applied.
+
+        Parameters
+        ----------
+        target : Molecule
+            The target molecule to which the source molecule will be connected.
+        source : Molecule
+            The source molecule which will be connected to the target molecule.
+
+        Returns
+        -------
+        Linkage or List[Linkage]
+            A Linkage object or a list of Linkage objects representing the connection(s) to be
+            made between the target and source molecules.
+        """
         links = list(self._yield_linkages(target, source))
         if len(links) == 1:
             links = links[0]
@@ -174,6 +211,25 @@ class Reaction:
             yield link
 
     def can_apply(self, target: "Molecule", source: "Molecule") -> bool:
+        """
+        Check if the reaction can be applied to the given target and source molecules.
+        This checks if the specified atoms and deletions are valid in the context of the provided molecules
+        and stores the resolved atoms and deletions in memory for later use.
+
+        This method is automatically called by the `apply` method.
+
+        Parameters
+        ----------
+        target : Molecule
+            The target molecule to which the source molecule will be connected.
+        source : Molecule
+            The source molecule which will be connected to the target molecule.
+
+        Returns
+        -------
+        bool
+            True if the reaction can be applied, False otherwise.
+        """
         atom1 = self._apply_atom_getter(self._atom1, target)
         atom2 = self._apply_atom_getter(self._atom2, source)
 

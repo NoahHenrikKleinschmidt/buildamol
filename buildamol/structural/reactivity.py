@@ -306,11 +306,21 @@ class Amide(Reactivity):
 
 
 class Ester(Carboxyl):
+    """
+    Predefined reactivity pattern for ester groups
+    Can act as electrophile.
+    """
+
     def nucleophile_linker(self, mol):
         raise NotImplementedError("Ester cannot act as nucleophile")
 
 
 class Aldehyde(Reactivity):
+    """
+    Predefined reactivity pattern for aldehyde groups
+    Can act as electrophile.
+    """
+
     def nucleophile_linker(self, mol):
         raise NotImplementedError("Aldehyde cannot act as nucleophile")
 
@@ -328,6 +338,12 @@ class Aldehyde(Reactivity):
 
 
 class Ketone(Reactivity):
+    """
+    Predefined reactivity pattern for ketone groups
+    Can act as electrophile.
+    The deleter function will remove the smaller of the two alkyl substituents or the one with more heteroatoms close-by.
+    """
+
     def nucleophile_linker(self, mol):
         raise NotImplementedError("Ketone cannot act as nucleophile")
 
@@ -478,7 +494,7 @@ class Thiol(Reactivity):
 
 class AlkylHalide(Reactivity):
     """
-    Predefined reactivity pattern for alkyl halides
+    Predefined reactivity pattern for alkyl halides (F, Cl, Br, I)
     Can act as electrophile.
     """
 
