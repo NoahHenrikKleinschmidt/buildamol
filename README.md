@@ -175,7 +175,7 @@ dual_rings.merge(ring2)
 dual_rings.show3d()
 ```
 
-![](docs/_resources/cyclic_alkanes_dual.gif)
+![](docs/_resources/cyclic_alkanes_dual.GIF)
 
 
 BuildAMol Paper
