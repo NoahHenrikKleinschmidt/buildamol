@@ -192,10 +192,18 @@
 .. Welcome to BuildAMol's documentation
 .. ====================================
 
-.. image:: _resources/logo_large.png
+.. image:: _resources/logo_large_light.png
+   :class: only-light
    :width: 80%
    :align: center
    :alt: logo
+
+.. image:: _resources/logo_large_dark.png
+   :class: only-dark
+   :width: 80%
+   :align: center
+   :alt: logo
+
 
 `BuildAMol` (formerly Biobuild) is a fragment-based molecular assembly toolkit for the generation of atomic models for complex molecular structures.
 It is designed to leverage the simplicity of python-coding and the power of fragment-based assembly to provide a slim and streamlined workflow.
@@ -221,8 +229,6 @@ Based on `biopython <http://biopython.org/wiki/Main_Page>`_ and accessible as a 
         :link: tutorials
         :link-type: ref
         :link-alt: Tutorials
-
-
 
     .. grid-item-card::  API Documentation
         :link: apidocumentation
