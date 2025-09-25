@@ -7,12 +7,13 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "buildamol"
-copyright = "2024, Noah Kleinschmidt"
+copyright = "2025, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "1.2.9"
+release = "1.2.11"
 
 
 import plotly.io as pio
+
 
 pio.renderers.default = "sphinx_gallery"
 

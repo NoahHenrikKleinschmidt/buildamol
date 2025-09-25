@@ -1,33 +1,32 @@
 The resources package
 =====================
 
-.. automodule:: buildamol.resources
+.. automodule:: buildamol.resources.__init__
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. tab-set::
+.. dropdown:: The CHARMM module
 
-   .. tab-item:: The CHARMM module
+   .. automodule:: buildamol.resources.charmm
+      :members:
+      :undoc-members:
+      :show-inheritance:
 
-      .. automodule:: buildamol.resources.charmm
-         :members:
-         :undoc-members:
-         :show-inheritance:
 
-   .. tab-item:: The PDBe\_compounds module
+.. dropdown:: The PDBe\_compounds module
 
-      .. automodule:: buildamol.resources.pdbe_compounds
-         :members:
-         :undoc-members:
-         :show-inheritance:
-   
-   .. tab-item:: The PubChem module
+   .. automodule:: buildamol.resources.pdbe_compounds
+      :members:
+      :undoc-members:
+      :show-inheritance:
 
-      .. automodule:: buildamol.resources.pubchem
-         :members:
-         :undoc-members:
-         :show-inheritance:
+.. dropdown:: The PubChem module
+
+   .. automodule:: buildamol.resources.pubchem
+      :members:
+      :undoc-members:
+      :show-inheritance:
 
 
 

@@ -24,23 +24,24 @@ or similar construct to build large structures incrementally and thus much faste
 What can BuildAMol do?
 ----------------------
 
-BuildAMol can be used to build larger molecules from smaller components - that's pretty much it. However, given its integrated
-compounds database, it can also be used to quickly obtain molecular structures for other purposes such as docking. Its ability
-to convert to and from `rdkit` also makes it a great tool to edit `rdkit` structures in a more intuitive way. Lastly, BuildAMol
-offers a suite of conformational optimization algorithms to improve the geometry of structures. Hence, BuildAMol can be used
-to sample conformers for molecular docking or the generation of a deep learning dataset. 
+BuildAMol can be used to build larger molecules from smaller components - that's pretty much it. It offers a number of ways to do so, however, ranging from 100% user-controlled atom-level connections to automated chemistry-inspired reaction templates. 
+
+Also, given its integrated compounds database, it can also be used to quickly obtain molecular structures for other purposes such as docking. 
+Molecules not available in the database are automatically fetched from `PubChem <https://pubchem.ncbi.nlm.nih.gov/>`_ providing 50 million compounds at your fingertips.
+The ability to convert to and from `rdkit` on-the-fly also makes BuildAMol a great tool to edit `rdkit` structures in a more intuitive way. BuildAMol
+offers a suite of conformational optimization algorithms to improve the geometry of structures and methods to manually adjust torsion angles and bond lengths among a myriad of other features, ensuring that *your* molecule has the geometry *you* want.
+Finally, BuildAMol comes with a set of extensions that provide more applied functionalities for particular use cases such as building polymers, biomolecules, or complexes.
+
 
 What can BuildAMol not do?
 --------------------------
 
 BuildAMol is not a quantum chemistry package. It does not offer any quantum chemical calculations, nor does it offer any tools
 to analyze the electronic structure of molecules (aside from whatever is available from `biopython`, of course). 
-It is also not a molecular dynamics package. Also, currently BuildAMol is limited to creating single bond-connections between
-molecules. Hence, BuildAMol cannot create (small) ring structures. However, using fragments with the desired ring structures already present (e.g. from pubchem)
-large circular molecules can be built regardless. However, BuildAMol is currently not optimized for circular molecules of any kind, hence, users wishing to 
-create circular molecules will likely want to use molecular dynamics to optimize the geometry of any structure they create.
-Finally, BuildAMol does not generate molecules `for` you! It is **not** a `de novo` molecule generator that tries to find molecules with certain properties - e.g. molecules that bind a certain protein pocket. 
-The user needs to know what they want to build and have some idea of the steps involved - BuildAMol will help them build it, that's the deal.
+It is also not a molecular dynamics package either. Circular structures are supported but not the primary focus of BuildAMol.
+If you are looking to build circular molecules you will definitely want to install RDKit as well to optimize circular conformations.
+Most importantly, BuildAMol is not a *de novo* molecular generator. It can be used to create automated molecule design pipelines but it needs some coding effort to do so. 
+
 
 Who is BuildAMol for?
 ---------------------
