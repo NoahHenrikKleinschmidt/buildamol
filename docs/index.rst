@@ -4,10 +4,11 @@
 
     <div class="slideshow-container">
         
-    <div class="mySlides fade">
-        <img src="_static/gallery/sampling.png" style="width:100%">
-    </div>
 
+    <div class="mySlides fade">
+        <img src="_static/gallery/first_mol.png" style="width:100%">
+    </div>
+    
     <div class="mySlides fade">
         <img src="_static/gallery/complex.png" style="width:100%">
     </div>
@@ -15,6 +16,12 @@
     <div class="mySlides fade">
         <img src="_static/gallery/linear-polymer.png" style="width:100%">
     </div>
+
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/glyco-membrane.png" style="width:100%">
+    </div>
+
 
     <div class="mySlides fade">
         <img src="_static/gallery/conf_samples.png" style="width:100%">
@@ -40,20 +47,22 @@
         <img src="_static/gallery/ring.png" style="width:100%">
     </div>
 
+
     <div class="mySlides fade">
-        <img src="_static/gallery/MOF-top.png" style="width:100%">
+        <img src="_static/gallery/sampling.png" style="width:100%">
     </div>
+
 
     <div class="mySlides fade">
         <img src="_static/gallery/MOF-angle.png" style="width:100%">
     </div>
 
     <div class="mySlides fade">
-        <img src="_static/gallery/rotaxan-linear.png" style="width:100%">
+        <img src="_static/gallery/waterbox.png" style="width:100%">
     </div>
 
     <div class="mySlides fade">
-        <img src="_static/gallery/rotaxan-small.png" style="width:100%">
+        <img src="_static/gallery/rotaxan-linear.png" style="width:100%">
     </div>
 
     <div class="mySlides fade">
@@ -70,14 +79,6 @@
 
     <div class="mySlides fade">
         <img src="_static/gallery/his20-2.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/his20.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/glyco-membrane.png" style="width:100%">
     </div>
 
     </div>
