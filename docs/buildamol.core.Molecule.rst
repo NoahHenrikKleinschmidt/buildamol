@@ -1,7 +1,7 @@
 
 
-buildamol Molecule
-------------------
+Molecule
+--------
 
 .. automodule:: buildamol.core.Molecule
    :members:

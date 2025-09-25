@@ -2105,7 +2105,8 @@ def test_react_with2():
         bam.structural.groups.carboxyl,
         bam.structural.groups.hydroxyl,
         inplace=False,
-    ).react_with(
+    )
+    out = out.react_with(
         mol, bam.structural.groups.carboxyl, bam.structural.groups.amine, inplace=False
     )
     assert out.count_residues() == 3
@@ -2800,3 +2801,119 @@ def test_reversed_linkage_stitch():
     # applied
     out_rev_auto_applied = bam.connect(mol2, mol1, b14_link)
     assert out_fwd.count_atoms() == out_rev_auto_applied.count_atoms()
+
+
+def test_linkage_with_auto_downstream_deletes():
+
+    mol = bam.get_compound("GlcNAc")[0]
+    should_be_gone = mol.get_descendants("C2", "N2")
+    should_be_gone.add(mol.get_atom("N2"))
+
+    bam.benzylate(mol, "C2", delete="N2")
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+    assert all(atom not in mol.atoms for atom in should_be_gone)
+
+
+def test_linkage_with_auto_downstream_deletes_multiple_residues():
+    mol = bam.get_compound("GlcNAc")[0]
+    mol = mol.repeat(3, "14bb")
+
+    v = mol.plotly()
+    assert mol.count_residues() == 3
+
+    bam.acetylate(
+        mol, mol.get_atom("O4", residue=1), delete=mol.get_atom("C1", residue=2)
+    )
+    if base.ALLOW_VISUAL:
+        v += mol.plotly(line_color="red")
+        v.show()
+
+    assert mol.count_residues() == 2
+
+
+def test_reverse_linkage_with_auto_downstream_deletes():
+
+    A = bam.Molecule.from_smiles("CCN").autolabel()
+    B = bam.Molecule.from_smiles("CC(=O)O").autolabel()
+
+    link = bam.linkage(
+        "C1",
+        "C1",
+        delete_in_source=B.get_neighbors(
+            "C1", filter=lambda x: x.element == "O" and B.get_hydrogen(x) is not None
+        ),
+    )
+
+    out1 = bam.connect(A, B, link)
+    out2 = bam.connect(B, A, link)
+
+    link.reverse()
+    out3 = bam.connect(B, A, link)
+    out4 = bam.connect(A, B, link)
+
+    assert out1.to_smiles() == out4.to_smiles()
+    assert out2.to_smiles() == out3.to_smiles()
+
+
+def test_base_objects_can_access_molecule():
+    mol = bam.Molecule.from_compound("GLC")
+    atom = mol.get_atom("C1")
+    residue = mol.get_residue(1)
+    chain = mol.get_chain("A")
+    model = mol.get_model(0)
+
+    assert atom.molecule is mol
+    assert residue.molecule is mol
+    assert chain.molecule is mol
+    assert model.molecule is mol
+
+    orphan_atom = bam.Atom.new("C")
+    assert orphan_atom.molecule is None
+
+
+def test_base_classes_can_access_neighbors():
+    mol = bam.Molecule.from_compound("GLC")
+    mol = mol.repeat(3, "14bb")
+    atom = mol.get_atom("O4", residue=2)
+    residue = mol.get_residue(2)
+
+    neighbors_mol_level = mol.get_neighbors(atom)
+    neighbors_atom_level = atom.get_neighbors()
+    assert set(neighbors_mol_level) == set(neighbors_atom_level)
+    assert len(neighbors_atom_level) > 0
+
+    neighbors_mol_level = mol.get_residue_graph().get_neighbors(residue)
+    neighbors_residue_level = residue.get_neighbors()
+    assert set(neighbors_mol_level) == set(neighbors_residue_level)
+    assert len(neighbors_residue_level) == 2
+
+
+def test_base_classes_can_access_bonds():
+    mol = bam.Molecule.from_compound("GLC")
+    mol = mol.repeat(3, "14bb")
+    atom = mol.get_atom("O4", residue=2)
+    residue = mol.get_residue(2)
+
+    bonds_mol_level = mol.get_bonds(atom)
+    bonds_atom_level = atom.get_bonds()
+    assert set(bonds_mol_level) == set(bonds_atom_level)
+    assert len(bonds_atom_level) > 0
+
+    bonds_mol_level = mol.get_bonds(residue)
+    bonds_residue_level = residue.get_bonds()
+    assert set(bonds_mol_level) == set(bonds_residue_level)
+    assert len(bonds_residue_level) > 0
+
+
+def test_atom_can_access_hydrogens():
+    mol = bam.molecule("cyclohexane")
+    atom = mol.get_atom("C3")
+
+    assert len(atom.get_hydrogens()) == 2
+    assert atom.get_axial_hydrogen() == mol.get_axial_hydrogen(atom)
+    assert atom.get_equatorial_hydrogen() == mol.get_equatorial_hydrogen(atom)
+    assert atom.get_hydrogens() == mol.get_hydrogens(atom)
+    assert atom.get_left_hydrogen() == mol.get_left_hydrogen(atom)
+    assert atom.get_right_hydrogen() == mol.get_right_hydrogen(atom)

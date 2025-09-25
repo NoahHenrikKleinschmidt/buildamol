@@ -2275,3 +2275,398 @@ def test_split_contiguous_residues_multiple_residues():
     assert len(mol.residues) == 2
     bam.structural.split_into_contiguous_residues(mol)
     assert len(mol.residues) == 4
+
+
+def test_basic_reactivity():
+    from buildamol.structural import constraints_v2 as constraints
+
+    mol1 = bam.read_smiles("CC(=O)O").add_hydrogens()
+    mol1.autolabel()
+    mol2 = bam.read_smiles("NCC").add_hydrogens()
+    mol2.autolabel()
+
+    def amine_nucleophile_linker(mol: bam.Molecule):
+        N = mol.get_atoms(
+            "N", by="element", filter=constraints.has_neighbor_hist({"H": 2, "C": 1})
+        )
+        if len(N) == 0:
+            raise
+        return N
+
+    amine_reactivity = bam.structural.Reactivity(
+        nucleophile_linker=amine_nucleophile_linker,
+    )
+
+    def carboxyl_electrophile_linker(mol: bam.Molecule):
+        C = mol.get_atoms(
+            "C",
+            by="element",
+            filter=constraints.has_neighbor_hist({"O": 2, "C": 1}),
+        )
+        if len(C) == 0:
+            raise
+        return C
+
+    def carboxyl_electrophile_deleter(atom, mol):
+        filter = constraints.and_(
+            constraints.has_element("O"),
+            constraints.has_single_bond_with("C"),
+        )
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+    carboxyl_reactivity = bam.structural.Reactivity(
+        electrophile_linker=carboxyl_electrophile_linker,
+        electrophile_deleter=carboxyl_electrophile_deleter,
+    )
+
+    reaction = bam.Reaction.from_reactivities(amine_reactivity, carboxyl_reactivity)
+
+    out = reaction(mol1, mol2)
+    if base.ALLOW_VISUAL:
+        out.show()
+    assert out is not None
+
+
+def test_reactivity_two_sites():
+    from buildamol.structural import constraints_v2 as constraints
+
+    mol1 = bam.read_smiles("O=C(O)C(=O)O").add_hydrogens()
+    mol1.autolabel()
+    mol2 = bam.read_smiles("NCCN").add_hydrogens()
+    mol2.autolabel()
+
+    def amine_nucleophile_linker(mol: bam.Molecule):
+        N = mol.get_atoms(
+            "N", by="element", filter=constraints.has_neighbor_hist({"H": 2, "C": 1})
+        )
+        if len(N) == 0:
+            raise
+        return N
+
+    amine_reactivity = bam.structural.Reactivity(
+        nucleophile_linker=amine_nucleophile_linker,
+    )
+
+    def carboxyl_electrophile_linker(mol: bam.Molecule):
+        C = mol.get_atoms(
+            "C",
+            by="element",
+            filter=constraints.has_neighbor_hist({"O": 2, "C": 1}),
+        )
+        if len(C) == 0:
+            raise
+        return C
+
+    def carboxyl_electrophile_deleter(atom, mol):
+        filter = constraints.and_(
+            constraints.has_element("O"),
+            constraints.has_single_bond_with("C"),
+        )
+        return mol.get_neighbors(atom, filter=filter).pop()
+
+    carboxyl_reactivity = bam.structural.Reactivity(
+        electrophile_linker=carboxyl_electrophile_linker,
+        electrophile_deleter=carboxyl_electrophile_deleter,
+    )
+
+    reaction = bam.Reaction.from_reactivities(amine_reactivity, carboxyl_reactivity)
+
+    out = reaction(mol1, mol2)
+    if base.ALLOW_VISUAL:
+        out.show()
+    assert out is not None
+    assert out.count_residues() == 3
+
+    carboxyl_reactivity.set_steric_constraints(n_target_sites=1)
+    reaction2 = bam.Reaction.from_reactivities(amine_reactivity, carboxyl_reactivity)
+    out2 = reaction2(mol1, mol2)
+    if base.ALLOW_VISUAL:
+        out2.show()
+    assert out2 is not None
+    assert out2.count_residues() == 2
+
+
+def test_hydroxyl_reactivity():
+
+    mol = bam.read_smiles("CCO").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Hydroxyl
+
+    hydroxyl = Hydroxyl()
+
+    reaction = bam.Reaction.from_reactivities(hydroxyl, hydroxyl)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_carboxyl_reactivity():
+
+    mol = bam.read_smiles("CC(=O)O").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Carboxyl
+
+    carboxyl = Carboxyl()
+
+    reaction = bam.Reaction.from_reactivities(carboxyl, carboxyl)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_amine_reactivity():
+
+    mol = bam.read_smiles("CCN").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Amine
+
+    amine = Amine()
+
+    reaction = bam.Reaction.from_reactivities(amine, amine)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_thiol_reactivity():
+
+    mol = bam.read_smiles("CCS").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Thiol
+
+    thiol = Thiol()
+
+    reaction = bam.Reaction.from_reactivities(thiol, thiol)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_reactivty_two_possible_sites_select_more_open_one():
+    mol = bam.read_smiles("CNCCN").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Amine
+
+    amine = Amine().set_steric_constraints(n_target_sites=1)
+
+    reaction = bam.Reaction.from_reactivities(amine, amine)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_twosite_hydroxyl_amine():
+    A = bam.molecule("m-toluidine").add_hydrogens()
+    B = bam.read_smiles("C1(O)CCC(O)CC1")
+
+    from buildamol.structural.reactivity import Amine, Hydroxyl
+
+    amine = Amine()
+    hydroxyl = Hydroxyl()
+    reaction = bam.Reaction.from_reactivities(
+        amine, hydroxyl, target_is_electrophile=True
+    )
+    out = reaction(B, A)
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 3
+
+    reaction = bam.Reaction.from_reactivities(
+        hydroxyl, amine, target_is_electrophile=False
+    )
+    out = reaction(B, A)
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 3
+
+
+def test_reactivity_no_possible_sites():
+    mol = bam.read_smiles("CCO").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Amine
+
+    amine = Amine()
+
+    reaction = bam.Reaction.from_reactivities(amine, amine)
+    out = None
+    try:
+        out = reaction(mol, mol.copy())
+    except:
+        pass
+
+    assert out is None, "Should not have been able to react because no amine present"
+
+
+def test_amide_reactivity():
+
+    mol = bam.read_smiles("CC(=O)N").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Amide
+
+    amide = Amide()
+
+    reaction = bam.Reaction.from_reactivities(amide, amide)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_ester_reactivity():
+
+    mol = bam.read_smiles("OCC(=O)OC").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Ester
+
+    ester = Ester()
+
+    reaction = bam.Reaction.from_reactivities(ester, ester)
+    out = None
+    try:
+        out = reaction(mol.copy(), mol.copy())
+    except:
+        pass
+
+    assert (
+        out is None
+    ), "Should not have been able to react because ester is not nucleophilic"
+
+    from buildamol.structural.reactivity import Hydroxyl
+
+    hydroxyl = Hydroxyl()
+
+    reaction = bam.Reaction.from_reactivities(hydroxyl, ester)
+    out = reaction(mol.copy(), mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_phosphate_reactivity():
+
+    mol = bam.read_smiles("COP(=O)(O)O").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Phosphate
+
+    phosphate = Phosphate()
+
+    reaction = bam.Reaction.from_reactivities(phosphate, phosphate)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_alkyl_halide_reactivity():
+
+    mol = bam.read_smiles("OCCCCl").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import (
+        AlkylHalide,
+        Hydroxyl,
+    )
+
+    alkyl_halide = AlkylHalide()
+    hydroxyl = Hydroxyl()
+
+    reaction = bam.Reaction.from_reactivities(hydroxyl, alkyl_halide)
+    out = reaction(mol, mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_ketone_reactivity():
+
+    mol = bam.read_smiles("OC(CC)C(=O)C").add_hydrogens()
+    mol.autolabel()
+
+    from buildamol.structural.reactivity import Ketone
+
+    ketone = Ketone()
+
+    reaction = bam.Reaction.from_reactivities(ketone, ketone)
+    out = None
+    try:
+        out = reaction(mol.copy(), mol.copy())
+    except:
+        pass
+
+    assert (
+        out is None
+    ), "Should not have been able to react because ketone is not nucleophilic"
+
+    from buildamol.structural.reactivity import Hydroxyl
+
+    hydroxyl = Hydroxyl()
+    reaction = bam.Reaction.from_reactivities(hydroxyl, ketone)
+
+    out = reaction(mol.copy(), mol.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_aldehyde_reactivity():
+
+    mol = bam.read_smiles("CCO").add_hydrogens()
+    mol.autolabel()
+    mol2 = bam.molecule("benzaldehyde").add_hydrogens()
+    from buildamol.structural.reactivity import Aldehyde, Hydroxyl
+
+    aldehyde = Aldehyde()
+    hydroxyl = Hydroxyl()
+
+    reaction = bam.Reaction.from_reactivities(
+        hydroxyl, aldehyde, target_is_electrophile=False
+    )
+    out = reaction(mol.copy(), mol2.copy())
+    if base.ALLOW_VISUAL:
+        out.show2d()
+    assert len(out.residues) == 2
+
+
+def test_multisite_react2():
+    from buildamol.extensions.polymers.polycarbons import cyclic_alkane
+
+    # create two cyclic alkanes
+    # (one larger that we hydroxylate at odd positions,
+    # the other smaller that we amidate at position 1)
+    A = cyclic_alkane(24)
+    A = bam.aminate(A, list(range(1, 24, 4)))
+    A = A.squash().autolabel()
+    n_attachment_points = sum(1 for i in A.atoms if i.element == "N")
+
+    B = cyclic_alkane(6)
+    B = bam.amidate(B, 1)
+    B = B.squash().autolabel()
+
+    from buildamol.structural.reactivity import Amine, Amide
+
+    reaction = bam.Reaction.from_reactivities(
+        nucleophile=Amide(),
+        electrophile=Amine(),
+    )
+
+    out = reaction(A, B)
+    if base.ALLOW_VISUAL:
+        out.show2d()
+        out.show3d()
+    assert out.count_residues() == n_attachment_points + 1
+    for bond in out.bonds:
+        assert bond.length < 3, "All bonds should be reasonable"

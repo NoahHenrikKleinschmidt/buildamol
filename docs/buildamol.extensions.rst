@@ -37,3 +37,17 @@ Currently available extensions
     :link-type: ref
 
     The Bio extension provides a set of tools to create simple biomolecules
+
+.. card:: Molecular Dynamics
+    :link: molecular_dynamics
+    :link-type: ref
+
+    The Molecular Dynamics extension provides a set of tools to help with running molecular dynamics simulations from BuildAMol Molecules.
+
+.. card:: Docking
+    :link: docking
+    :link-type: ref
+
+    The Docking extension provides a set of tools to help with docking drug-like molecules to proteins.
+
+    

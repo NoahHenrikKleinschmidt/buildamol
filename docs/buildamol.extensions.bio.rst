@@ -33,3 +33,10 @@ Specifically implemented are:
             :members:
             :undoc-members:
             :show-inheritance:
+
+    .. tab-item:: Nucleic Acids
+
+        .. automodule:: buildamol.extensions.bio.nucleic_acids.simple_sequences
+            :members:
+            :undoc-members:
+            :show-inheritance:

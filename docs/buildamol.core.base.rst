@@ -9,8 +9,8 @@ The lowest level of buildamol base classes.
    :undoc-members:
    :show-inheritance:
 
-buildamol base\_classes
------------------------
+Base Classes
+------------
 
 .. automodule:: buildamol.base_classes
    :members:

@@ -1,7 +1,7 @@
 
 
-buildamol Linkage
------------------
+Linkage
+-------
 
 .. automodule:: buildamol.core.Linkage
    :members:

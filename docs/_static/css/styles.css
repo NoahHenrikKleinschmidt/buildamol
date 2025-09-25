@@ -1,0 +1,38 @@
+/* Custom styling for PyData Sphinx Theme */
+
+/* Header navbar styling - only target the main top navbar, not sidebar navigation */
+.bd-header {
+    background-color: #4f4f4f !important;
+}
+
+.bd-footer {
+    background-color: #4f4f4f !important;
+    color: white !important;
+}
+
+.bd-footer a {
+    color: rgb(107, 164, 255) !important;
+}
+
+.bd-header .navbar {
+    background-color: #1aff00 !important;
+}
+
+.bd-header .navbar-nav {
+    color: white !important;
+}
+
+.bd-header .navbar-nav .nav-link {
+    color: white !important;
+}
+
+.bd-header .navbar-nav .nav-link:hover,
+.bd-header .navbar-nav .nav-link:focus {
+    color: #e6f3ff !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+
+.bd-header .btn {
+    color: rgb(133, 141, 149) !important;
+}

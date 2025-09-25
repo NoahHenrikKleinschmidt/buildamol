@@ -795,6 +795,47 @@ class constraints:
         lambda graph, node: len(graph.get_neighbors(node, n)) <= m
     )
 
+    has_bond_of_order_with = lambda order, element: (
+        lambda graph, node: any(
+            bond.order == order
+            for bond in graph._src._molecule.get_bonds(node)
+            if bond.get_other_atom(node).element == element
+        )
+    )
+
+    has_double_bond_with = lambda element: (
+        lambda graph, node: any(
+            bond.order == 2 and bond.get_other_atom(node).element == element
+            for bond in graph._src._molecule.get_bonds(node)
+        )
+    )
+    has_triple_bond_with = lambda element: (
+        lambda graph, node: any(
+            bond.order == 3 and bond.get_other_atom(node).element == element
+            for bond in graph._src._molecule.get_bonds(node)
+        )
+    )
+    has_single_bond_with = lambda element: (
+        lambda graph, node: any(
+            bond.order == 1 and bond.get_other_atom(node).element == element
+            for bond in graph._src._molecule.get_bonds(node)
+        )
+    )
+
+    has_bond_order_hist = lambda hist: (
+        lambda graph, node: all(
+            hist[i]
+            == sum(
+                1 for bond in graph._src._molecule.get_bonds(node) if bond.order == i
+            )
+            for i in hist
+        )
+    )
+    """
+    The node has the specified number of bonds for each bond order
+    Hist is a dictionary with bond orders as keys and the number of bonds as values
+    """
+
     def multi_constraint(*funcs):
         """
         Combine multiple constraints into one
@@ -806,3 +847,159 @@ class constraints:
             Each of these must take a graph and a node as arguments and return a boolean.
         """
         return lambda graph, node: all(f(graph, node) for f in funcs)
+
+
+class constraints_v2:
+    """
+    Structural constraints for use not with the Neighborhood classes but with the Molecule class directly and only take one atom as argument.
+    """
+
+    none = lambda atom: True
+    """
+    No constraints
+    """
+
+    has_element = lambda element: (lambda atom: atom.element.lower() == element.lower())
+    """
+    The atom has the specified element
+    """
+
+    not_has_element = lambda element: (
+        lambda atom: atom.element.lower() != element.lower()
+    )
+    """
+    The atom does not have the specified element
+    """
+
+    has_any_element_of = lambda *args: (
+        lambda atom: atom.element.lower() in (i.lower() for i in args)
+    )
+    """
+    The atom has any of the specified elements
+    """
+
+    not_has_any_element_of = lambda *args: (
+        lambda atom: atom.element.lower() not in (i.lower() for i in args)
+    )
+    """
+    The atom does not have any of the specified elements
+    """
+
+    has_neighbor_hist = lambda hist: (
+        lambda atom: all(
+            hist[i] == sum(1 for j in atom.get_neighbors() if j.element == i)
+            for i in hist
+        )
+    )
+    """
+    The atom has the specified number of neighbors for each element
+    Hist is a dictionary with element symbols as keys and the number of neighbors as values
+    """
+
+    extended_has_neighbor_hist = lambda n, hist: (
+        lambda atom: all(
+            hist[i] == sum(1 for j in atom.get_extended_neighbors(n) if j.element == i)
+            for i in hist
+        )
+    )
+    """
+    The atom has the specified number of neighbors for each element within n bonds
+    Hist is a dictionary with element symbols as keys and the number of neighbors as values
+    """
+
+    has_bond_order_hist = lambda hist: (
+        lambda atom: all(
+            hist[i] == sum(1 for bond in atom.get_bonds() if bond.order == i)
+            for i in hist
+        )
+    )
+    """
+    The atom has the specified number of bonds for each bond order
+    Hist is a dictionary with bond orders as keys and the number of bonds as values
+    """
+
+    has_bonds_of_order = lambda order: (
+        lambda atom: any(bond.order == order for bond in atom.get_bonds())
+    )
+    """
+    The atom has at least one bond of the specified order
+    """
+
+    has_double_bonds = lambda: lambda atom: any(
+        bond.order == 2 for bond in atom.get_bonds()
+    )
+    has_triple_bonds = lambda: lambda atom: any(
+        bond.order == 3 for bond in atom.get_bonds()
+    )
+    has_single_bonds = lambda: lambda atom: any(
+        bond.order == 1 for bond in atom.get_bonds()
+    )
+
+    has_n_bonds = lambda n: (lambda atom: len(atom.get_bonds()) == n)
+
+    has_bond_of_order_with = lambda order, element: (
+        lambda atom: any(
+            bond.order == order and bond.get_other_atom(atom).element == element
+            for bond in atom.get_bonds()
+        )
+    )
+    has_single_bond_with = lambda element: constraints_v2.has_bond_of_order_with(
+        1, element
+    )
+    has_double_bond_with = lambda element: constraints_v2.has_bond_of_order_with(
+        2, element
+    )
+    has_triple_bond_with = lambda element: constraints_v2.has_bond_of_order_with(
+        3, element
+    )
+
+    neighbors_any = lambda *args: (
+        lambda atom: any(i in (j.element for j in atom.get_neighbors()) for i in args)
+    )
+
+    neighbors_all = lambda *args: (
+        lambda atom: all(i in (j.element for j in atom.get_neighbors()) for i in args)
+    )
+    neighbors_exactly = lambda *args: (
+        lambda atom: set(j.element for j in atom.get_neighbors()) == set(args)
+    )
+
+    and_ = lambda *funcs: (lambda atom: all(f(atom) for f in funcs))
+    """
+    Combine multiple constraints with a logical AND
+    as (all(f(atom) for f in funcs))
+    """
+    or_ = lambda *funcs: (lambda atom: any(f(atom) for f in funcs))
+    """
+    Combine multiple constraints with a logical OR
+    as (any(f(atom) for f in funcs))
+    """
+    not_ = lambda func: (lambda atom: not func(atom))
+    """
+    Negate a constraint function
+    as (not func(atom))
+    """
+
+    nand_ = lambda *funcs: (lambda atom: not all(f(atom) for f in funcs))
+    """
+    Combine multiple constraints with a logical NAND
+    as (not all(f(atom) for f in funcs))
+    """
+
+    nor_ = lambda *funcs: (lambda atom: not any(f(atom) for f in funcs))
+    """
+    Combine multiple constraints with a logical NOR
+    as (not any(f(atom) for f in funcs))
+    """
+
+    xor_ = lambda func1, func2: (lambda atom: func1(atom) != func2(atom))
+    """
+    Combine two constraints with a logical XOR
+    as (func1(atom) != func2(atom))
+    """
+
+    xnor_ = lambda func1, func2: (lambda atom: func1(atom) == func2(atom))
+    """
+    Combine two constraints with a logical XNOR
+    as (func1(atom) == func2(atom))
+    """

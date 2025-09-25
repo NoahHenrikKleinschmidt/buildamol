@@ -1,3 +1,4 @@
+.. _tutorials:
 .. biobuild documentation master file, created by
    sphinx-quickstart on Tue Jun 13 14:40:03 2023.
    You can adapt this file completely to your liking, but it should at least
@@ -32,10 +33,11 @@ BuildAmol and Chemistry
 -----------------------
 
 .. nbgallery::
+   examples/reaction
+   examples/reactivity
    examples/functional_groups
    examples/geometry_scratch
    examples/derivator_example
-
 
 BuildAmol and Biology
 ---------------------

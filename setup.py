@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="buildamol",
-    version="1.2.10",
+    version="1.2.11",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@unibe.ch",
     description="A fragment-based molecular assembly toolkit for python.",
@@ -57,11 +57,26 @@ setuptools.setup(
         "Deprecated",
     ],
     optional_requires={
-        "visual": ["py3Dmol", "nglview"],
+        "visual": [
+            "py3Dmol",
+            "nglview",
+            "svglib",
+            "reportlab",
+            "Pillow",
+        ],
         "openbabel": ["openbabel"],
         "rdkit": ["rdkit"],
         "openmm": ["openmm"],
-        "full": ["rdkit", "openbabel", "openmm", "py3Dmol", "nglview"],
+        "full": [
+            "rdkit",
+            "openbabel",
+            "openmm",
+            "py3Dmol",
+            "nglview",
+            "svglib",
+            "reportlab",
+            "Pillow",
+        ],
     },
     classifiers=[
         "Programming Language :: Python :: 3",
