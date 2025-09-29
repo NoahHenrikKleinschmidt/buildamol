@@ -1966,6 +1966,12 @@ class Bond:
         """
         Make the bond a single bond.
         """
+        molecule = self.atom1.molecule
+        if molecule is None:
+            self.order = 1
+            return self
+        else:
+            molecule.single(self, adjust_hydrogens=True)
         self.order = 1
         return self
 
@@ -1973,15 +1979,26 @@ class Bond:
         """
         Make the bond a double bond.
         """
-        self.order = 2
-        return self
+        molecule = self.atom1.molecule
+        if molecule is None:
+            self.order = 2
+        else:
+            molecule.double(self, adjust_hydrogens=True)
+            self.order = 2
+            return self
 
     def triple(self):
         """
         Make the bond a triple bond.
         """
-        self.order = 3
-        return self
+        molecule = self.atom1.molecule
+        if molecule is None:
+            self.order = 3
+            return self
+        else:
+            molecule.triple(self, adjust_hydrogens=True)
+            self.order = 3
+            return self
 
     def is_single(self) -> bool:
         """
@@ -2015,6 +2032,72 @@ class Bond:
             True if the bond is a triple bond, False otherwise.
         """
         return self.order == 3
+
+    def is_cis(self) -> bool:
+        """
+        Check if the bond is a cis bond.
+
+        Returns
+        -------
+        bool
+            True if the bond is a cis bond, False otherwise.
+        """
+        mol = self.atom1.molecule
+        if mol is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return mol.is_cis(self)
+
+    def is_trans(self) -> bool:
+        """
+        Check if the bond is a trans bond.
+
+        Returns
+        -------
+        bool
+            True if the bond is a trans bond, False otherwise.
+        """
+        mol = self.atom1.molecule
+        if mol is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        return mol.is_trans(self)
+
+    def cis(self):
+        """
+        Make the bond a cis bond.
+
+        Returns
+        -------
+        Bond
+            The bond itself.
+        """
+        mol = self.atom1.molecule
+        if mol is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        mol.cis(self)
+        return self
+
+    def trans(self):
+        """
+        Make the bond a trans bond.
+
+        Returns
+        -------
+        Bond
+            The bond itself.
+        """
+        mol = self.atom1.molecule
+        if mol is None:
+            raise ValueError(
+                "Only atoms that are part of a Molecule have information about connectivity."
+            )
+        mol.trans(self)
+        return self
 
     def compute_length(self) -> float:
         """
