@@ -1971,7 +1971,7 @@ class Bond:
             self.order = 1
             return self
         else:
-            molecule.single(self, adjust_hydrogens=True)
+            molecule.single(self.atom1, self.atom2, adjust_hydrogens=True)
         self.order = 1
         return self
 
@@ -1983,7 +1983,7 @@ class Bond:
         if molecule is None:
             self.order = 2
         else:
-            molecule.double(self, adjust_hydrogens=True)
+            molecule.double(self.atom1, self.atom2, adjust_hydrogens=True)
             self.order = 2
             return self
 
@@ -1996,7 +1996,7 @@ class Bond:
             self.order = 3
             return self
         else:
-            molecule.triple(self, adjust_hydrogens=True)
+            molecule.triple(self.atom1, self.atom2, adjust_hydrogens=True)
             self.order = 3
             return self
 
