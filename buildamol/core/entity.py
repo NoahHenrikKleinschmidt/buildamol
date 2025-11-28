@@ -596,7 +596,7 @@ class BaseEntity:
     @property
     def bonds(self):
         """
-        All bonds in the structure
+        All bonds in the molecule
         """
         return self._bonds
         # return list(self._AtomGraph.edges)
@@ -630,7 +630,7 @@ class BaseEntity:
     @property
     def chains(self):
         """
-        A sorted list of all chains in the structure
+        A sorted list of all chains in the molecule
         """
         return sorted(self._model.get_chains(), key=lambda x: len(x.id))
 
@@ -644,7 +644,7 @@ class BaseEntity:
     @property
     def residues(self):
         """
-        A sorted list of all residues in the structure
+        A sorted list of all residues in the molecule
         """
         return sorted(self._model.get_residues(), key=lambda x: x.id[1])
 
@@ -1291,7 +1291,7 @@ class BaseEntity:
             self.infer_bonds(restrict_residues=False)
         return self
 
-    def remove_empty_models(self):
+    def drop_empty_models(self):
         """
         Remove all empty models from the molecule
         """
@@ -1300,7 +1300,11 @@ class BaseEntity:
                 self.remove_model(model)
         return self
 
-    def remove_empty_chains(self):
+    @deprecated(reason="Use 'drop_empty_models' instead")
+    def remove_empty_models(self):
+        return self.drop_empty_models()
+
+    def drop_empty_chains(self):
         """
         Remove all empty chains from the molecule
         """
@@ -1308,13 +1312,21 @@ class BaseEntity:
         self.remove_chains(*to_remove)
         return self
 
-    def remove_empty_residues(self):
+    @deprecated(reason="Use 'drop_empty_chains' instead")
+    def remove_empty_chains(self):
+        return self.drop_empty_chains()
+
+    def drop_empty_residues(self):
         """
         Remove all empty residues from the molecule
         """
         to_remove = [r for r in self.get_residues() if len(r) == 0]
         self.remove_residues(*to_remove)
         return self
+
+    @deprecated(reason="Use 'drop_empty_residues' instead")
+    def remove_empty_residues(self):
+        return self.drop_empty_residues()
 
     def clear(self):
         """
@@ -2727,21 +2739,39 @@ class BaseEntity:
         self._base_struct.add(new)
         return self
 
+    def drop_model(self, model: Union[int, base_classes.Model]):
+        """
+        Drop a model from the molecule without removing its chains from the molecule.
+        The chains of the dropped model will be removed from the model but remain in the molecule.
+
+        Parameters
+        ----------
+        model : int or Model
+            The model to drop
+        """
+        self.remove_model(model)
+        return self
+
     def remove_model(self, model: Union[int, base_classes.Model]):
         """
-        Remove a model from the molecule
+        Remove a model from the molecule and all its chains from the molecule and return the removed model.
 
         Parameters
         ----------
         model : int or Model
             The model to remove
+
+        Returns
+        -------
+        Model
+            The removed model
         """
         if isinstance(model, int):
             model = self.get_model(model)
         self._base_struct.child_list.remove(model)
         self._base_struct.child_dict.pop(model.get_id())
         self.remove_chains(model.child_list)
-        return self
+        return model
 
     def split_contiguous(self, target_residues: list = None):
         """
@@ -3536,9 +3566,22 @@ class BaseEntity:
             self._model.add(chain)
         return self
 
+    def drop_chains(self, *chains: Union[int, base_classes.Chain]):
+        """
+        Remove chains from the structure. This method returns the structure itself
+        rather than the removed chains. If you want to get the removed chains, use `remove_chains`.
+
+        Parameters
+        ----------
+        chains : int or Chain
+            The chains to remove, either the object itself or its id
+        """
+        self.remove_chains(*chains)
+        return self
+
     def remove_chains(self, *chains: Union[int, base_classes.Chain]) -> list:
         """
-        Remove chains from the structure
+        Remove chains from the structure and return them.
 
         Parameters
         ----------
@@ -3620,9 +3663,22 @@ class BaseEntity:
                 self._AtomGraph.add_node(atom)
         return self
 
+    def drop_residues(self, *residues: Union[int, base_classes.Residue]):
+        """
+        Remove residues from the molecule. This method returns the molecule itself
+        rather than the removed residues. If you want to get the removed residues, use `remove_residues`.
+
+        Parameters
+        ----------
+        residues : int or base_classes.Residue
+            The residues to remove, either the object itself or its seqid
+        """
+        self.remove_residues(*residues)
+        return self
+
     def remove_residues(self, *residues: Union[int, base_classes.Residue]) -> list:
         """
-        Remove residues from the structure
+        Remove residues from the molecule and return them.
 
         Parameters
         ----------
@@ -4002,9 +4058,23 @@ class BaseEntity:
                     break
         return self
 
+    def drop_atoms(self, *atoms: Union[int, str, tuple, base_classes.Atom]):
+        """
+        Remove one or more atoms from the structure. This method returns the Molecule object itself
+        rather than the removed atoms. Use `remove_atoms` if you need the removed atoms.
+
+        Parameters
+        ----------
+        atoms
+            The atoms to remove, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+        """
+        self.remove_atoms(*atoms)
+        return self
+
     def remove_atoms(self, *atoms: Union[int, str, tuple, base_classes.Atom]) -> list:
         """
-        Remove one or more atoms from the structure
+        Remove one or more atoms from the structure and return them.
 
         Parameters
         ----------
@@ -4171,7 +4241,7 @@ class BaseEntity:
             self._set_bond(*bond)
         return self
 
-    def remove_bond(
+    def drop_bond(
         self,
         atom1: Union[int, str, tuple, base_classes.Atom],
         atom2: Union[int, str, tuple, base_classes.Atom],
@@ -4198,6 +4268,17 @@ class BaseEntity:
         atom2 = self.get_atom(atom2)
         self._remove_bond(atom1, atom2)
         return self
+
+    @deprecated(
+        "This method will be dropped in the future. Use `drop_bond` instead.",
+        action="once",
+    )
+    def remove_bond(
+        self,
+        atom1: Union[int, str, tuple, base_classes.Atom],
+        atom2: Union[int, str, tuple, base_classes.Atom],
+    ):
+        return self.drop_bond(atom1, atom2)
 
     def purge_bonds(self, atom: Union[int, str, base_classes.Atom] = None):
         """
@@ -4803,9 +4884,9 @@ class BaseEntity:
             H.infer_hydrogens(self, bond_length=1.05)
         return self
 
-    def remove_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
+    def drop_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
         """
-        Remove all hydrogens in the structure.
+        Remove all hydrogens in the molecule.
 
         Parameters
         ----------
@@ -4823,6 +4904,13 @@ class BaseEntity:
         else:
             self._remove_atoms(*self.get_atoms("H", by="element"))
         return self
+
+    @deprecated(
+        "This method will be changed at some point in the future to return the removed hydrogens instead of the modified structure. Use `drop_hydrogens` instead.",
+        action="once",
+    )
+    def remove_hydrogens(self, *atoms: Union[int, str, base_classes.Atom]):
+        return self.drop_hydrogens(*atoms)
 
     def adjust_to_ph(
         self, ph: Union[float, int, tuple], inplace: bool = True, **kwargs
