@@ -956,7 +956,9 @@ def adjust_to_ph(
     Molecule
         The molecule with the adjusted protonation state
     """
-    if not aux.has_package("scrubber") or not aux.has_package("rdkit"):
+    if not (
+        aux.has_package("scrubber") or aux.has_package("molscrub")
+    ) or not aux.has_package("rdkit"):
         raise ImportError(
             "The `molscrub` and `rdkit` packages are required for this function."
         )
@@ -974,7 +976,12 @@ def adjust_to_ph(
             f"Invalid pH value or range provided. Expected float, int, or tuple, got {type(pH)}."
         )
 
-    from scrubber import Scrub
+    if aux.has_package("scrubber"):
+        from scrubber import Scrub
+    elif aux.has_package("molscrub"):
+        from molscrub import Scrub
+    else:
+        raise ImportError("The `molscrub` package not found in the environment.")
 
     skip_tautomers = kwargs.pop("skip_tautomers", True)
     scrub = Scrub(
