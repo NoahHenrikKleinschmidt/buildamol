@@ -3169,21 +3169,22 @@ class BaseEntity:
         set
             A set of atoms within the specified distance from the anchor point.
         """
+        anchor_coord = None
         if isinstance(anchor, np.ndarray):
             if anchor.shape != (3,):
                 raise ValueError("Anchor coordinate must be a 3D vector")
             anchor_coord = anchor
 
-        if not isinstance(anchor, base_classes.Atom):
+        elif isinstance(anchor, base_classes.Atom):
             atom = self.get_atom(anchor)
             if atom is None:
                 raise ValueError(f"Atom {anchor} not found in the molecule")
-            anchor = atom
+            anchor_coord = atom.coord
 
-        if isinstance(anchor, base_classes.Atom):
-            anchor_coord = anchor.coord
         else:
-            raise ValueError("Anchor must be either an Atom or a 3D numpy array")
+            raise ValueError(
+                f"Anchor must be either an Atom or a 3D coordinate as a numpy array, got {type(anchor)}"
+            )
 
         nearby_atoms = set()
         for atom in self._model.get_atoms():
