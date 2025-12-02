@@ -66,7 +66,7 @@ class BaseEntity:
         self._bonds = []
         # self._locked_bonds = set()
 
-        self._AtomGraph = graphs.AtomGraph(self.id, [])
+        self._AtomGraph = graphs.AtomGraph(self.id, bonds=[])
         self._AtomGraph.add_nodes_from(self._model.get_atoms())
         self._AtomGraph._molecule = self
 
@@ -2817,6 +2817,7 @@ class BaseEntity:
         *residues: Union[int, str, tuple, base_classes.Residue],
         by: str = None,
         chain=None,
+        filter: callable = None,
     ):
         """
         Get residues from the structure either based on their
@@ -2889,6 +2890,8 @@ class BaseEntity:
 
             _residues.extend(_residue)
 
+        if filter is not None:
+            _residues = [r for r in _residues if filter(r)]
         return _residues
 
     def count_bonds(self) -> int:
