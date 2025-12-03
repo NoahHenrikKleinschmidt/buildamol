@@ -1025,8 +1025,10 @@ def _modify(
         return mol
 
     at_atom = mol.get_atom(at_atom)
+    if at_atom is None:
+        raise ValueError(f"Could not find at_atom in molecule: {at_atom}")
     at_residue = at_atom.get_parent()
-    if delete:
+    if delete is not None:
         delete = mol.get_atom(delete)
     else:
         delete = mol.get_hydrogen(at_atom)
