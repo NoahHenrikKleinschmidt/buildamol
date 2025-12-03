@@ -1030,6 +1030,13 @@ def _modify(
         delete = mol.get_atom(delete)
     else:
         delete = mol.get_hydrogen(at_atom)
+        if delete is None:
+            mol.add_hydrogens(at_atom)
+            delete = mol.get_hydrogen(at_atom)
+            if delete is None:
+                raise ValueError(
+                    f"No hydrogen found/inferred on atom {at_atom.id} ({at_atom.serial_number}) to delete during modification and no delete atom was provided."
+                )
 
     modifier_at_atom = modifier.get_atom(modifier_at_atom)
 
@@ -1623,7 +1630,7 @@ class Molecule(entity.BaseEntity):
         if atoms:
             new.add_atoms(atoms)
         if bonds:
-            new.add_bonds(bonds)
+            new.set_bonds(bonds)
         return new
 
     # @classmethod

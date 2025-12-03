@@ -3700,8 +3700,7 @@ class BaseEntity:
 
         _residues = []
         for residue in residues:
-            if isinstance(residue, int):
-                residue = self.get_residue(residue)
+            residue = self.get_residue(residue)
 
             for atom in residue.child_list:
                 self._purge_bonds(atom)

@@ -2978,3 +2978,12 @@ def test_rename():
 
     atom.name = "C1_another"
     assert mol.get_atom("C1_another") is atom
+
+
+def test_modify_with_hydrogen_inference():
+    mol = bam.read_smiles("CCO")
+    mol.drop_hydrogens()
+    bam.carboxylate(mol, "C1", as_new_residue=False)
+    mol.drop_hydrogens()
+    if base.ALLOW_VISUAL:
+        mol.show()
