@@ -2698,12 +2698,18 @@ def test_multisite_react2():
 
 def test_adopt_connectivity_from_template():
     bam.load_small_molecules()
-    mol = bam.molecule("acetophenone").autolabel()
+    mol = bam.molecule("CCCO").autolabel()
     template = mol.copy()
 
     mol.bonds = []
-    mol.adopt_connectivity(
-        template, strict=False, infer_remainder=True, infer_bond_orders=True
+    bonds = bam.structural.create_bond_mapping_from_template(
+        mol,
+        template,
+        anchors={
+            "C1": "C1",
+            "C2": "C2",
+            "O1": "O1",
+        },
     )
 
     for bond in mol.bonds:

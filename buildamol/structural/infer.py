@@ -2226,23 +2226,116 @@ def create_bond_mapping_from_template(
     for bond in template_molecule.get_bonds():
         bond.order = 1
 
+    all_template_anchor_bonds = set()
+    for template_anchor in anchors.values():
+        template_anchor_bonds = template_molecule.get_bonds(template_anchor)
+        all_template_anchor_bonds.update(
+            bond
+            for bond in template_anchor_bonds
+            if bond.atom1 in anchors.values() and bond.atom2 in anchors.values()
+        )
+    reverse_template_anchors = {v: k for k, v in anchors.items()}
+
+    for bond in all_template_anchor_bonds:
+        atom1 = reverse_template_anchors[bond.atom1]
+        atom2 = reverse_template_anchors[bond.atom2]
+        target_molecule.set_bond(atom1, atom2)
+
     target_bond_orders = [(bond, bond.order) for bond in target_molecule.get_bonds()]
     for bond in target_molecule.get_bonds():
         bond.order = 1
 
-    from networkx.algorithms.isomorphism import GraphMatcher
-    from networkx import Graph
+    target_refs = list(anchors.keys())
+    template_refs = list(anchors.values())
+    target_queue = set(target_molecule.get_atoms()) - set(anchors.keys())
 
-    template_graph = Graph(edges=[tuple(i) for i in template_molecule.get_bonds()])
-    target_graph = Graph(edges=[tuple(i) for i in target_molecule.get_bonds()])
+    template_pairwise_distances = cdist(
+        template_molecule.get_coords(), template_molecule.get_coords()
+    )
 
-    # rethink
-    ...
+    target_pairwise_distances = cdist(
+        target_molecule.get_coords(), target_molecule.get_coords()
+    )
+    target_all_atoms = list(target_molecule.get_atoms())
+    template_all_atoms = list(template_molecule.get_atoms())
 
-    for target_anchor, template_anchor in anchors.items():
-        template_neighbors = template_anchor.get_neighbors()
+    template_ref_n2_neighbors = {
+        ref: ref.get_neighbors(2, "at") for ref in template_refs
+    }
 
-        target_anchor_bonds = [(partner,)]
+    template_ref_n1_neighbors = {
+        ref: ref.get_neighbors(1, "at") for ref in template_refs
+    }
+
+    reverse_template_ref_n2_neighbors = {}
+    for ref, neighbors in template_ref_n2_neighbors.items():
+        for neighbor in neighbors:
+            reverse_template_ref_n2_neighbors[neighbor] = ref
+
+    reverse_template_ref_n1_neighbors = {}
+    for ref, neighbors in template_ref_n1_neighbors.items():
+        for neighbor in neighbors:
+            reverse_template_ref_n1_neighbors[neighbor] = ref
+
+    template_ref_n2_neighbors_flat = set()
+    for neighbors in template_ref_n2_neighbors.values():
+        template_ref_n2_neighbors_flat.update(neighbors)
+
+    template_ref_anchor_indices = {
+        ref: template_all_atoms.index(ref) for ref in template_refs
+    }
+    target_ref_anchor_indices = {
+        ref: target_all_atoms.index(ref) for ref in target_refs
+    }
+
+    bonds = []
+    N = len(target_queue)
+    c = 0
+    while len(target_queue) > 0:
+        n = None
+        for n in template_ref_n2_neighbors_flat:
+            if n in reverse_template_ref_n1_neighbors and not n in anchors.values():
+                break
+
+        # n2_neighbor = template_ref_n2_neighbors_flat.pop()
+        # n2_anchor = reverse_template_ref_n2_neighbors[n2_neighbor]
+        n2_neighbor = n
+        n1_anchor = reverse_template_ref_n1_neighbors[n2_neighbor]
+        n2_neighbor_index = template_all_atoms.index(n2_neighbor)
+        n2_neigbor_distances = template_pairwise_distances[n2_neighbor_index][
+            list(template_ref_anchor_indices.values())
+        ]
+
+        target_distances = target_pairwise_distances[
+            :, list(target_ref_anchor_indices.values())
+        ]
+        distances_diff = (
+            np.abs(target_distances - n2_neigbor_distances) < 0.3
+        )  # tolerance
+        sum_diff = distances_diff.sum(axis=1)  # at least two anchors match
+        closest_target_index = np.argmax(sum_diff)
+        closest_target_atom = target_all_atoms[closest_target_index]
+
+        target_anchor = reverse_template_anchors[n1_anchor]
+        bonds.append((closest_target_atom, target_anchor))
+
+        target_queue.discard(closest_target_atom)
+
+        incoming = n2_neighbor.get_neighbors(2, "at")
+        template_ref_n2_neighbors[n2_neighbor] = incoming
+        for i in incoming:
+            reverse_template_ref_n2_neighbors[i] = n2_neighbor
+        incoming = n2_neighbor.get_neighbors(1, "at")
+        template_ref_n1_neighbors[n2_neighbor] = incoming
+        for i in incoming:
+            reverse_template_ref_n1_neighbors[i] = n2_neighbor
+        template_ref_n2_neighbors_flat.update(incoming)
+
+        c += 1
+        if c > N:
+            break
+
+        pass
 
 
 def _atom_from_residue(id, residue):
