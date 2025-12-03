@@ -2236,6 +2236,9 @@ def create_bond_mapping_from_template(
     template_graph = Graph(edges=[tuple(i) for i in template_molecule.get_bonds()])
     target_graph = Graph(edges=[tuple(i) for i in target_molecule.get_bonds()])
 
+    # rethink
+    ...
+
     for target_anchor, template_anchor in anchors.items():
         template_neighbors = template_anchor.get_neighbors()
 
