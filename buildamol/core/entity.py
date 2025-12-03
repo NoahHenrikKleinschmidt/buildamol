@@ -4832,6 +4832,43 @@ class BaseEntity:
         self._set_bonds(*bonds)
         return bonds
 
+    def adopt_bonds(
+        self,
+        template: "Molecule",
+        anchors: dict,
+        strict: bool = False,
+        infer_missing: bool = False,
+        infer_bond_orders: bool = False,
+    ):
+        """
+        Adopt the connectivity (bonds) from another (template) molecule into this molecule.
+        This is useful if you have a molecule with the correct 3D coordinates, but
+         - `infer_bonds` does not yield satisfactory results
+         - you have no reference compounds for `apply_standard_bonds`
+         - your reference compound has a different atom naming scheme than your molecule
+
+        Parameters
+        ----------
+        template : Molecule
+            The template molecule to adopt the bonds from
+        anchors : dict
+            A mapping of atoms in this molecule to atoms in the template molecule that should be used as anchors for the adoption.
+            The keys are atoms in this molecule (specified by serial number, id, or Atom object) and the values are atoms in the template molecule (specified by serial number, id, or Atom object).
+            At least three anchor pairs must be provided for a successful adoption. Also, these anchors must be part of the same connected component in both molecules (i.e. they must be connected by bonds).
+        strict : bool
+            If True, the atom sets of both this and the template molecule must match exactly. Otherwise a lenient mapping is attempted allowing for missing atoms in either molecule.
+        infer_missing : bool
+            If True, bonds that could not be adopted from the template molecule will be inferred using `infer_bonds`.
+        infer_bond_orders : bool
+            If True and `infer_missing` is True, the bond orders of the inferred bonds will be determined based on registered functional groups.
+
+        Returns
+        -------
+        Molecule
+            The molecule with the adopted bonds (in-place modification).
+        """
+        ...
+
     def autolabel(self, atoms: list = None):
         """
         Automatically label atoms in the structure to match the CHARMM force field
@@ -4842,7 +4879,7 @@ class BaseEntity:
         ----------
         atoms : list
             Optionally restrict the autolabelling to a specific set of atoms. If None, all atoms are considered.
-        
+
         Returns
         -------
         Molecule

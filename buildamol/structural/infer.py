@@ -2176,6 +2176,72 @@ def infer_bond_orders(molecule):
         group.apply_connectivity(molecule, atoms)
 
 
+def create_bond_mapping_from_template(
+    target_molecule,
+    template_molecule,
+    anchors: dict,
+    strict: bool = True,
+):
+    if not isinstance(anchors, dict) or len(anchors) < 3:
+        raise ValueError(
+            "Anchors must be a dictionary of atom mappings between the target (key) and template (value) molecules with at least 3 entries."
+        )
+
+    _anchors = {}
+    for target_atom, template_atom in anchors.items():
+        _target_atom = target_molecule.get_atom(target_atom)
+        if _target_atom is None:
+            raise ValueError(
+                f"Target atom '{target_atom}' not found in target molecule."
+            )
+        _template_atom = template_molecule.get_atom(template_atom)
+        if _template_atom is None:
+            raise ValueError(
+                f"Template atom '{template_atom}' not found in template molecule."
+            )
+        _anchors[_target_atom] = _template_atom
+
+    anchors = _anchors
+
+    if strict:
+        if target_molecule.count_atoms() != template_molecule.count_atoms():
+            raise ValueError(
+                "Target and template molecules must have the same number of atoms in strict mode."
+            )
+        element_hist = {}
+        for atom in target_molecule.get_atoms():
+            element_hist[atom.element] = element_hist.get(atom.element, 0) + 1
+        for atom in template_molecule.get_atoms():
+            element_hist[atom.element] = element_hist.get(atom.element, 0) - 1
+        for element, count in element_hist.items():
+            if count != 0:
+                raise ValueError(
+                    f"Element counts do not match for element '{element}' in strict mode."
+                )
+
+    # reduce connectivity to single bonds for isomorphism search
+    template_bond_orders = [
+        (bond, bond.order) for bond in template_molecule.get_bonds()
+    ]
+    for bond in template_molecule.get_bonds():
+        bond.order = 1
+
+    target_bond_orders = [(bond, bond.order) for bond in target_molecule.get_bonds()]
+    for bond in target_molecule.get_bonds():
+        bond.order = 1
+
+    from networkx.algorithms.isomorphism import GraphMatcher
+    from networkx import Graph
+
+    template_graph = Graph(edges=[tuple(i) for i in template_molecule.get_bonds()])
+    target_graph = Graph(edges=[tuple(i) for i in target_molecule.get_bonds()])
+
+    for target_anchor, template_anchor in anchors.items():
+        template_neighbors = template_anchor.get_neighbors()
+
+        target_anchor_bonds = [(partner,)]
+
+
 def _atom_from_residue(id, residue):
     return next((atom for atom in residue.get_atoms() if atom.id == id), None)
 

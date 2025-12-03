@@ -2694,3 +2694,22 @@ def test_multisite_react2():
     assert out.count_residues() == n_attachment_points + 1
     for bond in out.bonds:
         assert bond.length < 3, "All bonds should be reasonable"
+
+
+def test_adopt_connectivity_from_template():
+    bam.load_small_molecules()
+    mol = bam.molecule("acetophenone").autolabel()
+    template = mol.copy()
+
+    mol.bonds = []
+    mol.adopt_connectivity(
+        template, strict=False, infer_remainder=True, infer_bond_orders=True
+    )
+
+    for bond in mol.bonds:
+        template_bond = template.get_bond(*bond)
+        assert template_bond is not None
+        assert bond.order == template_bond.order
+
+    if base.ALLOW_VISUAL:
+        mol.show()
