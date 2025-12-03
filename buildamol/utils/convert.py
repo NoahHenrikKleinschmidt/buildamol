@@ -39,7 +39,7 @@ def mol_to_numpy_array(mol, include_bonds: bool = False):
     """
     coords = np.array(
         [
-            (atom.serial_number, atom.atomic_number, atom.coords)
+            (atom.serial_number, atom.atomic_number, atom.coord)
             for atom in mol.get_atoms()
         ]
     )
