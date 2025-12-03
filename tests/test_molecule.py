@@ -2957,3 +2957,24 @@ def test_atom_can_access_hydrogens():
     assert atom.get_hydrogens() == mol.get_hydrogens(atom)
     assert atom.get_left_hydrogen() == mol.get_left_hydrogen(atom)
     assert atom.get_right_hydrogen() == mol.get_right_hydrogen(atom)
+
+
+def test_rename():
+    mol = bam.Molecule.from_compound("GLC")
+    atom = mol.get_atom("C1")
+    residue = mol.get_residue(1)
+    chain = mol.get_chain("A")
+    model = mol.get_model(0)
+
+    mol.rename_atom(atom, "C1_new")
+    assert atom.id == "C1_new" == atom.name
+    assert mol.get_atom("C1_new") is atom
+    mol.rename_residue(residue, "GLC_new")
+    assert residue.name == "GLC_new"
+    assert mol.get_residue("GLC_new") is residue
+    mol.rename_chain(chain, "B")
+    assert chain.id == "B" == chain.name
+    assert mol.get_chain("B") is chain
+
+    atom.name = "C1_another"
+    assert mol.get_atom("C1_another") is atom

@@ -139,7 +139,7 @@ class Atom(ID, bio.Atom.Atom):
     __slots__ = (
         "id",
         "parent",
-        "name",
+        # "name",
         "fullname",
         "coord",
         "mass",
@@ -263,6 +263,17 @@ class Atom(ID, bio.Atom.Atom):
         return Atom.new(element, **kwargs)
 
     @property
+    def name(self):
+        """
+        Synonym for id.
+        """
+        return self.id
+
+    @name.setter
+    def name(self, value):
+        self.id = value
+
+    @property
     def weight(self):
         """
         The atom mass (synonym for mass).
@@ -284,7 +295,7 @@ class Atom(ID, bio.Atom.Atom):
     def full_id(self):
         p = self.get_parent()
         if p:
-            return (*p.get_full_id(), (self.name, self.altloc))
+            return (*p.get_full_id(), (self.id, self.altloc))
         else:
             return (None, None, None, None, (self.id, self.altloc))
 
@@ -1167,6 +1178,15 @@ class Chain(ID, bio.Chain.Chain):
         return cls(id)
 
     @property
+    def name(self):
+        """Synonym for id."""
+        return self.id
+
+    @name.setter
+    def name(self, value):
+        self._id = value
+
+    @property
     def full_id(self):
         p = self.get_parent()
         if p:
@@ -1186,6 +1206,10 @@ class Chain(ID, bio.Chain.Chain):
     @property
     def residues(self):
         return sorted(self.get_residues(), key=lambda x: x.serial_number)
+
+    @property
+    def atoms(self):
+        return sorted(self.get_atoms(), key=lambda x: x.serial_number)
 
     def count_residues(self) -> int:
         """
