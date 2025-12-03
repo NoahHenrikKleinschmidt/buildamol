@@ -2210,6 +2210,12 @@ class Bond:
     def __contains__(self, item):
         return item == self.atom1 or item == self.atom2
 
+    def __list__(self):
+        return [self.atom1, self.atom2]
+
+    def __tuple__(self):
+        return (self.atom1, self.atom2)
+
 
 if __name__ == "__main__":
     s = bio.PDBParser().get_structure(
