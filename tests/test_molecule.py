@@ -1946,6 +1946,24 @@ def test_hydroxylate():
     bam.hydroxylate(mol, "C1")
     m = mol.count_atoms()
     assert m > n, "No atoms seem to have been added"
+    assert mol.count_residues() == 2, "No new residue seems to have been created"
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_hydroxylate_same_residue():
+    mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
+    bam.hydroxylate(mol, "C1", as_new_residue=False)
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    assert mol.count_residues() == 1, "A new residue seems to have been created"
+    assert mol.get_atom("O").parent is mol.get_residue(
+        1
+    ), "Oxygen not in the same residue"
+    assert (
+        mol.get_atom("HO") in mol.get_residue(1).atoms
+    ), "Hydrogen not in the same residue"
     if base.ALLOW_VISUAL:
         mol.show()
 
@@ -2018,6 +2036,28 @@ def test_carboxylate_multiple():
     hydrogens = [mol.get_left_hydrogen(i) for i in carbons]
     hydrogens[0] = None
     bam.carboxylate(mol, carbons, hydrogens)
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_carboxylate_multiple_same_residue():
+    mol = bam.Molecule.from_smiles("CCCCC")
+    carbons = mol.get_atoms("C3", "C2", "C4")
+    hydrogens = [mol.get_left_hydrogen(i) for i in carbons]
+    hydrogens[0] = None
+    bam.carboxylate(mol, carbons, hydrogens, as_new_residue=False)
+    assert mol.count_residues() == 1, "A new residue seems to have been created"
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_carboxylate_multiple_same_mixed_residue():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.benzylate(mol, "C1")
+    assert mol.count_residues() == 2, "No new residue seems to have been created"
+    carbons = [mol.get_atom("C2", residue=1), mol.get_atom("C3", residue=2)]
+    bam.carboxylate(mol, carbons, as_new_residue=False)
+    assert mol.count_residues() == 2, "A new residue seems to have been created"
     if base.ALLOW_VISUAL:
         mol.show()
 
