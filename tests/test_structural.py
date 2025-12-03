@@ -1252,6 +1252,30 @@ def test_autolabel2():
     assert set(i.id for i in mol.get_atoms()) == set(("C1", "H11", "H12", "H13", "H14"))
 
 
+def test_autolabel_specific_target_atoms():
+    bam.load_sugars()
+
+    ref = bam.Molecule.from_compound("GLC")
+
+    target_atoms = ["C1", "O3", "H61"]
+    skewed_names = ["CY", "OX", "HZ"]
+    for t, s in zip(target_atoms, skewed_names):
+        atom = ref.get_atom(t)
+        atom.id = s  # skew the name
+
+    atom_names = set(i.id for i in ref.get_atoms())
+    assert all(
+        name in atom_names for name in skewed_names
+    ), "Failed to skew atom names!"
+
+    ref.autolabel(atoms=skewed_names[:-1])
+    atom_names = set(i.id for i in ref.get_atoms())
+    assert all(
+        name in atom_names for name in target_atoms[:-1]
+    ), "Failed to relabel target atoms!"
+    assert skewed_names[-1] in atom_names, "Non-target atom was relabeled!"
+
+
 def test_rotate_molecule():
     mol = bam.Molecule.from_compound("GLC")
 

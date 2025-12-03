@@ -715,6 +715,41 @@ def autolabel(molecule):
     return molecule
 
 
+def autolabel_atoms(bonds, to_label):
+    """
+    Automatically relabel a list of atoms to match the CHARMM naming scheme.
+    Note, this function is not guaranteed to produce the correct labels in all cases,
+    validation of the labels is recommended.
+
+    Parameters
+    ----------
+    bonds : list
+        A list of Bond objects that define the connectivity of atoms relevant for the labelling.
+    to_label : list
+        A list of Atom objects to relabel. This must be a subset of the atoms present in the bonds.
+
+    Returns
+    -------
+    dict
+        A dictionary mapping the original Atom objects to their new labels.
+    """
+    from buildamol.graphs import AtomGraph
+
+    edges = [bond.to_tuple() for bond in bonds]
+
+    g = AtomGraph("autolabel_temp_graph", bonds=bonds)
+
+    labeler = AutoLabel(g)
+    df = labeler.autolabel()
+    label_dict = {}
+    for idx in range(len(df)):
+        atom = df.atom.iloc[idx]
+        label = df.label.iloc[idx]
+        if atom in to_label:
+            label_dict[atom] = label
+    return label_dict
+
+
 class Hydrogenator:
     """
     A class to automatically add hydrogen atoms to organic molecules.

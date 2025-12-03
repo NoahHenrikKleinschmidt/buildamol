@@ -4833,18 +4833,42 @@ class BaseEntity:
         self._set_bonds(*bonds)
         return bonds
 
-    def autolabel(self):
+    def autolabel(self, atoms: list = None):
         """
         Automatically label atoms in the structure to match the CHARMM force field
         atom nomenclature. This is useful if you want to use some pre-generated
         PDB file that may have used a different labelling scheme for atoms.
+
+        Parameters
+        ----------
+        atoms : list
+            Optionally restrict the autolabelling to a specific set of atoms. If None, all atoms are considered.
+        
+        Returns
+        -------
+        Molecule
+            The molecule with the autolabelled atoms (in-place modification).
 
         Note
         ----
         The labels are infererred and therefore may occasionally not be "correct".
         It is advisable to check the labels after using this method.
         """
-        self = structural.autolabel(self)
+        if atoms is None:
+            self = structural.autolabel(self)
+        else:
+            atoms = self.get_atoms(*atoms)
+            residues = set(atom.get_parent() for atom in atoms)
+            relevant_bonds = []
+            for residue in residues:
+                relevant_bonds.extend(self.get_bonds(residue))
+            atom_name_mapping = structural.autolabel_atoms(
+                bonds=relevant_bonds, to_label=atoms
+            )
+            for atom, name in atom_name_mapping.items():
+                atom.id = name
+                atom.name = name
+
         return self
 
     def relabel_hydrogens(self):
