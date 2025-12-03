@@ -7,12 +7,13 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "buildamol"
-copyright = "2024, Noah Kleinschmidt"
+copyright = "2025, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "1.2.9"
+release = "1.2.12"
 
 
 import plotly.io as pio
+
 
 pio.renderers.default = "sphinx_gallery"
 
@@ -59,3 +60,4 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "pydata_sphinx_theme"
 html_logo = "_resources/logo_small.svg"
 html_static_path = ["_static"]
+html_css_files = ["css/styles.css"]
