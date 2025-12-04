@@ -2696,26 +2696,98 @@ def test_multisite_react2():
         assert bond.length < 3, "All bonds should be reasonable"
 
 
-def test_adopt_connectivity_from_template():
+def test_adopt_from_template1():
     bam.load_small_molecules()
     mol = bam.molecule("CCCO").autolabel()
-    template = mol.copy()
+    template = mol.copy().rename_atom("C1", "CA")
 
     mol.bonds = []
-    bonds = bam.structural.create_bond_mapping_from_template(
+    atom_mapping, bonds_mapping = bam.structural.infer_mapping_from_template(
         mol,
         template,
         anchors={
-            "C1": "C1",
+            "C1": "CA",
             "C2": "C2",
             "O1": "O1",
         },
     )
 
+    assert len(atom_mapping) == len(mol.atoms)
+    assert len(bonds_mapping) == template.count_bonds()
+
+    for bond in bonds_mapping:
+        mol._set_bond(*bond)
+
     for bond in mol.bonds:
-        template_bond = template.get_bond(*bond)
+        template_bond = template.get_bond(
+            bond.atom1.serial_number, bond.atom2.serial_number
+        )
         assert template_bond is not None
         assert bond.order == template_bond.order
 
     if base.ALLOW_VISUAL:
         mol.show()
+
+
+def test_adopt_from_template2():
+    template = bam.read_smiles("CC(=O)C(C)(C)").autolabel()
+    target = template.copy().optimize().drop_hydrogens()
+    target.bonds = []
+
+    from buildamol.structural import constraints_v2 as constraints
+
+    O = template.get_atom("O", by="element")
+    C = O.get_neighbors().pop()
+    C2 = template.get_atoms(
+        "C", by="element", filter=constraints.has_neighbor_hist({"C": 3})
+    ).pop()
+    anchors = [O, C, C2]
+    anchors = {a.serial_number: a.serial_number for a in anchors}
+    target.adopt_from_template(template, anchors=anchors, rename=True, strict=False)
+
+    for bond in target.bonds:
+        template_bond = template.get_bond(
+            bond.atom1.serial_number, bond.atom2.serial_number
+        )
+        assert template_bond is not None
+        assert bond.order == template_bond.order
+
+    if base.ALLOW_VISUAL:
+        target.show()
+        target.show2d()
+
+
+def test_adopt_from_template_hard():
+    template = bam.read_smiles(
+        "CC1=C(C2=C3N1[C@@H](COC3=CC=C2)CN4CCOCC4)C(=O)C5=CC=CC6=CC=CC=C65"
+    )
+    target = template.copy().autolabel().optimize().drop_hydrogens()
+    target.bonds = []
+
+    from buildamol.structural import constraints_v2 as constraints
+
+    anchors = [
+        template.get_atoms(
+            "O", by="element", filter=constraints.has_double_bond_with("C")
+        ).pop(),
+        template.get_atoms(
+            "C", by="element", filter=constraints.has_neighbor_hist({"H": 3})
+        ).pop(),
+        template.get_atoms(
+            "C", by="element", filter=constraints.has_double_bond_with("O")
+        ).pop(),
+    ]
+    anchors = {a.serial_number: a.serial_number for a in anchors}
+    target.adopt_from_template(template, anchors=anchors, rename=True)
+
+    assert len(target.bonds) == len(template.bonds)
+    for bond in target.bonds:
+        template_bond = template.get_bond(
+            bond.atom1.serial_number, bond.atom2.serial_number
+        )
+        assert template_bond is not None
+        assert bond.order == template_bond.order
+
+    if base.ALLOW_VISUAL:
+        target.show()
+        target.show2d()

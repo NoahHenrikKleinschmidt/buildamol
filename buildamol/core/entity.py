@@ -4832,10 +4832,11 @@ class BaseEntity:
         self._set_bonds(*bonds)
         return bonds
 
-    def adopt_bonds(
+    def adopt_from_template(
         self,
         template: "Molecule",
         anchors: dict,
+        rename: bool = False,
         strict: bool = False,
         infer_missing: bool = False,
         infer_bond_orders: bool = False,
@@ -4855,6 +4856,8 @@ class BaseEntity:
             A mapping of atoms in this molecule to atoms in the template molecule that should be used as anchors for the adoption.
             The keys are atoms in this molecule (specified by serial number, id, or Atom object) and the values are atoms in the template molecule (specified by serial number, id, or Atom object).
             At least three anchor pairs must be provided for a successful adoption. Also, these anchors must be part of the same connected component in both molecules (i.e. they must be connected by bonds).
+        rename : bool
+            If True, the atom ids in this molecule will be renamed to match the template molecule.
         strict : bool
             If True, the atom sets of both this and the template molecule must match exactly. Otherwise a lenient mapping is attempted allowing for missing atoms in either molecule.
         infer_missing : bool
@@ -4867,7 +4870,21 @@ class BaseEntity:
         Molecule
             The molecule with the adopted bonds (in-place modification).
         """
-        ...
+        target_to_template, mapped_bonds = structural.infer_mapping_from_template(
+            target=self,
+            template=template,
+            anchors=anchors,
+            strict=strict,
+        )
+        # apply the mapped bonds
+        self._set_bonds(*mapped_bonds)
+        if rename:
+            for target_atom, template_atom in target_to_template.items():
+                target_atom.id = template_atom.id
+
+        if infer_missing:
+            self.infer_bonds(infer_bond_orders=infer_bond_orders)
+        return self
 
     def autolabel(self, atoms: list = None):
         """

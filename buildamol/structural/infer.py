@@ -6,7 +6,7 @@ import re
 from typing import Union
 import pandas as pd
 import networkx as nx
-from collections import defaultdict
+from collections import defaultdict, deque
 import warnings
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -2176,166 +2176,214 @@ def infer_bond_orders(molecule):
         group.apply_connectivity(molecule, atoms)
 
 
-def create_bond_mapping_from_template(
-    target_molecule,
-    template_molecule,
+def infer_mapping_from_template(
+    target,
+    template,
     anchors: dict,
     strict: bool = True,
+    distance_tolerance: float = 0.3,
 ):
+    """
+
+    Match the atoms of ``target_molecule`` to those of ``template_molecule`` and
+    infer bond connectivity for ``target_molecule`` based on the bond topology of
+    ``template_molecule``.
+
+    Parameters
+    ----------
+    target : Molecule
+        The molecule for which to infer the bond connectivity.
+    template : Molecule
+        The molecule to use as a template for bond connectivity.
+    anchors : dict
+        A dictionary mapping atoms from ``target_molecule`` (keys) to atoms from
+        ``template_molecule`` (values) that are known to correspond. At least three
+        such anchor pairs must be provided to enable the mapping.
+    strict : bool
+        If True, the function will enforce that the target and template molecules
+        have the same number of atoms and matching element counts. If False, these
+        checks are skipped.
+    distance_tolerance : float
+        The maximum allowed deviation in pairwise distances (in Angstrom) when
+        matching atoms between the target and template molecules.
+
+    Returns
+    -------
+    dict
+        Mapping of target atoms to template atoms.
+    list
+        List of bonds (tuples of target atoms and their bond orders) inferred from the template molecule.
+    """
+
     if not isinstance(anchors, dict) or len(anchors) < 3:
         raise ValueError(
             "Anchors must be a dictionary of atom mappings between the target (key) and template (value) molecules with at least 3 entries."
         )
 
-    _anchors = {}
-    for target_atom, template_atom in anchors.items():
-        _target_atom = target_molecule.get_atom(target_atom)
-        if _target_atom is None:
+    def _resolve_anchor(atom_id, molecule, which):
+        atom = molecule.get_atom(atom_id)
+        if atom is None:
             raise ValueError(
-                f"Target atom '{target_atom}' not found in target molecule."
+                f"{which} atom '{atom_id}' not found in {which.lower()} molecule."
             )
-        _template_atom = template_molecule.get_atom(template_atom)
-        if _template_atom is None:
-            raise ValueError(
-                f"Template atom '{template_atom}' not found in template molecule."
-            )
-        _anchors[_target_atom] = _template_atom
+        return atom
 
-    anchors = _anchors
+    target_template_pairs = []
+    for target_id, template_id in anchors.items():
+        target_atom = _resolve_anchor(target_id, target, "Target")
+        template_atom = _resolve_anchor(template_id, template, "Template")
+        target_template_pairs.append((target_atom, template_atom))
 
     if strict:
-        if target_molecule.count_atoms() != template_molecule.count_atoms():
+        if target.count_atoms() != template.count_atoms():
             raise ValueError(
                 "Target and template molecules must have the same number of atoms in strict mode."
             )
         element_hist = {}
-        for atom in target_molecule.get_atoms():
+        for atom in target.get_atoms():
             element_hist[atom.element] = element_hist.get(atom.element, 0) + 1
-        for atom in template_molecule.get_atoms():
+        for atom in template.get_atoms():
             element_hist[atom.element] = element_hist.get(atom.element, 0) - 1
-        for element, count in element_hist.items():
-            if count != 0:
-                raise ValueError(
-                    f"Element counts do not match for element '{element}' in strict mode."
-                )
+        mismatching = [element for element, count in element_hist.items() if count != 0]
+        if mismatching:
+            raise ValueError(
+                "Element counts do not match in strict mode for: "
+                + ", ".join(sorted(mismatching))
+            )
 
-    # reduce connectivity to single bonds for isomorphism search
-    template_bond_orders = [
-        (bond, bond.order) for bond in template_molecule.get_bonds()
+    template_atoms = list(template.get_atoms())
+    target_atoms = list(target.get_atoms())
+    template_indices = {atom: idx for idx, atom in enumerate(template_atoms)}
+    target_indices = {atom: idx for idx, atom in enumerate(target_atoms)}
+
+    template_coords = np.array([atom.get_coord() for atom in template_atoms])
+    target_coords = np.array([atom.get_coord() for atom in target_atoms])
+    template_pairwise_distances = cdist(template_coords, template_coords)
+    target_pairwise_distances = cdist(target_coords, target_coords)
+
+    template_to_target = {tpl: tgt for tgt, tpl in target_template_pairs}
+    target_to_template = {tgt: tpl for tgt, tpl in target_template_pairs}
+    mapped_template_indices = [template_indices[tpl] for tpl in template_to_target]
+    mapped_target_indices = [
+        target_indices[template_to_target[tpl]] for tpl in template_to_target
     ]
-    for bond in template_molecule.get_bonds():
-        bond.order = 1
 
-    all_template_anchor_bonds = set()
-    for template_anchor in anchors.values():
-        template_anchor_bonds = template_molecule.get_bonds(template_anchor)
-        all_template_anchor_bonds.update(
-            bond
-            for bond in template_anchor_bonds
-            if bond.atom1 in anchors.values() and bond.atom2 in anchors.values()
-        )
-    reverse_template_anchors = {v: k for k, v in anchors.items()}
+    min_anchor_matches = 2
 
-    for bond in all_template_anchor_bonds:
-        atom1 = reverse_template_anchors[bond.atom1]
-        atom2 = reverse_template_anchors[bond.atom2]
-        target_molecule.set_bond(atom1, atom2)
+    unmapped_targets = set(target_atoms) - set(target_to_template.keys())
 
-    target_bond_orders = [(bond, bond.order) for bond in target_molecule.get_bonds()]
-    for bond in target_molecule.get_bonds():
-        bond.order = 1
+    queue = deque()
+    queued = set()
 
-    target_refs = list(anchors.keys())
-    template_refs = list(anchors.values())
-    target_queue = set(target_molecule.get_atoms()) - set(anchors.keys())
+    def _enqueue_template_neighbors(template_atom):
+        for neighbor in template_atom.get_neighbors():
+            if neighbor in template_to_target or neighbor in queued:
+                continue
+            queue.append(neighbor)
+            queued.add(neighbor)
 
-    template_pairwise_distances = cdist(
-        template_molecule.get_coords(), template_molecule.get_coords()
-    )
-
-    target_pairwise_distances = cdist(
-        target_molecule.get_coords(), target_molecule.get_coords()
-    )
-    target_all_atoms = list(target_molecule.get_atoms())
-    template_all_atoms = list(template_molecule.get_atoms())
-
-    template_ref_n2_neighbors = {
-        ref: ref.get_neighbors(2, "at") for ref in template_refs
-    }
-
-    template_ref_n1_neighbors = {
-        ref: ref.get_neighbors(1, "at") for ref in template_refs
-    }
-
-    reverse_template_ref_n2_neighbors = {}
-    for ref, neighbors in template_ref_n2_neighbors.items():
-        for neighbor in neighbors:
-            reverse_template_ref_n2_neighbors[neighbor] = ref
-
-    reverse_template_ref_n1_neighbors = {}
-    for ref, neighbors in template_ref_n1_neighbors.items():
-        for neighbor in neighbors:
-            reverse_template_ref_n1_neighbors[neighbor] = ref
-
-    template_ref_n2_neighbors_flat = set()
-    for neighbors in template_ref_n2_neighbors.values():
-        template_ref_n2_neighbors_flat.update(neighbors)
-
-    template_ref_anchor_indices = {
-        ref: template_all_atoms.index(ref) for ref in template_refs
-    }
-    target_ref_anchor_indices = {
-        ref: target_all_atoms.index(ref) for ref in target_refs
-    }
-
-    bonds = []
-    N = len(target_queue)
-    c = 0
-    while len(target_queue) > 0:
-        n = None
-        for n in template_ref_n2_neighbors_flat:
-            if n in reverse_template_ref_n1_neighbors and not n in anchors.values():
-                break
-
-        # n2_neighbor = template_ref_n2_neighbors_flat.pop()
-        # n2_anchor = reverse_template_ref_n2_neighbors[n2_neighbor]
-        n2_neighbor = n
-        n1_anchor = reverse_template_ref_n1_neighbors[n2_neighbor]
-        n2_neighbor_index = template_all_atoms.index(n2_neighbor)
-        n2_neigbor_distances = template_pairwise_distances[n2_neighbor_index][
-            list(template_ref_anchor_indices.values())
+    def _match_target(template_atom):
+        template_idx = template_indices[template_atom]
+        template_distances = template_pairwise_distances[template_idx][
+            mapped_template_indices
         ]
+        best_candidate = None
+        best_score = (-1, np.inf)
+        required_matches = min(min_anchor_matches, len(mapped_template_indices))
 
-        target_distances = target_pairwise_distances[
-            :, list(target_ref_anchor_indices.values())
-        ]
-        distances_diff = (
-            np.abs(target_distances - n2_neigbor_distances) < 0.3
-        )  # tolerance
-        sum_diff = distances_diff.sum(axis=1)  # at least two anchors match
-        closest_target_index = np.argmax(sum_diff)
-        closest_target_atom = target_all_atoms[closest_target_index]
+        for target_atom in list(unmapped_targets):
+            target_idx = target_indices[target_atom]
+            target_distances = target_pairwise_distances[target_idx][
+                mapped_target_indices
+            ]
+            diff = np.abs(target_distances - template_distances)
+            matches = diff <= distance_tolerance
+            match_count = int(matches.sum())
+            if match_count < required_matches:
+                continue
+            score = diff[matches].sum()
+            if match_count > best_score[0] or (
+                match_count == best_score[0] and score < best_score[1]
+            ):
+                best_candidate = target_atom
+                best_score = (match_count, score)
+        return best_candidate
 
-        target_anchor = reverse_template_anchors[n1_anchor]
-        bonds.append((closest_target_atom, target_anchor))
+    def _connect_existing_bonds(template_atom, target_atom):
+        for neighbor in template_atom.get_neighbors():
+            mapped_neighbor = template_to_target.get(neighbor)
+            if mapped_neighbor is None:
+                continue
+            target.set_bond(target_atom, mapped_neighbor)
 
-        target_queue.discard(closest_target_atom)
+    for _, template_anchor in target_template_pairs:
+        _enqueue_template_neighbors(template_anchor)
 
-        incoming = n2_neighbor.get_neighbors(2, "at")
-        template_ref_n2_neighbors[n2_neighbor] = incoming
-        for i in incoming:
-            reverse_template_ref_n2_neighbors[i] = n2_neighbor
-        incoming = n2_neighbor.get_neighbors(1, "at")
-        template_ref_n1_neighbors[n2_neighbor] = incoming
-        for i in incoming:
-            reverse_template_ref_n1_neighbors[i] = n2_neighbor
-        template_ref_n2_neighbors_flat.update(incoming)
+    template_bond_orders = [(bond, bond.order) for bond in template.get_bonds()]
+    try:
+        for bond in template.get_bonds():
+            bond.order = 1
 
-        c += 1
-        if c > N:
-            break
+        rounds = 0
+        while queue:
+            progress_made = False
+            level_size = len(queue)
+            for _ in range(level_size):
+                template_atom = queue.popleft()
+                queued.discard(template_atom)
+                candidate_target = _match_target(template_atom)
+                if candidate_target is None:
+                    queue.append(template_atom)
+                    queued.add(template_atom)
+                    continue
 
-        pass
+                progress_made = True
+                template_to_target[template_atom] = candidate_target
+                target_to_template[candidate_target] = template_atom
+                unmapped_targets.discard(candidate_target)
+                mapped_template_indices.append(template_indices[template_atom])
+                mapped_target_indices.append(target_indices[candidate_target])
+
+                _connect_existing_bonds(template_atom, candidate_target)
+                _enqueue_template_neighbors(template_atom)
+
+            if queue and not progress_made:
+                unresolved = sorted(atom.id for atom in queue)
+                msg = "Could not resolve mapping for template atoms: " + ", ".join(unresolved)
+                if strict:
+                    raise ValueError(msg)
+                else:
+                    warnings.warn(msg)
+                    break
+
+        if len(template_to_target) != len(template_atoms):
+            missing = [
+                atom.id for atom in template_atoms if atom not in template_to_target
+            ]
+            if strict:
+                raise ValueError(
+                    "Failed to map all template atoms. Missing: "
+                    + ", ".join(sorted(missing))
+                )
+            else:
+                warnings.warn(
+                    "Failed to map all template atoms. Missing: "
+                    + ", ".join(sorted(missing))
+                )
+        mapped_bonds = []
+        for bond, order in template_bond_orders:
+            atom1 = template_to_target.get(bond.atom1)
+            atom2 = template_to_target.get(bond.atom2)
+            if atom1 is None or atom2 is None:
+                continue
+            mapped_bonds.append((atom1, atom2, order))
+            target.set_bond(atom1, atom2, order=order)
+
+    finally:
+        for bond, order in template_bond_orders:
+            bond.order = order
+    target_to_template = {v: k for k, v in template_to_target.items()}
+    return target_to_template, mapped_bonds
 
 
 def _atom_from_residue(id, residue):
