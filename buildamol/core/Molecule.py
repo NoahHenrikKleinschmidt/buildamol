@@ -968,6 +968,7 @@ def _modify(
     delete,
     modifier_at_atom: "str",
     modifier_deletes: "List[str]",
+    as_new_residue: bool = True,
     inplace: bool = True,
 ):
     """
@@ -991,6 +992,8 @@ def _modify(
         The atom of the modifier molecule to attach to the molecule
     modifier_deletes : List[str]
         The atoms to delete in the modifier molecule. The first entry needs to be a direct neighbor of the modifier_at_atom.
+    as_new_residue : bool
+        Whether to attach the modifier as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to modify the molecule in place or return a new molecule
     """
@@ -1016,6 +1019,7 @@ def _modify(
                 d,
                 modifier_at_atom,
                 modifier_deletes,
+                as_new_residue=as_new_residue,
                 inplace=True,
             )
         return mol
@@ -1026,6 +1030,13 @@ def _modify(
         delete = mol.get_atom(delete)
     else:
         delete = mol.get_hydrogen(at_atom)
+        if delete is None:
+            mol.add_hydrogens(at_atom)
+            delete = mol.get_hydrogen(at_atom)
+            if delete is None:
+                raise ValueError(
+                    f"No hydrogen found/inferred on atom {at_atom.id} ({at_atom.serial_number}) to delete during modification and no delete atom was provided."
+                )
 
     modifier_at_atom = modifier.get_atom(modifier_at_atom)
 
@@ -1040,6 +1051,20 @@ def _modify(
         at_atom.id, modifier_at_atom, [delete], modifier_deletes, id="MODIFY"
     )
     mol = mol.attach(modifier, l, at_residue=at_residue, inplace=inplace)
+
+    if not as_new_residue:
+        modifier_residue = mol.get_residue(-1)  # the last residue is the modifier
+        names_already_taken = set(atom.id for atom in at_residue.get_atoms())
+        for atom in list(modifier_residue.get_atoms()):
+            # just some simple renaming scheme
+            if atom.id in names_already_taken:
+                element_count = sum(
+                    1 for a in at_residue.get_atoms() if a.element == atom.element
+                )
+                new_name = f"{atom.element}{element_count + 1}"
+                atom.id = new_name
+            mol.set_parent(atom, at_residue)
+        mol.remove_residues(modifier_residue)
     return mol
 
 
@@ -1047,6 +1072,7 @@ def phosphorylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1063,6 +1089,8 @@ def phosphorylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to phosphorylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the phosphate as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to phosphorylate the molecule in place or return a new molecule
 
@@ -1073,13 +1101,23 @@ def phosphorylate(
     """
     resources.load_small_molecules()
     phos = Molecule.from_compound("PO4").add_hydrogens()
-    return _modify(mol, phos, at_atom, delete, "O2", ["HO2"], inplace)
+    return _modify(
+        mol,
+        phos,
+        at_atom,
+        delete,
+        "O2",
+        ["HO2"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def methylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1096,18 +1134,35 @@ def methylate(
        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to methylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the methyl group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to methylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The methylated molecule
     """
     resources.load_small_molecules()
     methyl = Molecule.from_compound("CH3")
-    return _modify(mol, methyl, at_atom, delete, "C", ["HC1"], inplace)
+    return _modify(
+        mol,
+        methyl,
+        at_atom,
+        delete,
+        "C",
+        ["HC1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def acetylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1124,18 +1179,35 @@ def acetylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to acetylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the acetyl group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to acetylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The acetylated molecule
     """
     resources.load_small_molecules()
     acetyl = Molecule.from_compound("ACE")
-    return _modify(mol, acetyl, at_atom, delete, "C", ["H"], inplace)
+    return _modify(
+        mol,
+        acetyl,
+        at_atom,
+        delete,
+        "C",
+        ["H"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def hydroxylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1152,19 +1224,36 @@ def hydroxylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to hydroxylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the hydroxyl group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to hydroxylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The hydroxylated molecule
     """
     resources.load_small_molecules()
     hydroxyl = Molecule.from_compound("HOH")
-    hydroxyl.rename_residue("HOH", "OH")
-    return _modify(mol, hydroxyl, at_atom, delete, "O", ["H1"], inplace)
+    hydroxyl.rename_residue("HOH", "OH").rename_atom("H2", "HO")
+    return _modify(
+        mol,
+        hydroxyl,
+        at_atom,
+        delete,
+        "O",
+        ["H1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def aminate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1181,18 +1270,35 @@ def aminate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to amidate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the amine group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to amidate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The aminated molecule
     """
     resources.load_small_molecules()
     amide = Molecule.from_compound("NH3")
-    return _modify(mol, amide, at_atom, delete, "N", ["HN1"], inplace)
+    return _modify(
+        mol,
+        amide,
+        at_atom,
+        delete,
+        "N",
+        ["HN1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def amidate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1209,18 +1315,35 @@ def amidate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to amidate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the amide group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to amidate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The amidated molecule
     """
     resources.load_small_molecules()
     amide = Molecule.from_compound("ARF")
-    return _modify(mol, amide, at_atom, delete, "C", ["H"], inplace)
+    return _modify(
+        mol,
+        amide,
+        at_atom,
+        delete,
+        "C",
+        ["H"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def carboxylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1237,19 +1360,36 @@ def carboxylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to carboxylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the carboxyl group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to carboxylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The carboxylated molecule
     """
     resources.load_small_molecules()
     carboxyl = Molecule.from_compound("CBX")
     carboxyl.rename_atom("O1", "O").rename_atom("O2", "OXT").rename_atom("HO2", "HXT")
-    return _modify(mol, carboxyl, at_atom, delete, "C", ["H"], inplace)
+    return _modify(
+        mol,
+        carboxyl,
+        at_atom,
+        delete,
+        "C",
+        ["H"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def benzylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1266,12 +1406,29 @@ def benzylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to benzylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the benzyl group as a new residue or merge it into the same residue
+        as at_atom.
     inplace : bool
         Whether to benzylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The benzylated molecule
     """
     resources.load_small_molecules()
     benzyl = Molecule.from_compound("BNZ")
-    return _modify(mol, benzyl, at_atom, delete, "C1", ["H1"], inplace)
+    return _modify(
+        mol,
+        benzyl,
+        at_atom,
+        delete,
+        "C1",
+        ["H1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def phenolate(
@@ -1279,6 +1436,7 @@ def phenolate(
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
     how: str = "para",
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1297,8 +1455,15 @@ def phenolate(
         If at_atom is a list, delete can be a list of the same length or None.
     how: str
         The position of the hydroxyl group on the phenol. Can be one of "ortho", "meta", or "para".
+    as_new_residue : bool
+        Whether to attach the phenol group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to phenolate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The phenolated molecule
     """
     resources.load_small_molecules()
     phenol = Molecule.from_compound("MBN")
@@ -1312,13 +1477,23 @@ def phenolate(
         raise ValueError(
             "Invalid value for 'how'. Must be one of 'ortho', 'meta', or 'para'"
         )
-    return _modify(mol, phenol, at_atom, delete, a, [d], inplace)
+    return _modify(
+        mol,
+        phenol,
+        at_atom,
+        delete,
+        a,
+        [d],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def thiolate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1335,15 +1510,31 @@ def thiolate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to thiolate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the thiol group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to thiolate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The thiolated molecule
     """
     resources.load_small_molecules()
     thiol = Molecule.from_compound("HOH")
     o = thiol.get_atom("O")
     o.set_element("S")
     o.id = "S"
-    return _modify(mol, thiol, at_atom, delete, "S", ["H1"], inplace)
+    return _modify(
+        mol,
+        thiol,
+        at_atom,
+        delete,
+        "S",
+        ["H1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 class Molecule(entity.BaseEntity):
@@ -1439,7 +1630,7 @@ class Molecule(entity.BaseEntity):
         if atoms:
             new.add_atoms(atoms)
         if bonds:
-            new.add_bonds(bonds)
+            new.set_bonds(bonds)
         return new
 
     # @classmethod

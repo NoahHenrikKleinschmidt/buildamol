@@ -1946,6 +1946,24 @@ def test_hydroxylate():
     bam.hydroxylate(mol, "C1")
     m = mol.count_atoms()
     assert m > n, "No atoms seem to have been added"
+    assert mol.count_residues() == 2, "No new residue seems to have been created"
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_hydroxylate_same_residue():
+    mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
+    bam.hydroxylate(mol, "C1", as_new_residue=False)
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    assert mol.count_residues() == 1, "A new residue seems to have been created"
+    assert mol.get_atom("O").parent is mol.get_residue(
+        1
+    ), "Oxygen not in the same residue"
+    assert (
+        mol.get_atom("HO") in mol.get_residue(1).atoms
+    ), "Hydrogen not in the same residue"
     if base.ALLOW_VISUAL:
         mol.show()
 
@@ -2018,6 +2036,28 @@ def test_carboxylate_multiple():
     hydrogens = [mol.get_left_hydrogen(i) for i in carbons]
     hydrogens[0] = None
     bam.carboxylate(mol, carbons, hydrogens)
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_carboxylate_multiple_same_residue():
+    mol = bam.Molecule.from_smiles("CCCCC")
+    carbons = mol.get_atoms("C3", "C2", "C4")
+    hydrogens = [mol.get_left_hydrogen(i) for i in carbons]
+    hydrogens[0] = None
+    bam.carboxylate(mol, carbons, hydrogens, as_new_residue=False)
+    assert mol.count_residues() == 1, "A new residue seems to have been created"
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_carboxylate_multiple_same_mixed_residue():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.benzylate(mol, "C1")
+    assert mol.count_residues() == 2, "No new residue seems to have been created"
+    carbons = [mol.get_atom("C2", residue=1), mol.get_atom("C3", residue=2)]
+    bam.carboxylate(mol, carbons, as_new_residue=False)
+    assert mol.count_residues() == 2, "A new residue seems to have been created"
     if base.ALLOW_VISUAL:
         mol.show()
 
@@ -2917,3 +2957,33 @@ def test_atom_can_access_hydrogens():
     assert atom.get_hydrogens() == mol.get_hydrogens(atom)
     assert atom.get_left_hydrogen() == mol.get_left_hydrogen(atom)
     assert atom.get_right_hydrogen() == mol.get_right_hydrogen(atom)
+
+
+def test_rename():
+    mol = bam.Molecule.from_compound("GLC")
+    atom = mol.get_atom("C1")
+    residue = mol.get_residue(1)
+    chain = mol.get_chain("A")
+    model = mol.get_model(0)
+
+    mol.rename_atom(atom, "C1_new")
+    assert atom.id == "C1_new" == atom.name
+    assert mol.get_atom("C1_new") is atom
+    mol.rename_residue(residue, "GLC_new")
+    assert residue.name == "GLC_new"
+    assert mol.get_residue("GLC_new") is residue
+    mol.rename_chain(chain, "B")
+    assert chain.id == "B" == chain.name
+    assert mol.get_chain("B") is chain
+
+    atom.name = "C1_another"
+    assert mol.get_atom("C1_another") is atom
+
+
+def test_modify_with_hydrogen_inference():
+    mol = bam.read_smiles("CCO")
+    mol.drop_hydrogens()
+    bam.carboxylate(mol, "C1", as_new_residue=False)
+    mol.drop_hydrogens()
+    if base.ALLOW_VISUAL:
+        mol.show()
