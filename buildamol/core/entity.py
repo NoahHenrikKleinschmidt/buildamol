@@ -985,15 +985,22 @@ class BaseEntity:
             return v
 
     def draw(self, *args, **kwargs):
+        if utils.visual.DEFAULT_MODE == "2d":
+            return self.draw2d(*args, **kwargs)
+        else:
+            return self.draw3d(*args, **kwargs)
+
+    def draw3d(self, *args, **kwargs):
         backend = utils.visual.DEFAULT_BACKEND
         return getattr(self, backend)(*args, **kwargs)
-
-    draw3d = draw
 
     def show(self, *args, **kwargs):
         self.draw(*args, **kwargs).show()
 
-    show3d = show
+    def show3d(self, *args, **kwargs):
+        backend = utils.visual.DEFAULT_BACKEND
+        viewer = getattr(self, backend)(*args, **kwargs)
+        viewer.show()
 
     # def vet(
     #     self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
@@ -1272,17 +1279,17 @@ class BaseEntity:
             Whether to infer bonds from the atom positions and element types
         """
         if remove_empty_residues:
-            self.remove_empty_residues()
+            self.drop_empty_residues()
         if remove_empty_chains:
-            self.remove_empty_chains()
+            self.drop_empty_chains()
         if remove_empty_models:
-            self.remove_empty_models()
+            self.drop_empty_models()
         if reindex:
             self.reindex()
         if remove_hydrogens and add_hydrogens:
             raise ValueError("Cannot remove and add hydrogens at the same time")
         elif remove_hydrogens:
-            self.remove_hydrogens()
+            self.drop_hydrogens()
         elif add_hydrogens:
             self.add_hydrogens()
         if apply_standard_bonds:

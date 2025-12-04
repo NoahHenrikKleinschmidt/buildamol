@@ -21,6 +21,44 @@ DEFAULT_BACKEND = "plotly"
 The default visualization backend for bare `draw` and `show` methods on objects. 
 """
 
+DEFAULT_MODE = "3d"
+"""
+The default visualization mode for bare `draw` and `show` methods on objects (either "2d" or "3d").
+Falls back to DEFAULT_BACKEND for 3d visualizations.
+"""
+
+
+def render_2d():
+    """
+    Render in 2D by default (i.e. when calling 'draw' or 'show').
+    """
+    set_rendering_mode("2d")
+
+
+def render_3d():
+    """
+    Render in 3D by default (i.e. when calling 'draw' or 'show').
+    """
+    set_rendering_mode("3d")
+
+
+def set_rendering_mode(mode: str):
+    """
+    Set the default visualization mode, which will be used by objects when calling `draw` and `show` methods.
+
+    Parameters
+    ----------
+    mode : str
+        The rendering mode to use. Available modes are:
+            - 2d
+            - 3d
+    """
+    mode = mode.strip().lower()
+    if mode not in ("2d", "3d"):
+        raise ValueError(f"Unsupported rendering mode: {mode}")
+    global DEFAULT_MODE
+    DEFAULT_MODE = mode
+
 
 def set_backend(backend: str):
     """
@@ -351,7 +389,6 @@ class Chem2DViewer:
         """
         if isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
             bonds = bonds[0]
-
 
         if callable(color):
             bonds = {bond: color(bond) for bond in bonds}
