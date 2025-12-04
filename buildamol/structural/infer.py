@@ -2292,6 +2292,8 @@ def infer_mapping_from_template(
         required_matches = min(min_anchor_matches, len(mapped_template_indices))
 
         for target_atom in list(unmapped_targets):
+            if target_atom.element != template_atom.element:
+                continue
             target_idx = target_indices[target_atom]
             target_distances = target_pairwise_distances[target_idx][
                 mapped_target_indices
@@ -2309,12 +2311,18 @@ def infer_mapping_from_template(
                 best_score = (match_count, score)
         return best_candidate
 
-    def _connect_existing_bonds(template_atom, target_atom):
-        for neighbor in template_atom.get_neighbors():
-            mapped_neighbor = template_to_target.get(neighbor)
-            if mapped_neighbor is None:
-                continue
-            target.set_bond(target_atom, mapped_neighbor)
+    # mapped_bonds = []
+    # template_bond_orders_dict = {
+    #     (bond.atom1, bond.atom2): bond.order for bond in template.get_bonds()
+    # }
+
+    # def _connect_existing_bonds(template_atom, target_atom):
+    #     for neighbor in template_atom.get_neighbors():
+    #         mapped_neighbor = template_to_target.get(neighbor)
+    #         if mapped_neighbor is None:
+    #             continue
+    #         order = template_bond_orders_dict.get((template_atom, neighbor), 1)
+    #         mapped_bonds.append((target_atom, mapped_neighbor, order))
 
     for _, template_anchor in target_template_pairs:
         _enqueue_template_neighbors(template_anchor)
@@ -2344,12 +2352,14 @@ def infer_mapping_from_template(
                 mapped_template_indices.append(template_indices[template_atom])
                 mapped_target_indices.append(target_indices[candidate_target])
 
-                _connect_existing_bonds(template_atom, candidate_target)
+                # _connect_existing_bonds(template_atom, candidate_target)
                 _enqueue_template_neighbors(template_atom)
 
             if queue and not progress_made:
                 unresolved = sorted(atom.id for atom in queue)
-                msg = "Could not resolve mapping for template atoms: " + ", ".join(unresolved)
+                msg = "Could not resolve mapping for template atoms: " + ", ".join(
+                    unresolved
+                )
                 if strict:
                     raise ValueError(msg)
                 else:
@@ -2370,18 +2380,17 @@ def infer_mapping_from_template(
                     "Failed to map all template atoms. Missing: "
                     + ", ".join(sorted(missing))
                 )
-        mapped_bonds = []
-        for bond, order in template_bond_orders:
-            atom1 = template_to_target.get(bond.atom1)
-            atom2 = template_to_target.get(bond.atom2)
-            if atom1 is None or atom2 is None:
-                continue
-            mapped_bonds.append((atom1, atom2, order))
-            target.set_bond(atom1, atom2, order=order)
+
+        mapped_bonds = [
+            (template_to_target[bond.atom1], template_to_target[bond.atom2], order)
+            for bond, order in template_bond_orders
+            if bond.atom1 in template_to_target and bond.atom2 in template_to_target
+        ]
 
     finally:
         for bond, order in template_bond_orders:
             bond.order = order
+
     target_to_template = {v: k for k, v in template_to_target.items()}
     return target_to_template, mapped_bonds
 

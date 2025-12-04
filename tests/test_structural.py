@@ -2733,7 +2733,6 @@ def test_adopt_from_template2():
     template = bam.read_smiles("CC(=O)C(C)(C)").autolabel()
     target = template.copy().optimize().drop_hydrogens()
     target.bonds = []
-
     from buildamol.structural import constraints_v2 as constraints
 
     O = template.get_atom("O", by="element")
@@ -2757,37 +2756,69 @@ def test_adopt_from_template2():
         target.show2d()
 
 
-def test_adopt_from_template_hard():
-    template = bam.read_smiles(
-        "CC1=C(C2=C3N1[C@@H](COC3=CC=C2)CN4CCOCC4)C(=O)C5=CC=CC6=CC=CC=C65"
+def test_adopt_from_template_partial_template():
+    template = bam.read_smiles("c1ccccc1")
+    target = bam.read_smiles("CCc1ccccc1CO")
+    target.drop_hydrogens()
+    target.bonds = []
+    target.infer_bonds()
+
+    from buildamol.structural.groups import aromatic
+
+    template_anchor1 = aromatic.find_matches(template, template.atoms)[0][0]
+    target_anchor1 = aromatic.find_matches(target, target.atoms)[0][0]
+
+    template_anchors23 = template_anchor1.get_neighbors(
+        filter=lambda a: a.element == "C"
     )
-    target = template.copy().autolabel().optimize().drop_hydrogens()
+    target_anchors23 = target_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+
+    anchors = {
+        target_anchor1: template_anchor1,
+        target_anchors23.pop(): template_anchors23.pop(),
+        target_anchors23.pop(): template_anchors23.pop(),
+    }
+
     target.bonds = []
 
-    from buildamol.structural import constraints_v2 as constraints
-
-    anchors = [
-        template.get_atoms(
-            "O", by="element", filter=constraints.has_double_bond_with("C")
-        ).pop(),
-        template.get_atoms(
-            "C", by="element", filter=constraints.has_neighbor_hist({"H": 3})
-        ).pop(),
-        template.get_atoms(
-            "C", by="element", filter=constraints.has_double_bond_with("O")
-        ).pop(),
-    ]
-    anchors = {a.serial_number: a.serial_number for a in anchors}
-    target.adopt_from_template(template, anchors=anchors, rename=True)
-
-    assert len(target.bonds) == len(template.bonds)
-    for bond in target.bonds:
-        template_bond = template.get_bond(
-            bond.atom1.serial_number, bond.atom2.serial_number
-        )
-        assert template_bond is not None
-        assert bond.order == template_bond.order
+    target.adopt_from_template(template, anchors=anchors, strict=False)
 
     if base.ALLOW_VISUAL:
         target.show()
-        target.show2d()
+
+    n_double_bonds = 0
+    for bond in target.bonds:
+        if bond.order == 2:
+            n_double_bonds += 1
+    assert n_double_bonds == 3
+
+
+def test_adopt_from_template_partial_target():
+    template = bam.read_smiles("CCc1ccccc1CO")
+    target = bam.read_smiles("Cc1ccccc1").drop_hydrogens()
+
+    from buildamol.structural.groups import aromatic
+
+    template_anchor1 = aromatic.find_matches(template, template.atoms)[0][0]
+    target_anchor1 = aromatic.find_matches(target, target.atoms)[0][0]
+    template_anchors23 = template_anchor1.get_neighbors(
+        filter=lambda a: a.element == "C"
+    )
+    target_anchors23 = target_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+
+    anchors = {
+        target_anchor1: template_anchor1,
+        target_anchors23.pop(): template_anchors23.pop(),
+        target_anchors23.pop(): template_anchors23.pop(),
+    }
+
+    target.bonds = []
+    target.adopt_from_template(template, anchors=anchors, strict=False)
+    if base.ALLOW_VISUAL:
+        target.show()
+
+    n_double_bonds = 0
+    for bond in target.bonds:
+        if bond.order == 2:
+            n_double_bonds += 1
+    assert n_double_bonds == 3

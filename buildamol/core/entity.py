@@ -4840,6 +4840,7 @@ class BaseEntity:
         strict: bool = False,
         infer_missing: bool = False,
         infer_bond_orders: bool = False,
+        recompute_hydrogens: bool = True,
     ):
         """
         Adopt the connectivity (bonds) from another (template) molecule into this molecule.
@@ -4864,12 +4865,21 @@ class BaseEntity:
             If True, bonds that could not be adopted from the template molecule will be inferred using `infer_bonds`.
         infer_bond_orders : bool
             If True and `infer_missing` is True, the bond orders of the inferred bonds will be determined based on registered functional groups.
+        recompute_hydrogens : bool
+            If True, hydrogens are dropped before the adoption and re-added afterwards. Since this makes the adoption less sensitive to potential differences in hydrogen placement, this is recommended.
 
         Returns
         -------
         Molecule
             The molecule with the adopted bonds (in-place modification).
         """
+        if recompute_hydrogens:
+            had_hydrogens_at_start = self.has_hydrogens()
+            atoms_with_hydrogens = set(
+                atom for atom in self.get_atoms() if self.get_hydrogen(atom) is not None
+            )
+            self.drop_hydrogens(atoms_with_hydrogens)
+
         target_to_template, mapped_bonds = structural.infer_mapping_from_template(
             target=self,
             template=template,
@@ -4884,6 +4894,8 @@ class BaseEntity:
 
         if infer_missing:
             self.infer_bonds(infer_bond_orders=infer_bond_orders)
+        if recompute_hydrogens and had_hydrogens_at_start:
+            self.add_hydrogens(atoms_with_hydrogens)
         return self
 
     def autolabel(self, atoms: list = None):
