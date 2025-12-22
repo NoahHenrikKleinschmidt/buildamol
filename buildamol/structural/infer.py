@@ -368,6 +368,36 @@ bond_length_by_order = {
 }
 
 
+# van der Waals radii (in Angstrom); used to derive element-specific bond cutoffs
+element_vdw_radii = {
+    "H": 1.2,
+    "C": 1.7,
+    "N": 1.55,
+    "O": 1.52,
+    "S": 1.8,
+    "P": 1.8,
+    "F": 1.47,
+    "Cl": 1.75,
+    "Br": 1.85,
+    "I": 1.98,
+    "B": 1.92,
+    "Si": 2.1,
+    "Se": 1.9,
+    "Zn": 1.39,
+    "Ca": 2.31,
+    "Mg": 1.73,
+    "Fe": 1.94,
+    "Cu": 1.4,
+    "Mn": 2.0,
+}
+
+# scaling and safety padding to approximate covalent bond distances from van der Waals radii
+_VDW_DEFAULT_RADIUS = 1.8
+_VDW_SCALE = 0.45
+_VDW_PADDING = 0.1
+_MIN_BOND_LENGTH = 0.4
+
+
 acceptable_surplus_charge = 5
 """
 The maximum allowed positive charge that can be left on an atom
@@ -376,6 +406,28 @@ if no hydrogens can be further removed to balance the charge.
 This is used in `change_element` to prevent the creation of
 unrealistically charged atoms and thereby unlikely structures.
 """
+
+
+def _get_vdw_radius(element: str) -> float:
+    return element_vdw_radii.get(element, _VDW_DEFAULT_RADIUS)
+
+
+def _bond_cutoff_vdw(
+    atom1, atom2, scale: float = _VDW_SCALE, padding: float = _VDW_PADDING
+) -> float:
+    return (
+        scale * (_get_vdw_radius(atom1.element) + _get_vdw_radius(atom2.element))
+        + padding
+    )
+
+
+def _max_search_radius_vdw(
+    atoms, scale: float = _VDW_SCALE, padding: float = _VDW_PADDING
+) -> float:
+    if not atoms:
+        return 0.0
+    max_r = max(_get_vdw_radius(atom.element) for atom in atoms)
+    return scale * (2 * max_r) + padding
 
 
 def atomic_number(element: str):
@@ -2033,10 +2085,15 @@ def infer_residue_connections(
     """
     if not triplet:
         if bond_length is None:
-            bond_length = defaults.DEFAULT_BOND_LENGTH / 2, defaults.DEFAULT_BOND_LENGTH
+            min_length = _MIN_BOND_LENGTH
+            max_length = None
+            use_vdw = True
         elif isinstance(bond_length, (int, float)):
-            bond_length = defaults.DEFAULT_BOND_LENGTH / 2, bond_length
-        min_length, max_length = bond_length
+            min_length, max_length = defaults.DEFAULT_BOND_LENGTH / 2, bond_length
+            use_vdw = False
+        else:
+            min_length, max_length = bond_length
+            use_vdw = False
 
         bonds = []
         _seen_residues = set()
@@ -2050,18 +2107,21 @@ def infer_residue_connections(
                 atoms = list(i for i in residue1.get_atoms() if i.element != "H")
                 atoms.extend(i for i in residue2.get_atoms() if i.element != "H")
 
-                _neighbors = NeighborSearch(atoms)
-                _neighbors = _neighbors.search_all(radius=max_length)
+                search_radius = _max_search_radius_vdw(atoms) if use_vdw else max_length
+                if search_radius == 0:
+                    continue
 
-                _neighbors = (
-                    i
-                    for i in _neighbors
-                    if (i[0].element != "H" and i[1].element != "H")
-                    and i[0].get_parent() != i[1].get_parent()
-                    and np.linalg.norm(i[0].coord - i[1].coord) > min_length
-                )
+                _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
 
-                bonds.extend(_neighbors)
+                for atom1, atom2 in _neighbors:
+                    if atom1.get_parent() == atom2.get_parent():
+                        continue
+
+                    dist = np.linalg.norm(atom1.coord - atom2.coord)
+                    cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+
+                    if min_length < dist <= cutoff:
+                        bonds.append((atom1, atom2))
 
             _seen_residues.add(residue1)
     else:
@@ -2104,32 +2164,58 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
         The connectivity graph of the molecule, storing tuples of `Bio.PDB.Atom` objects.
     """
     if bond_length is None:
-        bond_length = (defaults.DEFAULT_BOND_LENGTH / 2, defaults.DEFAULT_BOND_LENGTH)
+        min_length = _MIN_BOND_LENGTH
+        max_length = None
+        use_vdw = True
     elif isinstance(bond_length, (int, float)):
-        bond_length = (defaults.DEFAULT_BOND_LENGTH / 2, bond_length)
-    min_length, max_length = bond_length
+        min_length, max_length = (defaults.DEFAULT_BOND_LENGTH / 2, bond_length)
+        use_vdw = False
+    else:
+        min_length, max_length = (
+            defaults.DEFAULT_BOND_LENGTH / 2,
+            defaults.DEFAULT_BOND_LENGTH,
+        )
+        use_vdw = False
 
+    bonds = []
     if restrict_residues:
-        bonds = []
+
         for residue in structure.get_residues():
             atoms = list(residue.get_atoms())
-            _neighbors = NeighborSearch(atoms)
-            bonds.extend(
-                _neighbors.search_all(radius=max_length),
-            )
+            search_radius = _max_search_radius_vdw(atoms) if use_vdw else max_length
+            if search_radius == 0:
+                continue
 
+            _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
+            for atom1, atom2 in _neighbors:
+                if atom1.element == "H" and atom2.element == "H":
+                    continue
+
+                dist = np.linalg.norm(atom1.coord - atom2.coord)
+                cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+
+                if min_length < dist <= cutoff:
+                    bonds.append((atom1, atom2))
     else:
-        atoms = list(structure.get_atoms())
-        _neighbors = NeighborSearch(atoms)
-        bonds = _neighbors.search_all(radius=max_length)
 
-    bonds = [
-        i
-        for i in bonds
-        if not (i[0].element == "H" and i[1].element == "H")
-        and np.linalg.norm(i[0].coord - i[1].coord) > min_length
-    ]
-    bonds = _prune_H_triplets(bonds)
+        atoms = list(structure.get_atoms())
+        search_radius = _max_search_radius_vdw(atoms) if use_vdw else max_length
+        if search_radius == 0:
+            return []
+
+        _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
+
+        bonds = []
+        for atom1, atom2 in _neighbors:
+            if atom1.element == "H" and atom2.element == "H":
+                continue
+
+            dist = np.linalg.norm(atom1.coord - atom2.coord)
+            cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+
+            if min_length < dist <= cutoff:
+                bonds.append((atom1, atom2))
+
     return bonds
 
 
@@ -2865,11 +2951,11 @@ def _H_id_match(H, non_H):
     """
     if (
         non_H.element == "C"
-        and re.match("C\d.*", non_H.id.upper()) is not None
-        and re.match("H\d.*", H.id.upper()) is None
+        and re.match(r"C\d.*", non_H.id.upper()) is not None
+        and re.match(r"H\d.*", H.id.upper()) is None
     ):
         return False
-    elif non_H.element != "C" and re.match("H\d.*", H.id.upper()) is not None:
+    elif non_H.element != "C" and re.match(r"H\d.*", H.id.upper()) is not None:
         return False
     return re.search(non_H.id[1:].upper(), H.id[1:].upper()) is not None
 
