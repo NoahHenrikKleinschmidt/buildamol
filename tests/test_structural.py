@@ -444,6 +444,93 @@ def test_infer_bonds():
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
+def test_infer_bonds2():
+    man2 = bam.molecule(MANNOSE) % "14bb" * 2
+    bonds = bam.structural.infer_bonds(man2, restrict_residues=False)
+
+    _recieved = len(bonds)
+    _expected = 24 * 2 - 2
+    _what = "bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    bonds = [set((i.id, j.id)) for i, j in bonds]
+
+    _bond = set(("C5", "O5"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C5", "C6"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C5", "C4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C6", "O6"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C4", "C3"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C1", "C2"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "C4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "O3"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    # inter-residue bond
+    _bond = set(("C1", "O4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+
 def test_infer_residue_connections():
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MAN9PDB)
     bonds = bam.structural.infer_residue_connections(_man9)
