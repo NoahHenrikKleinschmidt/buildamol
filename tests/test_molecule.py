@@ -2987,3 +2987,25 @@ def test_modify_with_hydrogen_inference():
     mol.drop_hydrogens()
     if base.ALLOW_VISUAL:
         mol.show()
+
+
+def test_can_read_and_write_too_large_pdb():
+    mol = bam.Molecule.from_compound("GLC")
+    for H in mol.get_hydrogens():
+        H.serial_number += 100000
+    for C in mol.get_atoms("C", by="element"):
+        C.serial_number += 10
+    for O in mol.get_atoms("O", by="element"):
+        O.serial_number += 10
+
+    mol.to_pdb("large.pdb")
+    mol2 = bam.Molecule.from_pdb("large.pdb")
+    assert len(mol.atoms) == len(mol2.atoms)
+    assert len(mol.bonds) == len(mol2.bonds)
+    for a, b in zip(mol.atoms, mol2.atoms):
+        assert a.element == b.element
+        assert a.id == b.id
+        assert (a.coord - b.coord).sum() < 1e-6
+        assert a.serial_number == b.serial_number
+
+    os.remove("large.pdb")

@@ -120,7 +120,7 @@ class BaseEntity:
             content = content[start:end]
         f.close()
         new = cls._from_pdb_string(content, id=id)
-        new.cleanup()
+        new.cleanup(reindex=False)
         if not has_atom_ids:
             new.autolabel()
 
