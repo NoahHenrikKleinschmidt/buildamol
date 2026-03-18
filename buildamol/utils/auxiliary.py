@@ -110,15 +110,6 @@ if HAS_TQDM:
     def progress_bar(*args, **kwargs):
         return tqdm(*args, **kwargs)
 
-elif HAS_ALIVE_PROGRESS:
-    from alive_progress import alive_bar
-
-    def progress_bar(*args, **kwargs):
-        warnings.warn(
-            DeprecationWarning("alive_progress is deprecated. Use tqdm instead.")
-        )
-        return alive_bar(*args, **kwargs)
-
 else:
 
     def progress_bar(*args, **kwargs):

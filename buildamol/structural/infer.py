@@ -1744,33 +1744,6 @@ def vet_structure(
     return True
 
 
-def find_clashes(molecule, min_dist: float = 1.0, ignore_hydrogens: bool = False):
-    """
-    Find all clashing atoms in a molecule.
-
-    Parameters
-    ----------
-    molecule : Molecule
-        The molecule to check for clashes.
-    min_dist : float
-        The minimal allowed distance between atoms (in Angstrom).
-    ignore_hydrogens : bool
-        If set to True, hydrogen atoms are ignored.
-
-    Yields
-    ------
-    tuple
-        A tuple of clashing atoms.
-    """
-    warnings.deprecation.warn(
-        "find_clashes is deprecated and will be removed in a future version. Use find_clashes_between instead.",
-        DeprecationWarning,
-    )
-    yield from find_clashes_between(
-        molecule, molecule, min_dist, ignore_hydrogens, False
-    )
-
-
 def find_clashes_between(
     mol_a,
     mol_b,
