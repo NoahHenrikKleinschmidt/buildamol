@@ -15,7 +15,6 @@ import buildamol.utils.auxiliary as aux
 import buildamol.utils.defaults as defaults
 
 has_pybel = aux.HAS_PYBEL
-has_rdkit = aux.HAS_RDKIT
 has_openmm = aux.HAS_OPENMM
 
 
@@ -468,9 +467,6 @@ class RDKITBiopythonConverter(PDBIO):
         object
             The converted object
         """
-        if not has_rdkit:
-            raise ImportError("Could not import RDKit")
-
         if not is_rdkit(obj):
             raise ValueError(f"Cannot convert object of type {type(obj)}")
         mol = self._rdkit_to_pdbio(obj)

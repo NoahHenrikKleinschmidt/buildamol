@@ -11,24 +11,13 @@ if aux.HAS_PYBEL:
 else:
     use_openbabel = False
 
-if aux.HAS_RDKIT:
-    Chem = aux.Chem
-    AllChem = aux.AllChem
-    aux.RDLogger.DisableLog("rdApp.*")
-    use_rdkit = True
-else:
-    use_rdkit = False
+Chem = aux.Chem
+AllChem = aux.AllChem
+aux.RDLogger.DisableLog("rdApp.*")
+use_rdkit = True
 
 
-if not use_openbabel and not use_rdkit:
-
-    def read_smiles(smiles: str, add_hydrogens: bool = True):
-        raise ImportError("Could not import either OpenBabel or RDKit")
-
-    def make_smiles(structure):
-        raise ImportError("Could not import either OpenBabel or RDKit")
-
-elif use_rdkit:
+if use_rdkit:
 
     def read_smiles(smiles: str, add_hydrogens: bool = True):
         """

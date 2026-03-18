@@ -99,11 +99,6 @@ class Chem2DViewer:
         linewidth: float = None,
         atoms: str = None,
     ):
-        if Chem is None:
-            raise ImportError(
-                "rdkit is not available. Please install it and be sure to use a compatible environment."
-            )
-
         drawer = drawer.strip().lower()
         if drawer not in ("svg", "png"):
             raise ValueError(f"Unsupported drawer: {drawer}")
@@ -351,7 +346,6 @@ class Chem2DViewer:
         """
         if isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
             bonds = bonds[0]
-
 
         if callable(color):
             bonds = {bond: color(bond) for bond in bonds}
@@ -671,9 +665,9 @@ class Py3DmolViewer:
         except ImportError:
             py3Dmol = None
 
-        if py3Dmol is None or Chem is None:
+        if py3Dmol is None:
             raise ImportError(
-                "py3Dmol and/or rdkit are not available. Please install them and be sure to use a compatible (Jupyter) environment."
+                "py3Dmol is not available. Please install it and be sure to use a compatible (Jupyter) environment."
             )
         if isinstance(molecule, (list, tuple, set)):
             molecule = aux.AtomIterator(molecule)

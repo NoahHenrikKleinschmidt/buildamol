@@ -37,7 +37,6 @@ def has_package(name):
 # =================================================================
 
 
-HAS_RDKIT = has_package("rdkit")
 HAS_PYBEL = has_package("openbabel")
 HAS_OPENMM = has_package("openmm")
 HAS_NUMBA = has_package("numba")
@@ -45,21 +44,13 @@ HAS_STK = has_package("stk")
 HAS_TQDM = has_package("tqdm")
 HAS_ALIVE_PROGRESS = has_package("alive_progress")
 
-if HAS_RDKIT:
-    # rdkit is fast to load, so we can just load it here
-    Chem = importlib.import_module("rdkit.Chem")
-    AllChem = importlib.import_module("rdkit.Chem.AllChem")
-    RDLogger = importlib.import_module("rdkit.RDLogger")
-    Draw = importlib.import_module("rdkit.Chem.Draw")
-    MMFFGetMoleculeProperties = AllChem.MMFFGetMoleculeProperties
-    MMFFGetMoleculeForceField = AllChem.MMFFGetMoleculeForceField
-else:
-    AllChem = None
-    Chem = None
-    Draw = None
-    RDLogger = None
-    MMFFGetMoleculeProperties = None
-    MMFFGetMoleculeForceField = None
+# rdkit is fast to load, so we can just load it here
+Chem = importlib.import_module("rdkit.Chem")
+AllChem = importlib.import_module("rdkit.Chem.AllChem")
+RDLogger = importlib.import_module("rdkit.RDLogger")
+Draw = importlib.import_module("rdkit.Chem.Draw")
+MMFFGetMoleculeProperties = AllChem.MMFFGetMoleculeProperties
+MMFFGetMoleculeForceField = AllChem.MMFFGetMoleculeForceField
 
 if HAS_PYBEL:
     pybel = lazy_module("openbabel.pybel")
