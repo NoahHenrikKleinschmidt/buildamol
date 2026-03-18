@@ -46,6 +46,8 @@ class BaseEntity:
         "_attach_residue",
     )
 
+    default_getitem_method = None
+
     def __init__(self, structure, model: int = 0):
         if not isinstance(structure, base_classes.Structure):
             if isinstance(structure, bio.Structure.Structure):
@@ -79,6 +81,11 @@ class BaseEntity:
         # self._working_chain_index = None
         self._root_atom = None
         self._attach_residue = None
+
+        if self.default_getitem_method is not None:
+            self.set_getitem(self.default_getitem_method)
+        else:
+            self.__itemgetter = None
 
     @classmethod
     def from_pdb(
@@ -642,6 +649,11 @@ class BaseEntity:
         return list(self._model.get_chains())
 
     @property
+    def chains_(self):
+        # alias for _chains
+        return self._chains
+
+    @property
     def residues(self):
         """
         A sorted list of all residues in the molecule
@@ -654,6 +666,11 @@ class BaseEntity:
         Get the list of residues as returned by the get_residues() method
         """
         return list(self._model.get_residues())
+
+    @property
+    def residues_(self):
+        # alias for _residues
+        return self._residues
 
     @property
     def atoms(self):
@@ -669,6 +686,11 @@ class BaseEntity:
         Get the list of atoms as returned by the get_atoms() method
         """
         return list(self.get_atoms())
+
+    @property
+    def atoms_(self):
+        # alias for _atoms
+        return self._atoms
 
     @property
     def center_of_mass(self):
@@ -5737,6 +5759,64 @@ class BaseEntity:
         using the @ operator (i.e. mol @ 1, for residue 1)
         """
         self.set_attach_residue(residue)
+        return self
+
+    def __getitem__(self, idx):
+        if not self.__itemgetter:
+            raise NotImplementedError(
+                "Item getting is not supported by default, use set_getitem to define how items should be retrieved using the [] operator."
+            )
+        return self.__itemgetter(idx)
+
+    def set_getitem(self, how: Union[str, callable]):
+        """
+        Set the method for retrieving items using the [] operator.
+
+        Parameters
+        ----------
+        how : str or callable
+            If a callable is provided it should be a function that takes the molecule and an index as input and returns the corresponding item.
+            If a string is provided, it can be any of:
+            - atom-serial (retrieve atom by serial number)
+            - atom-index (retrieve atom by index in the list of atoms)
+            - atom-id (retrieve atom by id/name, will return the first match)
+            - residue-serial (retrieve residue by serial number)
+            - residue-index (retrieve residue by index in the list of residues)
+            - residue-id (retrieve residue by id/name, will return the first match)
+            - chain-id (retrieve chain by id/name, will return the first match)
+            - chain-index (retrieve chain by index in the list of chains)
+            - model-id (retrieve model by id/name, will return the first match)
+            - model-index (retrieve model by index in the list of models)
+        """
+        if callable(how):
+            self.__itemgetter = lambda idx: how(self, idx)
+        elif isinstance(how, str):
+            if "-name" in how:
+                how = how.replace("-name", "-id")
+            if how == "atom-serial":
+                self.__itemgetter = lambda idx: self.get_atom(idx, by="serial")
+            elif how == "atom-id":
+                self.__itemgetter = lambda idx: self.get_atom(idx, by="id")
+            elif how == "atom-index":
+                self.__itemgetter = lambda idx: self._atoms[idx]
+            elif how == "residue-serial":
+                self.__itemgetter = lambda idx: self.get_residue(idx, by="serial")
+            elif how == "residue-index":
+                self.__itemgetter = lambda idx: self._residues[idx]
+            elif how == "residue-id":
+                self.__itemgetter = lambda idx: self.get_residue(idx, by="id")
+            elif how == "chain-id":
+                self.__itemgetter = lambda idx: self.get_chain(idx)
+            elif how == "chain-index":
+                self.__itemgetter = lambda idx: self._chains[idx]
+            elif how == "model-id":
+                self.__itemgetter = lambda idx: self.get_model(idx)
+            elif how == "model-index":
+                self.__itemgetter = lambda idx: self.models[idx]
+            else:
+                raise ValueError(f"Unknown getitem method {how}")
+        else:
+            raise ValueError("how must be either a string or a callable")
         return self
 
 

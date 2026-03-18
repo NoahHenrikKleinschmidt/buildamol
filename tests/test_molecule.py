@@ -3009,3 +3009,130 @@ def test_can_read_and_write_too_large_pdb():
         assert a.serial_number == b.serial_number
 
     os.remove("large.pdb")
+
+
+def test_itemgetters_atom_level():
+    mol = bam.Molecule.from_compound("GLC")
+    try:
+        mol[0]
+        mol["C1"]
+        assert False, "Should have raised an error"
+    except NotImplementedError:
+        pass
+    except Exception as e:
+        assert False, f"Should have raised NotImplementedError, but got {type(e)}"
+
+    mol.set_getitem("atom-id")
+    assert mol["C1"] is not None
+    assert mol[0] is None
+    assert mol[1] is None
+
+    mol.set_getitem("atom-serial")
+    assert mol[0] is None
+    try:
+        mol["C1"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+    assert mol[1] is not None
+
+    mol.set_getitem("atom-index")
+    assert mol[0] is not None
+    try:
+
+        mol["C1"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+    assert mol[1] is not None
+
+
+def test_itemgetters_residue_level():
+    mol = bam.Molecule.from_compound("GLC")
+    try:
+        mol[0]
+        mol["GLC"]
+        assert False, "Should have raised an error"
+    except NotImplementedError:
+        pass
+    except Exception as e:
+        assert False, f"Should have raised NotImplementedError, but got {type(e)}"
+
+    mol.set_getitem("residue-id")
+    assert mol["GLC"] is not None
+    assert mol[0] is None
+
+    mol.set_getitem("residue-serial")
+    assert mol[0] is None
+    try:
+        mol["GLC"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+    assert mol[1] is not None  # only one residue...
+
+    mol.set_getitem("residue-index")
+
+    assert mol[0] is not None
+    try:
+        mol["GLC"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+
+def test_itemgetters_chain_level():
+    mol = bam.Molecule.from_compound("GLC")
+    try:
+        mol[0]
+        mol["A"]
+        assert False, "Should have raised an error"
+    except NotImplementedError:
+        pass
+    except Exception as e:
+        assert False, f"Should have raised NotImplementedError, but got {type(e)}"
+
+    mol.set_getitem("chain-id")
+    assert mol["A"] is not None
+    assert mol[0] is None
+
+    mol.set_getitem("chain-index")
+    assert mol[0] is not None
+    try:
+        mol["A"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+    
+
+def test_itemgetters_model_level():
+    mol = bam.Molecule.from_compound("GLC")
+    try:
+        mol[0]
+        mol["0"]
+        assert False, "Should have raised an error"
+    except NotImplementedError:
+        pass
+    except Exception as e:
+        assert False, f"Should have raised NotImplementedError, but got {type(e)}"
+
+    mol.set_getitem("model-id")
+    assert mol[0] is not None
+    assert mol["0"] is None
+
+    mol.set_getitem("model-index")
+    assert mol[0] is not None
+    try:
+        mol["0"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+    
+def test_default_getitem():
+    bam.Molecule.default_getitem_method = "atom-index"
+    mol = bam.Molecule.from_compound("GLC")
+    assert mol[0] is mol.get_atom("C1")
+    try:
+        mol["C1"]
+        assert False, "Should have raised an error"
+    except:
+        pass

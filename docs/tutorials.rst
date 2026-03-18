@@ -16,6 +16,7 @@ Basic Usage
 .. nbgallery::
    examples/getting_started
    examples/building_workflow
+   examples/item_getting
    examples/drawing
    examples/syntax_flavours
    examples/optimization
