@@ -187,7 +187,8 @@ def encode_pdb(mol, symmetric: bool = True) -> str:
         The PDB file contents.
     """
     lines = []
-    if len(mol.models) > 1:
+    n_models = len(getattr(mol, "models", []))
+    if n_models > 1:
         for model in mol.get_models():
             lines.append(f"MODEL {model.id}")
             mol.set_model(model)
@@ -352,6 +353,7 @@ def _parse_charge(line):
         except ValueError:
             return 0
     return 0
+
 
 
 def make_connect_table(mol, symmetric=True):

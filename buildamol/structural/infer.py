@@ -368,6 +368,36 @@ bond_length_by_order = {
 }
 
 
+# van der Waals radii (in Angstrom); used to derive element-specific bond cutoffs
+element_vdw_radii = {
+    "H": 1.2,
+    "C": 1.7,
+    "N": 1.55,
+    "O": 1.52,
+    "S": 1.8,
+    "P": 1.8,
+    "F": 1.47,
+    "Cl": 1.75,
+    "Br": 1.85,
+    "I": 1.98,
+    "B": 1.92,
+    "Si": 2.1,
+    "Se": 1.9,
+    "Zn": 1.39,
+    "Ca": 2.31,
+    "Mg": 1.73,
+    "Fe": 1.94,
+    "Cu": 1.4,
+    "Mn": 2.0,
+}
+
+# scaling and safety padding to approximate covalent bond distances from van der Waals radii
+_VDW_DEFAULT_RADIUS = 1.8
+_VDW_SCALE = 0.45
+_VDW_PADDING = 0.1
+_MIN_BOND_LENGTH = 0.4
+
+
 acceptable_surplus_charge = 5
 """
 The maximum allowed positive charge that can be left on an atom
@@ -376,6 +406,28 @@ if no hydrogens can be further removed to balance the charge.
 This is used in `change_element` to prevent the creation of
 unrealistically charged atoms and thereby unlikely structures.
 """
+
+
+def _get_vdw_radius(element: str) -> float:
+    return element_vdw_radii.get(element, _VDW_DEFAULT_RADIUS)
+
+
+def _bond_cutoff_vdw(
+    atom1, atom2, scale: float = _VDW_SCALE, padding: float = _VDW_PADDING
+) -> float:
+    return (
+        scale * (_get_vdw_radius(atom1.element) + _get_vdw_radius(atom2.element))
+        + padding
+    )
+
+
+def _max_search_radius_vdw(
+    atoms, scale: float = _VDW_SCALE, padding: float = _VDW_PADDING
+) -> float:
+    if not atoms:
+        return 0.0
+    max_r = max(_get_vdw_radius(atom.element) for atom in atoms)
+    return scale * (2 * max_r) + padding
 
 
 def atomic_number(element: str):
@@ -2006,10 +2058,15 @@ def infer_residue_connections(
     """
     if not triplet:
         if bond_length is None:
-            bond_length = defaults.DEFAULT_BOND_LENGTH / 2, defaults.DEFAULT_BOND_LENGTH
+            min_length = _MIN_BOND_LENGTH
+            max_length = None
+            use_vdw = True
         elif isinstance(bond_length, (int, float)):
-            bond_length = defaults.DEFAULT_BOND_LENGTH / 2, bond_length
-        min_length, max_length = bond_length
+            min_length, max_length = defaults.DEFAULT_BOND_LENGTH / 2, bond_length
+            use_vdw = False
+        else:
+            min_length, max_length = bond_length
+            use_vdw = False
 
         bonds = []
         _seen_residues = set()
@@ -2023,18 +2080,21 @@ def infer_residue_connections(
                 atoms = list(i for i in residue1.get_atoms() if i.element != "H")
                 atoms.extend(i for i in residue2.get_atoms() if i.element != "H")
 
-                _neighbors = NeighborSearch(atoms)
-                _neighbors = _neighbors.search_all(radius=max_length)
+                search_radius = _max_search_radius_vdw(atoms) if use_vdw else max_length
+                if search_radius == 0:
+                    continue
 
-                _neighbors = (
-                    i
-                    for i in _neighbors
-                    if (i[0].element != "H" and i[1].element != "H")
-                    and i[0].get_parent() != i[1].get_parent()
-                    and np.linalg.norm(i[0].coord - i[1].coord) > min_length
-                )
+                _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
 
-                bonds.extend(_neighbors)
+                for atom1, atom2 in _neighbors:
+                    if atom1.get_parent() == atom2.get_parent():
+                        continue
+
+                    dist = np.linalg.norm(atom1.coord - atom2.coord)
+                    cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+
+                    if min_length < dist <= cutoff:
+                        bonds.append((atom1, atom2))
 
             _seen_residues.add(residue1)
     else:
@@ -2077,36 +2137,84 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
         The connectivity graph of the molecule, storing tuples of `Bio.PDB.Atom` objects.
     """
     if bond_length is None:
-        bond_length = (defaults.DEFAULT_BOND_LENGTH / 2, defaults.DEFAULT_BOND_LENGTH)
+        min_length = _MIN_BOND_LENGTH
+        max_length = None
+        use_vdw = True
     elif isinstance(bond_length, (int, float)):
-        bond_length = (defaults.DEFAULT_BOND_LENGTH / 2, bond_length)
-    min_length, max_length = bond_length
+        min_length, max_length = (defaults.DEFAULT_BOND_LENGTH / 2, bond_length)
+        use_vdw = False
+    else:
+        min_length, max_length = (
+            defaults.DEFAULT_BOND_LENGTH / 2,
+            defaults.DEFAULT_BOND_LENGTH,
+        )
+        use_vdw = False
 
+    bonds = []
     if restrict_residues:
-        bonds = []
+
         for residue in structure.get_residues():
             atoms = list(residue.get_atoms())
-            _neighbors = NeighborSearch(atoms)
-            bonds.extend(
-                _neighbors.search_all(radius=max_length),
-            )
+            search_radius = _max_search_radius_vdw(atoms) if use_vdw else max_length
+            if search_radius == 0:
+                continue
 
+            _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
+            for atom1, atom2 in _neighbors:
+                if atom1.element == "H" and atom2.element == "H":
+                    continue
+
+                dist = np.linalg.norm(atom1.coord - atom2.coord)
+                cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+
+                if min_length < dist <= cutoff:
+                    bonds.append((atom1, atom2))
     else:
-        atoms = list(structure.get_atoms())
-        _neighbors = NeighborSearch(atoms)
-        bonds = _neighbors.search_all(radius=max_length)
 
-    bonds = [
-        i
-        for i in bonds
-        if not (i[0].element == "H" and i[1].element == "H")
-        and np.linalg.norm(i[0].coord - i[1].coord) > min_length
-    ]
-    bonds = _prune_H_triplets(bonds)
+        atoms = list(structure.get_atoms())
+        search_radius = _max_search_radius_vdw(atoms) if use_vdw else max_length
+        if search_radius == 0:
+            return []
+
+        _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
+
+        bonds = []
+        for atom1, atom2 in _neighbors:
+            if atom1.element == "H" and atom2.element == "H":
+                continue
+
+            dist = np.linalg.norm(atom1.coord - atom2.coord)
+            cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+
+            if min_length < dist <= cutoff:
+                bonds.append((atom1, atom2))
+
     return bonds
 
 
-def infer_bond_orders(molecule):
+def _infer_bond_orders_rdkit(molecule):
+    """
+    Infer the bond orders using RDKit.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to infer the bond orders for.
+    """
+    from rdkit import Chem
+
+    rdmol = molecule.to_rdkit()
+    # Chem.SanitizeMol(rdmol)
+    Chem.Kekulize(rdmol, clearAromaticFlags=True)
+
+    for bond in rdmol.GetBonds():
+        a1 = molecule.get_atom(bond.GetBeginAtomIdx() + 1)
+        a2 = molecule.get_atom(bond.GetEndAtomIdx() + 1)
+        order = int(bond.GetBondTypeAsDouble())
+        molecule.set_bond(a1, a2, order=order)
+
+
+def _infer_bond_orders_native(molecule):
     """
     Infer the bond orders using the registered higher order functional groups (i.e. functional groups with bonds of order > 1).
 
@@ -2147,6 +2255,40 @@ def infer_bond_orders(molecule):
     for atoms, (group, assignment) in group_matches.items():
         group._assignment = assignment
         group.apply_connectivity(molecule, atoms)
+
+
+def infer_bond_orders(molecule, method: str = "rdkit"):
+    """
+    Infer the bond orders of a molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to infer the bond orders for.
+    method : str
+        The method to use for inferring the bond orders. Options are:
+        - "rdkit": Use RDKit to infer the bond orders.
+        - "native": Use the registered higher order functional groups to infer the bond orders.
+    """
+    if method == "rdkit" and aux.HAS_RDKIT:
+        try:
+            _infer_bond_orders_rdkit(molecule)
+        except Exception as e:
+            warnings.warn(
+                f"RDKit failed to infer bond orders due to: {e}. Falling back to native method."
+            )
+            _infer_bond_orders_native(molecule)
+
+    elif method == "native":
+        _infer_bond_orders_native(molecule)
+
+    else:
+        msg = f"Method '{method}' for inferring bond orders is not recognized."
+        err = ValueError
+        if method == "rdkit" and not aux.HAS_RDKIT:
+            msg += " (RDKit is not installed.)"
+            err = RuntimeError
+        raise err(msg)
 
 
 def infer_mapping_from_template(
@@ -2265,6 +2407,8 @@ def infer_mapping_from_template(
         required_matches = min(min_anchor_matches, len(mapped_template_indices))
 
         for target_atom in list(unmapped_targets):
+            if target_atom.element != template_atom.element:
+                continue
             target_idx = target_indices[target_atom]
             target_distances = target_pairwise_distances[target_idx][
                 mapped_target_indices
@@ -2281,13 +2425,6 @@ def infer_mapping_from_template(
                 best_candidate = target_atom
                 best_score = (match_count, score)
         return best_candidate
-
-    def _connect_existing_bonds(template_atom, target_atom):
-        for neighbor in template_atom.get_neighbors():
-            mapped_neighbor = template_to_target.get(neighbor)
-            if mapped_neighbor is None:
-                continue
-            target.set_bond(target_atom, mapped_neighbor)
 
     for _, template_anchor in target_template_pairs:
         _enqueue_template_neighbors(template_anchor)
@@ -2317,12 +2454,14 @@ def infer_mapping_from_template(
                 mapped_template_indices.append(template_indices[template_atom])
                 mapped_target_indices.append(target_indices[candidate_target])
 
-                _connect_existing_bonds(template_atom, candidate_target)
+                # _connect_existing_bonds(template_atom, candidate_target)
                 _enqueue_template_neighbors(template_atom)
 
             if queue and not progress_made:
                 unresolved = sorted(atom.id for atom in queue)
-                msg = "Could not resolve mapping for template atoms: " + ", ".join(unresolved)
+                msg = "Could not resolve mapping for template atoms: " + ", ".join(
+                    unresolved
+                )
                 if strict:
                     raise ValueError(msg)
                 else:
@@ -2343,18 +2482,17 @@ def infer_mapping_from_template(
                     "Failed to map all template atoms. Missing: "
                     + ", ".join(sorted(missing))
                 )
-        mapped_bonds = []
-        for bond, order in template_bond_orders:
-            atom1 = template_to_target.get(bond.atom1)
-            atom2 = template_to_target.get(bond.atom2)
-            if atom1 is None or atom2 is None:
-                continue
-            mapped_bonds.append((atom1, atom2, order))
-            target.set_bond(atom1, atom2, order=order)
+
+        mapped_bonds = [
+            (template_to_target[bond.atom1], template_to_target[bond.atom2], order)
+            for bond, order in template_bond_orders
+            if bond.atom1 in template_to_target and bond.atom2 in template_to_target
+        ]
 
     finally:
         for bond, order in template_bond_orders:
             bond.order = order
+
     target_to_template = {v: k for k, v in template_to_target.items()}
     return target_to_template, mapped_bonds
 
@@ -2717,6 +2855,7 @@ def compute_atom4_from_others(coords1, coords2, coords3, ic):
         )
 
 
+# no longer used
 def _prune_H_triplets(bonds):
     """
     Remove and erroneous bonds that connect hydrogens to multiple other atoms.
@@ -2829,11 +2968,11 @@ def _H_id_match(H, non_H):
     """
     if (
         non_H.element == "C"
-        and re.match("C\d.*", non_H.id.upper()) is not None
-        and re.match("H\d.*", H.id.upper()) is None
+        and re.match(r"C\d.*", non_H.id.upper()) is not None
+        and re.match(r"H\d.*", H.id.upper()) is None
     ):
         return False
-    elif non_H.element != "C" and re.match("H\d.*", H.id.upper()) is not None:
+    elif non_H.element != "C" and re.match(r"H\d.*", H.id.upper()) is not None:
         return False
     return re.search(non_H.id[1:].upper(), H.id[1:].upper()) is not None
 

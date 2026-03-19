@@ -11,6 +11,14 @@ copyright = "2025, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
 release = "1.2.12"
 
+autodoc_mock_imports = [
+    "rdkit",
+    "openbabel",
+    "mdtraj",
+    "openmm",
+    "easydock",
+    "dockstring",
+]  # add whatever is optional
 
 import plotly.io as pio
 

@@ -4,11 +4,10 @@
 
     <div class="slideshow-container">
         
-
     <div class="mySlides fade">
-        <img src="_static/gallery/first_mol.png" style="width:100%">
+        <img src="_static/gallery/sampling.png" style="width:100%">
     </div>
-    
+
     <div class="mySlides fade">
         <img src="_static/gallery/complex.png" style="width:100%">
     </div>
@@ -16,12 +15,6 @@
     <div class="mySlides fade">
         <img src="_static/gallery/linear-polymer.png" style="width:100%">
     </div>
-
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/glyco-membrane.png" style="width:100%">
-    </div>
-
 
     <div class="mySlides fade">
         <img src="_static/gallery/conf_samples.png" style="width:100%">
@@ -47,22 +40,24 @@
         <img src="_static/gallery/ring.png" style="width:100%">
     </div>
 
-
     <div class="mySlides fade">
-        <img src="_static/gallery/sampling.png" style="width:100%">
+        <img src="_static/gallery/MOF-top.png" style="width:100%">
     </div>
-
 
     <div class="mySlides fade">
         <img src="_static/gallery/MOF-angle.png" style="width:100%">
     </div>
 
     <div class="mySlides fade">
-        <img src="_static/gallery/waterbox.png" style="width:100%">
+        <img src="_static/gallery/rotaxan-linear.png" style="width:100%">
     </div>
 
     <div class="mySlides fade">
-        <img src="_static/gallery/rotaxan-linear.png" style="width:100%">
+        <img src="_static/gallery/first_mol.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/rotaxan-small.png" style="width:100%">
     </div>
 
     <div class="mySlides fade">
@@ -81,78 +76,35 @@
         <img src="_static/gallery/his20-2.png" style="width:100%">
     </div>
 
+    <div class="mySlides fade">
+        <img src="_static/gallery/waterbox.png" style="width:100%">
     </div>
 
-    <!-- Placeholder to maintain layout spacing -->
-    <div class="slideshow-placeholder"></div>
+    <div class="mySlides fade">
+        <img src="_static/gallery/his20.png" style="width:100%">
+    </div>
+
+    <div class="mySlides fade">
+        <img src="_static/gallery/glyco-membrane.png" style="width:100%">
+    </div>
+
+    </div>
 
 .. raw:: html
 
     <style>
-    /* Hide the "On this Page" sidebar on index page */
-    .bd-toc {
-      display: none !important;
-    }
-
-    /* Expand main content to use the full available width */
-    .bd-main {
-      grid-template-columns: 1fr !important;
-    }
-
-    /* Create a placeholder for the slideshow space */
-    .slideshow-placeholder {
-      height: 400px;
-      width: 100%;
-    }
-
     .slideshow-container {
-      position: fixed !important;
-      top: 60px !important; /* Account for navbar height */
-      left: 0 !important;
-      right: 0 !important;
-      width: 100vw !important;
-      height: 400px !important; /* Fixed height matching placeholder */
-      max-width: none !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      z-index: 999999 !important;
-      box-sizing: border-box;
-      overflow: hidden;
-      background-color: #000000bb !important;
-      /* Additional properties to ensure it stays on top */
-      isolation: isolate !important;
-      transform: translateZ(0) !important; /* Force hardware acceleration */
+      max-width: 1000px;
+      position: relative;
+      margin: auto;
     }
 
-    /* Prevent any content from appearing above slideshow */
-    .bd-main .bd-content {
-      position: relative !important;
-      z-index: 1 !important;
-    }
-
-    /* Ensure navbar doesn't interfere */
-    .bd-header {
-      z-index: 1000000 !important;
-    }
-
-    /* Style only slideshow images, not all images on the page */
-    .slideshow-container img {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important; /* Fill container, crop edges if needed */
-      object-position: center !important; /* Center the image when cropping */
-      display: block !important;
+   img {
       background-color: transparent !important;
-    }
+   }
 
     .mySlides {
       display: none;
-      width: 100%;
-      height: 100%;
-      /* Center the content within each slide */
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
 
     .fade {
