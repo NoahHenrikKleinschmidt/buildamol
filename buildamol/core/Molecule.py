@@ -1067,6 +1067,11 @@ def _modify(
                 atom.id = new_name
             mol.set_parent(atom, at_residue)
         mol.remove_residues(modifier_residue)
+
+    # Linkage deletions may leave empty residue containers behind.
+    # Clean those up so residue-level counts stay consistent.
+    mol.drop_empty_residues()
+    mol.drop_empty_chains()
     return mol
 
 
