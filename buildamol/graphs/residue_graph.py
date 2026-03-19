@@ -72,7 +72,7 @@ class ResidueGraph(BaseGraph):
             for i, j in connections
             if i.get_parent() != j.get_parent()
         ]
-        new = cls(mol.id, edges=main_connections)
+        new = cls(mol.id, bonds=main_connections)
         new._AtomGraph = mol._AtomGraph
         new._structure = mol.structure
         new._molecule = mol
