@@ -95,7 +95,9 @@ class ID:
         self.__id = id
 
     def __hash__(self):
-        return self.__id
+        if not hasattr(self, "_ID__id"):
+            self._new_id()
+        return hash(self.__id)
 
     def __eq__(self, other):
         if not isinstance(other, ID):
