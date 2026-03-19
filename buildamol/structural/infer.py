@@ -2219,7 +2219,29 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
     return bonds
 
 
-def infer_bond_orders(molecule):
+def _infer_bond_orders_rdkit(molecule):
+    """
+    Infer the bond orders using RDKit.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to infer the bond orders for.
+    """
+    from rdkit import Chem
+
+    rdmol = molecule.to_rdkit()
+    # Chem.SanitizeMol(rdmol)
+    Chem.Kekulize(rdmol, clearAromaticFlags=True)
+
+    for bond in rdmol.GetBonds():
+        a1 = molecule.get_atom(bond.GetBeginAtomIdx() + 1)
+        a2 = molecule.get_atom(bond.GetEndAtomIdx() + 1)
+        order = int(bond.GetBondTypeAsDouble())
+        molecule.set_bond(a1, a2, order=order)
+
+
+def _infer_bond_orders_native(molecule):
     """
     Infer the bond orders using the registered higher order functional groups (i.e. functional groups with bonds of order > 1).
 
@@ -2260,6 +2282,40 @@ def infer_bond_orders(molecule):
     for atoms, (group, assignment) in group_matches.items():
         group._assignment = assignment
         group.apply_connectivity(molecule, atoms)
+
+
+def infer_bond_orders(molecule, method: str = "rdkit"):
+    """
+    Infer the bond orders of a molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The molecule to infer the bond orders for.
+    method : str
+        The method to use for inferring the bond orders. Options are:
+        - "rdkit": Use RDKit to infer the bond orders.
+        - "native": Use the registered higher order functional groups to infer the bond orders.
+    """
+    if method == "rdkit" and aux.HAS_RDKIT:
+        try:
+            _infer_bond_orders_rdkit(molecule)
+        except Exception as e:
+            warnings.warn(
+                f"RDKit failed to infer bond orders due to: {e}. Falling back to native method."
+            )
+            _infer_bond_orders_native(molecule)
+
+    elif method == "native":
+        _infer_bond_orders_native(molecule)
+
+    else:
+        msg = f"Method '{method}' for inferring bond orders is not recognized."
+        err = ValueError
+        if method == "rdkit" and not aux.HAS_RDKIT:
+            msg += " (RDKit is not installed.)"
+            err = RuntimeError
+        raise err(msg)
 
 
 def infer_mapping_from_template(
@@ -2396,19 +2452,6 @@ def infer_mapping_from_template(
                 best_candidate = target_atom
                 best_score = (match_count, score)
         return best_candidate
-
-    # mapped_bonds = []
-    # template_bond_orders_dict = {
-    #     (bond.atom1, bond.atom2): bond.order for bond in template.get_bonds()
-    # }
-
-    # def _connect_existing_bonds(template_atom, target_atom):
-    #     for neighbor in template_atom.get_neighbors():
-    #         mapped_neighbor = template_to_target.get(neighbor)
-    #         if mapped_neighbor is None:
-    #             continue
-    #         order = template_bond_orders_dict.get((template_atom, neighbor), 1)
-    #         mapped_bonds.append((target_atom, mapped_neighbor, order))
 
     for _, template_anchor in target_template_pairs:
         _enqueue_template_neighbors(template_anchor)
@@ -2839,6 +2882,7 @@ def compute_atom4_from_others(coords1, coords2, coords3, ic):
         )
 
 
+# no longer used
 def _prune_H_triplets(bonds):
     """
     Remove and erroneous bonds that connect hydrogens to multiple other atoms.

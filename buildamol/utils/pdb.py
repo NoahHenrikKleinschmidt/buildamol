@@ -99,7 +99,8 @@ def encode_pdb(mol, symmetric: bool = True) -> str:
         The PDB file contents.
     """
     lines = []
-    if len(mol.models) > 1:
+    n_models = len(getattr(mol, "models", []))
+    if n_models > 1:
         for model in mol.get_models():
             lines.append(f"MODEL {model.id}")
             mol.set_model(model)
@@ -245,7 +246,10 @@ def _split_atom_line(line) -> tuple:
     }
     return info
 
+
 _plusminus = ("+", "-")
+
+
 def _parse_charge(line):
     charge = line[78:80].strip()
     if len(charge) == 0:
@@ -254,6 +258,7 @@ def _parse_charge(line):
         return int(charge)
     elif charge[-1] in _plusminus:
         return int(charge[::-1])
+
 
 def make_connect_table(mol, symmetric=True):
     """
