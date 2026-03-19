@@ -1382,7 +1382,8 @@ def test_rotate_molecule():
 
     assert not np.allclose(old_coords, new_coords)
 
-    d.show()
+    if base.ALLOW_VISUAL:
+        d.show()
 
 
 def test_flip():
@@ -1398,7 +1399,8 @@ def test_flip():
     d.draw_edges(*mol.get_bonds(), color="blue", linewidth=2)
     new_coords = np.array([a.coord for a in mol.get_atoms()])
     assert not np.allclose(old_coords, new_coords)
-    d.show()
+    if base.ALLOW_VISUAL:
+        d.show()
 
 
 def test_infer_hydrogens_glucose():
@@ -1432,7 +1434,9 @@ def test_infer_hydrogens_glucose():
     # evaluate that each of the inferred atoms is close
     # by one of the references. (this is primarily because
     # H61/H62 may have swapped labels when inferred)
-    d = bam.structural.cdist(new_coords, ref_coords)
+    from scipy.spatial.distance import cdist
+
+    d = cdist(new_coords, ref_coords)
 
     assert d[0].min() < 0.5
     assert d[1].min() < 0.5
@@ -1471,7 +1475,9 @@ def test_infer_hydrogens_glucose_all():
     # evaluate that each of the inferred atoms is close
     # by one of the references. (this is primarily because
     # H61/H62 may have swapped labels when inferred)
-    d = bam.structural.cdist(new_coords, ref_coords)
+    from scipy.spatial.distance import cdist
+
+    d = cdist(new_coords, ref_coords)
 
     assert d[0].min() < 0.1
     assert d[1].min() < 0.1
@@ -1502,7 +1508,9 @@ def test_infer_hydrogens_tyrosine_all():
     ref_coords = ref.get_coords("HD2", "HB2", "HB3", "HXT")
     new_coords = mol.get_coords("HD2", "HB1", "HB2", "HOXT")
 
-    d = bam.structural.cdist(new_coords, ref_coords)
+    from scipy.spatial.distance import cdist
+
+    d = cdist(new_coords, ref_coords)
     assert d[0].min() < 0.1
     assert d[1].min() < 0.1
     assert d[2].min() < 0.1
@@ -1595,7 +1603,7 @@ def test_planar():
     mol = bam.molecule("ethene").autolabel()
     assert mol is not None
 
-    planar = bam.structural.geometry.TriangularPlanar()
+    planar = bam.structural.geometry.TrigonalPlanar()
 
     C1 = mol.get_atom("C1")
     C2 = mol.get_atom("C2")
@@ -2140,9 +2148,9 @@ def test_infer_bond_orders():
         for bond in mol.get_bonds():
             mol.set_bond_order(*bond, 1)
 
-        bam.structural.infer_bond_orders(mol)
+        bam.structural.infer_bond_orders(mol, method="native")
         assert (
-            sum(1 for i in mol.get_double_bonds()) == n_double_bonds
+            sum(list(1 for i in mol.get_double_bonds())) == n_double_bonds
         ), f"wrong number of double bonds for {m=}"
         if base.ALLOW_VISUAL:
             mol.show()
@@ -2158,8 +2166,6 @@ def test_infer_bond_orders_2():
     mol.infer_bonds(infer_bond_orders=True)
 
     assert len([i for i in mol.get_bonds() if i.order == 2]) == len(double_bonds)
-
-    pass
 
 
 def test_match_aromatic():

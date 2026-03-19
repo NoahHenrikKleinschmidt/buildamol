@@ -9,7 +9,7 @@ HOME = Path(__file__).parent.parent
 
 FILES = Path(__file__).parent / "files"
 
-ALLOW_VISUAL = True
+ALLOW_VISUAL = False
 
 
 MANPDB = FILES / "man.pdb"
