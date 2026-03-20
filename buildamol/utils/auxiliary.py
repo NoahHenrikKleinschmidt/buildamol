@@ -360,16 +360,20 @@ def use_numba():
     Use Numba if available to speed up some functions
     """
     global USE_NUMBA
+    global USE_ALL_NUMBA
     if HAS_NUMBA:
         USE_NUMBA = True
+        USE_ALL_NUMBA = False
 
 
 def use_all_numba():
     """
     Use Numba if available to speed up all functions
     """
+    global USE_NUMBA
     global USE_ALL_NUMBA
     if HAS_NUMBA:
+        USE_NUMBA = False
         USE_ALL_NUMBA = True
 
 
@@ -378,7 +382,9 @@ def dont_use_numba():
     Don't use Numba
     """
     global USE_NUMBA
+    global USE_ALL_NUMBA
     USE_NUMBA = False
+    USE_ALL_NUMBA = False
 
 
 class DummyBar:

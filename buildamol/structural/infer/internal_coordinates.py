@@ -10,6 +10,7 @@ import numpy as np
 
 import buildamol.structural.base as base
 import buildamol.structural.neighbors as neighbors
+import buildamol.utils.auxiliary as aux
 import buildamol.utils.ic as _ic
 
 from .constants import element_connectivity
@@ -50,8 +51,13 @@ def compute_atom1_from_others(coords2, coords3, coords4, ic):
     """
     Compute coordinates of the first atom from internal coordinates and the other three atoms.
     """
+    ic_to_xyz = (
+        base._numba_wrapper_IC_to_xyz
+        if (aux.USE_NUMBA or aux.USE_ALL_NUMBA)
+        else base._IC_to_xyz
+    )
     if ic.is_proper:
-        return base._IC_to_xyz(
+        return ic_to_xyz(
             coords4,
             coords3,
             coords2,
@@ -61,7 +67,7 @@ def compute_atom1_from_others(coords2, coords3, coords4, ic):
             dihedral=np.radians(ic.dihedral),
         )
     else:
-        _vec = base._IC_to_xyz(
+        _vec = ic_to_xyz(
             coords4,
             coords3,
             coords2,
@@ -87,8 +93,13 @@ def compute_atom4_from_others(coords1, coords2, coords3, ic):
     """
     Compute coordinates of the fourth atom from internal coordinates and the other three atoms.
     """
+    ic_to_xyz = (
+        base._numba_wrapper_IC_to_xyz
+        if (aux.USE_NUMBA or aux.USE_ALL_NUMBA)
+        else base._IC_to_xyz
+    )
     if ic.is_proper:
-        return base._IC_to_xyz(
+        return ic_to_xyz(
             coords1,
             coords2,
             coords3,
@@ -98,7 +109,7 @@ def compute_atom4_from_others(coords1, coords2, coords3, ic):
             dihedral=np.radians(ic.dihedral),
         )
     else:
-        return base._IC_to_xyz(
+        return ic_to_xyz(
             coords1,
             coords2,
             coords3,

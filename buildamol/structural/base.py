@@ -527,8 +527,11 @@ def rotate_coords(
     rotated_coords : array-like
         The rotated coordinates
     """
+    coords = np.asarray(coords)
+    if aux.USE_ALL_NUMBA or (aux.USE_NUMBA and coords.shape[0] > 32):
+        return _numba_wrapper_rotate_coords(coords, angle, axis)
     rot = _rotation_matrix(axis, angle)
-    return np.dot(np.asarray(coords), rot.T)
+    return np.dot(coords, rot.T)
 
 
 def superimpose_points(
@@ -701,7 +704,7 @@ def _numba_wrapper_rotate_coords(
     axis: np.ndarray,
 ):
     rot = _numba_wrapper_rotation_matrix(axis, angle)
-    return np.dot(np.asarray(coords), rot.T)
+    return np.dot(coords, rot.T)
 
 
 def _rotate_coords_base_classes(
