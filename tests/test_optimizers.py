@@ -393,25 +393,68 @@ def test_optim_forcefield_scipy():
 
 
 def test_use_numba_setting():
+    bam.dont_use_jax()
     assert not bam.utils.auxiliary.USE_NUMBA
     assert not bam.utils.auxiliary.USE_ALL_NUMBA
+    assert not bam.utils.auxiliary.USE_JAX
 
     bam.use_numba()
 
     assert bam.utils.auxiliary.USE_NUMBA
     assert not bam.utils.auxiliary.USE_ALL_NUMBA
+    assert not bam.utils.auxiliary.USE_JAX
 
     bam.dont_use_numba()
 
     assert not bam.utils.auxiliary.USE_NUMBA
     assert not bam.utils.auxiliary.USE_ALL_NUMBA
+    assert not bam.utils.auxiliary.USE_JAX
 
     bam.use_all_numba()
 
     assert not bam.utils.auxiliary.USE_NUMBA
     assert bam.utils.auxiliary.USE_ALL_NUMBA
+    assert not bam.utils.auxiliary.USE_JAX
 
     bam.dont_use_numba()
+
+
+def test_use_jax_setting():
+    bam.dont_use_numba()
+    bam.dont_use_jax()
+
+    assert not bam.utils.auxiliary.USE_NUMBA
+    assert not bam.utils.auxiliary.USE_ALL_NUMBA
+    assert not bam.utils.auxiliary.USE_JAX
+
+    bam.use_jax()
+    if bam.utils.auxiliary.HAS_JAX:
+        assert bam.utils.auxiliary.USE_JAX
+    else:
+        assert not bam.utils.auxiliary.USE_JAX
+    assert not bam.utils.auxiliary.USE_NUMBA
+    assert not bam.utils.auxiliary.USE_ALL_NUMBA
+
+    bam.use_numba()
+    assert not bam.utils.auxiliary.USE_JAX
+
+    bam.dont_use_numba()
+    bam.dont_use_jax()
+
+
+def test_optim_swarm_jax_fallback():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.DistanceRotatron(g, edges)
+    assert env is not None
+
+    sol, eval = opt.swarm_optimize(env, max_steps=5, n_particles=5, jax=True)
+    assert sol is not None
+    assert np.isfinite(eval)
 
 
 def test_optim_numba_distance_swarm():

@@ -40,6 +40,7 @@ def has_package(name):
 HAS_PYBEL = has_package("openbabel")
 HAS_OPENMM = has_package("openmm")
 HAS_NUMBA = has_package("numba")
+HAS_JAX = has_package("jax")
 HAS_STK = has_package("stk")
 HAS_TQDM = has_package("tqdm")
 
@@ -102,6 +103,7 @@ else:
 
 USE_NUMBA = False
 USE_ALL_NUMBA = False
+USE_JAX = False
 
 if HAS_TQDM:
     from tqdm import tqdm
@@ -360,9 +362,11 @@ def use_numba():
     """
     global USE_NUMBA
     global USE_ALL_NUMBA
+    global USE_JAX
     if HAS_NUMBA:
         USE_NUMBA = True
         USE_ALL_NUMBA = False
+        USE_JAX = False
 
 
 def use_all_numba():
@@ -371,9 +375,11 @@ def use_all_numba():
     """
     global USE_NUMBA
     global USE_ALL_NUMBA
+    global USE_JAX
     if HAS_NUMBA:
         USE_NUMBA = False
         USE_ALL_NUMBA = True
+        USE_JAX = False
 
 
 def dont_use_numba():
@@ -384,6 +390,37 @@ def dont_use_numba():
     global USE_ALL_NUMBA
     USE_NUMBA = False
     USE_ALL_NUMBA = False
+
+
+def use_jax():
+    """
+    Use JAX if available for selected array operations.
+    This keeps the library CPU-first by default and only enables JAX when requested.
+    """
+    global USE_JAX
+    global USE_NUMBA
+    global USE_ALL_NUMBA
+    if HAS_JAX:
+        USE_JAX = True
+        USE_NUMBA = False
+        USE_ALL_NUMBA = False
+
+
+def dont_use_jax():
+    """
+    Disable JAX and fall back to default NumPy paths.
+    """
+    global USE_JAX
+    USE_JAX = False
+
+
+def get_jax_numpy():
+    """
+    Lazily load and return jax.numpy.
+    """
+    if not HAS_JAX:
+        raise ImportError("JAX is not installed.")
+    return lazy_module("jax.numpy")
 
 
 class DummyBar:
