@@ -9,7 +9,6 @@ import gymnasium as gym
 
 import numpy as np
 from scipy.spatial.distance import cdist
-from scipy.stats import multivariate_normal
 
 # from sklearn.mixture import GaussianMixture
 # from scipy.stats import entropy
@@ -27,6 +26,18 @@ __all__ = [
 ]
 
 
+_MULTIVARIATE_NORMAL = None
+
+
+def _get_multivariate_normal():
+    global _MULTIVARIATE_NORMAL
+    if _MULTIVARIATE_NORMAL is None:
+        from scipy.stats import multivariate_normal
+
+        _MULTIVARIATE_NORMAL = multivariate_normal
+    return _MULTIVARIATE_NORMAL
+
+
 def MVN(points, spread: float = 1.0):
     """
     Compute a multi-variate normal distribution for a given set of points.
@@ -41,7 +52,7 @@ def MVN(points, spread: float = 1.0):
     mvn : scipy.stats.multivariate_normal
         The multi-variate normal distribution for the points.
     """
-    return multivariate_normal(
+    return _get_multivariate_normal()(
         mean=np.mean(points, axis=0),
         cov=spread * np.cov(points, rowvar=False),
         allow_singular=True,

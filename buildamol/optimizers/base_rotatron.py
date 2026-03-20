@@ -268,7 +268,10 @@ class Rotatron(gym.Env):
         """
         if n_processes > 1:
             p = Pool(n_processes)
-            p.map(self._generate_edge_mask, [e for e in self.rotatable_edges])
+            self.edge_masks = np.array(
+                p.map(self._generate_edge_mask, [e for e in self.rotatable_edges]),
+                dtype=bool,
+            )
             p.close()
             p.join()
         else:
@@ -287,7 +290,7 @@ class Rotatron(gym.Env):
 
     def _normal_rotate(self, state, edx, angle):
         if -1e-3 < angle < 1e-3:
-            return self.state
+            return state
 
         mask = self.edge_masks[edx]
 
@@ -306,7 +309,7 @@ class Rotatron(gym.Env):
 
     def _numba_rotate(self, state, edx, angle):
         if -1e-3 < angle < 1e-3:
-            return self.state
+            return state
 
         return _numba_wrapper_rotate(
             state,
@@ -383,7 +386,7 @@ def _numba_wrapper_rotate(
     ref_coord = state[adx]
 
     rot = structural._numba_wrapper_rotation_matrix(vec, angle)
-    rot = np.transpose(rot).astype(np.float64)
+    rot = np.transpose(rot)
 
     state[mask] -= ref_coord
     _c = state[mask]

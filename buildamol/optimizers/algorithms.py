@@ -425,7 +425,7 @@ def swarm_optimize(
     )  # np.random.rand(n_particles, env.action_space.shape[0])
     velocities = np.random.rand(n_particles, env.action_space.shape[0])
     best_positions = positions.copy()
-    best_fitnesses = np.zeros(n_particles)
+    best_fitnesses = np.full(n_particles, np.inf)
     fitnesses = np.zeros(n_particles)
 
     bounds = getattr(env, "_bounds_tuple", None) or (-9999, 9999)

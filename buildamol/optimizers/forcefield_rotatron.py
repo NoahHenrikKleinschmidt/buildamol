@@ -107,6 +107,11 @@ class ForceFieldRotatron(Rotatron.Rotatron):
             low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
         )
 
+        self._ff_props = aux.MMFFGetMoleculeProperties(
+            self.mol, mmffVariant=self.mmff_variant
+        )
+        self._ff = aux.MMFFGetMoleculeForceField(self.mol, self._ff_props)
+
         # =====================================
 
     def _update_positions(self, state):
@@ -133,10 +138,7 @@ class ForceFieldRotatron(Rotatron.Rotatron):
         float
             The energy for the state
         """
-        # calculate the energy
-        p = aux.MMFFGetMoleculeProperties(self.mol, mmffVariant=self.mmff_variant)
-        e = aux.MMFFGetMoleculeForceField(self.mol, p).CalcEnergy()
-        return e
+        return self._ff.CalcEnergy()
 
     def eval(self, state):
         """

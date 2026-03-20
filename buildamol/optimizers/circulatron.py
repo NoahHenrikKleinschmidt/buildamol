@@ -56,8 +56,8 @@ class Circulatron(Rotatron.Rotatron):
         self.base_rotatron = base_rotatron(
             graph, rotatable_edges, setup=False, **kwargs
         )
-        base_rotatron.edge_masks = self.edge_masks
-        base_rotatron.edge_lengths = self.edge_lengths
+        self.base_rotatron.edge_masks = self.edge_masks
+        self.base_rotatron.edge_lengths = self.edge_lengths
 
         self.action_space = self.base_rotatron.action_space
         self._bounds_tuple = self.base_rotatron._bounds_tuple
