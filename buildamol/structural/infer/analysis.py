@@ -44,50 +44,88 @@ def find_clashes_between(
     """
     residues_a = list(mol_a.get_residues())
     residues_b = list(mol_b.get_residues())
-    r_a = np.empty((len(residues_a)), dtype=object)
-    r_b = np.empty((len(residues_b)), dtype=object)
-    r_a[:] = residues_a
-    r_b[:] = residues_b
-    residues_a = r_a
-    residues_b = r_b
+    residues_a = np.asarray(residues_a, dtype=object)
+    residues_b = np.asarray(residues_b, dtype=object)
+
+    if ignore_hydrogens:
+        residue_atoms_a = [
+            np.asarray(
+                [a for a in residue.get_atoms() if a.element != "H"], dtype=object
+            )
+            for residue in residues_a
+        ]
+        residue_atoms_b = [
+            np.asarray(
+                [a for a in residue.get_atoms() if a.element != "H"], dtype=object
+            )
+            for residue in residues_b
+        ]
+    else:
+        residue_atoms_a = [
+            np.asarray(list(residue.get_atoms()), dtype=object)
+            for residue in residues_a
+        ]
+        residue_atoms_b = [
+            np.asarray(list(residue.get_atoms()), dtype=object)
+            for residue in residues_b
+        ]
+
+    residue_coords_a = [
+        (
+            np.asarray([a.get_coord() for a in atoms], dtype=float)
+            if len(atoms)
+            else np.empty((0, 3), dtype=float)
+        )
+        for atoms in residue_atoms_a
+    ]
+    residue_coords_b = [
+        (
+            np.asarray([a.get_coord() for a in atoms], dtype=float)
+            if len(atoms)
+            else np.empty((0, 3), dtype=float)
+        )
+        for atoms in residue_atoms_b
+    ]
 
     if coarse_precheck and len(residues_a) > 1 and len(residues_b) > 1:
-        residue_coords_a = np.array([r.center_of_mass() for r in residues_a])
-        residue_coords_b = np.array([r.center_of_mass() for r in residues_b])
-
-        residue_dists = cdist(residue_coords_a, residue_coords_b)
-        np.fill_diagonal(residue_dists, np.inf)
-        residue_edge_mask = np.zeros(residue_dists.shape, dtype=bool)
-        for i in range(len(residues_a)):
-            for j in range(len(residues_b)):
-                if residue_dists[i, j] < 12:
-                    residue_edge_mask[i, j] = True
+        residue_centers_a = np.asarray(
+            [r.center_of_mass() for r in residues_a], dtype=float
+        )
+        residue_centers_b = np.asarray(
+            [r.center_of_mass() for r in residues_b], dtype=float
+        )
+        residue_dists = cdist(residue_centers_a, residue_centers_b)
+        residue_edge_mask = residue_dists < 12
     else:
         residue_edge_mask = np.ones((len(residues_a), len(residues_b)), dtype=bool)
 
     for i in range(len(residues_a)):
-        residue_a = residues_a[i]
-        close_by_residues = residues_b[residue_edge_mask[i]]
+        atoms_a = residue_atoms_a[i]
+        coords_a = residue_coords_a[i]
+        if len(atoms_a) == 0:
+            continue
 
-        if ignore_hydrogens:
-            atoms_a = [a for a in residue_a.get_atoms() if a.element != "H"]
-            atoms_b = []
-            for residue_b in close_by_residues:
-                atoms_b.extend([a for a in residue_b.get_atoms() if a.element != "H"])
-        else:
-            atoms_a = list(residue_a.get_atoms())
-            atoms_b = []
-            for residue_b in close_by_residues:
-                atoms_b.extend(residue_b.get_atoms())
+        close_by_idx = np.where(residue_edge_mask[i])[0]
+        if close_by_idx.size == 0:
+            continue
 
-        atoms_a = np.array(atoms_a, dtype=object)
-        atoms_b = np.array(atoms_b, dtype=object)
-        coords_a = np.array([a.get_coord() for a in atoms_a])
-        coords_b = np.array([a.get_coord() for a in atoms_b])
+        atoms_b_parts = [
+            residue_atoms_b[j] for j in close_by_idx if len(residue_atoms_b[j])
+        ]
+        if not atoms_b_parts:
+            continue
+        coords_b_parts = [
+            residue_coords_b[j] for j in close_by_idx if len(residue_coords_b[j])
+        ]
+
+        atoms_b = np.concatenate(atoms_b_parts)
+        coords_b = np.concatenate(coords_b_parts, axis=0)
+
         dists = cdist(coords_a, coords_b)
-        np.fill_diagonal(dists, np.inf)
+        if mol_a is mol_b and dists.shape[0] == dists.shape[1]:
+            np.fill_diagonal(dists, np.inf)
 
-        xs, ys = np.where((0 < dists) * (dists < min_dist))
+        xs, ys = np.where((0 < dists) & (dists < min_dist))
         for x, y in zip(xs, ys):
             yield atoms_a[x], atoms_b[y]
 

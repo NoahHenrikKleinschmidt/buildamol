@@ -579,11 +579,13 @@ def test_find_clashes():
     clashes = mol.find_clashes()
     assert len(clashes) == 0
 
+    # now randomly rotate around some bonds to create clashes
     edges = mol.get_residue_connections()
-    for edge in edges:
-        mol.rotate_around_bond(
-            *edge, np.random.uniform(-180, 180), descendants_only=True
-        )
+    for _ in range(20):
+        bdx = np.random.choice(len(edges))
+        bond = edges[bdx]
+
+        mol.rotate_descendants(*bond, np.random.uniform(-180, 180))
 
     clashes = mol.find_clashes()
     assert len(clashes) != 0
@@ -3080,6 +3082,7 @@ def test_itemgetters_residue_level():
     except:
         pass
 
+
 def test_itemgetters_chain_level():
     mol = bam.Molecule.from_compound("GLC")
     try:
@@ -3102,7 +3105,7 @@ def test_itemgetters_chain_level():
         assert False, "Should have raised an error"
     except:
         pass
-    
+
 
 def test_itemgetters_model_level():
     mol = bam.Molecule.from_compound("GLC")
@@ -3126,7 +3129,8 @@ def test_itemgetters_model_level():
         assert False, "Should have raised an error"
     except:
         pass
-    
+
+
 def test_default_getitem():
     bam.Molecule.default_getitem_method = "atom-index"
     mol = bam.Molecule.from_compound("GLC")
