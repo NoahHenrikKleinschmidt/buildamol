@@ -372,6 +372,7 @@ def swarm_optimize(
     cooldown_rate: float = 0.99,
     n_best: int = 1,
     numba: bool = False,
+    jax: bool = False,
 ):
     """
     Optimize a rotatron environment through a simple particle swarm optimization.
@@ -413,9 +414,13 @@ def swarm_optimize(
     if n_particles is None:
         n_particles = max(15, len(env.rotatable_edges) // 3)
 
+    use_jax = jax or aux.USE_JAX
     if numba or aux.USE_ALL_NUMBA or (n_particles * max_steps > 1e6 and aux.USE_NUMBA):
         update_positions = _numba_wrapper_update_positions
         update_velocities = _numba_wrapper_update_velocities
+    elif use_jax and aux.HAS_JAX:
+        update_positions = _jax_update_positions
+        update_velocities = _jax_update_velocities
     else:
         update_positions = _update_positions
         update_velocities = _update_velocities
@@ -490,6 +495,34 @@ def _update_velocities(
 
 
 _numba_wrapper_update_velocities = aux.njit(_update_velocities)
+
+
+def _jax_update_positions(positions, velocities, bounds):
+    jnp = aux.get_jax_numpy()
+    positions_j = jnp.asarray(positions)
+    velocities_j = jnp.asarray(velocities)
+    out = jnp.clip(positions_j + velocities_j, bounds[0], bounds[1])
+    return np.asarray(out)
+
+
+def _jax_update_velocities(
+    velocities, inertia, cognitive, social, best_particle, best_position, positions
+):
+    jnp = aux.get_jax_numpy()
+    velocities_j = jnp.asarray(velocities)
+    positions_j = jnp.asarray(positions)
+    best_particle_j = jnp.asarray(best_particle)
+    best_position_j = jnp.asarray(best_position)
+
+    dist_best = best_particle_j - positions_j
+    dist_social = best_position_j - positions_j
+    out = (
+        inertia * velocities_j
+        + cognitive * np.random.rand() * dist_best
+        + social * np.random.rand() * dist_social
+    )
+    return np.asarray(out)
+
 
 # def multiprocess_swarm_optimize(
 #     env,

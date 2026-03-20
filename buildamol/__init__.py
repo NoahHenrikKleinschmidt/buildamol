@@ -14,6 +14,8 @@ from buildamol.utils.auxiliary import (
     use_numba,
     use_all_numba,
     dont_use_numba,
+    use_jax,
+    dont_use_jax,
     use_ic,
     dont_use_ic,
 )
