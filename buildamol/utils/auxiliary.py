@@ -42,7 +42,6 @@ HAS_OPENMM = has_package("openmm")
 HAS_NUMBA = has_package("numba")
 HAS_STK = has_package("stk")
 HAS_TQDM = has_package("tqdm")
-HAS_ALIVE_PROGRESS = has_package("alive_progress")
 
 # rdkit is fast to load, so we can just load it here
 Chem = importlib.import_module("rdkit.Chem")

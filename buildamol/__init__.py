@@ -1,8 +1,8 @@
 import buildamol.utils as utils
+from importlib import import_module
 
 _utils = utils
 
-import buildamol.utils.visual as visual
 import buildamol.structural as structural
 import buildamol.resources as resources
 import buildamol.graphs as graphs
@@ -17,7 +17,6 @@ from buildamol.utils.auxiliary import (
     use_ic,
     dont_use_ic,
 )
-from buildamol.utils.visual import MoleculeViewer3D, Py3DmolViewer
 from buildamol.optimizers import *
 
 from buildamol.utils.info import __version__, __author__
@@ -25,3 +24,18 @@ from buildamol.utils.info import __version__, __author__
 # a little hack to make sure the utils module is not the optimizers.utils...
 utils = _utils
 del _utils
+
+
+def __getattr__(name):
+    if name == "visual":
+        module = import_module("buildamol.utils.visual")
+        globals()[name] = module
+        return module
+
+    if name in ("MoleculeViewer3D", "Py3DmolViewer"):
+        module = import_module("buildamol.utils.visual")
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
