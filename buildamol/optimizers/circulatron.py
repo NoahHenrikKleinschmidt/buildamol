@@ -41,7 +41,7 @@ class Circulatron(Rotatron.Rotatron):
         base_rotatron: Rotatron = DistanceRotatron,
         hinge_node=None,
         rotatable_edges: list = None,
-        **kwargs
+        **kwargs,
     ):
         hinge_node = hinge_node or target_nodes[0]
         if rotatable_edges is None:

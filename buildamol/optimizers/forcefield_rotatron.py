@@ -1,11 +1,11 @@
 """
-The ForceFieldRotatron is a rotatron that uses RDKit's MMFF94 force field to evaluate a given state. Consequently, this environment can only function if RDKIt is installed. 
+The ForceFieldRotatron is a rotatron that uses RDKit's MMFF94 force field to evaluate a given state. Consequently, this environment can only function if RDKIt is installed.
 
 .. note::
 
     Because this environment uses an actual energy function to evaluate states, this environment performs very poorly with ResidueGraph inputs! ResidueGraphs are abstractions without a valid chemical structure.
     Consequently, even though this environment **can** be used with ResidueGraphs, it is not recommended.
-    
+
 """
 
 import gymnasium as gym
@@ -59,7 +59,7 @@ class ForceFieldRotatron(Rotatron.Rotatron):
         mmff_variant: str = "mmff94",
         n_processes: int = 1,
         bounds: tuple = (-np.pi, np.pi),
-        **kwargs
+        **kwargs,
     ):
         self.hyperparameters = {
             "clash_distance": clash_distance,

@@ -9,7 +9,7 @@ The evaluation is computed as:
 
     e_i = \\sum_{j \\neq i} d_{ij}^{unfold} + pushback \\cdot \\sum_{k=1}^N \\text{sorted}(d)_{ik}
 
-There are multiple variations of this basic formulation available (see the functions below). 
+There are multiple variations of this basic formulation available (see the functions below).
 """
 
 import gymnasium as gym
@@ -339,7 +339,9 @@ class DistanceRotatron(Rotatron.Rotatron):
                 mean_small, self.pushback
             )
             if self._concatenation_function is concatenation_function_with_penalty:
-                penalty = np.logical_and(mask, pairwise_dists < 1.5 * self.clash_distance)
+                penalty = np.logical_and(
+                    mask, pairwise_dists < 1.5 * self.clash_distance
+                )
                 penalty = penalty.sum(axis=1)
                 dist_eval = np.divide(dist_eval, (1 + penalty) ** 2)
 

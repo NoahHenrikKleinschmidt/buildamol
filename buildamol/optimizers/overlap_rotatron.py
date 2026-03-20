@@ -398,7 +398,9 @@ if __name__ == "__main__":
     )
     df2 = df2.melt(var_name="overlap", value_name="time")
     time_labels = ["likelihood", "bhattacharyya", "jensen_shannon"]
-    time_data = [df2.loc[df2["overlap"] == label, "time"].values for label in time_labels]
+    time_data = [
+        df2.loc[df2["overlap"] == label, "time"].values for label in time_labels
+    ]
     axs[1].violinplot(time_data, showmeans=True)
     axs[1].set_xticks(range(1, len(time_labels) + 1), time_labels)
     axs[1].set_xlabel("overlap")
