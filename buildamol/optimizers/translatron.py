@@ -2,8 +2,8 @@
 This is the Translatron environment that can be used to place a molecule according to some constraints.
 """
 
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
 
 import buildamol.utils.auxiliary as aux

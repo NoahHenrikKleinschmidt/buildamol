@@ -192,7 +192,6 @@ def auto_algorithm(mol, env=None):
         if isinstance(env, Translatron.Translatron):
             return "scipy"
     # if mol.count_atoms() < 500:
-    #     if aux.HAS_RDKIT:
     #         return "rdkit"
     return "swarm"
 

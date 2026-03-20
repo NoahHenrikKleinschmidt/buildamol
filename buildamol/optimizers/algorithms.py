@@ -783,8 +783,6 @@ def mmff_optimize(mol, steps=1000):
         The optimized molecule
     """
     cls = mol.__class__
-    if not aux.HAS_RDKIT:
-        raise ImportError("RDKit is not installed")
     rdmol = mol.to_rdkit()
     aux.AllChem.MMFFOptimizeMolecule(rdmol, maxIters=steps)
     return cls.from_rdkit(rdmol)
@@ -807,8 +805,6 @@ def uff_optimize(mol, steps=1000):
         The optimized molecule
     """
     cls = mol.__class__
-    if not aux.HAS_RDKIT:
-        raise ImportError("RDKit is not installed")
     rdmol = mol.to_rdkit()
     aux.AllChem.UFFOptimizeMolecule(rdmol, maxIters=steps)
     return cls.from_rdkit(rdmol)

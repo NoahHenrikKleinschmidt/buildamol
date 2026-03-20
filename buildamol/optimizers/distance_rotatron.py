@@ -12,7 +12,7 @@ The evaluation is computed as:
 There are multiple variations of this basic formulation available (see the functions below). 
 """
 
-import gym
+import gymnasium as gym
 
 import numpy as np
 from scipy.spatial.distance import cdist

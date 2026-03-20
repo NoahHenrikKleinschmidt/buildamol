@@ -3,7 +3,7 @@ This is the basic Rotatron environment. It provides the basic functionality for 
 All other Rotatron environments inherit from this class.
 """
 
-import gym
+import gymnasium as gym
 import numpy as np
 
 from scipy.spatial.distance import cdist

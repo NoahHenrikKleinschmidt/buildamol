@@ -8,7 +8,7 @@ The ForceFieldRotatron is a rotatron that uses RDKit's MMFF94 force field to eva
     
 """
 
-import gym
+import gymnasium as gym
 
 import numpy as np
 
@@ -61,10 +61,6 @@ class ForceFieldRotatron(Rotatron.Rotatron):
         bounds: tuple = (-np.pi, np.pi),
         **kwargs
     ):
-        if not aux.HAS_RDKIT:
-            raise ImportError(
-                "ForceFieldRotatron requires RDKit to be installed. Please install RDKit to use this rotatron."
-            )
         self.hyperparameters = {
             "clash_distance": clash_distance,
             "crop_nodes_further_than": crop_nodes_further_than,

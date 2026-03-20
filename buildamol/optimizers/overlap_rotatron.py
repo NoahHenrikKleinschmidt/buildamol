@@ -5,7 +5,7 @@ Hence, this environment tries to minimize the overlap between distributions in o
 As measure for the overlap between two distributions, the Jensen-Shannon divergence is used by default. Custom overlap functions can be passed to the environment.
 """
 
-import gym
+import gymnasium as gym
 
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -365,7 +365,6 @@ if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
     import pandas as pd
-    import seaborn as sns
 
     fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 
@@ -374,19 +373,27 @@ if __name__ == "__main__":
         columns=["likelihood", "bhattacharyya", "jensen_shannon"],
     )
     df = df.melt(var_name="overlap", value_name="clashes")
-    sns.violinplot(data=df, x="overlap", y="clashes", ax=axs[0])
+    clash_labels = ["likelihood", "bhattacharyya", "jensen_shannon"]
+    clash_data = [
+        df.loc[df["overlap"] == label, "clashes"].values for label in clash_labels
+    ]
+    axs[0].violinplot(clash_data, showmeans=True)
+    axs[0].set_xticks(range(1, len(clash_labels) + 1), clash_labels)
+    axs[0].set_xlabel("overlap")
 
     df2 = pd.DataFrame(
         times.T,
         columns=["likelihood", "bhattacharyya", "jensen_shannon"],
     )
     df2 = df2.melt(var_name="overlap", value_name="time")
-    sns.violinplot(data=df2, x="overlap", y="time", ax=axs[1])
+    time_labels = ["likelihood", "bhattacharyya", "jensen_shannon"]
+    time_data = [df2.loc[df2["overlap"] == label, "time"].values for label in time_labels]
+    axs[1].violinplot(time_data, showmeans=True)
+    axs[1].set_xticks(range(1, len(time_labels) + 1), time_labels)
+    axs[1].set_xlabel("overlap")
 
     axs[0].set_ylabel("Clashes")
     axs[1].set_ylabel("Time (s)")
-
-    sns.despine()
 
     plt.savefig("overlap_rotatron_dist_func_comparisons_EX6.png")
     plt.show()
