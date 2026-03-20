@@ -61,7 +61,9 @@ class Neighborhood:
         if isinstance(node, list):
             return [self.get_neighbors(a, n, mode) for a in node]
 
-        self._seen = set()
+        if n < 0:
+            raise ValueError("n must be >= 0")
+
         if mode == "upto":
             return self._get_neighbors_upto(node, n) - {node}
         elif mode == "at":
@@ -69,38 +71,53 @@ class Neighborhood:
         else:
             raise ValueError(f"Invalid mode: {mode}")
 
+    def _get_neighbors_iterative(self, node, n: int, mode: str):
+        if n == 0:
+            return {node}
+
+        visited = {node}
+        frontier = {node}
+
+        if mode == "upto":
+            out = {node}
+            for _ in range(n):
+                next_frontier = set()
+                for current in frontier:
+                    for neighbor in self._src.adj[current]:
+                        if neighbor in visited:
+                            continue
+                        visited.add(neighbor)
+                        next_frontier.add(neighbor)
+                if not next_frontier:
+                    break
+                out.update(next_frontier)
+                frontier = next_frontier
+            return out
+
+        for _ in range(n):
+            next_frontier = set()
+            for current in frontier:
+                for neighbor in self._src.adj[current]:
+                    if neighbor in visited:
+                        continue
+                    visited.add(neighbor)
+                    next_frontier.add(neighbor)
+            if not next_frontier:
+                return set()
+            frontier = next_frontier
+        return frontier
+
     def _get_neighbors_upto(self, node, n: int):
         """
         Get all neighbors of a node that are n edges away from the target or closer
         """
-        if n == 0:
-            return {node}
-        else:
-            neighbors = set()
-            for neighbor in self._src.adj[node]:
-                if neighbor in self._seen:
-                    continue
-                if n >= 1:
-                    neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
-                neighbors.add(neighbor)
-                self._seen.add(neighbor)
-            return neighbors
+        return self._get_neighbors_iterative(node, n, mode="upto")
 
     def _get_neighbors_at(self, node, n: int):
         """
         Get all neighbors of a node that are exactly n edges away from the target
         """
-        if n == 0:
-            return {node}
-        else:
-            neighbors = set()
-            for neighbor in self._src.adj[node]:
-                if neighbor in self._seen:
-                    continue
-                if n >= 1:
-                    neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
-                self._seen.add(neighbor)
-            return neighbors
+        return self._get_neighbors_iterative(node, n, mode="at")
 
     def search_by_constraints(self, constraints: list):
         """
@@ -392,15 +409,17 @@ def compute_triplets(bonds: list, unique: bool = True):
     [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
     """
     triplets = list(generate_triplets(bonds))
-    if unique:
-        half_length = len(triplets) // 2
-        while len(triplets) != half_length:
-            triplet = triplets.pop()
-            if triplet[::-1] in triplets:
-                continue
-            else:
-                triplets.insert(0, triplet)
-    return triplets
+    if not unique:
+        return triplets
+
+    unique_triplets = []
+    seen = set()
+    for triplet in triplets:
+        if triplet in seen or triplet[::-1] in seen:
+            continue
+        seen.add(triplet)
+        unique_triplets.append(triplet)
+    return unique_triplets
 
     # triplets = []
     # for i, bond1 in enumerate(bonds):
@@ -546,27 +565,22 @@ def generate_triplets(bonds: list):
     >>> list(generate_triplets(bonds))
     [(2, 1, 3), (3, 1, 2), (1, 2, 4), (4, 2, 1), (1, 2, 4)]
     """
-    for bond1 in bonds:
-        atom_11, atom_12 = bond1
-        for bond2 in bonds:
-            atom_21, atom_22 = bond2
+    adjacency = {}
+    for atom1, atom2 in bonds:
+        adjacency.setdefault(atom1, []).append(atom2)
+        adjacency.setdefault(atom2, []).append(atom1)
 
-            # we used to compare with == (Which works perfectly fine)
-            # but since we use this function to generate atom bond triplets
-            # where the atoms are not only supposed to be equal but should literally be the same object
-            # we can use the is operator to speed up the process (hopefully.)
-            # UPDATE: We use == again because we can now have multiple copies
-            # of the same bond (to represent double bonds etc.)
-            if bond1 == bond2:
-                continue
-            if atom_11 is atom_21:
-                yield (atom_12, atom_11, atom_22)
-            elif atom_11 is atom_22:
-                yield (atom_12, atom_11, atom_21)
-            elif atom_12 is atom_21:
-                yield (atom_11, atom_12, atom_22)
-            elif atom_12 is atom_22:
-                yield (atom_11, atom_12, atom_21)
+    for center, neighbors in adjacency.items():
+        n_neighbors = len(neighbors)
+        if n_neighbors < 2:
+            continue
+        for i in range(n_neighbors):
+            left = neighbors[i]
+            for j in range(n_neighbors):
+                if i == j:
+                    continue
+                right = neighbors[j]
+                yield (left, center, right)
 
 
 def generate_quartets(bonds: list):
