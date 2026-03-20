@@ -5,8 +5,8 @@ Visualization auxiliary functions
 import pandas as pd
 import networkx as nx
 import plotly.graph_objects as go
-import plotly.express as px
 import matplotlib.colors as colors
+import math
 
 import buildamol.utils as utils
 import buildamol.utils.auxiliary as aux
@@ -890,6 +890,10 @@ class PlotlyViewer3D:
         "I": "green",
     }
 
+    _bond_parallel_spacing = 0.08
+    _default_aspect_mode = "data"
+    _default_projection = "orthographic"
+
     def __init__(self) -> None:
         PlotlyViewer3D.reset(self)
         self._color_idx = 0
@@ -927,6 +931,8 @@ class PlotlyViewer3D:
         self.figure.write_html(path)
 
     def reset(self, **kwargs):
+        aspect_mode = kwargs.pop("aspectmode", self._default_aspect_mode)
+        projection_type = kwargs.pop("projection", self._default_projection)
         self.figure = go.Figure(
             layout=go.Layout(
                 scene=dict(
@@ -948,7 +954,10 @@ class PlotlyViewer3D:
                         showticklabels=False,
                         range=kwargs.pop("zlim", None),
                     ),
-                    # aspectmode="cube",
+                    aspectmode=aspect_mode,
+                    camera=dict(
+                        projection=dict(type=projection_type),
+                    ),
                 ),
                 template="simple_white",
             )
@@ -973,6 +982,27 @@ class PlotlyViewer3D:
 
     def update_layout(self, **kwargs):
         self.figure.update_layout(**kwargs)
+        return self
+
+    def set_aspect_mode(self, mode: str = "data"):
+        mode = mode.strip().lower()
+        if mode not in ("auto", "cube", "data", "manual"):
+            raise ValueError(
+                f"Unsupported aspect mode: {mode}. Supported modes are auto, cube, data, manual."
+            )
+        self.figure.update_layout(scene=dict(aspectmode=mode))
+        return self
+
+    def set_projection(self, projection: str = "orthographic"):
+        projection = projection.strip().lower()
+        if projection not in ("orthographic", "perspective"):
+            raise ValueError(
+                "Unsupported projection type: "
+                f"{projection}. Supported types are orthographic and perspective."
+            )
+        self.figure.update_layout(
+            scene=dict(camera=dict(projection=dict(type=projection)))
+        )
         return self
 
     def draw_point(
@@ -1026,6 +1056,117 @@ class PlotlyViewer3D:
         )
         self.add(new)
         return self
+
+    @staticmethod
+    def _bond_multiplicity(order) -> int:
+        try:
+            multiplicity = int(round(float(order)))
+        except Exception:
+            multiplicity = 1
+        return max(1, min(3, multiplicity))
+
+    @staticmethod
+    def _cross(v1, v2):
+        return (
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0],
+        )
+
+    @staticmethod
+    def _norm(v):
+        return math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2)
+
+    def _bond_offsets(self, point_a, point_b, multiplicity: int, spacing: float):
+        if multiplicity <= 1:
+            return [(0.0, 0.0, 0.0)]
+
+        bond_vec = (
+            point_b[0] - point_a[0],
+            point_b[1] - point_a[1],
+            point_b[2] - point_a[2],
+        )
+        bond_norm = self._norm(bond_vec)
+        if bond_norm == 0:
+            return [(0.0, 0.0, 0.0)]
+        unit = (
+            bond_vec[0] / bond_norm,
+            bond_vec[1] / bond_norm,
+            bond_vec[2] / bond_norm,
+        )
+
+        ref = (0.0, 0.0, 1.0) if abs(unit[2]) < 0.9 else (0.0, 1.0, 0.0)
+        perp = self._cross(unit, ref)
+        perp_norm = self._norm(perp)
+        if perp_norm == 0:
+            ref = (1.0, 0.0, 0.0)
+            perp = self._cross(unit, ref)
+            perp_norm = self._norm(perp)
+            if perp_norm == 0:
+                return [(0.0, 0.0, 0.0)]
+
+        perp = (perp[0] / perp_norm, perp[1] / perp_norm, perp[2] / perp_norm)
+
+        if multiplicity == 2:
+            magnitudes = (-spacing, spacing)
+        else:
+            magnitudes = (-spacing, 0.0, spacing)
+
+        return [(perp[0] * mag, perp[1] * mag, perp[2] * mag) for mag in magnitudes]
+
+    def _build_bond_traces(self, atom_df, bond_df, opacity=None):
+        if opacity is None:
+            opacity = min(1, self.opacity * 2)
+        if bond_df is None or len(bond_df) == 0:
+            return []
+
+        coord_map = {
+            idx: (row["x"], row["y"], row["z"])
+            for idx, row in atom_df[["x", "y", "z"]].iterrows()
+        }
+
+        grouped = {}
+        for _, row in bond_df.iterrows():
+            a = row["a"]
+            b = row["b"]
+            point_a = coord_map.get(a)
+            point_b = coord_map.get(b)
+            if point_a is None or point_b is None:
+                continue
+
+            linewidth = max(1.0, float(row.get("bond_width", self.bond_linewidth)) ** 2)
+            color = row.get("bond_color", self.bond_color)
+            multiplicity = self._bond_multiplicity(row.get("bond_order", 1))
+            spacing = self._bond_parallel_spacing * max(1.0, linewidth / 2.0)
+            offsets = self._bond_offsets(point_a, point_b, multiplicity, spacing)
+
+            key = (color, linewidth)
+            coords = grouped.setdefault(key, {"x": [], "y": [], "z": []})
+
+            for offset in offsets:
+                coords["x"].extend(
+                    [point_a[0] + offset[0], point_b[0] + offset[0], None]
+                )
+                coords["y"].extend(
+                    [point_a[1] + offset[1], point_b[1] + offset[1], None]
+                )
+                coords["z"].extend(
+                    [point_a[2] + offset[2], point_b[2] + offset[2], None]
+                )
+
+        return [
+            go.Scatter3d(
+                x=coords["x"],
+                y=coords["y"],
+                z=coords["z"],
+                mode="lines",
+                line=dict(color=color, width=linewidth),
+                opacity=opacity,
+                hoverinfo="skip",
+                showlegend=False,
+            )
+            for (color, linewidth), coords in grouped.items()
+        ]
 
     def draw_edges(
         self,
@@ -1228,9 +1369,9 @@ class PlotlyViewer3D:
             f"{atom_a.id}-{atom_b.id}",
             atom_a.coord,
             atom_b.coord,
-            color,
-            linewidth,
-            showlegend,
+            color=color,
+            linewidth=linewidth,
+            showlegend=showlegend,
             elongate=elongate,
         )
         return self
@@ -1238,25 +1379,29 @@ class PlotlyViewer3D:
 
 class MoleculeViewer3D(PlotlyViewer3D):
     def make_df(self, mol) -> tuple:
+        atoms = list(mol.get_atoms())
+        bonds = list(mol.get_bonds())
+
         _atom_df = {
-            "x": [atom.coord[0] for atom in mol.get_atoms()],
-            "y": [atom.coord[1] for atom in mol.get_atoms()],
-            "z": [atom.coord[2] for atom in mol.get_atoms()],
-            "atom_id": [atom.id for atom in mol.get_atoms()],
-            "atom_serial": [atom.serial_number for atom in mol.get_atoms()],
-            "atom_element": [atom.element.title() for atom in mol.get_atoms()],
-            "residue_serial": [atom.get_parent().id[1] for atom in mol.get_atoms()],
-            "residue_name": [atom.get_parent().resname for atom in mol.get_atoms()],
-            "chain_id": [atom.get_parent().get_parent().id for atom in mol.get_atoms()],
+            "x": [atom.coord[0] for atom in atoms],
+            "y": [atom.coord[1] for atom in atoms],
+            "z": [atom.coord[2] for atom in atoms],
+            "atom_id": [atom.id for atom in atoms],
+            "atom_serial": [atom.serial_number for atom in atoms],
+            "atom_element": [atom.element.title() for atom in atoms],
+            "residue_serial": [atom.get_parent().id[1] for atom in atoms],
+            "residue_name": [atom.get_parent().resname for atom in atoms],
+            "chain_id": [atom.get_parent().get_parent().id for atom in atoms],
         }
         _atom_df = pd.DataFrame(_atom_df)
         _atom_df.set_index("atom_serial", drop=False, inplace=True)
 
         _bond_df = {
-            "a": [i[0].serial_number for i in mol.get_bonds()],
-            "b": [i[1].serial_number for i in mol.get_bonds()],
-            "bond_color": [self.bond_color for i in mol.get_bonds()],
-            "bond_order": [self.bond_linewidth * i.order for i in mol.get_bonds()],
+            "a": [i[0].serial_number for i in bonds],
+            "b": [i[1].serial_number for i in bonds],
+            "bond_color": [self.bond_color for _ in bonds],
+            "bond_order": [getattr(i, "order", 1) for i in bonds],
+            "bond_width": [self.bond_linewidth for _ in bonds],
         }
         _bond_df = pd.DataFrame(_bond_df)
 
@@ -1278,52 +1423,46 @@ class MoleculeViewer3D(PlotlyViewer3D):
         self.add(self._setup_fig(self._atom_df, self._bond_df, draw_atoms=draw_atoms))
 
     def _setup_fig(self, atom_df, bond_df, draw_atoms=True):
-        if not draw_atoms:
-            fig = go.Figure()
-        else:
-            atom_df["__marker_size"] = self.size
-            fig = px.scatter_3d(
-                atom_df,
-                x="x",
-                y="y",
-                z="z",
-                color="atom_element",
-                color_discrete_map=self.__atom_colors__,
-                opacity=self.opacity,
-                size="__marker_size",
-                hover_data=[
-                    "atom_id",
-                    "atom_serial",
-                    "residue_serial",
-                    "residue_name",
-                    "chain_id",
-                ],
-                template="none",
+        fig = go.Figure()
+        if draw_atoms:
+            atom_colors = [
+                self.__atom_colors__.get(element, "black")
+                for element in atom_df["atom_element"].tolist()
+            ]
+            atom_hover = [
+                f"{atom_id} ({serial})<br>{res_name} {res_serial}<br>Chain {chain_id}"
+                for atom_id, serial, res_serial, res_name, chain_id in zip(
+                    atom_df["atom_id"],
+                    atom_df["atom_serial"],
+                    atom_df["residue_serial"],
+                    atom_df["residue_name"],
+                    atom_df["chain_id"],
+                )
+            ]
+            fig.add_trace(
+                go.Scatter3d(
+                    x=atom_df["x"],
+                    y=atom_df["y"],
+                    z=atom_df["z"],
+                    mode="markers",
+                    marker=dict(
+                        color=atom_colors,
+                        size=self.size,
+                        opacity=self.opacity,
+                    ),
+                    text=atom_hover,
+                    hovertemplate="%{text}<extra></extra>",
+                    showlegend=False,
+                )
             )
-        bonds = []
-        for i, row in bond_df.iterrows():
-            a1 = atom_df.loc[row["a"]]
-            a2 = atom_df.loc[row["b"]]
-            new = go.Scatter3d(
-                x=[a1["x"], a2["x"]],
-                y=[a1["y"], a2["y"]],
-                z=[a1["z"], a2["z"]],
-                mode="lines",
-                line=dict(
-                    color=row["bond_color"],
-                    width=row["bond_order"] ** 2,
-                    # opacity=min(1, self.opacity * 2),
-                ),
-                hoverinfo="skip",
-                showlegend=False,
-            )
-            bonds.append(new)
-        fig.add_traces(bonds)
 
+        fig.add_traces(self._build_bond_traces(atom_df, bond_df, opacity=self.opacity))
         return fig
 
     def reset(self):
-        self.figure = self._setup_fig(self._atom_df, self._bond_df)
+        super().reset()
+        self.add(self._setup_fig(self._atom_df, self._bond_df))
+        return self
 
     def rainbow(self):
         """
@@ -1342,16 +1481,17 @@ class AtomGraphViewer3D(PlotlyViewer3D):
         self.add(self._setup_fig(self._atom_df, self._bond_df))
 
     def make_df(self, graph):
+        nodes = list(graph.nodes)
         _atom_df = {
-            "x": [atom.coord[0] for atom in graph.nodes],
-            "y": [atom.coord[1] for atom in graph.nodes],
-            "z": [atom.coord[2] for atom in graph.nodes],
-            "atom_id": [atom.id for atom in graph.nodes],
-            "atom_serial": [atom.serial_number for atom in graph.nodes],
-            "atom_element": [atom.element.title() for atom in graph.nodes],
-            "residue_serial": [atom.get_parent().id[1] for atom in graph.nodes],
-            "residue_name": [atom.get_parent().resname for atom in graph.nodes],
-            "chain_id": [atom.get_parent().get_parent().id for atom in graph.nodes],
+            "x": [atom.coord[0] for atom in nodes],
+            "y": [atom.coord[1] for atom in nodes],
+            "z": [atom.coord[2] for atom in nodes],
+            "atom_id": [atom.id for atom in nodes],
+            "atom_serial": [atom.serial_number for atom in nodes],
+            "atom_element": [atom.element.title() for atom in nodes],
+            "residue_serial": [atom.get_parent().id[1] for atom in nodes],
+            "residue_name": [atom.get_parent().resname for atom in nodes],
+            "chain_id": [atom.get_parent().get_parent().id for atom in nodes],
         }
         _atom_df = pd.DataFrame(_atom_df)
         _atom_df.set_index("atom_serial", drop=False, inplace=True)
@@ -1361,51 +1501,49 @@ class AtomGraphViewer3D(PlotlyViewer3D):
             "a": [i[0].serial_number for i in bond_orders.keys()],
             "b": [i[1].serial_number for i in bond_orders.keys()],
             "bond_color": [self.bond_color for i in bond_orders.keys()],
-            "bond_order": [self.bond_linewidth * i for i in bond_orders.values()],
+            "bond_order": [i for i in bond_orders.values()],
+            "bond_width": [self.bond_linewidth for _ in bond_orders.values()],
         }
 
         _bond_df = pd.DataFrame(_bond_df)
 
         return _atom_df, _bond_df
 
-    def _setup_fig(self, atom_df, bond_df):
-        fig = px.scatter_3d(
-            atom_df,
-            x="x",
-            y="y",
-            z="z",
-            color="atom_element",
-            color_discrete_map=self.__atom_colors__,
-            opacity=self.opacity,
-            hover_data=[
-                "atom_id",
-                "atom_serial",
-                "residue_serial",
-                "residue_name",
-                "chain_id",
-            ],
-            template="none",
-        )
-        bonds = []
-        for i, row in bond_df.iterrows():
-            a1 = atom_df.loc[row["a"]]
-            a2 = atom_df.loc[row["b"]]
-            new = go.Scatter3d(
-                x=[a1["x"], a2["x"]],
-                y=[a1["y"], a2["y"]],
-                z=[a1["z"], a2["z"]],
-                mode="lines",
-                line=dict(
-                    color=row["bond_color"],
-                    width=row["bond_order"] ** 2,
-                ),
-                opacity=min(1, self.opacity * 2),
-                hoverinfo="skip",
-                showlegend=False,
+    def _setup_fig(self, atom_df, bond_df, draw_atoms=True):
+        fig = go.Figure()
+        if draw_atoms:
+            atom_colors = [
+                self.__atom_colors__.get(element, "black")
+                for element in atom_df["atom_element"].tolist()
+            ]
+            atom_hover = [
+                f"{atom_id} ({serial})<br>{res_name} {res_serial}<br>Chain {chain_id}"
+                for atom_id, serial, res_serial, res_name, chain_id in zip(
+                    atom_df["atom_id"],
+                    atom_df["atom_serial"],
+                    atom_df["residue_serial"],
+                    atom_df["residue_name"],
+                    atom_df["chain_id"],
+                )
+            ]
+            fig.add_trace(
+                go.Scatter3d(
+                    x=atom_df["x"],
+                    y=atom_df["y"],
+                    z=atom_df["z"],
+                    mode="markers",
+                    marker=dict(
+                        color=atom_colors,
+                        size=self.size,
+                        opacity=self.opacity,
+                    ),
+                    text=atom_hover,
+                    hovertemplate="%{text}<extra></extra>",
+                    showlegend=False,
+                )
             )
-            bonds.append(new)
-        fig.add_traces(bonds)
 
+        fig.add_traces(self._build_bond_traces(atom_df, bond_df, opacity=self.opacity))
         return fig
 
 
@@ -1419,20 +1557,22 @@ class ResidueGraphViewer3D(PlotlyViewer3D):
         self.add(self._setup_fig(self._atom_df, self._bond_df))
 
     def make_df(self, graph):
+        nodes = list(graph.nodes)
+        edges = list(graph.edges)
         _atom_df = {
-            "_id": [atom.get_id() for atom in graph.nodes],
-            "x": [atom.coord[0] for atom in graph.nodes],
-            "y": [atom.coord[1] for atom in graph.nodes],
-            "z": [atom.coord[2] for atom in graph.nodes],
-            "id": [str(atom.id) for atom in graph.nodes],
-            "serial": [atom.serial_number for atom in graph.nodes],
+            "_id": [atom.get_id() for atom in nodes],
+            "x": [atom.coord[0] for atom in nodes],
+            "y": [atom.coord[1] for atom in nodes],
+            "z": [atom.coord[2] for atom in nodes],
+            "id": [str(atom.id) for atom in nodes],
+            "serial": [atom.serial_number for atom in nodes],
             "element_or_resname": [
                 getattr(atom, "element", getattr(atom, "resname", "")).title()
-                for atom in graph.nodes
+                for atom in nodes
             ],
-            "parent_id": [str(atom.get_parent().id) for atom in graph.nodes],
+            "parent_id": [str(atom.get_parent().id) for atom in nodes],
             "parent_serial": [
-                getattr(atom.get_parent(), "serial_number", -1) for atom in graph.nodes
+                getattr(atom.get_parent(), "serial_number", -1) for atom in nodes
             ],
         }
 
@@ -1440,53 +1580,51 @@ class ResidueGraphViewer3D(PlotlyViewer3D):
         _atom_df.set_index("_id", drop=False, inplace=True)
 
         _bond_df = {
-            "a": [i[0].get_id() for i in graph.edges],
-            "b": [i[1].get_id() for i in graph.edges],
-            "bond_color": [self.bond_color for i in graph.edges],
-            "bond_order": [self.bond_linewidth for i in graph.edges],
+            "a": [i[0].get_id() for i in edges],
+            "b": [i[1].get_id() for i in edges],
+            "bond_color": [self.bond_color for _ in edges],
+            "bond_order": [1 for _ in edges],
+            "bond_width": [self.bond_linewidth for _ in edges],
         }
 
         _bond_df = pd.DataFrame(_bond_df)
 
         return _atom_df, _bond_df
 
-    def _setup_fig(self, atom_df, bond_df):
-        fig = px.scatter_3d(
-            atom_df,
-            x="x",
-            y="y",
-            z="z",
-            color="element_or_resname",
-            color_discrete_map=self.__atom_colors__,
-            opacity=self.opacity,
-            hover_data=[
-                "id",
-                "serial",
-                "parent_serial",
-                "parent_id",
-            ],
-            template="none",
-        )
-        bonds = []
-        for i, row in bond_df.iterrows():
-            a1 = atom_df.loc[row["a"]]
-            a2 = atom_df.loc[row["b"]]
-            new = go.Scatter3d(
-                x=[a1["x"], a2["x"]],
-                y=[a1["y"], a2["y"]],
-                z=[a1["z"], a2["z"]],
-                mode="lines",
-                line=dict(
-                    color=row["bond_color"],
-                    width=row["bond_order"] ** 2,
-                ),
-                opacity=min(1, self.opacity * 2),
-                hoverinfo="skip",
-                showlegend=False,
+    def _setup_fig(self, atom_df, bond_df, draw_atoms=True):
+        fig = go.Figure()
+        if draw_atoms:
+            atom_colors = [
+                self.__atom_colors__.get(value, "black")
+                for value in atom_df["element_or_resname"].tolist()
+            ]
+            atom_hover = [
+                f"{node_id} ({serial})<br>Parent {parent_id} ({parent_serial})"
+                for node_id, serial, parent_serial, parent_id in zip(
+                    atom_df["id"],
+                    atom_df["serial"],
+                    atom_df["parent_serial"],
+                    atom_df["parent_id"],
+                )
+            ]
+            fig.add_trace(
+                go.Scatter3d(
+                    x=atom_df["x"],
+                    y=atom_df["y"],
+                    z=atom_df["z"],
+                    mode="markers",
+                    marker=dict(
+                        color=atom_colors,
+                        size=self.size,
+                        opacity=self.opacity,
+                    ),
+                    text=atom_hover,
+                    hovertemplate="%{text}<extra></extra>",
+                    showlegend=False,
+                )
             )
-            bonds.append(new)
-        fig.add_traces(bonds)
 
+        fig.add_traces(self._build_bond_traces(atom_df, bond_df, opacity=self.opacity))
         return fig
 
     def rainbow(self):
