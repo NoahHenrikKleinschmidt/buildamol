@@ -5,7 +5,6 @@ Hydrogen-related and protonation-related inference utilities.
 from typing import Union
 
 import numpy as np
-from scipy.spatial.distance import cdist
 
 import buildamol.base_classes as base_classes
 import buildamol.structural.base as base
@@ -81,11 +80,12 @@ class Hydrogenator:
 
             if free_slots > 0:
                 neighbors = set(j for i in bonds for j in i if j != atom)
+                bond_order = max((i.order for i in bonds), default=1)
                 self._add_hydrogens(
                     atom=atom,
                     neighbors=neighbors,
                     free_slots=free_slots,
-                    bond_order=max(i.order for i in bonds),
+                    bond_order=bond_order,
                     connectivity=connectivity,
                 )
 
@@ -104,11 +104,12 @@ class Hydrogenator:
         free_slots = connectivity - sum(b.order for b in bonds) - (atom.pqr_charge or 0)
         if free_slots > 0:
             neighbors = set(j for i in bonds for j in i if j != atom)
+            bond_order = max((i.order for i in bonds), default=1)
             self._add_hydrogens(
                 atom=atom,
                 neighbors=neighbors,
                 free_slots=free_slots,
-                bond_order=max(i.order for i in bonds),
+                bond_order=bond_order,
                 connectivity=connectivity,
             )
 
@@ -144,15 +145,17 @@ class Hydrogenator:
         out = _geometry.make_coords(atom, *_neighbors, length=self._bond_length)[
             len(_neighbors) :
         ]
+        out = np.asarray(out, dtype=float)
 
         labels = AutoLabel.hydrogen_neighbors(atom)
         if free_slots > 1:
             labels.pop(0)
 
-        if len(out) > 1:
-            neighbor_coords = np.array([i.coord for i in neighbors])
-            d = cdist(out, neighbor_coords)
-            out = [out[i] for i in range(len(out)) if not np.any(d[i] < 0.95)]
+        if len(out) > 1 and len(neighbors) > 0:
+            neighbor_coords = np.asarray([i.coord for i in neighbors], dtype=float)
+            d2 = np.sum((out[:, None, :] - neighbor_coords[None, :, :]) ** 2, axis=2)
+            keep = np.logical_not(np.any(d2 < 0.95**2, axis=1))
+            out = out[keep]
 
         if len(out) < free_slots:
             raise ValueError(
