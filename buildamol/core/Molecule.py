@@ -1746,11 +1746,7 @@ class Molecule(entity.BaseEntity):
             The Molecule object
         """
         obj = structural.read_smiles(smiles, add_hydrogens)
-        if structural.smiles.use_rdkit:
-            new = cls.from_rdkit(obj, id=id)
-        elif structural.smiles.use_openbabel:
-            obj.title = id
-            new = cls.from_pybel(obj)
+        new = cls.from_rdkit(obj, id=id)
         if root_atom:
             new.set_root(root_atom)
         if id is not None:
