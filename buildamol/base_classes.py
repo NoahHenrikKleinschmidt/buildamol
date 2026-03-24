@@ -64,7 +64,15 @@ __global_counters__ = {
 __global_element_counters__ = {}
 
 
-class ID:
+class BuildAMolDataObject:
+    """
+    The foundation for all data-containing objects in BuildAMol.
+    """
+
+    pass
+
+
+class ID(BuildAMolDataObject):
     """
     The base class for BuildAMol's internal object identification.
     All classes that inheret from this class will be recorded as unique objects.

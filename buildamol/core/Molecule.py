@@ -733,7 +733,7 @@ def molecule(mol=None) -> "Molecule":
     if (
         isinstance(mol, bio.Structure.Structure)
         or isinstance(mol, entity.base_classes.Structure)
-        or isinstance(mol, entity.base_classes.BuildaMolDataObject)
+        or isinstance(mol, entity.base_classes.BuildAMolDataObject)
     ):
         return Molecule(mol)
     elif isinstance(mol, Molecule):
@@ -2697,7 +2697,7 @@ def _wrap_into_bam_structure_if_necessary(maybe_structure):
     which gets then wrapped into a full Structure
     """
     b = entity.base_classes
-    if not isinstance(maybe_structure, b.BuildaMolDataObject):
+    if not isinstance(maybe_structure, b.BuildAMolDataObject):
         if not hasattr(maybe_structure, "level"):
             return maybe_structure
         level = maybe_structure.level
