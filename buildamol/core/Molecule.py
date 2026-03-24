@@ -730,8 +730,10 @@ def molecule(mol=None) -> "Molecule":
     if mol is None:
         return Molecule.empty()
 
-    if isinstance(mol, bio.Structure.Structure) or isinstance(
-        mol, entity.base_classes.Structure
+    if (
+        isinstance(mol, bio.Structure.Structure)
+        or isinstance(mol, entity.base_classes.Structure)
+        or isinstance(mol, entity.base_classes.BuildaMolDataObject)
     ):
         return Molecule(mol)
     elif isinstance(mol, Molecule):
@@ -1571,6 +1573,7 @@ class Molecule(entity.BaseEntity):
         model: int = 0,
         chain: str = None,
     ):
+        structure = _wrap_into_bam_structure_if_necessary(structure)
         super().__init__(structure, model)
 
         if not chain or len(self._model.child_list) == 1:
@@ -2686,6 +2689,66 @@ def _molecule_from_pubchem(id, comp):
     #         new.add_bond(a, b)
 
     # return new
+
+
+def _wrap_into_bam_structure_if_necessary(maybe_structure):
+    """
+    Checks if a lower-level data container is provided (e.g. a residue),
+    which gets then wrapped into a full Structure
+    """
+    b = entity.base_classes
+    if not isinstance(maybe_structure, b.BuildaMolDataObject):
+        if not hasattr(maybe_structure, "level"):
+            return maybe_structure
+        level = maybe_structure.level
+        if level == "A":
+            maybe_structure = b.Atom.from_biopython(maybe_structure)
+        elif level == "R":
+            maybe_structure = b.Residue.from_biopython(maybe_structure)
+        elif level == "C":
+            maybe_structure = b.Chain.from_biopython(maybe_structure)
+        elif level == "M":
+            maybe_structure = b.Model.from_biopython(maybe_structure)
+        elif level == "S":
+            maybe_structure = b.Structure.from_biopython(maybe_structure)
+        else:
+            return maybe_structure
+
+    if not hasattr(maybe_structure, "level"):
+        return maybe_structure
+
+    if maybe_structure.level == "S":
+        return maybe_structure
+    elif maybe_structure.level == "M":
+        struct = b.Structure(maybe_structure.id)
+        struct.add(maybe_structure)
+        return struct
+    elif maybe_structure.level == "C":
+        model = b.Model(0)
+        model.add(maybe_structure)
+        struct = b.Structure(maybe_structure.id)
+        struct.add(model)
+        return struct
+    elif maybe_structure.level == "R":
+        chain = b.Chain("A")
+        chain.add(maybe_structure)
+        model = b.Model(0)
+        model.add(chain)
+        struct = b.Structure(maybe_structure.id)
+        struct.add(model)
+        return struct
+    elif maybe_structure.level == "A":
+        residue = b.Residue("UNK", " ", 1)
+        residue.add(maybe_structure)
+        chain = b.Chain("A")
+        chain.add(residue)
+        model = b.Model(0)
+        model.add(chain)
+        struct = b.Structure(maybe_structure.id)
+        struct.add(model)
+        return struct
+    else:
+        return maybe_structure
 
 
 if __name__ == "__main__":

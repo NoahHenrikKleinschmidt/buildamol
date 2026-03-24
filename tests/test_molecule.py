@@ -3140,3 +3140,34 @@ def test_default_getitem():
         assert False, "Should have raised an error"
     except:
         pass
+
+
+def test_mol_from_lower_units():
+
+    a = bam.Atom("C1", coord=[0, 0, 0])
+    mola = bam.Molecule(a)
+    assert mola.get_atom("C1") is a
+
+    r = bam.Residue("A")
+    r.add(a)
+    molb = bam.Molecule(r)
+    assert molb.get_atom("C1") is a
+    assert molb.get_residue("A") is r
+
+    c = bam.Chain("B")
+    c.add(r)
+    molc = bam.Molecule(c)
+    assert molc.get_atom("C1") is a
+    assert molc.get_residue("A") is r
+    assert molc.get_chain("B") is c
+
+    m = bam.Model(0)
+    m.add(c)
+    mold = bam.Molecule(m)
+    assert mold.get_atom("C1") is a
+    assert mold.get_residue("A") is r
+    assert mold.get_chain("B") is c
+    assert mold.get_model(0) is m
+
+    mol = bam.molecule(r)
+    assert mol.get_atom("C1") is a
