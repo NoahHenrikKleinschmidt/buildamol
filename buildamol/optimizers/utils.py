@@ -26,14 +26,16 @@ __all__ = [
 
 
 def apply_rotatron_solution(
-    sol: np.ndarray, env: "Rotatron.Rotatron", mol: "Molecule.Molecule"
+    sol: Union[np.ndarray, "jax.Array"],
+    env: "Rotatron.Rotatron",
+    mol: "Molecule.Molecule",
 ) -> "Molecule.Molecule":
     """
     Apply the solution of a Rotatron environment to a Molecule object.
 
     Parameters
     ----------
-    sol : np.ndarray
+    sol : np.ndarray or jax.Array
         The solution of rotational angles in radians to apply
     env : Rotatron
         The environment used to find the solution
@@ -45,16 +47,20 @@ def apply_rotatron_solution(
     obj
         The object with the solution applied
     """
+    # Convert JAX arrays to NumPy
+    if hasattr(sol, "__array__") and not isinstance(sol, np.ndarray):
+        sol = np.asarray(sol)
+
     bonds = env.rotatable_edges
 
-    if not len(sol) == len(bonds):
+    if not sol.shape[0] == len(bonds):
         raise ValueError(
-            f"Solution and environment do not match (size mismatch): {len(sol)} != {len(bonds)}"
+            f"Solution and environment do not match (size mismatch): {sol.shape[0]} != {len(bonds)}"
         )
 
     mol._AtomGraph.clear_cache()
     for i, bond in enumerate(bonds):
-        angle = sol[i]
+        angle = float(sol[i])
         # used to be full_id to account for the fact that the bond might
         # come from another molecule. But there is no reason to assume someone
         # would apply the solutions of one molecule to another.
@@ -73,7 +79,7 @@ def apply_rotatron_solution(
 
 
 def apply_translatron_solution(
-    sol: np.ndarray,
+    sol: Union[np.ndarray, "jax.Array"],
     env: "Translatron.Translatron",
     mol: "Molecule.Molecule",
 ):
@@ -82,17 +88,21 @@ def apply_translatron_solution(
 
     Parameters
     ----------
-    sol : np.ndarray
+    sol : np.ndarray or jax.Array
         The solution of translational vectors to apply
     env : Translatron
         The environment used to find the solution
     mol : Molecule
         The molecule to apply the solution to
     """
-    mol.rotate(sol[3], "x", angle_is_degrees=False)
-    mol.rotate(sol[4], "y", angle_is_degrees=False)
-    mol.rotate(sol[5], "z", angle_is_degrees=False)
-    mol.move(sol[:3])
+    # Convert JAX arrays to NumPy
+    if hasattr(sol, "__array__") and not isinstance(sol, np.ndarray):
+        sol = np.asarray(sol)
+
+    mol.rotate(float(sol[3]), "x", angle_is_degrees=False)
+    mol.rotate(float(sol[4]), "y", angle_is_degrees=False)
+    mol.rotate(float(sol[5]), "z", angle_is_degrees=False)
+    mol.move(np.asarray(sol[:3]))
     return mol
 
 

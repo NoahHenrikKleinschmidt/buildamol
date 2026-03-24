@@ -4,6 +4,7 @@ Tests for the optimizers
 
 import tests.base as base
 import numpy as np
+import pytest
 import buildamol as bam
 import buildamol.optimizers as opt
 
@@ -86,6 +87,7 @@ def test_forcefield_rotatron_resgraph():
     env.reset()
 
 
+@pytest.mark.swarm
 def test_swarm():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -101,6 +103,7 @@ def test_swarm():
     assert _eval is not None
 
 
+@pytest.mark.slow
 def test_genetic():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -116,6 +119,7 @@ def test_genetic():
     assert _eval is not None
 
 
+@pytest.mark.slow
 def test_anneal():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -131,6 +135,72 @@ def test_anneal():
     assert _eval is not None
 
 
+# =====================================================================================
+# BACKEND-SPECIFIC TESTS
+# =====================================================================================
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba", "jax"])
+@pytest.mark.swarm
+def test_swarm_explicit_backend(backend):
+    """Test swarm optimization with explicit backend parameter."""
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.DistanceRotatron(g, edges)
+    assert env is not None
+
+    sol, _eval = opt.swarm_optimize(env, n_particles=3, max_steps=3, backend=backend)
+    assert sol is not None
+    assert _eval is not None
+    assert isinstance(sol, np.ndarray)
+    assert isinstance(_eval, (float, np.floating))
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba", "jax"])
+@pytest.mark.slow
+def test_anneal_explicit_backend(backend):
+    """Test anneal optimization with explicit backend parameter."""
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.DistanceRotatron(g, edges)
+    assert env is not None
+
+    sol, _eval = opt.anneal_optimize(env, n_particles=3, max_steps=3, backend=backend)
+    assert sol is not None
+    assert _eval is not None
+    assert isinstance(sol, np.ndarray)
+    assert isinstance(_eval, (float, np.floating))
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba", "jax"])
+@pytest.mark.slow
+def test_genetic_explicit_backend(backend):
+    """Test genetic optimization with explicit backend parameter."""
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.DistanceRotatron(g, edges, backend=backend)
+    assert env is not None
+
+    sol, _eval = opt.genetic_optimize(env, max_generations=3, backend=backend)
+    assert sol is not None
+    assert _eval is not None
+    assert isinstance(sol, np.ndarray)
+    assert isinstance(_eval, (float, np.floating))
+
+
+@pytest.mark.slow
 def test_scipy():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -176,6 +246,8 @@ def test_apply():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.swarm
 def test_optim_distance_swarm():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -194,6 +266,8 @@ def test_optim_distance_swarm():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_distance_anneal():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -212,6 +286,8 @@ def test_optim_distance_anneal():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_distance_genetic():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -230,6 +306,8 @@ def test_optim_distance_genetic():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_distance_scipy():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -248,6 +326,8 @@ def test_optim_distance_scipy():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.swarm
 def test_optim_overlap_swarm():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -266,6 +346,8 @@ def test_optim_overlap_swarm():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_overlap_anneal():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -284,6 +366,8 @@ def test_optim_overlap_anneal():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_overlap_genetic():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -302,6 +386,8 @@ def test_optim_overlap_genetic():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_overlap_scipy():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -320,6 +406,8 @@ def test_optim_overlap_scipy():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.swarm
 def test_optim_forcefield_swarm():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -338,6 +426,8 @@ def test_optim_forcefield_swarm():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_forcefield_anneal():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -356,6 +446,8 @@ def test_optim_forcefield_anneal():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_forcefield_genetic():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -374,6 +466,8 @@ def test_optim_forcefield_genetic():
         out.show()
 
 
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_forcefield_scipy():
     mol = bam.read_pdb(base.MAN9PDB)
     mol.infer_bonds(restrict_residues=False)
@@ -392,6 +486,7 @@ def test_optim_forcefield_scipy():
         out.show()
 
 
+@pytest.mark.numba
 def test_use_numba_setting():
     assert not bam.utils.auxiliary.USE_NUMBA
     assert not bam.utils.auxiliary.USE_ALL_NUMBA
@@ -414,72 +509,108 @@ def test_use_numba_setting():
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.swarm
 def test_optim_numba_distance_swarm():
     bam.use_all_numba()
     test_optim_distance_swarm()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_distance_anneal():
     bam.use_all_numba()
     test_optim_distance_anneal()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_distance_genetic():
     bam.use_all_numba()
     test_optim_distance_genetic()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_distance_scipy():
     bam.use_all_numba()
     test_optim_distance_scipy()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.swarm
 def test_optim_numba_overlap_swarm():
     bam.use_all_numba()
     test_optim_overlap_swarm()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_overlap_anneal():
     bam.use_all_numba()
     test_optim_overlap_anneal()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_overlap_genetic():
     bam.use_all_numba()
     test_optim_overlap_genetic()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_overlap_scipy():
     bam.use_all_numba()
     test_optim_overlap_scipy()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.swarm
 def test_optim_numba_forcefield_swarm():
     bam.use_all_numba()
     test_optim_forcefield_swarm()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_forcefield_anneal():
     bam.use_all_numba()
     test_optim_forcefield_anneal()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_forcefield_genetic():
     bam.use_all_numba()
     test_optim_forcefield_genetic()
     bam.dont_use_numba()
 
 
+@pytest.mark.numba
+@pytest.mark.optim
+@pytest.mark.slow
 def test_optim_numba_forcefield_scipy():
     bam.use_all_numba()
     test_optim_forcefield_scipy()
@@ -569,9 +700,159 @@ def test_translatron_optimize():
         v.show()
 
 
+def test_constraint_rotatron_step():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    base_env = opt.DistanceRotatron(g, edges)
+
+    def constraint(rotatron, state, **kwargs):
+        ref = kwargs["ref"]
+        coords = np.asarray(state)
+        return float(np.mean((coords - ref) ** 2))
+
+    def finisher(rotatron, state, **kwargs):
+        return constraint(rotatron, state, **kwargs) < 1e-2
+
+    wrapped = opt.ConstraintRotatron(
+        base_env,
+        constraint,
+        finisher,
+        ref=base_env._backup_state.copy(),
+    )
+
+    action = wrapped.action_space.sample()
+    state, score, done, info = wrapped.step(action)
+    assert state is not None
+    assert np.isfinite(score)
+    assert isinstance(done, bool)
+    assert isinstance(info, dict)
+    wrapped.reset()
+
+
+@pytest.mark.skipif(not bam.utils.auxiliary.HAS_JAX, reason="JAX not available")
+def test_constraint_rotatron_step_jax_wrapped_env():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    base_env = opt.DistanceRotatron(g, edges, backend="jax")
+
+    def constraint(rotatron, state, **kwargs):
+        ref = kwargs["ref"]
+        coords = np.asarray(state)
+        return float(np.mean((coords - ref) ** 2))
+
+    wrapped = opt.ConstraintRotatron(
+        base_env,
+        constraint,
+        ref=base_env._backup_state.copy(),
+    )
+
+    action = wrapped.action_space.sample()
+    state, score, done, info = wrapped.step(action)
+    assert state is not None
+    assert np.isfinite(score)
+    assert isinstance(done, bool)
+    assert isinstance(info, dict)
+    wrapped.reset()
+
+
 def test_apply_inplace():
     mol = bam.read_smiles("C1=CC(=O)C(CCCOC)CCC1")
     mol.autolabel()
     mol.optimize()
     if base.ALLOW_VISUAL:
         mol.show()
+
+
+# ==== JAX TESTS ====
+
+
+@pytest.mark.skipif(not bam.utils.auxiliary.HAS_JAX, reason="JAX not available")
+def test_distance_rotatron_jax():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.DistanceRotatron(g, edges, unfold=3, pushback=10, backend="jax")
+    assert env is not None
+    env.step(env.action_space.sample())
+    env.reset()
+
+
+@pytest.mark.skipif(not bam.utils.auxiliary.HAS_JAX, reason="JAX not available")
+def test_distance_rotatron_resgraph_jax():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_residue_graph(detailed=True)
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.DistanceRotatron(g, edges, unfold=3, pushback=10, backend="jax")
+    assert env is not None
+    env.step(env.action_space.sample())
+    env.reset()
+
+
+@pytest.mark.skipif(not bam.utils.auxiliary.HAS_JAX, reason="JAX not available")
+def test_overlap_rotatron_jax():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.OverlapRotatron(g, edges, backend="jax")
+    assert env is not None
+    env.step(env.action_space.sample())
+    env.reset()
+
+
+@pytest.mark.skipif(not bam.utils.auxiliary.HAS_JAX, reason="JAX not available")
+def test_overlap_rotatron_resgraph_jax():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_residue_graph(detailed=True)
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.OverlapRotatron(g, edges, backend="jax")
+    assert env is not None
+    env.step(env.action_space.sample())
+    env.reset()
+
+
+@pytest.mark.skipif(not bam.utils.auxiliary.HAS_JAX, reason="JAX not available")
+def test_forcefield_rotatron_jax():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_atom_graph()
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.ForceFieldRotatron(g, edges, backend="jax")
+    assert env is not None
+    env.step(env.action_space.sample())
+    env.reset()
+
+
+@pytest.mark.skipif(not bam.utils.auxiliary.HAS_JAX, reason="JAX not available")
+def test_forcefield_rotatron_resgraph_jax():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    assert mol is not None
+
+    g = mol.get_residue_graph(detailed=True)
+    edges = g.find_rotatable_edges(g.central_node)
+    env = opt.ForceFieldRotatron(g, edges, backend="jax")
+    assert env is not None
+    env.step(env.action_space.sample())
+    env.reset()

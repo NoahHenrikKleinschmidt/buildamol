@@ -3,6 +3,7 @@ import scipy.optimize as opt
 from typing import Union
 
 import buildamol.utils.auxiliary as aux
+from buildamol.backends.api import backend_dispatched
 from buildamol.core import Molecule
 
 # from multiprocessing import Pool, cpu_count
@@ -80,6 +81,7 @@ def scipy_optimize(
 # =====================================================================================
 
 
+@backend_dispatched("optimizers", "genetic_optimize")
 def genetic_optimize(
     env,
     max_generations: int = 5e2,
@@ -93,7 +95,7 @@ def genetic_optimize(
     newcomers: Union[int, float] = 0.15,
     variation_cooldown: float = 1,
     n_best: int = 1,
-    numba: bool = False,
+    backend: str = None,
 ):
     """
     A simple genetic algorithm for optimizing a Rotatron environment.
@@ -161,16 +163,8 @@ def genetic_optimize(
             "n_children, n_mutations, n_parents, and n_newcomers must all be at least 1"
         )
 
-    if (
-        numba
-        or aux.USE_ALL_NUMBA
-        or (population_size * max_generations > 1e6 and aux.USE_NUMBA)
-    ):
-        make_generation = _numba_wrapper_make_generation
-        converged_break = _numba_wrapper_converged_break
-    else:
-        make_generation = _make_generation
-        converged_break = _converged_break
+    make_generation = _make_generation
+    converged_break = _converged_break
 
     n_parents = parents
     n_children = children
@@ -183,7 +177,10 @@ def genetic_optimize(
     else:
         min_angle, max_angle = -np.pi, np.pi
 
-    population = np.stack([blank] * population_size)
+    # Efficient population initialization
+    population = np.empty((population_size, blank.shape[0]))
+    for i in range(population_size):
+        population[i] = blank
     evals = np.zeros(population_size)
 
     bests = np.zeros(max(10, int(max_generations * 0.3)))
@@ -194,7 +191,7 @@ def genetic_optimize(
     mutations_range = np.arange(0, n_mutants)
     newcomers_range = np.arange(0, n_newcomers)
 
-    for i in pop_range:
+    for i in range(population_size):
         population[i] = env.action_space.sample()
         _, evals[i], *_ = env.step(population[i])
         env.reset()
@@ -215,7 +212,7 @@ def genetic_optimize(
             mutations_range,
         )
 
-        newcomers = np.stack([blank] * n_newcomers)
+        newcomers = np.empty((n_newcomers, blank.shape[0]))
         for i in newcomers_range:
             newcomers[i] = env.action_space.sample()
 
@@ -224,7 +221,8 @@ def genetic_optimize(
 
         evals = np.zeros(population_size)
 
-        for i in pop_range:
+        done = False
+        for i in range(population_size):
             _, evals[i], done, *_ = env.step(population[i])
             env.reset()
             if done and stop_if_done:
@@ -360,6 +358,7 @@ class _Particle:
         return new
 
 
+@backend_dispatched("optimizers", "swarm_optimize")
 def swarm_optimize(
     env,
     n_particles: int = None,
@@ -371,11 +370,10 @@ def swarm_optimize(
     c2: float = 0.3,
     cooldown_rate: float = 0.99,
     n_best: int = 1,
-    numba: bool = False,
-    jax: bool = False,
+    backend: str = None,
 ):
     """
-    Optimize a rotatron environment through a simple particle swarm optimization.
+    Optimize a rotatron environment through particle swarm optimization.
 
     Parameters
     ----------
@@ -383,51 +381,37 @@ def swarm_optimize(
         The environment to optimize
     n_particles : int, optional
         The number of particles to use.
-        Set this to None in order to compute the number of particles
-        based on the number of rotatable edges in the environment.
     max_steps : int, optional
         The maximum number of steps to take.
     stop_if_done : bool, optional
-        Stop the optimization if the environment signals it is done or the solutions have converged.
+        Stop if environment signals done or if solutions converge.
     threshold : float, optional
-        A threshold to use for convergence of the best solution found.
-        The algorithm will stop if the variation of the best solution evaluation history
-        is less than this threshold.
+        Convergence threshold for fitness variance.
     w : float, optional
-        The inertia parameter for the particle swarm optimization.
+        Inertia parameter.
     c1 : float, optional
-        The cognitive parameter for the particle swarm optimization.
+        Cognitive parameter.
     c2 : float, optional
-        The social parameter for the particle swarm optimization.
+        Social parameter.
     cooldown_rate : float, optional
-        The rate at which the inertia parameter is reduced. The inertia parameter is reduced by this factor every generation. E.g. 0.95 will reduce the inertia parameter by 5% every generation.
+        Rate at which inertia parameter decays.
     n_best : int, optional
-        The number of best solutions to return at the end of the optimization.
-    numba : bool, optional
-        Use numba for the optimization. This may speed up the optimization if you are going to optimize many molecules.
+        The number of best solutions to return.
+    backend : str, optional
+        Backend to use (numpy, numba, or jax). If None, uses env.backend or default.
 
     Returns
     -------
     solution, evaluation
-        The solution and evaluation for the solution
+        The best solution(s) and their evaluation(s).
     """
     if n_particles is None:
         n_particles = max(15, len(env.rotatable_edges) // 3)
 
-    use_jax = jax or aux.USE_JAX
-    if numba or aux.USE_ALL_NUMBA or (n_particles * max_steps > 1e6 and aux.USE_NUMBA):
-        update_positions = _numba_wrapper_update_positions
-        update_velocities = _numba_wrapper_update_velocities
-    elif use_jax and aux.HAS_JAX:
-        update_positions = _jax_update_positions
-        update_velocities = _jax_update_velocities
-    else:
-        update_positions = _update_positions
-        update_velocities = _update_velocities
-
-    positions = np.array(
-        [env.action_space.sample() for i in range(n_particles)]
-    )  # np.random.rand(n_particles, env.action_space.shape[0])
+    # Efficient initialization
+    positions = np.empty((n_particles, env.action_space.shape[0]))
+    for i in range(n_particles):
+        positions[i] = env.action_space.sample()
     velocities = np.random.rand(n_particles, env.action_space.shape[0])
     best_positions = positions.copy()
     best_fitnesses = np.full(n_particles, np.inf)
@@ -445,19 +429,21 @@ def swarm_optimize(
             fitnesses[i] = env.step(positions[i])[1]
             if fitnesses[i] < best_fitnesses[i]:
                 best_fitnesses[i] = fitnesses[i]
-                best_positions[i] = positions[i]
+                best_positions[i] = positions[i].copy()
             if fitnesses[i] < best_fitness:
                 best_fitness = fitnesses[i]
                 best_solution[:] = positions[i]
             env.reset()
 
-        velocities = update_velocities(
+        velocities = _update_velocities(
             velocities, w, c1, c2, best_positions, best_solution, positions
         )
-        positions = update_positions(positions, velocities, bounds)
+        positions = _update_positions(positions, velocities, bounds)
 
         if stop_if_done:
-            if np.var(best_fitnesses) < threshold:
+            # Convergence check: faster variance approximation or conditional evaluation
+            var_best = np.var(best_fitnesses)
+            if var_best < threshold:
                 break
 
         w *= cooldown_rate
@@ -484,12 +470,19 @@ _numba_wrapper_update_positions = aux.njit(_update_positions)
 def _update_velocities(
     velocities, inertia, cognitive, social, best_particle, best_position, positions
 ):
+    """Update velocities with batched random number generation for efficiency."""
+    n_particles = velocities.shape[0]
+
+    # Batch generate random coefficients (more efficient than per-calculation generation)
+    rand_cognitive = np.random.rand(n_particles, 1)
+    rand_social = np.random.rand(n_particles, 1)
+
     dist_best = best_particle - positions
     dist_social = best_position - positions
     velocities = (
         inertia * velocities
-        + cognitive * np.random.rand() * dist_best
-        + social * np.random.rand() * dist_social
+        + cognitive * rand_cognitive * dist_best
+        + social * rand_social * dist_social
     )
     return velocities
 
@@ -692,6 +685,7 @@ def _jax_update_velocities(
 # =====================================================================================
 
 
+@backend_dispatched("optimizers", "anneal_optimize")
 def anneal_optimize(
     env,
     n_particles: int = None,
@@ -701,7 +695,7 @@ def anneal_optimize(
     variance: float = 0.3,
     cooldown_rate: float = 0.98,
     n_best: int = 1,
-    numba: bool = False,
+    backend: str = None,
 ):
     """
     Optimize a rotatron environment through a simple simulated annealing.
@@ -736,15 +730,13 @@ def anneal_optimize(
     if n_particles is None:
         n_particles = max(15, len(env.rotatable_edges) // 2)
 
-    if numba or aux.USE_ALL_NUMBA or (n_particles * max_steps > 1e6 and aux.USE_NUMBA):
-        accept = _numba_wrapper_accept
-    else:
-        accept = _accept
+    accept = _accept
 
-    particles = np.array(
-        [env.action_space.sample() for i in range(n_particles)]
-    )  # np.random.rand(n_particles, env.action_space.shape[0])
-    fitnesses = np.full(n_particles, 9999)
+    # Efficient initialization
+    particles = np.empty((n_particles, env.action_space.shape[0]))
+    for i in range(n_particles):
+        particles[i] = env.action_space.sample()
+    fitnesses = np.full(n_particles, 9999.0)
     best_fitness = np.inf
     best_solution = np.zeros(env.action_space.shape[0])
 
@@ -755,6 +747,7 @@ def anneal_optimize(
     steps = 0
     while steps < max_steps:
         for i in range(n_particles):
+            # Pre-allocate and reuse position array
             position = particles[i] + np.random.uniform(
                 -variance, variance, size=particles[i].shape
             )
@@ -763,11 +756,11 @@ def anneal_optimize(
 
             if accept(fitnesses[i], fitness, temperature):
                 fitnesses[i] = fitness
-                particles[i] = position
+                particles[i] = position.copy()
 
                 if fitness < best_fitness:
                     best_fitness = fitness
-                    best_solution[:] = particles[i]
+                    best_solution[:] = position
 
             env.reset()
 

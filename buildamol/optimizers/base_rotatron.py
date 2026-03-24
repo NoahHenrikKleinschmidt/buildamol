@@ -44,6 +44,7 @@ class Rotatron(gym.Env):
         n_processes: int = 1,
         setup: bool = True,
         numba: bool = False,
+        backend: str = None,
         **kwargs,
     ):
         self.graph = graph
@@ -73,14 +74,21 @@ class Rotatron(gym.Env):
             [[self.node_dict[e[0]], self.node_dict[e[1]]] for e in self.rotatable_edges]
         )
 
-        if (
-            numba
-            or aux.USE_ALL_NUMBA
-            or (self.n_edges * self.n_nodes > 10000 and aux.USE_NUMBA)
-        ):
-            self._rotate = self._numba_rotate
-        else:
-            self._rotate = self._normal_rotate
+        if backend is None:
+            if (
+                numba
+                or aux.USE_ALL_NUMBA
+                or (self.n_edges * self.n_nodes > 10000 and aux.USE_NUMBA)
+            ):
+                backend = "numba"
+            else:
+                backend = aux.resolve_compute_backend(None)
+
+        self.backend = aux.resolve_compute_backend(backend)
+        self._backend_contexts = {}
+        self._backend_states = {}
+        self._setup_backend_contexts()
+        self.set_backend(self.backend)
 
     def eval(self, state):
         """
@@ -98,7 +106,7 @@ class Rotatron(gym.Env):
         """
         return np.inf
 
-    def step(self, action):
+    def step(self, action, backend: str = None):
         """
         Take a step in the environment
 
@@ -106,6 +114,9 @@ class Rotatron(gym.Env):
         ----------
         action : np.ndarray
             The action to take
+        backend : str, optional
+            The backend to use for computation. If None, uses the
+            environment's configured backend.
 
         Returns
         -------
@@ -118,17 +129,52 @@ class Rotatron(gym.Env):
         dict
             Additional information
         """
+        if backend is None:
+            return self._step_handle(action)
+
+        step_handle = self._resolve_backend_handle("step", backend)
+        return step_handle(action)
+
+    def _step_numpy(self, action):
+        action = np.asarray(action)
         new_state = self.state
         for edge in range(self.n_edges):
-            new_state = self._rotate(
-                new_state,
-                edge,
-                action[edge],
-            )
+            new_state = self._normal_rotate(new_state, edge, action[edge])
 
+        self._backend_states["numpy"] = new_state
         e = self.eval(new_state)
         done = self.is_done(new_state)
         return new_state, e, done, {}
+
+    def _step_numba(self, action):
+        action = np.asarray(action)
+        new_state = self.state
+        for edge in range(self.n_edges):
+            new_state = self._numba_rotate(new_state, edge, action[edge])
+
+        self._backend_states["numpy"] = new_state
+        e = self.eval(new_state)
+        done = self.is_done(new_state)
+        return new_state, e, done, {}
+
+    def _step_jax(self, action):
+        context = self._get_backend_context("jax")
+        state = self._backend_states.get("jax", None)
+        if state is None:
+            state = self.to_backend_state("jax", self.state, cache=True)
+
+        action_j = self.to_backend_state("jax", action, cache=False)
+        for edge in range(self.n_edges):
+            state = self._jax_rotate(state, edge, action_j[edge], context)
+
+        self._backend_states["jax"] = state
+
+        # Current environment eval/is_done implementations are NumPy-first.
+        # Convert explicitly here until backend-native eval paths are implemented.
+        eval_state = self.to_numpy_state(state)
+        e = self.eval(eval_state)
+        done = self.is_done(eval_state)
+        return state, e, done, {}
 
     def is_done(self, state):
         """
@@ -151,6 +197,13 @@ class Rotatron(gym.Env):
         Reset the environment
         """
         self.state[:, :] = self._backup_state
+        self._backend_states["numpy"] = self.state
+        for _backend in list(self._backend_states.keys()):
+            if _backend == "numpy":
+                continue
+            self._backend_states[_backend] = self.to_backend_state(
+                _backend, self._backup_state, cache=False
+            )
 
     def blank(self):
         """
@@ -163,6 +216,127 @@ class Rotatron(gym.Env):
         Make a deep copy of the environment
         """
         return deepcopy(self)
+
+    def _setup_backend_contexts(self):
+        """
+        Set up backend contexts and cached backend state containers.
+        """
+        self._backend_contexts["numpy"] = {
+            "edge_masks": self.edge_masks,
+            "edge_lengths": self.edge_lengths,
+            "edge_node_coords": self._edge_node_coords,
+        }
+        self._backend_states["numpy"] = self.state
+
+    def _resolve_backend_handle(self, handle: str, backend: str = None):
+        """
+        Resolve a backend-specific handle.
+
+        For a handle name ``step`` and backend ``jax``, this looks for
+        ``_step_jax``. If missing, it falls back to ``_step_numpy``.
+        """
+        backend = aux.resolve_compute_backend(backend or self.backend)
+        backend_name = f"_{handle}_{backend}"
+        default_name = f"_{handle}_numpy"
+
+        fn = getattr(self, backend_name, None)
+        if fn is not None:
+            return fn
+
+        fn = getattr(self, default_name, None)
+        if fn is not None:
+            return fn
+
+        raise AttributeError(
+            f"No handle found for '{handle}' with backend '{backend}'."
+        )
+
+    def set_backend(self, backend: str = None):
+        """
+        Set the environment backend and bind backend-specific method handles.
+        """
+        self.backend = aux.resolve_compute_backend(backend or self.backend)
+        self._step_handle = self._resolve_backend_handle("step", self.backend)
+        self._rotate = self._resolve_backend_handle("rotate", self.backend)
+        self._state_to_backend_handle = self._resolve_backend_handle(
+            "to_backend_state", self.backend
+        )
+        self._build_context_handle = self._resolve_backend_handle(
+            "build_backend_context", self.backend
+        )
+
+    def _build_backend_context(self, backend: str):
+        """
+        Backward-compatible wrapper for backend context builders.
+        """
+        return self._resolve_backend_handle("build_backend_context", backend)(backend)
+
+    def _build_backend_context_numpy(self, backend: str = "numpy"):
+        """
+        Build a backend-specific immutable context from NumPy source arrays.
+        """
+        return self._backend_contexts["numpy"]
+
+    def _build_backend_context_numba(self, backend: str = "numba"):
+        return self._backend_contexts["numpy"]
+
+    def _build_backend_context_jax(self, backend: str = "jax"):
+        jnp = aux.get_jax_numpy()
+        return {
+            "edge_masks": jnp.asarray(self.edge_masks),
+            "edge_lengths": jnp.asarray(self.edge_lengths),
+            "edge_node_coords": jnp.asarray(self._edge_node_coords),
+        }
+
+    def _get_backend_context(self, backend: str):
+        """
+        Get or lazily initialize a backend context.
+        """
+        backend = aux.resolve_compute_backend(backend)
+        ctx = self._backend_contexts.get(backend, None)
+        if ctx is None:
+            ctx = self._build_backend_context(backend)
+            self._backend_contexts[backend] = ctx
+        return ctx
+
+    def to_backend_state(self, backend: str = None, state=None, cache: bool = True):
+        """
+        Port a NumPy state/action array to a backend-native representation.
+        """
+        backend = aux.resolve_compute_backend(backend or self.backend)
+        if state is None:
+            state = self.state
+
+        out = self._resolve_backend_handle("to_backend_state", backend)(state)
+
+        if cache:
+            self._backend_states[backend] = out
+        return out
+
+    def _to_backend_state_numpy(self, state):
+        return np.asarray(state)
+
+    def _to_backend_state_numba(self, state):
+        return np.asarray(state)
+
+    def _to_backend_state_jax(self, state):
+        jnp = aux.get_jax_numpy()
+        return jnp.asarray(state)
+
+    def to_numpy_state(self, state=None, update_state: bool = False):
+        """
+        Convert a backend-native state back to a NumPy array.
+
+        This is the explicit back-conversion hook intended to be called at the
+        end of optimization runs that used non-NumPy backends.
+        """
+        if state is None:
+            state = self._backend_states.get(self.backend, self.state)
+        out = np.asarray(state)
+        if update_state:
+            self.state[:, :] = out
+            self._backend_states["numpy"] = self.state
+        return out
 
     def _make_state_from_graph(self, graph):
         """
@@ -216,10 +390,10 @@ class Rotatron(gym.Env):
         """
         dists1 = cdist(self.state, self.state)
         for i, angle in enumerate(np.random.random(self.n_edges)):
-            state2 = self._rotate(self.state, i, angle)
+            state2 = self._rotate_numpy(self.state, i, angle)
         dists2 = cdist(state2, state2)
         for i, angle in enumerate(np.random.random(self.n_edges)):
-            state3 = self._rotate(state2, i, angle)
+            state3 = self._rotate_numpy(state2, i, angle)
         dists3 = cdist(state3, state3)
 
         d12 = np.abs(dists1 - dists2) < 1e-4
@@ -288,7 +462,7 @@ class Rotatron(gym.Env):
             ]
         )
 
-    def _normal_rotate(self, state, edx, angle):
+    def _rotate_numpy(self, state, edx, angle):
         if -1e-3 < angle < 1e-3:
             return state
 
@@ -307,7 +481,10 @@ class Rotatron(gym.Env):
         )
         return state
 
-    def _numba_rotate(self, state, edx, angle):
+    # Backward-compatible alias
+    _normal_rotate = _rotate_numpy
+
+    def _rotate_numba(self, state, edx, angle):
         if -1e-3 < angle < 1e-3:
             return state
 
@@ -319,6 +496,35 @@ class Rotatron(gym.Env):
             self.edge_lengths,
             self.edge_masks,
         )
+
+    # Backward-compatible alias
+    _numba_rotate = _rotate_numba
+
+    def _rotate_jax(self, state, edx, angle, context=None):
+        if -1e-3 < angle < 1e-3:
+            return state
+
+        if context is None:
+            context = self._get_backend_context("jax")
+
+        jnp = aux.get_jax_numpy()
+        mask = context["edge_masks"][edx]
+        adx, bdx = context["edge_node_coords"][edx]
+
+        vec = state[bdx] - state[adx]
+        vec = vec / context["edge_lengths"][edx]
+        ref_coord = state[adx]
+
+        rotated = structural.rotate_coords(
+            state[mask] - ref_coord,
+            angle,
+            vec,
+            backend="jax",
+        )
+        return state.at[mask].set(jnp.asarray(rotated) + ref_coord)
+
+    # Backward-compatible alias
+    _jax_rotate = _rotate_jax
 
     # ============================================================
     # The setup helper functions can be used by other environments
