@@ -3,8 +3,30 @@ Tests to check the conversion of pybel to biopython
 """
 
 import numpy as np
+import pytest
 
-from openbabel import pybel
+try:
+    from openbabel import pybel
+
+    HAS_PYBEL = True
+except ImportError:
+    pybel = None
+    HAS_PYBEL = False
+
+try:
+    import rdkit
+
+    HAS_RDKIT = True
+except ImportError:
+    HAS_RDKIT = False
+
+try:
+    import stk
+
+    HAS_STK = True
+except ImportError:
+    HAS_STK = False
+
 import Bio.PDB as bio
 
 import buildamol as bam
@@ -27,6 +49,7 @@ def test_biopython():
     assert reverse.count_bonds() == 0
 
 
+@pytest.mark.skipif(not HAS_PYBEL, reason="openbabel not installed")
 def test_openbabel():
     mol = bam.read_smiles("C=CC=CC=C")
     assert mol is not None
@@ -49,6 +72,7 @@ def test_openbabel():
     assert sum(1 for bond in reverse.get_bonds() if bond.order == 2) == 3
 
 
+@pytest.mark.skipif(not HAS_RDKIT, reason="rdkit not installed")
 def test_rdkit():
     mol = bam.read_smiles("C1=CC=CC=C1")
     assert mol is not None
@@ -67,6 +91,7 @@ def test_rdkit():
     assert sum(1 for bond in reverse.get_bonds() if bond.order == 2) == 3
 
 
+@pytest.mark.skipif(not HAS_RDKIT, reason="rdkit not installed")
 def test_rdkit2():
     mol = bam.read_pdb(base.GLCPDB)
     mol.infer_bonds()
@@ -98,6 +123,7 @@ def test_rdkit2():
     assert sum(1 for bond in reverse.get_bonds() if bond.order == 2) == 1
 
 
+@pytest.mark.skipif(not HAS_RDKIT, reason="rdkit not installed")
 def test_rdkit3():
     mol = bam.Molecule.from_pubchem("benzoic acid")
     mol.autolabel()
@@ -138,6 +164,7 @@ def test_rdkit3():
         v.show()
 
 
+@pytest.mark.skipif(not HAS_RDKIT, reason="rdkit not installed")
 def test_rdkit4():
     mol = bam.Molecule.from_pubchem("GlcNAc")
     mol.autolabel()
@@ -178,6 +205,7 @@ def test_rdkit4():
         v.show()
 
 
+@pytest.mark.skipif(not HAS_RDKIT, reason="rdkit not installed")
 def test_to_rdkit5():
 
     mol = bam.Molecule.from_pdb(base.EX8PDB)
@@ -215,6 +243,7 @@ def test_to_rdkit5():
         assert bond.GetStereo() == bond_ref.GetStereo()
 
 
+@pytest.mark.skipif(not HAS_STK, reason="stk not installed")
 def test_stk():
     mol = bam.Molecule.from_pdb(base.GLCPDB)
     mol.infer_bonds()
