@@ -31,7 +31,17 @@ BuildAMol integrates the CHARMM force field for pre-defined molecular linkages.
 import buildamol.resources.pdbe_compounds as pdbe_compounds
 import buildamol.resources.pubchem as pubchem
 import buildamol.resources.charmm as charmm
+import buildamol.resources.defaults as defaults
 
 from buildamol.resources.pdbe_compounds import *
 from buildamol.resources.charmm import *
 from buildamol.resources.defaults import *
+
+# Keep CHARMM functionality available under `buildamol.resources.charmm`
+# while avoiding default star-export into the top-level `buildamol` namespace.
+__all__ = [
+	"pdbe_compounds",
+	"pubchem",
+	*pdbe_compounds.__all__,
+	*defaults.__all__,
+]
