@@ -420,7 +420,55 @@ def get_jax_numpy():
     """
     if not HAS_JAX:
         raise ImportError("JAX is not installed.")
-    return lazy_module("jax.numpy")
+    return importlib.import_module("jax.numpy")
+
+
+def resolve_compute_backend(backend: str = None) -> str:
+    """
+    Resolve a compute backend name to one of "numpy", "numba", or "jax".
+
+    This function handles the global backend selection flags and
+    defaults to the appropriate backend based on current settings.
+    It also verifies that requested backends are actually available.
+
+    Parameters
+    ----------
+    backend : str, optional
+        Explicit backend request. If provided, must be one of:
+        "numpy", "numba", or "jax".
+        If omitted, uses the global backend selection flags.
+
+    Returns
+    -------
+    str
+        The resolved backend name, guaranteed to be available.
+        Defaults to "numpy" if requested backend is unavailable.
+
+    Raises
+    ------
+    ValueError
+        If backend name is not recognized.
+    """
+    if backend is not None:
+        backend = str(backend).lower().strip()
+        if backend not in {"numpy", "numba", "jax"}:
+            raise ValueError(
+                f"Unknown backend '{backend}'. Expected one of: numpy, numba, jax."
+            )
+        # Fallback to NumPy if optional backend not available
+        if backend == "jax" and not HAS_JAX:
+            return "numpy"
+        if backend == "numba" and not HAS_NUMBA:
+            return "numpy"
+        return backend
+
+    # Resolve from global flags
+    if USE_ALL_NUMBA or USE_NUMBA:
+        return "numba" if HAS_NUMBA else "numpy"
+    if USE_JAX:
+        return "jax" if HAS_JAX else "numpy"
+
+    return "numpy"
 
 
 class DummyBar:

@@ -92,6 +92,7 @@ class Translatron(gym.Env):
         new_coords = self.apply(action)
         reward = self.constraint_func(self, new_coords)
         done = self.finish_func(self, new_coords)
+        self.state = new_coords
         return new_coords, reward, done, {}
 
     def eval(self, state):

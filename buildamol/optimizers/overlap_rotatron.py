@@ -1,35 +1,284 @@
 """
-The OverlapRotatron is a environment that approximates molecular graphs using multi-variat Gaussian distributions. The overlap between the distributions is used as the evaluation function for the environment.
-Hence, this environment tries to minimize the overlap between distributions in order to find favorable conformations.
+The OverlapRotatron environment optimizes molecular conformations by treating
+rotation units (groups of atoms that move together) as Gaussian-distributed entities
+and minimizing both their overlap and pairwise clashes.
 
-As measure for the overlap between two distributions, the Jensen-Shannon divergence is used by default. Custom overlap functions can be passed to the environment.
+The evaluation score is:
+  score = sum of overlap penalties between all pairs of rotation units
+        + sum of clash penalties for atom pairs below the clash distance threshold
+
+Both terms are minimized, so lower score = better conformation.
 """
 
 import gymnasium as gym
-
 import numpy as np
-from scipy.spatial.distance import cdist
-
-# from sklearn.mixture import GaussianMixture
-# from scipy.stats import entropy
-
+from scipy.spatial.distance import pdist, squareform
 
 import buildamol.optimizers.base_rotatron as Rotatron
 import buildamol.graphs.base_graph as base_graph
 
-__all__ = [
-    "OverlapRotatron",
-    # "likelihood_overlap",
-    # "bhattacharyya_overlap",
-    "jensen_shannon_overlap",
-    "MVN",
-]
+__all__ = ["OverlapRotatron", "MVN", "jensen_shannon_overlap"]
 
+
+class OverlapRotatron(Rotatron.Rotatron):
+    """
+    Gaussian-based molecular conformation optimizer using rotation units.
+
+    Treats each rotation unit (group of atoms moving together) as a Gaussian
+    distribution and minimizes both pairwise overlap and hard steric clashes.
+
+    Parameters
+    ----------
+    graph : AtomGraph or ResidueGraph
+        The molecular graph to optimize
+    rotatable_edges : list
+        Edges that can rotate during optimization
+    gaussian_spread : float
+        Spread parameter for Gaussian fitting (multiplier on covariance)
+    clash_distance : float
+        Distance threshold below which atoms incur a clash penalty
+    clash_weight : float
+        Weight factor for clash penalty term (relative to overlap penalty)
+    overlap_cutoff_distance : float
+        Pairs of rotation units further apart than this are not scored for overlap
+        (set ≤ 0 to disable cutoff)
+    crop_nodes_further_than : float
+        If > 0, crop nodes far from rotatable edges to reduce computation
+    n_processes : int
+        Number of processes for edge mask computation
+    bounds : tuple
+        Rotation angle bounds (min, max)
+    **kwargs
+        Additional backend arguments
+    """
+
+    def __init__(
+        self,
+        graph: "base_graph.BaseGraph",
+        rotatable_edges: list = None,
+        gaussian_spread: float = 1.5,
+        clash_distance: float = 1.2,
+        clash_weight: float = 1.0,
+        overlap_cutoff_distance: float = -1.0,
+        crop_nodes_further_than: float = -1,
+        n_processes: int = 1,
+        bounds: tuple = (-np.pi, np.pi),
+        **kwargs,
+    ):
+        # Store hyperparameters for later reference
+        self.hyperparameters = {
+            "gaussian_spread": gaussian_spread,
+            "clash_distance": clash_distance,
+            "clash_weight": clash_weight,
+            "overlap_cutoff_distance": overlap_cutoff_distance,
+            "crop_nodes_further_than": crop_nodes_further_than,
+            "n_processes": n_processes,
+            "bounds": bounds,
+            **kwargs,
+        }
+
+        self.gaussian_spread = gaussian_spread
+        self.clash_distance = clash_distance
+        self.clash_weight = clash_weight
+        self.use_overlap_cutoff = overlap_cutoff_distance > 0
+        self.overlap_cutoff_distance = overlap_cutoff_distance
+
+        self._bounds_tuple = bounds
+        self.crop_radius = crop_nodes_further_than
+
+        # Get edges and set up base
+        rotatable_edges_clean = self._get_rotatable_edges(graph, rotatable_edges)
+        self.graph = graph
+        self.rotatable_edges = rotatable_edges_clean
+        self.n_nodes = len(self.graph.nodes)
+        self.n_edges = len(self.rotatable_edges)
+
+        # Optional node cropping
+        if self.crop_radius > 0:
+            graph, rotatable_edges_clean = self._setup_helpers_crop_faraway_nodes(
+                self.crop_radius, graph, rotatable_edges_clean
+            )
+
+        self.action_space = gym.spaces.Box(
+            low=bounds[0], high=bounds[1], shape=(len(rotatable_edges_clean),)
+        )
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
+        )
+
+        # Initialize base Rotatron
+        Rotatron.Rotatron.__init__(
+            self, graph, rotatable_edges_clean, n_processes=n_processes, **kwargs
+        )
+
+        # Build rotation units from edge masks
+        self._build_rotation_units()
+
+    def _build_rotation_units(self):
+        """
+        Identify which atoms move together (rotation units).
+
+        Two atoms are in the same unit if rotating any edge affects them identically.
+        This method keeps ALL atoms (including singletons) in the objective.
+        """
+        # Create a matrix: row = edge, col = atom, value = 1 if atom moves with this edge
+        rotation_matrix = self.edge_masks.astype(int)  # (n_edges, n_atoms)
+
+        # Find unique movement patterns
+        # Two atoms are in the same unit if they have identical patterns
+        unique_patterns = {}
+        self.rotation_units = {}
+
+        for atom_idx in range(self.n_nodes):
+            pattern = tuple(rotation_matrix[:, atom_idx])
+            if pattern not in unique_patterns:
+                unit_id = len(self.rotation_units)
+                unique_patterns[pattern] = unit_id
+                self.rotation_units[unit_id] = []
+            else:
+                unit_id = unique_patterns[pattern]
+
+            self.rotation_units[unit_id].append(atom_idx)
+
+        # Convert lists to numpy arrays
+        self.rotation_units = {
+            k: np.array(v, dtype=int) for k, v in self.rotation_units.items()
+        }
+
+    def eval(self, state):
+        """
+        Evaluate conformation quality as sum of overlap + clash penalties.
+
+        Parameters
+        ----------
+        state : np.ndarray, shape (n_atoms, 3)
+            Atomic coordinates
+
+        Returns
+        -------
+        float
+            Total penalty score (lower = better)
+        """
+        score = 0.0
+
+        # --- Overlap penalty ---
+        score += self._compute_overlap_penalty(state)
+
+        # --- Clash penalty ---
+        score += self.clash_weight * self._compute_clash_penalty(state)
+
+        return float(score)
+
+    def _compute_overlap_penalty(self, state):
+        """
+        Compute pairwise Gaussian overlap penalty between all rotation units.
+
+        Uses a simple spread-based measure: penalty increases as units get closer
+        relative to their spread.
+        """
+        unit_ids = sorted(self.rotation_units.keys())
+        gaussians = []
+
+        for unit_id in unit_ids:
+            atom_indices = self.rotation_units[unit_id]
+            unit_coords = state[atom_indices]
+
+            # Fit Gaussian: mean and covariance
+            mean = np.mean(unit_coords, axis=0)
+
+            if len(atom_indices) == 1:
+                # Single atom: zero covariance, use gaussian_spread as default
+                cov = np.eye(3) * (self.gaussian_spread**2)
+            else:
+                cov = np.cov(unit_coords.T)
+
+                # Handle degenerate covariance (linear arrangement)
+                if cov.ndim == 0:
+                    cov = np.eye(3) * (self.gaussian_spread**2)
+                else:
+                    cov = np.atleast_2d(cov)
+                    if cov.shape != (3, 3):
+                        cov = np.eye(3) * (self.gaussian_spread**2)
+                    else:
+                        # Regularize to avoid singular matrices
+                        cov = cov + np.eye(3) * (self.gaussian_spread * 0.1)
+
+            gaussians.append((mean, cov))
+
+        # Compute pairwise overlaps
+        penalty = 0.0
+        for i in range(len(gaussians)):
+            for j in range(i + 1, len(gaussians)):
+                mean_i, cov_i = gaussians[i]
+                mean_j, cov_j = gaussians[j]
+
+                # Distance between centers
+                center_dist = np.linalg.norm(mean_i - mean_j)
+
+                # Skip far pairs if cutoff enabled
+                if (
+                    self.use_overlap_cutoff
+                    and center_dist > self.overlap_cutoff_distance
+                ):
+                    continue
+
+                # Overlap penalty based on distance and spread
+                # Smaller distance → higher penalty
+                # Larger spread → higher penalty tolerance
+                spread_metric = (np.trace(cov_i) + np.trace(cov_j)) / 6.0
+
+                # Penalty increases as distance decreases relative to spread
+                # If center_dist << spread, high penalty
+                overlap_amount = max(0.0, spread_metric - center_dist)
+                penalty += overlap_amount**2
+
+        return penalty
+
+    def _compute_clash_penalty(self, state):
+        """
+        Compute direct steric clash penalty: sum of (clash_dist - actual_dist)^2
+        for all atom pairs closer than clash_distance.
+        """
+        penalty = 0.0
+
+        # Pairwise distances
+        if self.n_nodes < 2:
+            return penalty
+
+        all_pairs = pdist(state)
+        distances = squareform(all_pairs)
+
+        # Find pairs below threshold
+        clashing = distances < self.clash_distance
+        np.fill_diagonal(clashing, False)  # Ignore self-distances
+
+        if np.any(clashing):
+            # Squared penalty for violations
+            violations = self.clash_distance - distances[clashing]
+            penalty = np.sum(violations**2)
+
+        return penalty
+
+    def copy(self):
+        """Make a deep copy of the environment"""
+        from copy import deepcopy
+
+        return deepcopy(self)
+
+    def reset(self, *args, **kwargs):
+        """Reset to initial coordinates"""
+        super().reset(*args, **kwargs)
+
+
+# ============================================================================
+# Utility functions for backward compatibility and advanced features
+# ============================================================================
 
 _MULTIVARIATE_NORMAL = None
 
 
 def _get_multivariate_normal():
+    """Lazy load scipy's multivariate_normal"""
     global _MULTIVARIATE_NORMAL
     if _MULTIVARIATE_NORMAL is None:
         from scipy.stats import multivariate_normal
@@ -46,6 +295,8 @@ def MVN(points, spread: float = 1.0):
     ----------
     points : np.ndarray
         The points to compute the mean and covariance matrix for.
+    spread : float
+        Spread multiplier for covariance
 
     Returns
     -------
@@ -59,66 +310,23 @@ def MVN(points, spread: float = 1.0):
     )
 
 
-# def likelihood_overlap(mvn1, mvn2):
-#     """
-#     Compute the overlap between two gaussians using likelihoods.
+def _kl_divergence(p, q):
+    """
+    Compute the Kullback-Leibler divergence between two distributions.
 
-#     Parameters
-#     ----------
-#     mvn1, mvn2 : scipy.stats.multivariate_normal
-#         The two gaussians to compute the overlap for.
-#     Returns
-#     -------
-#     overlap : float
-#         The overlap between the two gaussians.
-#     """
-#     center1 = mvn1.mean
-#     center2 = mvn2.mean
+    Parameters
+    ----------
+    p : float or array
+        First probability value(s)
+    q : float or array
+        Second probability value(s)
 
-#     # Compute the overlap between the two distributions
-#     # using the likelihoods of the centers of the distributions
-#     dist1 = mvn1.pdf(center2)
-#     dist2 = mvn2.pdf(center1)
-
-#     if dist1 == 0 or dist2 == 0:
-#         return 0
-
-#     overlap = np.log(dist1) - np.log(dist2)
-#     return overlap
-
-
-# def bhattacharyya_overlap(mvn1, mvn2):
-#     """
-#     Compute the overlap between two gaussians using the Bhattacharyya coefficient.
-
-#     Parameters
-#     ----------
-#     mvn1, mvn2 : scipy.stats.multivariate_normal
-#         The two gaussians to compute the overlap for.
-
-#     Returns
-#     -------
-#     overlap : float
-#         The overlap between the two gaussians.
-#     """
-
-#     # Create Multivariate Normal distributions for each Gaussian
-#     center1 = mvn1.mean
-#     center2 = mvn2.mean
-
-#     dist1 = mvn1.pdf(center2)
-#     dist2 = mvn2.pdf(center1)
-
-#     dist = dist1 * dist2
-#     if dist == 0:
-#         return dist
-
-#     # Compute the Bhattacharyya coefficient (overlap between the distributions)
-#     bhattacharyya_coefficient = np.sqrt(dist)
-
-#     # Compute the Bhattacharyya distance
-#     bhattacharyya_distance = np.log(bhattacharyya_coefficient)
-#     return bhattacharyya_distance
+    Returns
+    -------
+    float
+        KL divergence
+    """
+    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
 
 
 def jensen_shannon_overlap(mvn1, mvn2):
@@ -133,9 +341,8 @@ def jensen_shannon_overlap(mvn1, mvn2):
     Returns
     -------
     overlap : float
-        The overlap between the two gaussians.
+        The overlap between the two gaussians (lower = more separated).
     """
-
     # Create Multivariate Normal distributions for each Gaussian
     center1 = mvn1.mean
     center2 = mvn2.mean
@@ -154,311 +361,3 @@ def jensen_shannon_overlap(mvn1, mvn2):
     dist *= 0.5
 
     return -dist
-
-
-def _kl_divergence(p, q):
-    """
-    Compute the Kullback-Leibler divergence between two distributions.
-    """
-    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
-
-
-# Rotatron = Rotatron.Rotatron
-
-
-class OverlapRotatron(Rotatron.Rotatron):
-    """
-    A distribution overlap-based Rotatron environment.
-
-    Parameters
-    ----------
-    graph : AtomGraph or ResidueGraph
-        The graph to optimize
-    rotatable_edges : list
-        A list of edges that can be rotated during optimization.
-        If None, all non-locked edges are used.
-    artificial_spread : float
-        The spread to use for the multi-variate normal distributions. This is used to artificially increase the spread of the distributions.
-        This is useful for cases where the distributions may be too tight and far apart which makes it difficult for the overlap to be computed.
-    clash_distance : float
-        The distance at which two atoms are considered to be clashing.
-    crop_nodes_further_than : float
-        If greater than 0, crop nodes that are further than this distance from the
-        rotatable edges so that they are not considered in the overlap calculation.
-    distance_function : callable
-        A specific distance function to use for calculating the overlap. This function
-        should take two arrays of shape (1, 3) (centers) and two arrays of shape (3, 3) (covariances)
-        and return a scalar.
-    ignore_further_than : float
-        If greater than 0, centroids that are further than this distance from each other are evaluated as 0 overlap automatically.
-    n_processes : int
-        The number of parallel processes to use when computing edge masks.
-    bounds : tuple
-        The bounds for the minimal and maximal rotation angles.
-    """
-
-    def __init__(
-        self,
-        graph: "base_graph.BaseGraph",
-        rotatable_edges: list = None,
-        artificial_spread: float = 2.0,
-        clash_distance: float = 1.2,
-        crop_nodes_further_than: float = -1,
-        distance_function: callable = None,
-        ignore_further_than: float = -1,
-        n_processes: int = 1,
-        bounds: tuple = (-np.pi, np.pi),
-        **kwargs,
-    ):
-        self.hyperparameters = {
-            "artificial_spread": artificial_spread,
-            "clash_distance": clash_distance,
-            "crop_nodes_further_than": crop_nodes_further_than,
-            "distance_function": distance_function,
-            "ignore_further_than": ignore_further_than,
-            "n_processes": n_processes,
-            "bounds": bounds,
-            **kwargs,
-        }
-        self.crop_radius = crop_nodes_further_than
-        self.clash_distance = clash_distance
-        self.ignore_further_than = ignore_further_than > 0
-        self._ignore_distance = ignore_further_than
-        self.distance_function = distance_function or jensen_shannon_overlap
-
-        self._bounds_tuple = bounds
-
-        # =====================================
-
-        rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)
-        self.graph = graph
-        self.rotatable_edges = rotatable_edges
-        self.n_nodes = len(self.graph.nodes)
-        self.n_edges = len(self.rotatable_edges)
-        self.artificial_spread = artificial_spread
-
-        # =====================================
-        if self.crop_radius > 0:
-            graph, rotatable_edges = self._setup_helpers_crop_faraway_nodes(
-                self.crop_radius, graph, rotatable_edges
-            )
-        # =====================================
-
-        self.action_space = gym.spaces.Box(
-            low=bounds[0], high=bounds[1], shape=(len(self.rotatable_edges),)
-        )
-        self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
-        )
-        Rotatron.Rotatron.__init__(
-            self, graph, rotatable_edges, n_processes=n_processes, **kwargs
-        )
-
-        # =====================================
-
-        self._generate_rotation_unit_masks()
-        self._find_rotation_units()
-        self.rotation_units = {
-            k: v for k, v in self.rotation_units.items() if len(v) > 1
-        }
-
-        # =====================================
-
-        # this is the mainloop for computing pairwise overlaps
-        n = 0
-        for i, gmm1 in enumerate(self.rotation_units):
-            for j, gmm2 in enumerate(self.rotation_units):
-                if i >= j:
-                    continue
-                n += 1
-        self.overlaps = np.zeros(n + 1)
-        self.centers = np.zeros((n + 1, 3))
-        self.covariances = np.zeros((n + 1, 3, 3))
-
-        # =====================================
-
-    def eval(self, state):
-        """
-        Calculate the evaluation score for a given state
-
-        Parameters
-        ----------
-        state : np.ndarray
-            The state of the environment
-
-        Returns
-        -------
-        float
-            The evaluation for the state
-        """
-        gaussians = []
-        for i, mask in self.rotation_units.items():
-            gaussians.append(MVN(state[mask], spread=self.artificial_spread))
-
-        idx = 0
-        for i, G1 in enumerate(gaussians):
-            for j, G2 in enumerate(gaussians):
-                if i >= j:
-                    continue
-
-                if (
-                    self.ignore_further_than
-                    and np.linalg.norm(G1.mean - G2.mean) > self._ignore_distance
-                ):
-                    self.overlaps[idx] = 0
-                else:
-                    self.overlaps[idx] = self.distance_function(G1, G2)
-                idx += 1
-
-        return np.mean(self.overlaps)
-
-
-if __name__ == "__main__":
-    import buildamol as bam
-    from time import time
-
-    mol = bam.molecule(
-        "/Users/noahhk/GIT/biobuild/buildamol/optimizers/_testing/files/GLYCAN.json"
-    )
-
-    graph = mol.get_residue_graph()
-    graph.make_detailed(n_samples=0.5, include_far_away=True)
-
-    edges = graph.find_rotatable_edges(root_node=graph.central_node, max_descendants=20)
-    env = OverlapRotatron(graph, edges, artificial_spread=2)
-
-    print(len(edges))
-
-    better = bam.optimizers.optimize(mol.copy(), env)
-    print(mol.count_clashes(), better.count_clashes())
-    better.show()
-
-    exit()
-    edges = graph.find_rotatable_edges(mol.get_atom(168), min_descendants=10)
-
-    # env = OverlapRotatron(
-    #     graph,
-    #     edges,
-    #     distance_function=jensen_shannon_overlap,
-    # )
-
-    # out = bam.optimizers.optimize(mol.copy(), env, "genetic", max_generations=30)
-    # out.show()
-
-    # # v = graph.draw()
-    # # v.draw_edges(*edges, color="magenta", linewidth=3, opacity=1.0)
-    # # v.show()
-    from alive_progress import alive_bar
-
-    n = 10
-    clashes = np.zeros((3, n))
-    times = np.zeros((3, n))
-    with alive_bar(n * 3) as bar:
-        for i, func in enumerate(
-            [jensen_shannon_overlap],  # likelihood_overlap, bhattacharyya_overlap
-        ):
-            env = OverlapRotatron(
-                graph,
-                edges,
-                distance_function=func,
-            )
-            for j in range(n):
-                t1 = time()
-                out = bam.optimizers.optimize(
-                    mol.copy(),
-                    env,
-                    "swarm",
-                )
-                t = time() - t1
-                times[i, j] = t
-                clashes[i, j] = out.count_clashes()
-                bar()
-
-    import matplotlib.pyplot as plt
-    import pandas as pd
-
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-
-    df = pd.DataFrame(
-        clashes.T,
-        columns=["likelihood", "bhattacharyya", "jensen_shannon"],
-    )
-    df = df.melt(var_name="overlap", value_name="clashes")
-    clash_labels = ["likelihood", "bhattacharyya", "jensen_shannon"]
-    clash_data = [
-        df.loc[df["overlap"] == label, "clashes"].values for label in clash_labels
-    ]
-    axs[0].violinplot(clash_data, showmeans=True)
-    axs[0].set_xticks(range(1, len(clash_labels) + 1), clash_labels)
-    axs[0].set_xlabel("overlap")
-
-    df2 = pd.DataFrame(
-        times.T,
-        columns=["likelihood", "bhattacharyya", "jensen_shannon"],
-    )
-    df2 = df2.melt(var_name="overlap", value_name="time")
-    time_labels = ["likelihood", "bhattacharyya", "jensen_shannon"]
-    time_data = [
-        df2.loc[df2["overlap"] == label, "time"].values for label in time_labels
-    ]
-    axs[1].violinplot(time_data, showmeans=True)
-    axs[1].set_xticks(range(1, len(time_labels) + 1), time_labels)
-    axs[1].set_xlabel("overlap")
-
-    axs[0].set_ylabel("Clashes")
-    axs[1].set_ylabel("Time (s)")
-
-    plt.savefig("overlap_rotatron_dist_func_comparisons_EX6.png")
-    plt.show()
-
-    # v = out.draw()
-    # v.draw_edges(*mol.bonds, color="lightblue", opacity=0.5)
-    # v.show()
-
-    # if False:
-    #     # FOR MAKING THE COOL FIGURES
-    #     graph = mol.get_atom_graph()
-
-    #     # edges = graph.find_rotatable_edges(min_descendants=10)
-    #     edges = [mol.get_bond(150, 152)]
-
-    #     d = OverlapRotatron(graph, edges, bounds=(0, 0.5))
-
-    #     angles = np.arange(-np.pi, np.pi, np.pi / 10)
-    #     evals = []
-    #     for i in angles:
-    #         new_state, e, done, _ = d.step([i])
-    #         evals.append(e)
-    #         d.reset()
-
-    #     evals = np.array(evals)
-    #     import matplotlib.pyplot as plt
-    #     import seaborn as sns
-
-    #     rgba_to_hex = lambda x: "#%02x%02x%02x" % tuple([int(i * 255) for i in x])
-
-    #     cmap = sns.color_palette("coolwarm", len(evals))
-
-    #     # evals /= np.min(evals)
-
-    #     v = mol.draw()
-    #     v.draw_edges(edges[0], color="magenta", linewidth=3, opacity=1.0)
-    #     for i, e in enumerate(evals):
-    #         s = mol.copy()
-    #         s.rotate_around_bond(
-    #             *edges[0], angles[i], descendants_only=True, angle_is_degrees=False
-    #         )
-    #         v.draw_edges(*s.bonds, color=rgba_to_hex(cmap[i]), linewidth=3, opacity=0.6)
-
-    #     v.show()
-
-    #     plt.plot(angles, evals)
-
-    #     best_angle = angles[np.argmin(evals)]
-    #     s = mol.copy()
-    #     s.rotate_around_bond(
-    #         *edges[0], best_angle, descendants_only=True, angle_is_degrees=False
-    #     )
-    #     v.draw_edges(*s.bonds, color="limegreen", linewidth=3, opacity=1.0)
-
-    #     pass

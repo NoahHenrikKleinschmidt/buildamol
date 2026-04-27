@@ -6,6 +6,7 @@ import numpy as np
 import Bio.PDB as bio
 
 import buildamol.utils.auxiliary as aux
+from buildamol.backends.api import backend_dispatched
 
 origin = np.array([0, 0, 0], dtype=np.float64)
 """
@@ -505,10 +506,23 @@ def rotate_molecule(
     return molecule
 
 
+def _rotate_coords_numpy(
+    coords: np.ndarray,
+    angle: float,
+    axis: np.ndarray,
+):
+    """NumPy implementation of coordinate rotation."""
+    coords = np.asarray(coords)
+    rot = _rotation_matrix(axis, angle)
+    return np.dot(coords, rot.T)
+
+
+@backend_dispatched("structural", "rotate_coords")
 def rotate_coords(
     coords: np.ndarray,
     angle: float,
     axis: np.ndarray,
+    backend=None,
 ):
     """
     Rotate a set of coordinates around an axis by a given angle.
@@ -521,17 +535,16 @@ def rotate_coords(
         The angle to rotate by (in radians)
     axis : array-like
         The axis to rotate around
+    backend : str, optional
+        Compute backend to use. One of "numpy", "numba", or "jax".
+        If None, uses the global backend selection.
 
     Returns
     -------
     rotated_coords : array-like
         The rotated coordinates
     """
-    coords = np.asarray(coords)
-    if aux.USE_ALL_NUMBA or (aux.USE_NUMBA and coords.shape[0] > 32):
-        return _numba_wrapper_rotate_coords(coords, angle, axis)
-    rot = _rotation_matrix(axis, angle)
-    return np.dot(coords, rot.T)
+    return _rotate_coords_numpy(coords, angle, axis)
 
 
 def superimpose_points(
@@ -694,7 +707,7 @@ def length_along_axis(coords, axis) -> float:
     length : float
         The length of the coordinates along the axis
     """
-    return np.dot(coords, axis).ptp()
+    return np.ptp(np.dot(coords, axis))
 
 
 @aux.njit

@@ -93,7 +93,13 @@ class ForceFieldRotatron(Rotatron.Rotatron):
             dists = np.apply_along_axis(np.all, 0, dists)
             if np.max(dists) != 0:
                 nodes_to_drop = [nodes[i] for i, d in enumerate(dists) if d]
+                nodes_to_drop_set = set(nodes_to_drop)
                 graph.remove_nodes_from(nodes_to_drop)
+                rotatable_edges = [
+                    e
+                    for e in rotatable_edges
+                    if e[0] not in nodes_to_drop_set and e[1] not in nodes_to_drop_set
+                ]
 
         # =====================================
 
