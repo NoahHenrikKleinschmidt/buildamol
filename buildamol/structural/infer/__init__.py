@@ -78,3 +78,6 @@ from .ring import (
 # Backward-compatible aliases used in tests and user code.
 get_left_hydrogen = get_left_hydrogen_neighbor
 get_right_hydrogen = get_right_hydrogen_neighbor
+
+# Export public API for autodoc and downstream imports.
+__all__ = [name for name in globals() if not name.startswith("_")]

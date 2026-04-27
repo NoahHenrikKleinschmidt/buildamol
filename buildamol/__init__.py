@@ -23,6 +23,10 @@ from buildamol.optimizers import *
 
 from buildamol.utils.info import __version__, __author__
 
+# Keep CHARMM APIs in `buildamol.resources.charmm`, but avoid exposing them at top-level.
+for _name in getattr(resources.charmm, "__all__", []):
+    globals().pop(_name, None)
+
 # a little hack to make sure the utils module is not the optimizers.utils...
 utils = _utils
 del _utils
