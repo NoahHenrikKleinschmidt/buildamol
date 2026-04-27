@@ -157,6 +157,11 @@ def patch(
     Linkage
         The new linkage.
     """
+    warn(
+        "buildamol.patch(...) is deprecated and will be removed in a future release; use buildamol.linkage(..., internal_coordinates=...) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return linkage(
         atom1,
         atom2,
@@ -206,6 +211,11 @@ def recipe(
     Linkage
         The new linkage.
     """
+    warn(
+        "buildamol.recipe(...) is deprecated and will be removed in a future release; use buildamol.linkage(...) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return linkage(
         atom1,
         atom2,
