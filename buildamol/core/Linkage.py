@@ -915,9 +915,15 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
         contains the atom IDs to delete from the
         first structure (target) and the second one from the second structure (source)
         """
+
+        def _id(i):
+            # _delete_ids entries are either strings (CHARMM parser: "1HO4")
+            # or 2-tuples (add_delete with _from: ("1", "HO4"))
+            return i[1] if isinstance(i, tuple) else i[1:]
+
         deletes = (
-            [i[1:] for i in self._delete_ids if i[0] == "1"],
-            [i[1:] for i in self._delete_ids if i[0] == "2"],
+            [_id(i) for i in self._delete_ids if i[0] == "1"],
+            [_id(i) for i in self._delete_ids if i[0] == "2"],
         )
         return deletes
 
@@ -934,6 +940,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
             Can be either "source" or "target". If not provided,
             the structure is inferred from the atom ID, in which case either `1` (target) or `2` (source) must be the first character of the ID.
         """
+        if isinstance(id, tuple):
+            id = id[0]
         if _from is None:
             if not id[0] in ["1", "2"]:
                 raise ValueError(
