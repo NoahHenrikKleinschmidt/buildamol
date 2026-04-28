@@ -97,9 +97,7 @@ def iter_subgraph_candidates(
         return
 
     if target_size == n:
-        sg_elems = Counter(
-            graph.nodes[v].get("element", "") for v in graph.nodes
-        )
+        sg_elems = Counter(graph.nodes[v].get("element", "") for v in graph.nodes)
         if sg_elems == target_element_counts:
             yield graph, 1.0
         return
@@ -118,9 +116,7 @@ def iter_subgraph_candidates(
     # element-guided initial candidate: greedily pick peripheral nodes
     # whose elements are over-represented before filling remaining slots
     # with the most peripheral remaining nodes.
-    template_elems = Counter(
-        graph.nodes[v].get("element", "") for v in graph.nodes
-    )
+    template_elems = Counter(graph.nodes[v].get("element", "") for v in graph.nodes)
     surplus: Counter = template_elems - target_element_counts  # elements to shed
 
     guided_removal: list = []
@@ -156,9 +152,7 @@ def iter_subgraph_candidates(
 
         kept = [v for v in all_nodes if v not in removal_set]
         subgraph = graph.subgraph(kept)
-        sg_elems = Counter(
-            subgraph.nodes[v].get("element", "") for v in subgraph.nodes
-        )
+        sg_elems = Counter(subgraph.nodes[v].get("element", "") for v in subgraph.nodes)
 
         if sg_elems == target_element_counts:
             node_cov = len(kept) / n

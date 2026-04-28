@@ -156,14 +156,123 @@ class ResidueNameGraphEngine:
             )
 
     @staticmethod
-    def _element_counts_contained(template_graph: nx.Graph, target_graph: nx.Graph) -> bool:
+    def _element_counts_contained(
+        template_graph: nx.Graph, target_graph: nx.Graph
+    ) -> bool:
         template_counts = Counter(
-            template_graph.nodes[node].get("element", "") for node in template_graph.nodes
+            template_graph.nodes[node].get("element", "")
+            for node in template_graph.nodes
         )
         target_counts = Counter(
             target_graph.nodes[node].get("element", "") for node in target_graph.nodes
         )
-        return all(target_counts[element] <= template_counts.get(element, 0) for element in target_counts)
+        return all(
+            target_counts[element] <= template_counts.get(element, 0)
+            for element in target_counts
+        )
+
+    @classmethod
+    def from_molecule(cls, mol, **kwargs) -> "ResidueNameGraphEngine":
+        engine = cls(**kwargs)
+        engine.register_molecule(mol)
+        return engine
+
+    @classmethod
+    def from_molecules(cls, molecules: Iterable, **kwargs) -> "ResidueNameGraphEngine":
+        engine = cls(**kwargs)
+        for mol in molecules:
+            engine.register_molecule(mol)
+        return engine
+
+    @classmethod
+    def from_compounds(
+        cls,
+        compounds,
+        compound_ids: Optional[Iterable[str]] = None,
+        **kwargs,
+    ) -> "ResidueNameGraphEngine":
+        engine = cls(**kwargs)
+        if compound_ids is None:
+            molecules = compounds.iter_molecules()
+        else:
+            molecules = (
+                compounds.get(compound_id, by="id", return_type="molecule")
+                for compound_id in compound_ids
+            )
+
+        for mol in molecules:
+            if mol is None:
+                continue
+            engine.register_molecule(mol)
+        return engine
+
+    @classmethod
+    def from_json(
+        cls,
+        filename: str,
+        compound_ids: Optional[Iterable[str]] = None,
+        **kwargs,
+    ) -> "ResidueNameGraphEngine":
+        from buildamol.resources.pdbe_compounds import PDBECompounds
+
+        return cls.from_compounds(
+            PDBECompounds.from_json(filename),
+            compound_ids=compound_ids,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_xml(
+        cls,
+        filename: str,
+        compound_ids: Optional[Iterable[str]] = None,
+        **kwargs,
+    ) -> "ResidueNameGraphEngine":
+        from buildamol.resources.pdbe_compounds import PDBECompounds
+
+        return cls.from_compounds(
+            PDBECompounds.from_xml(filename),
+            compound_ids=compound_ids,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_pickle(
+        cls,
+        filename: str,
+        compound_ids: Optional[Iterable[str]] = None,
+        **kwargs,
+    ) -> "ResidueNameGraphEngine":
+        import pickle
+
+        with open(filename, "rb") as handle:
+            obj = pickle.load(handle)
+
+        if isinstance(obj, cls):
+            return obj
+        if obj.__class__.__name__ == "PDBECompounds":
+            return cls.from_compounds(obj, compound_ids=compound_ids, **kwargs)
+        raise ValueError(
+            f"File {filename} does not contain an {cls.__name__} or PDBECompounds object"
+        )
+
+    @classmethod
+    def load(cls, filename: str) -> "ResidueNameGraphEngine":
+        """Load a pickled ResidueNameGraphEngine from file."""
+        import pickle
+
+        with open(filename, "rb") as handle:
+            obj = pickle.load(handle)
+        if not isinstance(obj, cls):
+            raise ValueError(f"File {filename} does not contain a {cls.__name__}")
+        return obj
+
+    def save(self, filename: str):
+        """Save this ResidueNameGraphEngine to file using pickle."""
+        import pickle
+
+        with open(filename, "wb") as handle:
+            pickle.dump(self, handle)
 
     @property
     def residue_names(self) -> List[str]:
@@ -291,7 +400,9 @@ class ResidueNameGraphEngine:
                 if not allow_partial_matching and target_nodes != template_nodes:
                     continue
 
-                node_cov_ratio = target_nodes / template_nodes if template_nodes else 1.0
+                node_cov_ratio = (
+                    target_nodes / template_nodes if template_nodes else 1.0
+                )
                 if node_cov_ratio < min_node_coverage:
                     continue
 

@@ -84,14 +84,105 @@ class AtomNameGraphEngine:
             )
 
     @staticmethod
-    def _element_counts_contained(template_graph: nx.Graph, target_graph: nx.Graph) -> bool:
+    def _element_counts_contained(
+        template_graph: nx.Graph, target_graph: nx.Graph
+    ) -> bool:
         template_counts = Counter(
-            template_graph.nodes[node].get("element", "") for node in template_graph.nodes
+            template_graph.nodes[node].get("element", "")
+            for node in template_graph.nodes
         )
         target_counts = Counter(
             target_graph.nodes[node].get("element", "") for node in target_graph.nodes
         )
-        return all(target_counts[element] <= template_counts.get(element, 0) for element in target_counts)
+        return all(
+            target_counts[element] <= template_counts.get(element, 0)
+            for element in target_counts
+        )
+
+    @classmethod
+    def from_molecule(cls, mol, **kwargs) -> "AtomNameGraphEngine":
+        engine = cls(**kwargs)
+        engine.register_molecule(mol)
+        return engine
+
+    @classmethod
+    def from_molecules(cls, molecules: Iterable, **kwargs) -> "AtomNameGraphEngine":
+        engine = cls(**kwargs)
+        for mol in molecules:
+            engine.register_molecule(mol)
+        return engine
+
+    @classmethod
+    def from_compounds(
+        cls,
+        compounds,
+        compound_ids: Optional[Iterable[str]] = None,
+        **kwargs,
+    ) -> "AtomNameGraphEngine":
+        engine = cls(**kwargs)
+        if compound_ids is None:
+            molecules = compounds.iter_molecules()
+        else:
+            molecules = (
+                compounds.get(compound_id, by="id", return_type="molecule")
+                for compound_id in compound_ids
+            )
+
+        for mol in molecules:
+            if mol is None:
+                continue
+            engine.register_molecule(mol)
+        return engine
+
+    @classmethod
+    def from_json(
+        cls,
+        filename: str,
+        compound_ids: Optional[Iterable[str]] = None,
+        **kwargs,
+    ) -> "AtomNameGraphEngine":
+        from buildamol.resources.pdbe_compounds import PDBECompounds
+
+        return cls.from_compounds(
+            PDBECompounds.from_json(filename),
+            compound_ids=compound_ids,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_xml(
+        cls,
+        filename: str,
+        compound_ids: Optional[Iterable[str]] = None,
+        **kwargs,
+    ) -> "AtomNameGraphEngine":
+        from buildamol.resources.pdbe_compounds import PDBECompounds
+
+        return cls.from_compounds(
+            PDBECompounds.from_xml(filename),
+            compound_ids=compound_ids,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_pickle(
+        cls,
+        filename: str,
+        compound_ids: Optional[Iterable[str]] = None,
+        **kwargs,
+    ) -> "AtomNameGraphEngine":
+        import pickle
+
+        with open(filename, "rb") as handle:
+            obj = pickle.load(handle)
+
+        if isinstance(obj, cls):
+            return obj
+        if obj.__class__.__name__ == "PDBECompounds":
+            return cls.from_compounds(obj, compound_ids=compound_ids, **kwargs)
+        raise ValueError(
+            f"File {filename} does not contain an {cls.__name__} or PDBECompounds object"
+        )
 
     @classmethod
     def load(self, filename: str) -> AtomNameGraphEngine:
