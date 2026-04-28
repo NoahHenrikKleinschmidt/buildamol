@@ -47,6 +47,7 @@ class BaseEntity:
     )
 
     default_getitem_method = None
+    default_bonds_infer = "residue_internal"  # or "all"
 
     def __init__(self, structure, model: int = 0):
         if not isinstance(structure, base_classes.Structure):
@@ -4486,7 +4487,7 @@ class BaseEntity:
     def infer_bonds(
         self,
         max_bond_length: float = None,
-        restrict_residues: bool = True,
+        restrict_residues: bool = None,
         infer_bond_orders: bool = False,
     ) -> list:
         """
@@ -4509,6 +4510,8 @@ class BaseEntity:
         list
             A list of tuples of atom pairs that are bonded
         """
+        if restrict_residues is None:
+            restrict_residues = self.default_bonds_infer.strip().lower() != "all"
         bonds = structural.infer_bonds(self._model, max_bond_length, restrict_residues)
         self._set_bonds(*bonds)
         if infer_bond_orders:

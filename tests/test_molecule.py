@@ -3171,3 +3171,15 @@ def test_mol_from_lower_units():
 
     mol = bam.molecule(r)
     assert mol.get_atom("C1") is a
+
+
+def test_default_infer_bonds_setter():
+    mol = bam.Molecule.from_compound("GLC") % "14bb" * 5
+    mol.bonds = []
+    mol.infer_bonds()
+    N = mol.count_bonds()
+    mol.bonds = []
+    bam.Molecule.default_bonds_infer = "all"
+    mol.infer_bonds()
+    M = mol.count_bonds()
+    assert M > N, "Should have inferred more bonds with default set to 'all'"
