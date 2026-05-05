@@ -864,7 +864,7 @@ def test_patcher_anchors():
     man1.infer_bonds()
     man2 = deepcopy(man1)
 
-    top = bam.get_default_topology()
+    top = bam.resources.get_default_topology()
     patch = top.get_patch("12aa")
 
     p = bam.structural.Patcher()
@@ -882,7 +882,7 @@ def test_patcher_anchors_2():
     bam.load_sugars()
     glc = bam.Molecule.from_compound("GLC")
 
-    top = bam.get_default_topology()
+    top = bam.resources.get_default_topology()
     patch = top.get_patch("14bb")
 
     p = bam.structural.Patcher(True, True)
@@ -905,7 +905,7 @@ def test_patcher_two_man():
     man1.lock_all()
     man2.lock_all()
 
-    top = bam.get_default_topology()
+    top = bam.resources.get_default_topology()
     patches = ("12aa", "12ab", "14bb")
     p = bam.structural.Patcher(copy_target=True, copy_source=True)
     for patch in patches:
@@ -974,7 +974,7 @@ def test_patcher_multiple_man():
     man3 = man1.copy()
     man4 = man1.copy()
 
-    top = bam.get_default_topology()
+    top = bam.resources.get_default_topology()
 
     orig_residues = len(man1.residues)
     orig_atoms = len(man1.atoms)
@@ -1034,7 +1034,7 @@ def test_keep_copy_patcher():
     glc = bam.Molecule.from_compound("GLC")
 
     patcher = bam.structural.Patcher(copy_target=True, copy_source=True)
-    patch = bam.get_default_topology().get_patch("12aa")
+    patch = bam.resources.get_default_topology().get_patch("12aa")
 
     patcher.apply(patch, glc, glc)
     new = patcher.merge()
