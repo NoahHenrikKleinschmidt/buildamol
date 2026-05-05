@@ -266,6 +266,138 @@ def test_charmm_typing_wrapper_renames_before_lookup(tmp_path):
     assert c.id == "O1"
 
 
+def test_charmm_typer_prefers_existing_type_and_charge_independently(tmp_path, capsys):
+    rtf_file = tmp_path / "tiny.rtf"
+    _write_simple_rtf(rtf_file)
+
+    typer = CHARMMTyper.from_file(str(rtf_file))
+
+    atom = DummyAtom("C", "C")
+    DummyResidue("BGLCNA", [atom], [])
+    atom.type = "EXISTING_TYPE"
+    atom.pqr_charge = 0.25
+
+    data = typer.get_data(
+        atom,
+        keep_existing_type=True,
+        keep_existing_charge=False,
+    )
+    assert data["type"] == "EXISTING_TYPE"
+    assert data["charge"] == 0.0
+
+    data = typer.get_data(
+        atom,
+        keep_existing_type=False,
+        keep_existing_charge=True,
+    )
+    assert data["type"] == "CTYPE"
+    assert data["charge"] == 0.25
+
+    out = capsys.readouterr().out
+    assert "keeping existing type" in out
+    assert "keeping existing charge" in out
+
+
+def test_charmm_typer_can_keep_existing_when_lookup_is_missing(tmp_path):
+    rtf_file = tmp_path / "tiny.rtf"
+    _write_simple_rtf(rtf_file)
+
+    typer = CHARMMTyper.from_file(str(rtf_file))
+
+    atom = DummyAtom("UNKNOWN", "C")
+    DummyResidue("BGLCNA", [atom], [])
+    atom.type = "EXISTING_TYPE"
+    atom.pqr_charge = -0.75
+
+    assert typer.get_type(atom, keep_existing_type=True) == "EXISTING_TYPE"
+    assert typer.get_charge(atom, keep_existing_charge=True) == -0.75
+
+    with pytest.raises(KeyError):
+        typer.get_type(atom)
+
+    with pytest.raises(KeyError):
+        typer.get_charge(atom)
+
+
+def test_charmm_typer_keep_existing_messages_are_reported_once(tmp_path, capsys):
+    rtf_file = tmp_path / "tiny.rtf"
+    _write_simple_rtf(rtf_file)
+
+    typer = CHARMMTyper.from_file(str(rtf_file))
+
+    atom = DummyAtom("C", "C")
+    DummyResidue("BGLCNA", [atom], [])
+    atom.type = "EXISTING_TYPE"
+
+    typer.get_type(atom, keep_existing_type=True)
+    typer.get_type(atom, keep_existing_type=True)
+
+    out = capsys.readouterr().out
+    assert out.count("keeping existing type") == 1
+
+
+def test_charmm_typer_assign_types_does_not_keep_charge_when_only_type_requested(
+    tmp_path, capsys
+):
+    rtf_file = tmp_path / "tiny.rtf"
+    _write_simple_rtf(rtf_file)
+
+    typer = CHARMMTyper.from_file(str(rtf_file))
+
+    atom = DummyAtom("C", "C")
+    residue = DummyResidue("BGLCNA", [atom], [])
+    atom.type = "EXISTING_TYPE"
+    atom.pqr_charge = 1.23
+
+    typer.assign_types(residue, keep_existing=True)
+    typer.assign_charges(residue, keep_existing=False)
+
+    out = capsys.readouterr().out
+    assert "keeping existing type" in out
+    assert "keeping existing charge" not in out
+    assert atom.type == "EXISTING_TYPE"
+    assert atom.pqr_charge == 0.0
+
+
+def test_charmm_typer_keep_existing_type_skips_lookup_and_fallback_message(
+    tmp_path, capsys
+):
+    rtf_file = tmp_path / "tiny.rtf"
+    _write_simple_rtf(rtf_file)
+
+    typer = CHARMMTyper.from_file(str(rtf_file))
+    typer._pres_dict["HT1"] = {"type": "HC", "charge": 0.1}
+
+    atom = DummyAtom("HT1", "H")
+    DummyResidue("ALA", [atom], [])
+    atom.type = "HC"
+
+    assert typer.get_type(atom, keep_existing=True) == "HC"
+
+    out = capsys.readouterr().out
+    assert "keeping existing type" in out
+    assert "using PRES fallback" not in out
+
+
+def test_charmm_typer_fallback_message_is_contextual_for_charge_pass(tmp_path, capsys):
+    rtf_file = tmp_path / "tiny.rtf"
+    _write_simple_rtf(rtf_file)
+
+    typer = CHARMMTyper.from_file(str(rtf_file))
+    typer._pres_dict["HT1"] = {"type": "HC", "charge": 0.1}
+
+    atom = DummyAtom("HT1", "H")
+    residue = DummyResidue("ALA", [atom], [])
+    atom.type = "HC"
+
+    typer.assign_types(residue, keep_existing=True)
+    typer.assign_charges(residue, keep_existing=False)
+
+    out = capsys.readouterr().out
+    assert "keeping existing type" in out
+    assert "using PRES fallback for charge" in out
+
+
 def test_charmm_residue_lookup_engine_uses_mapping_dict():
     lookup = CHARMMResidueNameLookupEngine()
 

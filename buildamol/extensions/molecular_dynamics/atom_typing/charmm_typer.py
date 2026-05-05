@@ -111,7 +111,9 @@ def type_with_charmm(
     rename_atoms: bool = True,
     on_missing: str = "error",
     assign_types: bool = True,
-    keep_existing: bool = False,
+    keep_existing_type: bool = False,
+    keep_existing_charge: bool = False,
+    keep_existing: Optional[bool] = None,
 ):
     """
     Prepare CHARMM residue/atom names, then perform pure lookup-based atom typing.
@@ -121,14 +123,22 @@ def type_with_charmm(
 
     Parameters (additional)
     -----------------------
-    keep_existing : bool
-        If True, atoms that already have a type assigned and are not found in the
-        typer dictionary will keep their existing type instead of raising an error.
+    keep_existing_type : bool
+        If True, atom types already present on atoms take precedence over CHARMM lookup.
+    keep_existing_charge : bool
+        If True, atom charges already present on atoms take precedence over CHARMM lookup.
+    keep_existing : bool, optional
+        Backward-compatible alias that enables both ``keep_existing_type`` and
+        ``keep_existing_charge`` when True.
     """
     if typer is None:
         if filename is None:
             raise ValueError("filename is required when typer is not provided.")
         typer = CHARMMTyper.from_file(filename)
+
+    if keep_existing is not None:
+        keep_existing_type = keep_existing_type or keep_existing
+        keep_existing_charge = keep_existing_charge or keep_existing
 
     rename_for_charmm_typing(
         atom_or_higher,
@@ -142,11 +152,20 @@ def type_with_charmm(
     )
 
     if assign_types:
-        typer.assign_types(atom_or_higher, keep_existing=keep_existing)
+        typer.assign_types(
+            atom_or_higher,
+            keep_existing_type=keep_existing_type,
+        )
 
     if hasattr(atom_or_higher, "get_atoms"):
-        return typer.get_types(atom_or_higher, keep_existing=keep_existing)
-    return typer.get_type(atom_or_higher, keep_existing=keep_existing)
+        return typer.get_types(
+            atom_or_higher,
+            keep_existing_type=keep_existing_type,
+        )
+    return typer.get_type(
+        atom_or_higher,
+        keep_existing_type=keep_existing_type,
+    )
 
 
 class CHARMMTyper(AtomTyper):
@@ -159,6 +178,23 @@ class CHARMMTyper(AtomTyper):
         super().__init__(_dict=_dict)
         self._pres_dict = _pres_dict or {}
         self._pres_fallback_reported = set()
+        self._keep_existing_reported = set()
+
+    def _report_keep_existing(self, atom, key: str, attribute: str, value):
+        sig = (id(atom), key, attribute)
+        if sig in self._keep_existing_reported:
+            return
+        if attribute == "type":
+            print(
+                "[INFO] CHARMMTyper: keeping existing type for "
+                f"{key}; using atom.type='{value}'."
+            )
+        elif attribute == "charge":
+            print(
+                "[INFO] CHARMMTyper: keeping existing charge for "
+                f"{key}; using atom.pqr_charge={value}."
+            )
+        self._keep_existing_reported.add(sig)
 
     def atom_key(self, atom):
         return f"{atom.parent.resname}:{atom.id}"
@@ -238,7 +274,14 @@ class CHARMMTyper(AtomTyper):
 
         return typer
 
-    def get_data(self, atom, keep_existing: bool = False) -> dict:
+    def get_data(
+        self,
+        atom,
+        keep_existing_type: bool = False,
+        keep_existing_charge: bool = False,
+        keep_existing: Optional[bool] = None,
+        requested_attribute: Optional[str] = None,
+    ) -> dict:
         """
         Get the atom type data for a given atom.
 
@@ -246,45 +289,140 @@ class CHARMMTyper(AtomTyper):
         ----------
         atom : Atom
             The atom for which the type data is requested.
-        keep_existing : bool
-            If True and the atom is not found in the dictionary, fall back to
-            the atom's existing ``type`` attribute instead of raising a KeyError.
+        keep_existing_type : bool
+            If True and atom.type is set, prefer it over lookup data.
+        keep_existing_charge : bool
+            If True and atom.pqr_charge is set, prefer it over lookup data.
+        keep_existing : bool, optional
+            Backward-compatible alias that enables both keep-existing flags.
+        requested_attribute : str, optional
+            Internal hint ("type" or "charge") used to make lookup diagnostics
+            more explicit.
         """
+        if keep_existing is not None:
+            keep_existing_type = keep_existing_type or keep_existing
+            keep_existing_charge = keep_existing_charge or keep_existing
+
+        existing_type = getattr(atom, "type", None) if keep_existing_type else None
+        existing_charge = (
+            getattr(atom, "pqr_charge", None) if keep_existing_charge else None
+        )
+
         key = self.atom_key(atom)
-        data = self._dict.get(key, None)
-        if data is None:
-            data = self._pres_dict.get(atom.id, None)
-            if data is not None:
+
+        if existing_type is not None:
+            self._report_keep_existing(atom, key, "type", existing_type)
+
+        if existing_charge is not None:
+            self._report_keep_existing(atom, key, "charge", existing_charge)
+
+        data = None
+        if existing_type is None or existing_charge is None:
+            data = self._dict.get(key, None)
+            if data is None:
+                data = self._pres_dict.get(atom.id, None)
+            if data is not None and key not in self._dict:
                 # Print info once per atom object to keep feedback useful but not too noisy.
-                atom_sig = (id(atom), key)
+                context = requested_attribute or "type/charge"
+                atom_sig = (id(atom), key, context)
                 if atom_sig not in self._pres_fallback_reported:
                     print(
                         "[INFO] CHARMMTyper: standard lookup failed for "
-                        f"{key}; using PRES fallback for atom '{atom.id}'."
+                        f"{key}; using PRES fallback for {context} of atom '{atom.id}'."
                     )
                     self._pres_fallback_reported.add(atom_sig)
-                return data
 
-            if keep_existing:
-                existing_type = getattr(atom, "type", None)
-                if existing_type is not None:
-                    return {
-                        "type": existing_type,
-                        "charge": getattr(atom, "pqr_charge", None),
-                    }
+        if data is None and existing_type is None and existing_charge is None:
             raise KeyError(f"No data could be found for {atom} (key={key})!")
-        return data
 
-    def get_type(self, atom, keep_existing: bool = False) -> str:
-        return self.get_data(atom, keep_existing=keep_existing)["type"]
-
-    def get_types(self, residue_or_higher, keep_existing: bool = False) -> dict:
         return {
-            atom: self.get_type(atom, keep_existing=keep_existing)
+            "type": (
+                existing_type if existing_type is not None else (data or {}).get("type")
+            ),
+            "charge": (
+                existing_charge
+                if existing_charge is not None
+                else (data or {}).get("charge")
+            ),
+        }
+
+    def get_type(
+        self,
+        atom,
+        keep_existing_type: bool = False,
+        keep_existing: Optional[bool] = None,
+    ) -> str:
+        if keep_existing is not None:
+            keep_existing_type = keep_existing_type or keep_existing
+
+        key = self.atom_key(atom)
+        if keep_existing_type:
+            existing_type = getattr(atom, "type", None)
+            if existing_type is not None:
+                self._report_keep_existing(atom, key, "type", existing_type)
+                return existing_type
+
+        data = self.get_data(
+            atom,
+            keep_existing_type=keep_existing_type,
+            requested_attribute="type",
+        )
+        if data["type"] is None:
+            raise KeyError(
+                f"No type could be found for {atom} (key={self.atom_key(atom)})!"
+            )
+        return data["type"]
+
+    def get_charge(
+        self,
+        atom,
+        keep_existing_charge: bool = False,
+        keep_existing: Optional[bool] = None,
+    ) -> float:
+        if keep_existing is not None:
+            keep_existing_charge = keep_existing_charge or keep_existing
+
+        key = self.atom_key(atom)
+        if keep_existing_charge:
+            existing_charge = getattr(atom, "pqr_charge", None)
+            if existing_charge is not None:
+                self._report_keep_existing(atom, key, "charge", existing_charge)
+                return existing_charge
+
+        data = self.get_data(
+            atom,
+            keep_existing_charge=keep_existing_charge,
+            requested_attribute="charge",
+        )
+        if data["charge"] is None:
+            raise KeyError(
+                f"No charge could be found for {atom} (key={self.atom_key(atom)})!"
+            )
+        return data["charge"]
+
+    def get_types(
+        self,
+        residue_or_higher,
+        keep_existing_type: bool = False,
+        keep_existing: Optional[bool] = None,
+    ) -> dict:
+        if keep_existing is not None:
+            keep_existing_type = keep_existing_type or keep_existing
+
+        return {
+            atom: self.get_type(
+                atom,
+                keep_existing_type=keep_existing_type,
+            )
             for atom in residue_or_higher.get_atoms()
         }
 
-    def assign_types(self, atom_or_higher, keep_existing: bool = False):
+    def assign_types(
+        self,
+        atom_or_higher,
+        keep_existing_type: bool = False,
+        keep_existing: Optional[bool] = None,
+    ):
         """
         Assign a ``type`` attribute on one or more atoms.
 
@@ -292,17 +430,45 @@ class CHARMMTyper(AtomTyper):
         ----------
         atom_or_higher : Atom or Residue or Molecule or ...
             Any atom or object with a ``get_atoms`` method.
-        keep_existing : bool
-            If True, atoms that already have a type and are missing from the
-            typer dictionary will keep their existing type instead of raising
-            a KeyError.
+        keep_existing_type : bool
+            If True, atoms that already have a type keep that value.
+        keep_existing : bool, optional
+            Backward-compatible alias for ``keep_existing_type``.
         """
+        if keep_existing is not None:
+            keep_existing_type = keep_existing_type or keep_existing
+
         if hasattr(atom_or_higher, "get_atoms"):
             for atom in atom_or_higher.get_atoms():
-                atom.type = self.get_type(atom, keep_existing=keep_existing)
+                atom.type = self.get_type(
+                    atom,
+                    keep_existing_type=keep_existing_type,
+                )
         else:
             atom_or_higher.type = self.get_type(
-                atom_or_higher, keep_existing=keep_existing
+                atom_or_higher,
+                keep_existing_type=keep_existing_type,
+            )
+
+    def assign_charges(
+        self,
+        atom_or_higher,
+        keep_existing_charge: bool = False,
+        keep_existing: Optional[bool] = None,
+    ):
+        if keep_existing is not None:
+            keep_existing_charge = keep_existing_charge or keep_existing
+
+        if hasattr(atom_or_higher, "get_atoms"):
+            for atom in atom_or_higher.get_atoms():
+                atom.pqr_charge = self.get_charge(
+                    atom,
+                    keep_existing_charge=keep_existing_charge,
+                )
+        else:
+            atom_or_higher.pqr_charge = self.get_charge(
+                atom_or_higher,
+                keep_existing_charge=keep_existing_charge,
             )
 
     @property
