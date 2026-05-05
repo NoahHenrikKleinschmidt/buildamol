@@ -154,13 +154,9 @@ class CHARMMTyper(AtomTyper):
     def atom_key(self, atom):
         return f"{atom.parent.resname}:{atom.id}"
 
-    @classmethod
-    def from_file(
-        cls,
-        filename: str,
-    ):
+    def read(self, filename: str):
         """
-        Create a CHARMMTyper object from a CHARMM Topology file
+        Read atom type data from a CHARMM Topology file and add to this instance.
 
         Parameters
         ----------
@@ -169,10 +165,9 @@ class CHARMMTyper(AtomTyper):
 
         Returns
         -------
-        CHARMMTyper
-            The CHARMMTyper object
+        self
+            Returns self for method chaining
         """
-        typer = cls()
         _type_masses = {}
         with open(filename, "r") as f:
             for line in f:
@@ -187,10 +182,37 @@ class CHARMMTyper(AtomTyper):
                     continue
                 if line.startswith("ATOM"):
                     _, atom_name, atom_type, charge, *_ = line.split()
-                    typer._dict[f"{residue}:{atom_name}"] = {
+                    self._dict[f"{residue}:{atom_name}"] = {
                         "type": atom_type,
                         "charge": float(charge),
                     }
+        return self
+
+    @classmethod
+    def from_file(
+        cls,
+        filename,
+    ):
+        """
+        Create a CHARMMTyper object from one or more CHARMM Topology files
+
+        Parameters
+        ----------
+        filename : str or list of str
+            The filename(s) of the CHARMM Topology file(s)
+
+        Returns
+        -------
+        CHARMMTyper
+            The CHARMMTyper object
+        """
+        typer = cls()
+
+        # Handle both single file and list of files
+        filenames = filename if isinstance(filename, (list, tuple)) else [filename]
+
+        for fname in filenames:
+            typer.read(fname)
 
         return typer
 
