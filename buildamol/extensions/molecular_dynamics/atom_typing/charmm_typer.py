@@ -111,12 +111,19 @@ def type_with_charmm(
     rename_atoms: bool = True,
     on_missing: str = "error",
     assign_types: bool = True,
+    keep_existing: bool = False,
 ):
     """
     Prepare CHARMM residue/atom names, then perform pure lookup-based atom typing.
 
     Returns a single atom type for atoms and an atom->type mapping for residues/molecules.
     Types are assigned to atoms in-place when `assign_types=True`.
+
+    Parameters (additional)
+    -----------------------
+    keep_existing : bool
+        If True, atoms that already have a type assigned and are not found in the
+        typer dictionary will keep their existing type instead of raising an error.
     """
     if typer is None:
         if filename is None:
@@ -135,11 +142,11 @@ def type_with_charmm(
     )
 
     if assign_types:
-        typer.assign_types(atom_or_higher)
+        typer.assign_types(atom_or_higher, keep_existing=keep_existing)
 
     if hasattr(atom_or_higher, "get_atoms"):
-        return typer.get_types(atom_or_higher)
-    return typer.get_type(atom_or_higher)
+        return typer.get_types(atom_or_higher, keep_existing=keep_existing)
+    return typer.get_type(atom_or_higher, keep_existing=keep_existing)
 
 
 class CHARMMTyper(AtomTyper):
@@ -148,8 +155,10 @@ class CHARMMTyper(AtomTyper):
     This requires that the molecule has residue names and atom names match with those in the CHARMM Topology file
     """
 
-    def __init__(self, _dict=None):
+    def __init__(self, _dict=None, _pres_dict=None):
         super().__init__(_dict=_dict)
+        self._pres_dict = _pres_dict or {}
+        self._pres_fallback_reported = set()
 
     def atom_key(self, atom):
         return f"{atom.parent.resname}:{atom.id}"
@@ -169,9 +178,12 @@ class CHARMMTyper(AtomTyper):
             Returns self for method chaining
         """
         _type_masses = {}
+        residue = None
+        patch = None
         with open(filename, "r") as f:
             for line in f:
-                if line.startswith("!"):
+                line = line.split("!", 1)[0].strip()
+                if not line:
                     continue
                 if line.startswith("MASS"):
                     _, idx, atom_type, mass, *_ = line.split()
@@ -179,13 +191,23 @@ class CHARMMTyper(AtomTyper):
                     continue
                 if line.startswith("RESI"):
                     residue = line.split()[1]
+                    patch = None
+                    continue
+                if line.startswith("PRES"):
+                    patch = line.split()[1]
+                    residue = None
                     continue
                 if line.startswith("ATOM"):
                     _, atom_name, atom_type, charge, *_ = line.split()
-                    self._dict[f"{residue}:{atom_name}"] = {
+                    data = {
                         "type": atom_type,
                         "charge": float(charge),
                     }
+                    if residue is not None:
+                        self._dict[f"{residue}:{atom_name}"] = data
+                    elif patch is not None and atom_name not in self._pres_dict:
+                        # PRES entries are stored without residue key for soft fallback lookup.
+                        self._pres_dict[atom_name] = data
         return self
 
     @classmethod
@@ -216,8 +238,72 @@ class CHARMMTyper(AtomTyper):
 
         return typer
 
-    def get_data(self, atom) -> dict:
-        return super().get_data(atom)
+    def get_data(self, atom, keep_existing: bool = False) -> dict:
+        """
+        Get the atom type data for a given atom.
+
+        Parameters
+        ----------
+        atom : Atom
+            The atom for which the type data is requested.
+        keep_existing : bool
+            If True and the atom is not found in the dictionary, fall back to
+            the atom's existing ``type`` attribute instead of raising a KeyError.
+        """
+        key = self.atom_key(atom)
+        data = self._dict.get(key, None)
+        if data is None:
+            data = self._pres_dict.get(atom.id, None)
+            if data is not None:
+                # Print info once per atom object to keep feedback useful but not too noisy.
+                atom_sig = (id(atom), key)
+                if atom_sig not in self._pres_fallback_reported:
+                    print(
+                        "[INFO] CHARMMTyper: standard lookup failed for "
+                        f"{key}; using PRES fallback for atom '{atom.id}'."
+                    )
+                    self._pres_fallback_reported.add(atom_sig)
+                return data
+
+            if keep_existing:
+                existing_type = getattr(atom, "type", None)
+                if existing_type is not None:
+                    return {
+                        "type": existing_type,
+                        "charge": getattr(atom, "pqr_charge", None),
+                    }
+            raise KeyError(f"No data could be found for {atom} (key={key})!")
+        return data
+
+    def get_type(self, atom, keep_existing: bool = False) -> str:
+        return self.get_data(atom, keep_existing=keep_existing)["type"]
+
+    def get_types(self, residue_or_higher, keep_existing: bool = False) -> dict:
+        return {
+            atom: self.get_type(atom, keep_existing=keep_existing)
+            for atom in residue_or_higher.get_atoms()
+        }
+
+    def assign_types(self, atom_or_higher, keep_existing: bool = False):
+        """
+        Assign a ``type`` attribute on one or more atoms.
+
+        Parameters
+        ----------
+        atom_or_higher : Atom or Residue or Molecule or ...
+            Any atom or object with a ``get_atoms`` method.
+        keep_existing : bool
+            If True, atoms that already have a type and are missing from the
+            typer dictionary will keep their existing type instead of raising
+            a KeyError.
+        """
+        if hasattr(atom_or_higher, "get_atoms"):
+            for atom in atom_or_higher.get_atoms():
+                atom.type = self.get_type(atom, keep_existing=keep_existing)
+        else:
+            atom_or_higher.type = self.get_type(
+                atom_or_higher, keep_existing=keep_existing
+            )
 
     @property
     def residue_names(self) -> list:

@@ -72,7 +72,6 @@ import re
 from .atom_name_engine import AtomNameGraphEngine
 from .residue_name_engine import ResidueNameGraphEngine, ResidueNameLookupEngine
 
-
 # ---------------------------------------------------------------------------
 # Core mapping
 # ---------------------------------------------------------------------------
@@ -585,11 +584,32 @@ class CHARMMResidueNameGraphEngine(ResidueNameGraphEngine):
     @classmethod
     def from_file(
         cls,
-        filename: str,
+        filename,
         residue_whitelist: Optional[Iterable[str]] = None,
     ) -> "CHARMMResidueNameGraphEngine":
+        """
+        Build an engine from one or more CHARMM topology (`.rtf`) files.
+
+        Parameters
+        ----------
+        filename : str or list of str
+            The filename(s) of the CHARMM topology file(s)
+        residue_whitelist : iterable of str, optional
+            Filter to only these residue names
+
+        Returns
+        -------
+        CHARMMResidueNameGraphEngine
+            The engine with templates loaded from all files
+        """
         engine = cls()
-        engine.load_file(filename, residue_whitelist=residue_whitelist)
+
+        # Handle both single file and list of files
+        filenames = filename if isinstance(filename, (list, tuple)) else [filename]
+
+        for fname in filenames:
+            engine.load_file(fname, residue_whitelist=residue_whitelist)
+
         return engine
 
     def load_file(
@@ -637,19 +657,39 @@ class CHARMMAtomNameGraphEngine(AtomNameGraphEngine):
     @classmethod
     def from_file(
         cls,
-        filename: str,
+        filename,
         residue_whitelist: Optional[Iterable[str]] = None,
-    ) -> "CHARMMAtomNameEngine":
-        """Build an engine from a CHARMM topology (`.rtf`) file."""
+    ) -> "CHARMMAtomNameGraphEngine":
+        """
+        Build an engine from one or more CHARMM topology (`.rtf`) files.
+
+        Parameters
+        ----------
+        filename : str or list of str
+            The filename(s) of the CHARMM topology file(s)
+        residue_whitelist : iterable of str, optional
+            Filter to only these residue names
+
+        Returns
+        -------
+        CHARMMAtomNameGraphEngine
+            The engine with templates loaded from all files
+        """
         engine = cls()
-        engine.load_file(filename, residue_whitelist=residue_whitelist)
+
+        # Handle both single file and list of files
+        filenames = filename if isinstance(filename, (list, tuple)) else [filename]
+
+        for fname in filenames:
+            engine.load_file(fname, residue_whitelist=residue_whitelist)
+
         return engine
 
     def load_file(
         self,
         filename: str,
         residue_whitelist: Optional[Iterable[str]] = None,
-    ) -> "CHARMMAtomNameEngine":
+    ) -> "CHARMMAtomNameGraphEngine":
         for template in _parse_rtf_residue_templates(
             filename,
             residue_whitelist=residue_whitelist,
