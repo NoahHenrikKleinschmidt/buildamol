@@ -5783,6 +5783,59 @@ class BaseEntity:
         self.set_attach_residue(residue)
         return self
 
+    def __sub__(self, other):
+        """
+        Remove atoms, residues, chains, or bonds from the molecule using the ``-`` operator.
+
+        The type of removal is inferred from the type of *other*:
+
+        * :class:`~buildamol.base_classes.Atom` (or a list/tuple/set thereof) → ``drop_atoms``
+        * :class:`~buildamol.base_classes.Residue` (or a list/tuple/set thereof) → ``drop_residues``
+        * :class:`~buildamol.base_classes.Chain` (or a list/tuple/set thereof) → ``drop_chains``
+        * :class:`~buildamol.base_classes.Bond` (or a list/tuple/set thereof) → ``drop_bond``
+
+        Returns a copy of the molecule with the specified elements removed.
+        """
+        result = self.copy()
+        result.__isub__(other)
+        return result
+
+    def __isub__(self, other):
+        """
+        Remove atoms, residues, chains, or bonds from the molecule in-place using the ``-=`` operator.
+
+        The type of removal is inferred from the type of *other*:
+
+        * :class:`~buildamol.base_classes.Atom` (or a list/tuple/set thereof) → ``drop_atoms``
+        * :class:`~buildamol.base_classes.Residue` (or a list/tuple/set thereof) → ``drop_residues``
+        * :class:`~buildamol.base_classes.Chain` (or a list/tuple/set thereof) → ``drop_chains``
+        * :class:`~buildamol.base_classes.Bond` (or a list/tuple/set thereof) → ``drop_bond``
+        """
+        if isinstance(other, (list, tuple, set)):
+            items = list(other)
+        else:
+            items = [other]
+
+        if len(items) == 0:
+            return self
+
+        first = items[0]
+        if isinstance(first, base_classes.Bond):
+            for bond in items:
+                self._remove_bond(bond.atom1, bond.atom2)
+        elif isinstance(first, base_classes.Atom):
+            self.drop_atoms(*items)
+        elif isinstance(first, base_classes.Residue):
+            self.drop_residues(*items)
+        elif isinstance(first, base_classes.Chain):
+            self.drop_chains(*items)
+        else:
+            raise TypeError(
+                f"Unsupported type for '-' operator: {type(first).__name__}. "
+                "Expected Atom, Residue, Chain, or Bond (or a list/tuple/set thereof)."
+            )
+        return self
+
     def __getitem__(self, idx):
         if not self.__itemgetter:
             raise NotImplementedError(
