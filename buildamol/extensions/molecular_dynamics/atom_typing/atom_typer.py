@@ -182,3 +182,15 @@ class AtomTyper:
             }
             for atom in atom_or_higher.get_atoms()
         }
+
+    def __call__(
+        self,
+        atom_or_higher,
+        assign_types: bool = True,
+        assign_charges: bool = True,
+    ) -> dict:
+        if assign_types:
+            self.assign_types(atom_or_higher)
+        if assign_charges:
+            self.assign_charges(atom_or_higher)
+        return self.get_types(atom_or_higher)
