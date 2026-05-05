@@ -170,7 +170,7 @@ class Tetrahedral(Geometry):
     (or atoms with 4 substituents)
     """
 
-    max_points = 3
+    max_points = 4
     size = 5
     angle = np.radians(120)
     dihedral = np.radians(109.5)
@@ -203,8 +203,8 @@ class Tetrahedral(Geometry):
             return self.make_coords_from_two(*coords, length=length)
         elif len(coords) == 3:
             return self.make_coords_from_three(*coords, length=length)
-        # elif len(coords) == 4:
-        #     return self.make_coords_from_four(*coords, length=length)
+        elif len(coords) == 4:
+            return self.make_coords_from_four(*coords, length=length)
         else:
             raise ValueError("Invalid number of atoms")
 
@@ -329,35 +329,75 @@ class Tetrahedral(Geometry):
 
         return coords
 
-    # def make_coords_from_four(
-    #     self, center, other1, other2, other3, length: float = None
-    # ):
-    #     """
-    #     Get the coordinates of a tetrahedron
+    def make_coords_from_four(self, center, other1, other2, other3, length: float = None):
+        """
+        Get the coordinates of the 4th tetrahedral position given the center and three existing
+        substituents.
 
-    #     Parameters
-    #     ----------
-    #     center : Atom or array-like
-    #         The center of the tetrahedron
-    #     other1 : Atom or array-like
-    #         The first atom to define one axis of the tetrahedron
-    #     other2 : Atom or array-like
-    #         The second atom to define one axis of the tetrahedron
-    #     other3 : Atom or array-like
-    #         The third atom to define one axis of the tetrahedron
-    #     float : float
-    #         The bond length to use for the tetrahedron.
-    #         If not provided the distance between center and other1 is used.
+        The 4th position is computed as the anti-centroid direction (opposite to the vector sum
+        of the three unit vectors pointing from center to each substituent).  When the three
+        substituents are symmetric/coplanar (anti-centroid ≈ 0, e.g. a flat sp2→sp3 case), a
+        cross-product fallback is used to find the out-of-plane perpendicular direction.
 
-    #     Returns
-    #     -------
-    #     array-like
-    #         The coordinates of the tetrahedron with center at the 0th index and the other 4 atoms following.
-    #     """
-    #     center = getattr(center, "coord", center)
-    #     other1 = getattr(other1, "coord", other1)
-    #     other2 = getattr(other2, "coord", other2)
-    #     other3 = getattr(other3, "coord", other3)
+        Parameters
+        ----------
+        center : Atom or array-like
+            The central atom.
+        other1, other2, other3 : Atom or array-like
+            The three existing substituents.
+        length : float, optional
+            Bond length for the generated position.  Defaults to the distance from center to other1.
+
+        Returns
+        -------
+        np.ndarray, shape (5, 3)
+            [center, other1, other2, other3, gen] where *gen* is the computed 4th position.
+            If the direction cannot be determined, the 5th row is a copy of the center (callers
+            should handle a zero-length candidate list gracefully).
+        """
+        center = np.asarray(getattr(center, "coord", center), dtype=float)
+        other1 = np.asarray(getattr(other1, "coord", other1), dtype=float)
+        other2 = np.asarray(getattr(other2, "coord", other2), dtype=float)
+        other3 = np.asarray(getattr(other3, "coord", other3), dtype=float)
+
+        if length is None:
+            length = float(np.linalg.norm(center - other1))
+        if length == 0:
+            length = self.bond_length
+
+        u1 = other1 - center
+        u2 = other2 - center
+        u3 = other3 - center
+        for u in (u1, u2, u3):
+            n = np.linalg.norm(u)
+            if n > 1e-8:
+                u /= n
+
+        anti = -(u1 + u2 + u3)
+        norm = float(np.linalg.norm(anti))
+
+        if norm < 1e-6:
+            # Degenerate / symmetric arrangement (e.g. planar sp2 N).
+            # Fall back to the cross product of two substituent vectors.
+            cross = np.cross(u1, u2)
+            norm_cross = float(np.linalg.norm(cross))
+            if norm_cross < 1e-6:
+                cross = np.cross(u1, u3)
+                norm_cross = float(np.linalg.norm(cross))
+            if norm_cross > 1e-6:
+                anti = cross / norm_cross
+            else:
+                anti = None  # completely degenerate; caller will get 0 candidates
+        else:
+            anti /= norm
+
+        coords = np.zeros((5, 3))
+        coords[0] = center
+        coords[1] = other1
+        coords[2] = other2
+        coords[3] = other3
+        coords[4] = center + anti * length if anti is not None else center
+        return coords
     #     length1 = np.linalg.norm(center - other1)
     #     length2 = np.linalg.norm(center - other2)
     #     length3 = np.linalg.norm(center - other3)

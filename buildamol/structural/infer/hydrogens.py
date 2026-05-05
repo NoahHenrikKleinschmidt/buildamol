@@ -143,7 +143,7 @@ class Hydrogenator:
 
         _neighbors = list(neighbors)[: _geometry.max_points - 1]
         out = _geometry.make_coords(atom, *_neighbors, length=self._bond_length)[
-            len(_neighbors) :
+            len(_neighbors) + 1 :
         ]
         out = np.asarray(out, dtype=float)
 
@@ -206,9 +206,11 @@ def adjust_protonation(molecule, atom, new_charge):
             H.add_hydrogens(atom, molecule)
         else:
             element_connectivity[atom.element] += new_charge
-            H.add_hydrogens(atom, molecule)
+            try:
+                H.add_hydrogens(atom, molecule)
+            finally:
+                element_connectivity[atom.element] = connectivity
             atom.pqr_charge = new_charge
-            element_connectivity[atom.element] = connectivity
     else:
         hydrogens = tuple(molecule.get_hydrogens(atom))
         if len(hydrogens) < abs(new_charge):
