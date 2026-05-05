@@ -79,6 +79,134 @@ def set_backend(backend: str):
     DEFAULT_BACKEND = backend
 
 
+def _to_molecule(mol):
+    """
+    Convert any atom-containing object to a Molecule instance suitable for visualization.
+
+    Bonds are taken from the original (which works when it is part of a Molecule) and
+    remapped onto copied atoms so the original structure is never mutated.
+    """
+    from buildamol.core import Molecule
+
+    orig_atoms = list(mol.get_atoms())
+
+    # Attempt to collect bonds from the original before copying
+    orig_bonds = []
+    if hasattr(mol, "get_bonds"):
+        try:
+            orig_bonds = list(mol.get_bonds())
+        except (ValueError, AttributeError):
+            pass
+
+    _copy = mol.copy()
+    copy_atoms = list(_copy.get_atoms())
+
+    # Remap bond endpoints from original atom serials to copied atom objects
+    serial_map = {oa.serial_number: ca for oa, ca in zip(orig_atoms, copy_atoms)}
+    copy_bonds = []
+    for bond in orig_bonds:
+        a1 = serial_map.get(bond.atom1.serial_number)
+        a2 = serial_map.get(bond.atom2.serial_number)
+        if a1 is not None and a2 is not None:
+            copy_bonds.append((a1, a2))
+
+    return Molecule.new(atoms=copy_atoms, bonds=copy_bonds)
+
+
+def draw2d(mol, highlight_atoms=None, highlight_bonds=None, atom_labels=None, **kwargs):
+    """
+    Draw a molecule in 2D using the RDKit library.
+
+    Parameters
+    ----------
+    mol
+        The molecule to draw. This may be any object that holds
+        a biopython structure e.g. a Molecule, AtomGraph, ResidueGraph, or any
+        atom-containing object with a ``get_atoms`` method.
+    highlight_atoms : list
+        A list of atoms to highlight.
+    highlight_bonds : list
+        A list of bonds (tuples of atoms) to highlight.
+    atom_labels : dict or callable
+        A dictionary mapping atoms to labels, or a function that takes an atom and returns a label.
+    **kwargs
+        Any additional keyword arguments forwarded to the molecule's ``draw2d`` method.
+
+    Returns
+    -------
+    Chem2DViewer
+        The viewer object (call ``.draw()`` to render, ``.show()`` to display).
+    """
+    if isinstance(mol, Chem.rdchem.Mol):
+        viewer = Chem2DViewer(mol)
+    else:
+        if mol.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+            mol = mol._molecule
+        elif hasattr(mol, "to_rdkit"):
+            mol = mol.to_rdkit()
+        elif hasattr(mol, "get_atoms"):
+            mol = _to_molecule(mol)
+        else:
+            raise ValueError(
+                f"Unsupported molecule type: {mol.__class__.__name__}. "
+                "Expected a Molecule, AtomGraph, ResidueGraph, RDKit molecule, "
+                "or any object with a 'get_atoms' method."
+            )
+        viewer = mol.draw2d(**kwargs)
+        kwargs = {}
+
+    if atom_labels is not None:
+        viewer.label_atoms(atom_labels)
+
+    color = None
+    if "highlight_color" in kwargs:
+        color = kwargs.pop("highlight_color")
+    if "color" in kwargs:
+        color = kwargs.pop("color")
+
+    if highlight_atoms is not None:
+        viewer.highlight_atoms(*highlight_atoms, color=color or "red")
+    if highlight_bonds is not None:
+        viewer.highlight_bonds(*highlight_bonds, color=color)
+
+    return viewer
+
+
+def draw3d(mol, **kwargs):
+    """
+    Draw a molecule in 3D using the default rendering backend.
+
+
+    Parameters
+    ----------
+    mol
+        The molecule to draw. This may be any object that holds
+        a biopython structure e.g. a Molecule, AtomGraph, ResidueGraph, or any
+        atom-containing object with a ``get_atoms`` method.
+    **kwargs
+        Any additional keyword arguments forwarded to the molecule's ``draw3d`` method.
+
+    Returns
+    -------
+    viewer
+        The 3D viewer object (type depends on the active backend).
+    """
+    if mol.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+        mol = mol._molecule
+
+    # sanity check for subclass
+    elif not hasattr(mol, "_AtomGraph") and hasattr(mol, "get_atoms"):
+        mol = _to_molecule(mol)
+
+    else:
+        raise ValueError(
+            f"Unsupported molecule type: {mol.__class__.__name__}. "
+            "Expected a Molecule, AtomGraph, ResidueGraph, or any object "
+            "with a 'get_atoms' method."
+        )
+    return mol.draw3d(**kwargs)
+
+
 default_plotly_opacity = 1.0
 """
 The default opacity for plotly-based visualizations.

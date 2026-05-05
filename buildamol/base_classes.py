@@ -50,7 +50,6 @@ import Bio.PDB as bio
 import numpy as np
 import periodictable as pt
 
-
 __all__ = ["Atom", "Residue", "Chain", "Model", "Structure", "Bond"]
 
 __global_counters__ = {
@@ -116,6 +115,30 @@ class ID(BuildAMolDataObject):
         if not isinstance(other, ID):
             return True
         return self.__id != other.__id
+
+
+class _DrawableMixin:
+    """Mixin that gives any atom-containing class 2D/3D draw and show methods."""
+
+    def draw2d(self, **kwargs):
+        """Draw this object in 2D using RDKit. Returns a Chem2DViewer."""
+        from buildamol.utils import visual
+
+        return visual.draw2d(self, **kwargs)
+
+    def draw3d(self, **kwargs):
+        """Draw this object in 3D using the default backend. Returns the viewer."""
+        from buildamol.utils import visual
+
+        return visual.draw3d(self, **kwargs)
+
+    def show2d(self, **kwargs):
+        """Show this object in 2D."""
+        return self.draw2d(**kwargs).show()
+
+    def show3d(self, **kwargs):
+        """Show this object in 3D."""
+        return self.draw3d(**kwargs).show()
 
 
 class Atom(ID, bio.Atom.Atom):
@@ -755,7 +778,7 @@ class Atom(ID, bio.Atom.Atom):
     #     )
 
 
-class Residue(ID, bio.Residue.Residue):
+class Residue(_DrawableMixin, ID, bio.Residue.Residue):
     """
     A Residue object that inherits from Biopython's Residue class.
 
@@ -1145,7 +1168,7 @@ class Residue(ID, bio.Residue.Residue):
     #     )
 
 
-class Chain(ID, bio.Chain.Chain):
+class Chain(_DrawableMixin, ID, bio.Chain.Chain):
     """
     A Chain object that inherits from Biopython's Chain class.
 
@@ -1423,7 +1446,7 @@ class Chain(ID, bio.Chain.Chain):
     #     return ord(self.id) != ord(other.id)
 
 
-class Model(bio.Model.Model, ID):
+class Model(_DrawableMixin, bio.Model.Model, ID):
     """
     A Model object that inherits from Biopython's Model class.
 
@@ -1714,7 +1737,7 @@ class Model(bio.Model.Model, ID):
         return self.id >= other.id
 
 
-class Structure(ID, bio.Structure.Structure):
+class Structure(_DrawableMixin, ID, bio.Structure.Structure):
     """
     A Structure object that inherits from Biopython's Structure class.
 
