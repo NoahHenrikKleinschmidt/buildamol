@@ -2232,6 +2232,18 @@ class Bond:
         """
         return (self.atom1, self.atom2, self.order)
 
+    def to_serials(self) -> tuple:
+        """
+        Convert the bond to a tuple of
+        atom1_serial, atom2_serial, bond_order.
+
+        Returns
+        -------
+        tuple
+            The bond as a tuple of serial numbers and bond order.
+        """
+        return (self.atom1.serial_number, self.atom2.serial_number, self.order)
+
     def __iter__(self):
         yield self.atom1
         yield self.atom2

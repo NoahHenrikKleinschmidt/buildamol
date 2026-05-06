@@ -329,7 +329,9 @@ class Tetrahedral(Geometry):
 
         return coords
 
-    def make_coords_from_four(self, center, other1, other2, other3, length: float = None):
+    def make_coords_from_four(
+        self, center, other1, other2, other3, length: float = None
+    ):
         """
         Get the coordinates of the 4th tetrahedral position given the center and three existing
         substituents.
@@ -398,6 +400,7 @@ class Tetrahedral(Geometry):
         coords[3] = other3
         coords[4] = center + anti * length if anti is not None else center
         return coords
+
     #     length1 = np.linalg.norm(center - other1)
     #     length2 = np.linalg.norm(center - other2)
     #     length3 = np.linalg.norm(center - other3)
