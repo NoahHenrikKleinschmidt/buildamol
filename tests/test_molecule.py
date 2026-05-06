@@ -90,6 +90,27 @@ def test_can_write_pdb():
     os.remove("GLC.pdb")
 
 
+def test_pdb_export_safe_truncates_long_text_fields():
+    glc = bam.Molecule.from_compound("GLC")
+    residue = next(glc.get_residues())
+    atom = next(glc.get_atoms())
+
+    residue.resname = "BGLCNA"
+    atom.id = "C1LONG"
+
+    safe_line = bam.utils.pdb.encode_atom(atom)
+    unsafe_line = bam.utils.pdb.encode_atom(atom, safe=False)
+
+    assert safe_line[12:16] == "C1LO"
+    assert safe_line[17:20] == "BGL"
+    assert safe_line[30:38].strip() == f"{atom.coord[0]:.3f}"
+    assert safe_line[38:46].strip() == f"{atom.coord[1]:.3f}"
+    assert safe_line[46:54].strip() == f"{atom.coord[2]:.3f}"
+
+    assert unsafe_line[17:20] != "BGL"
+    assert unsafe_line[30:38].strip() != f"{atom.coord[0]:.3f}"
+
+
 def test_can_write_cif():
     import os
 

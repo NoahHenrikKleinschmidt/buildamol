@@ -551,7 +551,7 @@ def read_pdb(
     return Molecule.from_pdb(filename, id=id, model=model, has_atom_ids=has_atom_ids)
 
 
-def write_pdb(mol: "Molecule", filename: str) -> None:
+def write_pdb(mol: "Molecule", filename: str, safe: bool = True) -> None:
     """
     Write a molecule to a PDB file.
 
@@ -561,8 +561,11 @@ def write_pdb(mol: "Molecule", filename: str) -> None:
         The molecule to write
     filename : str
         The path to the PDB file
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths,
+        by default True.
     """
-    mol.to_pdb(filename)
+    mol.to_pdb(filename, safe=safe)
 
 
 def read_cif(filename: str, id: str = None) -> "Molecule":

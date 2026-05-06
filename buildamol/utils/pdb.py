@@ -90,6 +90,16 @@ def _parse_float_field(value, default=0.0):
         return default
 
 
+def _format_pdb_text_field(value, width: int, align: str = "<", safe: bool = True) -> str:
+    text = "" if value is None else str(value)
+    if safe:
+        text = text[:width]
+
+    if align == ">":
+        return f"{text:>{width}}"
+    return f"{text:<{width}}"
+
+
 __amino_acids = set(
     (
         "ALA",
@@ -141,7 +151,7 @@ def find_models(filename):
     return models
 
 
-def write_pdb(mol, filename, symmetric: bool = True):
+def write_pdb(mol, filename, symmetric: bool = True, safe: bool = True):
     """
     Write a molecule to a PDB file.
 
@@ -153,24 +163,27 @@ def write_pdb(mol, filename, symmetric: bool = True):
         The filename to write to.
     symmetric : bool, optional
         Whether to write the molecule in a symmetric way, by default True.
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths,
+        by default True.
     """
     with open(filename, "w") as f:
         if len(mol.models) > 1:
             for model in mol.get_models():
                 f.write(f"MODEL {model.id}\n")
                 mol.set_model(model)
-                f.write(make_atoms_table(mol))
+                f.write(make_atoms_table(mol, safe=safe))
                 f.write("\nENDMDL\n")
             f.write(make_connect_table(mol, symmetric))
             f.write("\nEND\n")
         else:
-            f.write(make_atoms_table(mol))
+            f.write(make_atoms_table(mol, safe=safe))
             f.write("\n")
             f.write(make_connect_table(mol, symmetric))
             f.write("\nEND\n")
 
 
-def encode_pdb(mol, symmetric: bool = True) -> str:
+def encode_pdb(mol, symmetric: bool = True, safe: bool = True) -> str:
     """
     Encode a molecule to a PDB file without actually writing it to disk.
 
@@ -180,6 +193,9 @@ def encode_pdb(mol, symmetric: bool = True) -> str:
         The molecule to write.
     symmetric : bool, optional
         Whether to write the molecule in a symmetric way, by default True.
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths,
+        by default True.
 
     Returns
     -------
@@ -192,12 +208,12 @@ def encode_pdb(mol, symmetric: bool = True) -> str:
         for model in mol.get_models():
             lines.append(f"MODEL {model.id}")
             mol.set_model(model)
-            lines.append(make_atoms_table(mol))
+            lines.append(make_atoms_table(mol, safe=safe))
             lines.append("ENDMDL")
         lines.append(make_connect_table(mol, symmetric))
         lines.append("END")
     else:
-        lines.append(make_atoms_table(mol))
+        lines.append(make_atoms_table(mol, safe=safe))
         lines.append(make_connect_table(mol, symmetric))
         lines.append("END")
     return "\n".join(lines)
@@ -405,7 +421,7 @@ def make_connect_table(mol, symmetric=True):
 atom_line = "{prefix}{serial}{neg_adj}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
 
 
-def make_atoms_table(mol):
+def make_atoms_table(mol, safe: bool = True):
     """
     Make a PDB atom table
 
@@ -413,6 +429,9 @@ def make_atoms_table(mol):
     ----------
     mol : bam.Molecule
         The molecule to generate the table for.
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths,
+        by default True.
 
     Returns
     -------
@@ -421,12 +440,12 @@ def make_atoms_table(mol):
     """
     lines = []
     for atom in mol.get_atoms():
-        new_line = encode_atom(atom)
+        new_line = encode_atom(atom, safe=safe)
         lines.append(new_line)
     return "\n".join(lines)
 
 
-def encode_atom(atom) -> str:
+def encode_atom(atom, safe: bool = True) -> str:
     """
     Make an ATOM line for a PDB file.
     """
@@ -454,10 +473,14 @@ def encode_atom(atom) -> str:
         prefix=prefix,
         serial=_format_extended_int(atom.serial_number, 5),
         neg_adj=neg_adj,
-        id=f"{atom.id.upper()[:4]:<4}",
-        altloc=f"{atom.altloc:<1}",
-        residue=f"{atom.get_parent().resname:>3}",
-        chain=atom.get_parent().get_parent().id or " ",
+        id=_format_pdb_text_field(atom.id.upper(), 4, safe=safe),
+        altloc=_format_pdb_text_field(atom.altloc, 1, safe=safe),
+        residue=_format_pdb_text_field(
+            atom.get_parent().resname, 3, align=">", safe=safe
+        ),
+        chain=_format_pdb_text_field(
+            atom.get_parent().get_parent().id or " ", 1, safe=safe
+        ),
         res_serial=_format_extended_int(atom.get_parent().serial_number, 4),
         icode="",  # atom.get_parent().id[2],
         x=f"{atom.coord[0]:>8.3f}",
@@ -466,7 +489,7 @@ def encode_atom(atom) -> str:
         occ=f"{occupancy:>6.2f}",
         temp=f"{bfactor:>6.2f}",
         seg=f"{'':<3}",
-        element=f"{atom.element.upper():>2}",
+        element=_format_pdb_text_field(atom.element.upper(), 2, align=">", safe=safe),
         charge=f"{charge:>2}",
     )
 

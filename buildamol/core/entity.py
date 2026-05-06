@@ -5205,7 +5205,7 @@ class BaseEntity:
     get_residue_graph = make_residue_graph
     make_atom_graph = get_atom_graph
 
-    def to_pdb(self, filename: str, symmetric: bool = True):
+    def to_pdb(self, filename: str, symmetric: bool = True, safe: bool = True):
         """
         Write the molecule to a PDB file
 
@@ -5217,8 +5217,11 @@ class BaseEntity:
             If True, bonds are written symmetrically - i.e. if atom A is bonded to atom B, then atom B is also bonded to atom A,
             and both atoms will get an entry in the "CONECT" section. If False, only one of the atoms will get an entry in the
             "CONECT" section.
+        safe : bool
+            If True, fixed-width text fields are truncated to PDB-compatible widths
+            before writing. If False, overlong names are written verbatim.
         """
-        utils.pdb.write_pdb(self, filename, symmetric=symmetric)
+        utils.pdb.write_pdb(self, filename, symmetric=symmetric, safe=safe)
 
     def to_cif(self, filename: str):
         """
