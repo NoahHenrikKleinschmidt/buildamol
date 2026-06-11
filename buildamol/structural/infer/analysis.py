@@ -44,8 +44,12 @@ def find_clashes_between(
     """
     residues_a = list(mol_a.get_residues())
     residues_b = list(mol_b.get_residues())
-    residues_a = np.asarray(residues_a, dtype=object)
-    residues_b = np.asarray(residues_b, dtype=object)
+    _arr_a = np.empty(len(residues_a), dtype=object)
+    _arr_a[:] = residues_a
+    residues_a = _arr_a
+    _arr_b = np.empty(len(residues_b), dtype=object)
+    _arr_b[:] = residues_b
+    residues_b = _arr_b
 
     if ignore_hydrogens:
         residue_atoms_a = [
