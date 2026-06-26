@@ -60,6 +60,7 @@ BuildAmol and Molecular Dynamics
 --------------------------------
 
 .. nbgallery::
+   examples/molecular_dynamics_off
    examples/molecular_dynamics
    examples/conformation_sampling
    examples/solvation_box
