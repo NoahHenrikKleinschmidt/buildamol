@@ -213,7 +213,7 @@ def test_to_rdkit5():
     rdmol = mol.to_rdkit()
 
     ref = bam.utils.Chem.MolFromPDBFile(
-        base.EX8PDB,
+        str(base.EX8PDB),
         proximityBonding=False,
         removeHs=False,
     )

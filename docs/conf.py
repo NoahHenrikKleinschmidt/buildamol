@@ -7,21 +7,22 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "buildamol"
-copyright = "2025, Noah Kleinschmidt"
+copyright = "2026, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "1.2.12"
+release = "1.3.0"
 
 autodoc_mock_imports = [
     "rdkit",
     "openbabel",
     "mdtraj",
     "openmm",
+    "openff.toolkit",
+    "openff.interchange",
     "easydock",
     "dockstring",
 ]  # add whatever is optional
 
 import plotly.io as pio
-
 
 pio.renderers.default = "sphinx_gallery"
 

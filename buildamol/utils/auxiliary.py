@@ -31,7 +31,10 @@ def lazy_module(fullname):
 
 
 def has_package(name):
-    return importlib.util.find_spec(name) is not None
+    try:
+        return importlib.util.find_spec(name) is not None
+    except ModuleNotFoundError:
+        return False
 
 
 # =================================================================
