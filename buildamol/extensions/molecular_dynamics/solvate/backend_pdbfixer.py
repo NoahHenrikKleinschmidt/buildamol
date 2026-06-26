@@ -158,8 +158,18 @@ def solvate(
             tmp,
         )
         tmp.seek(0)
-        out = mol.__class__._from_pdb_string(tmp.read())
+        solvated = mol.__class__._from_pdb_string(tmp.read())
         tmp.close()
+        out = mol.copy()
+
+        out.add_chains(solvated.chains[-1])
+        for hoh in out.chains[-1].residues:
+            h1 = hoh.get_atom("H1")
+            h2 = hoh.get_atom("H2")
+            o = hoh.get_atom("O")
+            out.set_bond(o, h1)
+            out.set_bond(o, h2)
+
         return out
 
 
@@ -193,3 +203,4 @@ if __name__ == "__main__":
         ionic_strength=0.1,
     )
     pass
+    solvated_mol.plotly().show()
