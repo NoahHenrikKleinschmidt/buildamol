@@ -16,6 +16,8 @@ autodoc_mock_imports = [
     "openbabel",
     "mdtraj",
     "openmm",
+    "openff.toolkit",
+    "openff.interchange",
     "easydock",
     "dockstring",
 ]  # add whatever is optional
