@@ -9,6 +9,17 @@ Currently, it provides the following sub-packages:
 
 .. tab-set::
 
+    .. tab-item:: OpenFF-MD
+        
+        The `openff_md` package provides an end-to-end pipeline to parametrize a molecule and run a molecular dynamics simulation using the OpenFF toolkit and OpenMM.
+
+        .. dropdown:: OpenFF-MD Settings
+
+            .. automodule:: buildamol.extensions.molecular_dynamics.openff_md
+                :members:
+                :undoc-members:
+                :show-inheritance:
+
     .. tab-item:: Solvation
 
         The `solvate` package provides the `solvate` function that can be used to create a solvation box around a molecule.

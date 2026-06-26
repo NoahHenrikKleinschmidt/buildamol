@@ -13,6 +13,8 @@ Requires
 Usage
 -----
 
+First parametrize a molecule with the OpenFF force field
+
 .. code-block:: python
 
     import buildamol as bam
@@ -22,13 +24,19 @@ Usage
 
     # Parametrize and run MD in one go
     system = offmd.parametrize(aspirin)
-    system.minimize()
-    system.run(10_000, reporter="md_log.csv")
-    system.save_pdb("aspirin_minimized.pdb")
 
     # Or use the class for more control
     p = offmd.OpenFFParameterizer(force_field="openff-2.1.0.offxml")
     system = p.parametrize(aspirin)
+
+Then run energy minimization and/or molecular dynamics:
+
+.. code-block:: python
+
+    system.minimize()
+    system.run(10_000, reporter="md_log.csv")
+    aspirin_relaxed = system.to_molecule()
+
 
 Notes
 -----
@@ -54,6 +62,7 @@ try:
     from openff.toolkit import Topology as OFFTopology
     from openff.toolkit.typing.engines.smirnoff import ForceField
     from openff.units import unit as off_unit
+
     HAS_OPENFF = True
 except ImportError:
     OFFMolecule = None
@@ -65,11 +74,13 @@ except ImportError:
 try:
     import openmm
     from openmm import unit as mm_unit
-    from openmm.app import PDBFile, Simulation, StateDataReporter
+    from openmm.app import DCDReporter, PDBFile, Simulation, StateDataReporter
+
     HAS_OPENMM = True
 except ImportError:
     openmm = None
     mm_unit = None
+    DCDReporter = None
     PDBFile = None
     Simulation = None
     StateDataReporter = None
@@ -300,9 +311,7 @@ class OpenFFParameterizer:
         topology = off_mol.to_topology()
         # Pass charge_from_molecules so the pre-computed partial charges are used
         # rather than being recalculated inside create_openmm_system.
-        system = self.ff.create_openmm_system(
-            topology, charge_from_molecules=[off_mol]
-        )
+        system = self.ff.create_openmm_system(topology, charge_from_molecules=[off_mol])
         return OpenMMSystem(system, topology, off_mol, source_mol=mol)
 
     def __call__(self, mol) -> "OpenMMSystem":
@@ -417,6 +426,8 @@ class OpenMMSystem:
         n_steps: int,
         reporter: str = None,
         report_interval: int = 1000,
+        dcd_reporter: str = None,
+        dcd_interval: int = None,
         **simulation_kwargs,
     ) -> "OpenMMSystem":
         """
@@ -428,17 +439,34 @@ class OpenMMSystem:
             Number of integration steps to perform.
         reporter : str, optional
             Path to a CSV file for energy/temperature logging. If ``None``,
-            no reporter is attached.
+            no CSV reporter is attached.
         report_interval : int
-            Steps between reporter outputs (default 1000).
+            Steps between CSV reporter outputs (default 1000).
+        dcd_reporter : str, optional
+            Path to a DCD trajectory file. DCD is a compact binary format
+            widely supported by trajectory analysis tools (MDAnalysis, VMD,
+            GROMACS, etc.). If ``None``, no DCD reporter is attached.
+        dcd_interval : int, optional
+            Steps between DCD frames. Defaults to ``report_interval`` if not
+            specified.
         **simulation_kwargs
             Forwarded to :meth:`_build_simulation` if the simulation has not
-            been set up yet.
+            been set up yet (``temperature``, ``friction``, ``timestep``).
 
         Returns
         -------
         OpenMMSystem
             Returns ``self`` to allow method chaining.
+
+        Examples
+        --------
+        .. code-block:: python
+
+            # CSV log + DCD trajectory, both every 500 steps
+            system.run(50_000, reporter="md.csv", dcd_reporter="traj.dcd", report_interval=500)
+
+            # DCD only, frame every 100 steps
+            system.run(10_000, dcd_reporter="traj.dcd", dcd_interval=100)
         """
         if self._simulation is None:
             self._build_simulation(**simulation_kwargs)
@@ -452,6 +480,13 @@ class OpenMMSystem:
                     temperature=True,
                     progress=True,
                     totalSteps=n_steps,
+                )
+            )
+        if dcd_reporter is not None:
+            self._simulation.reporters.append(
+                DCDReporter(
+                    dcd_reporter,
+                    dcd_interval if dcd_interval is not None else report_interval,
                 )
             )
         self._simulation.step(n_steps)
@@ -533,9 +568,7 @@ class OpenMMSystem:
 
         state = self._simulation.context.getState(getPositions=True)
         # Positions come back in nanometres; BuildAMol uses Angstroms.
-        positions_ang = state.getPositions(asNumpy=True).value_in_unit(
-            mm_unit.angstrom
-        )
+        positions_ang = state.getPositions(asNumpy=True).value_in_unit(mm_unit.angstrom)
 
         if self._source_mol is not None:
             # Fast path: copy the original molecule and update only coordinates.
