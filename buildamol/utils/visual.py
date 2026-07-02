@@ -593,10 +593,11 @@ class Chem2DViewer:
         self,
         draw_hydrogens: bool = False,
         linewidth: float = 1,
-        fontsize: float = 20,
+        fontsize: float = None,
         width: int = 1000,
         height: int = 500,
         background: tuple = None,
+        ax=None,
         **kwargs,
     ):
         """
@@ -609,20 +610,29 @@ class Chem2DViewer:
         linewidth: float
             The linewidth of the bonds.
         fontsize : float
-            The font size of the atom labels.
+            The font size of the atom labels.  ``None`` (default) lets RDKit
+            auto-scale the font proportionally to the bond length, which gives
+            the best result in most cases.  Pass a positive number to fix the
+            font size in RDKit drawing units.
         width : int
             The width of the image in pixels.
         height : int
             The height of the image in pixels.
         background : tuple
             The background color to use. Use `None` for a transparent background.
+        ax : matplotlib.axes.Axes, optional
+            If provided, the image is rendered directly into this axis
+            (``ax.imshow`` + ``ax.axis("off")``) and the axis is returned
+            instead of the image.
         **kwargs
             Any additional arguments to pass to the `MolDrawOptions` of the RDKit drawer (either `MolDraw2DSVG` or `MolDraw2DCairo`).
 
         Returns
         -------
-        str or PIL.Image.Image
-            The SVG string (if drawer is "svg") or a PIL Image (if drawer is "png").
+        str, PIL.Image.Image, or matplotlib.axes.Axes
+            The SVG string (if drawer is ``"svg"`` and ``ax`` is ``None``),
+            a PIL Image (if drawer is ``"png"`` and ``ax`` is ``None``),
+            or the matplotlib axis (when ``ax`` is provided).
         """
         if not draw_hydrogens:
             mol = Chem.rdmolops.RemoveHs(self.mol)
@@ -640,8 +650,6 @@ class Chem2DViewer:
         for k, v in self.options.__dict__.items():
             setattr(draw_options, k, v)
 
-        for k, v in self.options.__dict__.items():
-            setattr(draw_options, k, v)
         for k, v in kwargs.items():
             if not k.startswith("_") and hasattr(draw_options, k):
                 setattr(draw_options, k, v)
@@ -650,7 +658,8 @@ class Chem2DViewer:
         if self._custom_colors:
             draw_options.updateAtomPalette(self._custom_colors)
 
-        draw_options.fixedFontSize = fontsize
+        if fontsize is not None:
+            draw_options.fixedFontSize = fontsize
 
         if background is None:
             draw_options.clearBackground = False
@@ -661,18 +670,76 @@ class Chem2DViewer:
 
         kws = self._prepare_highlighting(mol, draw_hydrogens)
 
+        # When rendering into a matplotlib axis, match the canvas resolution to
+        # the axes display size so font and bond widths are not affected by
+        # downscaling (a 1000px image in a 200px subplot makes labels tiny).
+        if ax is not None:
+            try:
+                fig = ax.get_figure()
+                fig_w, fig_h = fig.get_size_inches()
+                dpi = fig.get_dpi()
+                pos = ax.get_position()
+                width  = max(200, int(pos.width  * fig_w * dpi))
+                height = max(200, int(pos.height * fig_h * dpi))
+                # recreate drawer at the auto-computed size
+                drawer = (
+                    Draw.rdMolDraw2D.MolDraw2DSVG(width, height)
+                    if self._drawer_type == "svg"
+                    else Draw.rdMolDraw2D.MolDraw2DCairo(width, height)
+                )
+                draw_options = drawer.drawOptions()
+                draw_options.bondLineWidth = linewidth
+                if self._custom_colors:
+                    draw_options.updateAtomPalette(self._custom_colors)
+                if fontsize is not None:
+                    draw_options.fixedFontSize = fontsize
+                if background is None:
+                    draw_options.clearBackground = False
+                elif isinstance(background, str):
+                    draw_options.setBackgroundColour(colors.to_rgba(background))
+                else:
+                    draw_options.setBackgroundColour(background)
+            except Exception:
+                pass  # fall back to whatever drawer was already set up
+
         drawer.DrawMoleculeWithHighlights(mol, legend="", **kws)
         drawer.FinishDrawing()
+
         if self._drawer_type == "svg":
             svg = drawer.GetDrawingText()
+            if ax is not None:
+                img = self._svg_to_pil(svg)
+                ax.imshow(img)
+                ax.axis("off")
+                return ax
             return svg
         else:
             from PIL import Image
             from io import BytesIO
 
-            img = drawer.GetDrawingText()
-            img = Image.open(BytesIO(img))
+            img = Image.open(BytesIO(drawer.GetDrawingText()))
+            if ax is not None:
+                ax.imshow(img)
+                ax.axis("off")
+                return ax
             return img
+
+    @staticmethod
+    def _svg_to_pil(svg_str):
+        from io import BytesIO
+
+        try:
+            from svglib.svglib import svg2rlg
+            from reportlab.graphics import renderPM
+
+            drawing = svg2rlg(BytesIO(svg_str.encode("utf-8")))
+            return renderPM.drawToPIL(drawing)
+        except ImportError:
+            raise ImportError(
+                "svglib and reportlab are required to render SVG into a matplotlib axis. "
+                "Install them with: pip install svglib reportlab  "
+                "Or switch to the PNG drawer: mol.draw2d(drawer='png')"
+            )
 
     def show(self, draw_hydrogens: bool = False, **kwargs):
         """

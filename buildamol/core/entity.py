@@ -937,6 +937,7 @@ class BaseEntity:
         linewidth: float = None,
         atoms: str = None,
         highlight_color: str = None,
+        ax=None,
         **kwargs,
     ):
         """
@@ -958,10 +959,19 @@ class BaseEntity:
             - any function that takes an (rdkit) atom and returns a string
         highlight_color : str
             The color to use for highlighting atoms
+        ax : matplotlib.axes.Axes, optional
+            If provided, render immediately into this axis and return it.
+            Equivalent to ``mol.draw2d().draw(ax=ax, **kwargs)``.
+        **kwargs
+            When ``ax`` is provided, forwarded to ``Chem2DViewer.draw()``.
         """
         viewer = utils.visual.Chem2DViewer(
             self, highlight_color=highlight_color, linewidth=linewidth, atoms=atoms
         )
+        if ax is not None:
+            if linewidth is not None:
+                kwargs.setdefault("linewidth", linewidth)
+            return viewer.draw(ax=ax, **kwargs)
         return viewer
 
     draw2d = chem2dview
