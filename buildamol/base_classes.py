@@ -503,6 +503,25 @@ class Atom(ID, bio.Atom.Atom):
             return {a for a in out if filter(a)}
         return out
 
+    def get_hydrogen(self) -> "Atom":
+        """
+        Get a hydrogen neighbor of an atom.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            A hydrogen neighbor, if it exists, None otherwise
+        """
+        hydrogens = self.get_hydrogens()
+        if hydrogens:
+            return next(iter(hydrogens))
+        return None
+
     def get_hydrogens(self) -> set:
         """
         Get all hydrogen neighbors of an atom.
