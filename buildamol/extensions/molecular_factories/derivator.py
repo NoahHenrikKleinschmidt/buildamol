@@ -27,7 +27,7 @@ We can do this as follows:
 
 Let's say that `C1` can be either a carbon, a nitrogen, or an oxygen.
 And `C5` can be either a carbon or a nitrogen.
-Also, we are interested in possibly adding a functional group to `C3`. 
+Also, we are interested in possibly adding a functional group to `C3`.
 Namely, we want to check with a hydroxyl group and a phosphate group.
 
 .. code-block:: python
@@ -95,6 +95,28 @@ import numpy as np
 import itertools
 
 
+def _parallel_score(molecules, scoring_fn, n_workers):
+    """Score a list of molecules, in parallel when n_workers > 1."""
+
+    def _score_one(mol):
+        try:
+            return {"score": float(scoring_fn(mol)), "molecule": mol}
+        except Exception:
+            return None
+
+    if n_workers <= 1:
+        results = [_score_one(m) for m in molecules]
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=n_workers) as exe:
+            results = list(exe.map(_score_one, molecules))
+
+    results = [r for r in results if r is not None]
+    results.sort(key=lambda r: r["score"], reverse=True)
+    return results
+
+
 class Derivator:
     """
     A class to generate derivatives of a molecule.
@@ -105,12 +127,13 @@ class Derivator:
         The molecule to generate derivatives of
     """
 
-    def __init__(self, molecule: "Molecule"):
+    def __init__(self, molecule: "Molecule", n_workers: int = 1):
         self.molecule = molecule
         self._element_derivables = {}
         self._functional_group_derivables = {}
         self._bond_derivables = {}
         self._modifiers = (tuple(), tuple())
+        self.n_workers = n_workers
 
     @property
     def N(self) -> int:
@@ -185,7 +208,7 @@ class Derivator:
         apply_all_modifiers: bool = False,
     ) -> "Generator[Molecule]":
         """
-        Create a derivative molecule
+        Create a derivative molecule.
 
         Parameters
         ----------
@@ -202,8 +225,19 @@ class Derivator:
         Molecule
             The generated derivative molecule
         """
-        for i in range(n):
-            yield self._derive(use_probabilities, apply_all_modifiers)
+        if self.n_workers <= 1:
+            for _ in range(n):
+                yield self._derive(use_probabilities, apply_all_modifiers)
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+
+            with ThreadPoolExecutor(max_workers=self.n_workers) as exe:
+                futs = [
+                    exe.submit(self._derive, use_probabilities, apply_all_modifiers)
+                    for _ in range(n)
+                ]
+                for fut in futs:
+                    yield fut.result()
 
     def all(self) -> "Generator[Molecule]":
         """
@@ -282,6 +316,60 @@ class Derivator:
                         already_made.add(smiles)
                         molecules.append(molecule)
                         yield molecule
+
+    def score_sample(
+        self,
+        scoring_fn,
+        n: int = 1,
+        use_probabilities: bool = True,
+        apply_all_modifiers: bool = False,
+    ) -> list:
+        """
+        Sample ``n`` random derivatives and score them, returning a list of
+        ``{"score": float, "molecule": Molecule}`` dicts sorted by score.
+
+        Molecule derivation stays serial (thread safety), while the scoring
+        function is evaluated in parallel when ``n_workers > 1``.
+
+        Parameters
+        ----------
+        scoring_fn : callable
+            ``scoring_fn(mol) -> float``.
+        n : int
+            Number of derivatives to generate and score.
+        use_probabilities : bool
+            Passed to :meth:`sample`.
+        apply_all_modifiers : bool
+            Passed to :meth:`sample`.
+
+        Returns
+        -------
+        list of dict
+            ``[{"score": float, "molecule": Molecule}, ...]``, sorted best-first.
+        """
+        molecules = list(self.sample(n, use_probabilities, apply_all_modifiers))
+        return _parallel_score(molecules, scoring_fn, self.n_workers)
+
+    def score_all(self, scoring_fn) -> list:
+        """
+        Generate all possible derivatives and score them, returning a list of
+        ``{"score": float, "molecule": Molecule}`` dicts sorted by score.
+
+        Molecule derivation stays serial (thread safety), while the scoring
+        function is evaluated in parallel when ``n_workers > 1``.
+
+        Parameters
+        ----------
+        scoring_fn : callable
+            ``scoring_fn(mol) -> float``.
+
+        Returns
+        -------
+        list of dict
+            ``[{"score": float, "molecule": Molecule}, ...]``, sorted best-first.
+        """
+        molecules = list(self.all())
+        return _parallel_score(molecules, scoring_fn, self.n_workers)
 
     def element_changable(self, atom, elements: tuple, probabilities: tuple = None):
         """
