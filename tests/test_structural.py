@@ -2915,3 +2915,61 @@ def test_adopt_from_template_partial_target():
         if bond.order == 2:
             n_double_bonds += 1
     assert n_double_bonds == 3
+
+
+# ============================================================
+# ChiralCenter tests
+# ============================================================
+
+
+def test_chiral_center_error_on_non_tetrahedral_atom():
+    """ChiralCenter raises ValueError for atoms that do not have exactly 4 neighbours."""
+    bam.load_sugars()
+    mol = bam.Molecule.from_compound("GLC")
+    # O1 has only 2 neighbours (C1 and HO1) – not a chiral centre
+    o1 = mol.get_atom("O1")
+    with pytest.raises(ValueError):
+        bam.structural.ChiralCenter(o1)
+    bam.unload_sugars()
+
+
+def test_chiral_center_priority_ordering():
+    """A/B/C/D substituents must be in descending CIP priority (A highest, D lowest)."""
+    bam.load_sugars()
+    mol = bam.Molecule.from_compound("GLC")
+    # C1 has four neighbours: O1, O5, C2, H1
+    # CIP: O (8) > C (6) > H (1), so A must be an oxygen and D must be the hydrogen
+    c1 = mol.get_atom("C1")
+    cc = bam.structural.ChiralCenter(c1)
+
+    assert cc.A.element == "O", f"Expected O as highest-priority substituent, got {cc.A.element}"
+    assert cc.D.element == "H", f"Expected H as lowest-priority substituent, got {cc.D.element}"
+    assert cc.B is not None
+    assert cc.C is not None
+    bam.unload_sugars()
+
+
+def test_chiral_center_orientation_exclusive():
+    """is_R() and is_S() are mutually exclusive and orientation is always 'R' or 'S'."""
+    bam.load_sugars()
+    mol = bam.Molecule.from_compound("GLC")
+    c1 = mol.get_atom("C1")
+    cc = bam.structural.ChiralCenter(c1)
+
+    assert cc.orientation in ("R", "S"), f"Unexpected orientation value: {cc.orientation!r}"
+    assert cc.is_R() != cc.is_S(), "is_R() and is_S() must not both return the same value"
+    bam.unload_sugars()
+
+
+def test_chiral_center_L_alanine_alpha_carbon_is_S():
+    """The Cα of L-alanine (the natural amino acid) must be (S)-configured."""
+    bam.load_amino_acids()
+    mol = bam.Molecule.from_compound("ALA")
+    ca = mol.get_atom("CA")
+    cc = bam.structural.ChiralCenter(ca)
+
+    assert cc.is_S(), (
+        f"L-alanine Cα should be (S); got ({cc.orientation}). "
+        f"Priority order: A={cc.A.id}({cc.A.element}), B={cc.B.id}({cc.B.element}), "
+        f"C={cc.C.id}({cc.C.element}), D={cc.D.id}({cc.D.element})"
+    )
