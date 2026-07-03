@@ -40,3 +40,4 @@ import buildamol.structural.groups as groups
 functional_groups = groups  # alias
 
 from buildamol.structural.reactivity import Reactivity
+from buildamol.structural.chirality import ChiralCenter
