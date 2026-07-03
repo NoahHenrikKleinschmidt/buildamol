@@ -2124,7 +2124,7 @@ class Molecule(entity.BaseEntity):
                 "No patch was found with the given name. Either set a default patch or provide a patch when attaching."
             )
 
-        p = structural.__default_keep_keep_patcher__
+        p = structural.Patcher(copy_target=False, copy_source=False)
         p.apply(patch, self, other, at_residue, other_residue)
         p.merge()
         return self
@@ -2214,7 +2214,7 @@ class Molecule(entity.BaseEntity):
             other_residue = other.attach_residue
 
         # since we are already copying before we can use the keep-keep stitcher, actually...
-        p = structural.__default_keep_keep_stitcher__
+        p = structural.Stitcher(False, False)
         p.apply(
             self,
             other,

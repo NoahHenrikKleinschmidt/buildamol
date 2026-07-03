@@ -44,6 +44,7 @@ then all atoms, residues, chains and models will be converted to their BuildAMol
 
 from copy import deepcopy
 from typing import Union, List
+import threading
 
 # from uuid import uuid4
 import Bio.PDB as bio
@@ -78,10 +79,12 @@ class ID(BuildAMolDataObject):
     """
 
     __global_idx__ = 0
+    _id_lock = threading.Lock()
 
     def __init__(self):
-        self.__id = ID.__global_idx__ + 1
-        ID.__global_idx__ += 1
+        with ID._id_lock:
+            ID.__global_idx__ += 1
+            self.__id = ID.__global_idx__
 
     def copy(self):
         new = deepcopy(self)
@@ -95,8 +98,9 @@ class ID(BuildAMolDataObject):
         return id in self.child_dict
 
     def _new_id(self):
-        self.__id = ID.__global_idx__ + 1
-        ID.__global_idx__ += 1
+        with ID._id_lock:
+            ID.__global_idx__ += 1
+            self.__id = ID.__global_idx__
 
     def _adopt_id(self, id):
         self.__id = id
@@ -781,8 +785,7 @@ class Atom(ID, bio.Atom.Atom):
             >= pt.elements.symbol(other.element.title()).number
         )
 
-    def __hash__(self):
-        return ID.__hash__(self)
+    __hash__ = ID.__hash__
 
     # def __eq__(self, other):
     #     return self.serial_number == other.serial_number and (
