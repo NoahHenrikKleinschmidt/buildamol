@@ -6,7 +6,11 @@ from collections import deque
 import warnings
 
 import numpy as np
-from scipy.spatial.distance import cdist
+
+
+def cdist(a, b):
+    diff = a[:, np.newaxis, :] - b[np.newaxis, :, :]
+    return np.sqrt((diff ** 2).sum(axis=-1))
 
 
 def infer_mapping_from_template(

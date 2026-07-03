@@ -5,12 +5,23 @@ Bond and connectivity inference helpers.
 import warnings
 
 import numpy as np
-from Bio.PDB import NeighborSearch
 
 import buildamol.resources as resources
 import buildamol.utils.defaults as defaults
 
 from .constants import _MIN_BOND_LENGTH, _bond_cutoff_vdw, _max_search_radius_vdw
+
+
+def _search_pairs(atoms, radius):
+    if len(atoms) < 2:
+        return []
+    coords = np.array([a.coord for a in atoms])
+    # Pairwise distances via broadcasting (upper triangle only)
+    diff = coords[:, np.newaxis] - coords[np.newaxis, :]
+    dists = np.linalg.norm(diff, axis=-1)
+    i, j = np.where((dists < radius) & (dists > 0))
+    mask = i < j
+    return [(atoms[int(ii)], atoms[int(jj)]) for ii, jj in zip(i[mask], j[mask])]
 
 
 def infer_residue_connections(
@@ -47,7 +58,7 @@ def infer_residue_connections(
                 if search_radius == 0:
                     continue
 
-                _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
+                _neighbors = _search_pairs(atoms, search_radius)
 
                 for atom1, atom2 in _neighbors:
                     if atom1.get_parent() == atom2.get_parent():
@@ -102,7 +113,7 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
             if search_radius == 0:
                 continue
 
-            _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
+            _neighbors = _search_pairs(atoms, search_radius)
             for atom1, atom2 in _neighbors:
                 if atom1.element == "H" and atom2.element == "H":
                     continue
@@ -118,7 +129,7 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
         if search_radius == 0:
             return []
 
-        _neighbors = NeighborSearch(atoms).search_all(radius=search_radius)
+        _neighbors = _search_pairs(atoms, search_radius)
 
         bonds = []
         for atom1, atom2 in _neighbors:

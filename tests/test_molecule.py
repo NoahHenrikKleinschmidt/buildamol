@@ -23,7 +23,7 @@ def test_molecule_basic():
     assert len(mol.atoms) == 24
     assert len(mol.bonds) == 0
 
-    _mol = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANPDB)
+    _mol = bio.PDBParser(QUIET=True).get_structure("MAN", base.MANPDB)
     mol = bam.Molecule(_mol)
     assert mol is not None
 
@@ -601,6 +601,7 @@ def test_find_clashes():
     assert len(clashes) == 0
 
     # now randomly rotate around some bonds to create clashes
+    np.random.seed(42)
     edges = mol.get_residue_connections()
     for _ in range(20):
         bdx = np.random.choice(len(edges))

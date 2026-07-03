@@ -44,6 +44,7 @@ class BaseEntity:
         "_linkage",
         "_root_atom",
         "_attach_residue",
+        "__itemgetter",
     )
 
     default_getitem_method = None
@@ -1210,7 +1211,22 @@ class BaseEntity:
         if n > 1:
             return [self.copy() for i in range(n)]
         else:
-            new = deepcopy(self)
+            # Inject an empty AtomGraph into the deepcopy memo so deepcopy
+            # skips copying the full NetworkX graph — it gets cleared and
+            # rebuilt immediately after, so copying it is pure overhead.
+            empty_graph = graphs.AtomGraph(self._id, bonds=[])
+            memo = {id(self._AtomGraph): empty_graph}
+            new = deepcopy(self, memo)
+
+            # Restore back-reference and any locked edges (mapped to new atoms).
+            new._AtomGraph._molecule = new
+            if self._AtomGraph._locked_edges:
+                new._AtomGraph._locked_edges = {
+                    (memo[id(a)], memo[id(b)])
+                    for a, b in self._AtomGraph._locked_edges
+                    if id(a) in memo and id(b) in memo
+                }
+
             new._base_struct._new_id()
             new._AtomGraph.clear()
 
@@ -1237,9 +1253,6 @@ class BaseEntity:
             new._AtomGraph.add_nodes_from(new.get_atoms())
             new._AtomGraph.add_edges_from(new.get_bonds())
             for b in new.get_bonds():
-                # I don't think this is necessary. Add again if it causes problems...
-                # b.atom1 = new.get_atom(b.atom1.serial_number)
-                # b.atom2 = new.get_atom(b.atom2.serial_number)
                 new._AtomGraph.edges[b]["bond_order"] = b.order
                 new._AtomGraph.edges[b]["bond_obj"] = b
             return new
@@ -2623,7 +2636,7 @@ class BaseEntity:
             adx = start_atomid
 
             for chain in model.child_list:
-                chain._id = utils.auxiliary.chain_id_maker(cdx)
+                chain.id = utils.auxiliary.chain_id_maker(cdx)
                 cdx += 1
 
                 for residue in chain.child_list:
@@ -3605,7 +3618,7 @@ class BaseEntity:
             if _copy:
                 chain = chain.copy()
             if adjust_seqid:
-                chain._id = utils.auxiliary.chain_id_maker(len(self.chains))
+                chain.id = utils.auxiliary.chain_id_maker(len(self.chains))
             self._model.add(chain)
         return self
 
@@ -3766,7 +3779,7 @@ class BaseEntity:
             The new name
         """
         chain = self.get_chain(chain)
-        chain._id = name
+        chain.id = name
         return self
 
     def rename_residue(self, residue: Union[int, base_classes.Residue], name: str):

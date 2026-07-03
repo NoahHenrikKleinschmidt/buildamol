@@ -3,7 +3,13 @@ Structure analysis and validation helpers.
 """
 
 import numpy as np
-from scipy.spatial.distance import cdist
+
+
+def cdist(a, b):
+    """Euclidean pairwise distances between rows of a and b.
+    Direct subtraction formula guarantees exact 0 for identical points."""
+    diff = a[:, np.newaxis, :] - b[np.newaxis, :, :]
+    return np.sqrt((diff ** 2).sum(axis=-1))
 
 import buildamol.structural.base as base
 import buildamol.utils.defaults as defaults
@@ -196,20 +202,10 @@ def compute_outlier_atoms(residue, f: float = 1.5):
 
 def infer_surface_residues(structure, cutoff: int = 75, fraction: float = None):
     """
-    Infer residues likely on the surface using SASA.
+    .. deprecated::
+        SASA-based surface detection has been removed. This function is no longer available.
     """
-    sasa = defaults.get_default_instance("bioSASA")
-    sasa.compute(structure, level="R")
-
-    sasa_values = np.array([residue.sasa for residue in structure.get_residues()])
-    sasa_values = sasa_values / sasa_values.max() * 100
-
-    if fraction is not None:
-        cutoff = np.percentile(sasa_values, 100 - fraction * 100)
-
-    surface_residues = [
-        residue
-        for residue, sasa in zip(structure.get_residues(), sasa_values)
-        if sasa > cutoff
-    ]
-    return surface_residues
+    raise NotImplementedError(
+        "infer_surface_residues has been removed (SASA dependency dropped). "
+        "Use geometry-based surface detection or an external SASA library."
+    )

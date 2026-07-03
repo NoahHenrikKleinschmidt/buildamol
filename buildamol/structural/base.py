@@ -6,6 +6,7 @@ import numpy as np
 import Bio.PDB as bio
 
 import buildamol.utils.auxiliary as aux
+import buildamol.base_classes as base_classes
 from buildamol.backends.api import backend_dispatched
 
 origin = np.array([0, 0, 0], dtype=np.float64)
@@ -92,11 +93,6 @@ def model_make_full_id(self):
 def set_full_id(self, value):
     pass
 
-
-bio.Atom.Atom.full_id = property(atom_make_full_id, set_full_id)
-bio.Residue.Residue.full_id = property(residue_make_full_id, set_full_id)
-bio.Chain.Chain.full_id = property(chain_make_full_id, set_full_id)
-bio.Model.Model.full_id = property(model_make_full_id, set_full_id)
 
 # --------------------------- POSSIBLE DELETE ---------------------------
 
@@ -783,6 +779,12 @@ bio.Residue.Residue.rotate = _rotate_coords_base_classes
 bio.Chain.Chain.rotate = _rotate_coords_base_classes
 bio.Model.Model.rotate = _rotate_coords_base_classes
 bio.Structure.Structure.rotate = _rotate_coords_base_classes
+
+base_classes.Atom.rotate = _rotate_coords_base_classes
+base_classes.Residue.rotate = _rotate_coords_base_classes
+base_classes.Chain.rotate = _rotate_coords_base_classes
+base_classes.Model.rotate = _rotate_coords_base_classes
+base_classes.Structure.rotate = _rotate_coords_base_classes
 
 
 def flip_molecule(mol, plane_vector: np.ndarray, center: np.ndarray = None):

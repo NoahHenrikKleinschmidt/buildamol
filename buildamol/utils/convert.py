@@ -79,7 +79,7 @@ class PDBIO:
         """
         Convert the internal FileIO to a biopython structure object
         """
-        return defaults.__bioPDBParser__.get_structure(id, self.__fileio__)
+        return bio.PDBParser().get_structure(id, self.__fileio__)
 
     def cleanup(self):
         """

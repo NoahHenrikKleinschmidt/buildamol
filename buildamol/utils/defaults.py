@@ -30,33 +30,16 @@ DEFAULT_PDBE_COMPONENT_FILES = {
 The paths to the default PDBe component files
 """
 
-DEFAULT_SASA_PROBE_RADIUS = 1.4
-"""
-The default probe radius for calculating solvent accessible surface area
-"""
-
-DEFAULT_SASA_N = 300
-"""
-The default number of points used to calculate solvent accessible surface area
-"""
-
 # =================================================================
 # Default instances of auxiliary classes
 # =================================================================
 
 
 __default_instances__ = dict(
-    bioPDBParser=bio.PDBParser(),
     bioMMCIFParser=bio.MMCIFParser(),
-    bioSASA=bio.SASA.ShrakeRupley(DEFAULT_SASA_PROBE_RADIUS, DEFAULT_SASA_N),
 )
 """
 Default instance dictionary
-"""
-
-__bioPDBParser__ = __default_instances__["bioPDBParser"]
-"""
-The default instance of Bio.PDB.PDBParser
 """
 
 # =================================================================

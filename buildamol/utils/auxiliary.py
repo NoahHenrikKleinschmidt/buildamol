@@ -109,7 +109,7 @@ USE_ALL_NUMBA = False
 USE_JAX = False
 
 if HAS_TQDM:
-    from tqdm import tqdm
+    from tqdm.auto import tqdm
 
     def progress_bar(*args, **kwargs):
         return tqdm(*args, **kwargs)

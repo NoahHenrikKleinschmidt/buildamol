@@ -99,6 +99,7 @@ class Patcher(base.Connector):
         # a dictionary to store the anchor atoms in the source
         # molecule and their original coordinates
         self._source_computed_anchors = {}
+        self._ref_atom_cache = {}
 
         if not target_residue:
             target_residue = self.target.attach_residue
@@ -454,6 +455,9 @@ class Patcher(base.Connector):
         Atom
             The reference atom
         """
+        cached = self._ref_atom_cache.get(atom)
+        if cached is not None:
+            return cached
         res, id = atom[0], atom[1:]
         _obj, _res, _idx = self._objs[res]
 
@@ -462,8 +466,9 @@ class Patcher(base.Connector):
             atoms = [i for i in atoms if i.get_parent() is _res]
         if len(atoms) == 0:
             raise PatchError("No atom found with id {}".format(atom))
-        atom = atoms[_idx]
-        return atom
+        result = atoms[_idx]
+        self._ref_atom_cache[atom] = result
+        return result
 
 
 __default_keep_keep_patcher__ = Patcher(copy_target=False, copy_source=False)
@@ -527,14 +532,15 @@ def patch(
         target = target.copy()
     if copy_source:
         source = source.copy()
-    __default_keep_keep_patcher__.apply(
+    _patcher = Patcher(copy_target=False, copy_source=False)
+    _patcher.apply(
         patch=patch,
         target=target,
         source=source,
         target_residue=target_residue,
         source_residue=source_residue,
     )
-    return __default_keep_keep_patcher__.merge()
+    return _patcher.merge()
 
 
 if __name__ == "__main__":

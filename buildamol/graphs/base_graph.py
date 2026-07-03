@@ -11,6 +11,7 @@ import numpy as np
 
 # from scipy.spatial.transform import Rotation
 import buildamol.structural.base as base
+import buildamol.base_classes as base_classes
 
 
 class BaseGraph(nx.Graph):
@@ -28,6 +29,8 @@ class BaseGraph(nx.Graph):
         self._structure_was_searched = False
         self.__descendent_cache = {}
         self.__last_cache_size = len(self.nodes)
+        self._cycle_cache = None
+        self._cycle_cache_edge_count = -1
 
     @property
     def structure(self):
@@ -83,7 +86,7 @@ class BaseGraph(nx.Graph):
         """
         Returns the nodes in cycles
         """
-        cycles = nx.cycle_basis(self)
+        cycles = self._get_cycles()
         if len(cycles) == 0:
             return set()
         return set.union(*[set(i) for i in cycles])
@@ -208,24 +211,18 @@ class BaseGraph(nx.Graph):
 
         _seen = set((node_1, node_2))
         _new_neighs = {node_2}
-        descendants = set()
         while _new_neighs:
             neigh = _new_neighs.pop()
             _seen.add(neigh)
-
-            descendants.clear()
             for d in self.adj[neigh]:
                 if d in _seen:
                     continue
                 _desc_from_cache = self.__descendent_cache.get((neigh, d))
                 if _desc_from_cache:
-                    _desc_from_cache = _desc_from_cache[1]
                     _seen.add(d)
-                    _seen.update(_desc_from_cache)
+                    _seen.update(_desc_from_cache[1])
                 else:
-                    descendants.add(d)
-
-            _new_neighs.update(descendants)
+                    _new_neighs.add(d)
             _new_neighs.difference_update(_seen)
 
         _seen.difference_update((node_1, node_2))
@@ -323,7 +320,7 @@ class BaseGraph(nx.Graph):
         list
             A list of cycles in the graph, where each cycle is a list of nodes
         """
-        return nx.cycle_basis(self)
+        return self._get_cycles()
 
     def find_nodes_in_cycles(self) -> set:
         """
@@ -334,7 +331,7 @@ class BaseGraph(nx.Graph):
         set
             The nodes in cycles
         """
-        cycles = [set(i) for i in nx.cycle_basis(self)]
+        cycles = [set(i) for i in self._get_cycles()]
         if len(cycles) == 0:
             return set()
         return set.union(*cycles)
@@ -389,7 +386,7 @@ class BaseGraph(nx.Graph):
             max_descendants = np.inf
         if not max_ancestors:
             max_ancestors = np.inf
-        circulars = [set(i) for i in nx.cycle_basis(self)]
+        circulars = [set(i) for i in self._get_cycles()]
         # we changed stuff to generators to gain some performance
         # revert if it causes issues. We know that the root_node
         # step needs a list so we unpack if needed...
@@ -619,8 +616,8 @@ class BaseGraph(nx.Graph):
         bool
             True if the nodes are in the same cycle, False otherwise
         """
-        if not cycles:
-            cycles = nx.cycle_basis(self)
+        if cycles is None:
+            cycles = self._get_cycles()
         for cycle in cycles:
             if node_1 in cycle and node_2 in cycle:
                 return True
@@ -640,8 +637,8 @@ class BaseGraph(nx.Graph):
         bool
             True if the node is in a cycle, False otherwise
         """
-        if not cycles:
-            cycles = nx.cycle_basis(self)
+        if cycles is None:
+            cycles = self._get_cycles()
         for cycle in cycles:
             if node in cycle:
                 return True
@@ -662,11 +659,11 @@ class BaseGraph(nx.Graph):
             The nodes in the cycle that the node is in.
             If the node is not in a cycle, None is returned.
         """
-        if not cycles:
-            cycles = nx.cycle_basis(self)
+        if cycles is None:
+            cycles = self._get_cycles()
         for cycle in cycles:
             if node in cycle:
-                return set(cycle)
+                return sorted(cycle)
         return None
 
     def direct_edges(self, root_node=None, edges: list = None) -> list:
@@ -705,9 +702,43 @@ class BaseGraph(nx.Graph):
 
     def clear_cache(self):
         """
-        Clear the descendant cache
+        Clear the descendant and cycle caches.
         """
         self.__descendent_cache.clear()
+        self._cycle_cache = None
+        self._cycle_cache_edge_count = -1
+
+    def _get_cycles(self) -> list:
+        """Return cached cycle basis, recomputing only when the edge count changes."""
+        n = len(self.edges)
+        if self._cycle_cache is None or n != self._cycle_cache_edge_count:
+            self._cycle_cache = nx.cycle_basis(self)
+            self._cycle_cache_edge_count = n
+        return self._cycle_cache
+
+    def distance(self, node_1, node_2) -> int:
+        """
+        Compute the graph distance (number of bonds/edges) between two nodes.
+
+        Parameters
+        ----------
+        node_1, node_2
+            The two nodes to compute the distance between.
+
+        Returns
+        -------
+        int or float
+            The shortest-path length in edges, or ``numpy.inf`` if no path exists.
+
+        Raises
+        ------
+        KeyError
+            If either node is not in the graph.
+        """
+        try:
+            return nx.shortest_path_length(self, node_1, node_2)
+        except nx.NetworkXNoPath:
+            return np.inf
 
     def lock_edge(self, node_1, node_2):
         """
@@ -880,7 +911,7 @@ class BaseGraph(nx.Graph):
         if structure is None:
             warnings.warn("Nodes do not seem to have linked parents!")
             return None
-        while not isinstance(structure, bio.Structure.Structure):
+        while structure is not None and not isinstance(structure, base_classes.Structure):
             structure = structure.get_parent()
         return structure
 

@@ -139,7 +139,7 @@ class Assembler:
         A list of Molecules that serve as the fragments to be assembled.
     """
 
-    def __init__(self, fragments: list, n_workers: int = 1):
+    def __init__(self, fragments: list, n_workers: int = 1, optimization_steps: int = 30, bystander_radius: float = 8):
 
         # we need to maintain a per-fragment database of possible atom-sites where another fragment can be attached
         # we also need to maintain a per-fragment database of atom-ids to make linkages
@@ -184,6 +184,8 @@ class Assembler:
         self.deletion_points = deletion_points
         self.atom_ids = atom_ids
         self.n_workers = n_workers
+        self.optimization_steps = optimization_steps
+        self.bystander_radius = bystander_radius
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -376,7 +378,7 @@ class Assembler:
                 delete_in_target=delete_in_target,
                 delete_in_source=delete_in_source,
             )
-            mol.attach(self.fragments[source_frag], link, at_residue=int(target + 1))
+            mol.attach(self.fragments[source_frag], link, at_residue=int(target + 1), optimization_steps=self.optimization_steps, bystander_radius=self.bystander_radius)
 
             _used_atoms[target].add(target_atom)
             _used_atoms[i].add(source_atom)

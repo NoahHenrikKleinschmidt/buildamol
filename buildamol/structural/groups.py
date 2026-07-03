@@ -4,7 +4,11 @@ Geometric descriptors for chemical Functional Groups
 
 from typing import Union, List, Tuple
 import numpy as np
-from scipy.spatial.distance import cdist
+
+
+def cdist(a, b):
+    diff = a[:, np.newaxis, :] - b[np.newaxis, :, :]
+    return np.sqrt((diff ** 2).sum(axis=-1))
 
 
 import buildamol.structural.base as base
@@ -787,24 +791,26 @@ class AromaticGroup(BaseFunctionalGroup):
 
     def _assign_atoms(self, molecule, atoms: list):
         a1 = atoms[0]
+        atoms_set = set(atoms)
         matches = {0: a1}
-        a2, a6 = molecule.get_neighbors(
-            a1, filter=lambda x: x.element == "C" and x in atoms
+        ring_neighbors = sorted(
+            molecule.get_neighbors(a1, filter=lambda x: x.element == "C" and x in atoms_set)
         )
+        a2, a6 = ring_neighbors[0], ring_neighbors[1]
         matches[1] = a2
         matches[5] = a6
-        a3 = molecule.get_neighbors(
-            a2, filter=lambda x: x.element == "C" and x is not a1 and x in atoms
-        ).pop()
-        a5 = molecule.get_neighbors(
-            a6, filter=lambda x: x.element == "C" and x is not a1 and x in atoms
-        ).pop()
+        a3 = min(
+            molecule.get_neighbors(a2, filter=lambda x: x.element == "C" and x is not a1 and x in atoms_set)
+        )
+        a5 = min(
+            molecule.get_neighbors(a6, filter=lambda x: x.element == "C" and x is not a1 and x in atoms_set)
+        )
         matches[2] = a3
         matches[4] = a5
 
-        a4 = molecule.get_neighbors(
-            a5, filter=lambda x: x.element == "C" and x is not a6 and x in atoms
-        ).pop()
+        a4 = min(
+            molecule.get_neighbors(a5, filter=lambda x: x.element == "C" and x is not a6 and x in atoms_set)
+        )
         matches[3] = a4
         return matches
 

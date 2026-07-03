@@ -1979,6 +1979,8 @@ class Molecule(entity.BaseEntity):
         inplace: bool = True,
         other_inplace: bool = False,
         _topology=None,
+        optimization_steps: int = 30,
+        bystander_radius: float = 8,
     ):
         """
         Attach another structure to this one using a Patch or a Recipe.
@@ -2078,6 +2080,8 @@ class Molecule(entity.BaseEntity):
                 link,
                 at_residue=at_residue,
                 other_residue=other_residue,
+                optimization_steps=optimization_steps,
+                bystander_radius=bystander_radius,
             )
         return obj
 
@@ -2139,6 +2143,8 @@ class Molecule(entity.BaseEntity):
         other_at_atom=None,
         at_residue=None,
         other_residue=None,
+        optimization_steps: int = 30,
+        bystander_radius: float = 8,
     ):
         """
         Stitch two molecules together by removing atoms and connecting them with a bond. This works without a pre-defined patch.
@@ -2188,6 +2194,8 @@ class Molecule(entity.BaseEntity):
                 other_at_atom=source_atom,
                 at_residue=at_residue,
                 other_residue=other_residue,
+                optimization_steps=optimization_steps,
+                bystander_radius=bystander_radius,
             )
 
         if not isinstance(other, Molecule):
@@ -2215,6 +2223,7 @@ class Molecule(entity.BaseEntity):
 
         # since we are already copying before we can use the keep-keep stitcher, actually...
         p = structural.Stitcher(False, False)
+        p._optimize_bystander_radius = bystander_radius
         p.apply(
             self,
             other,
@@ -2224,6 +2233,7 @@ class Molecule(entity.BaseEntity):
             other_at_atom,
             at_residue,
             other_residue,
+            optimization_steps=optimization_steps,
         )
         self = p.merge()
         return self

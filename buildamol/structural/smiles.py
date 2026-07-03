@@ -32,8 +32,14 @@ def read_smiles(smiles: str, add_hydrogens: bool = True):
     if add_hydrogens:
         mol = Chem.AddHs(mol)
 
-    # some molecules fail to embed, this may fix it
-    AllChem.EmbedMolecule(mol, useRandomCoords=True)
+    # Use ETKDGv3 with a fixed seed for deterministic, stereo-correct conformers.
+    # useRandomCoords fallback handles edge cases where the standard embedding fails.
+    params = AllChem.ETKDGv3()
+    params.randomSeed = 42
+    ret = AllChem.EmbedMolecule(mol, params)
+    if ret == -1:
+        params.useRandomCoords = True
+        AllChem.EmbedMolecule(mol, params)
     AllChem.UFFOptimizeMolecule(mol)
 
     return mol
