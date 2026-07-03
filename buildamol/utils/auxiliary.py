@@ -479,8 +479,11 @@ class DummyBar:
     A dummy progress bar
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        pass
+    def __init__(self, iterable=None, *args, **kwargs) -> None:
+        self._iterable = iterable
+
+    def __iter__(self):
+        return iter(self._iterable) if self._iterable is not None else iter([])
 
     def __call__(self, *args, **kwargs) -> None:
         pass
@@ -492,6 +495,12 @@ class DummyBar:
         pass
 
     def update(self, *args, **kwargs):
+        pass
+
+    def set_postfix(self, *args, **kwargs):
+        pass
+
+    def set_description(self, *args, **kwargs):
         pass
 
 
