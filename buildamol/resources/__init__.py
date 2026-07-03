@@ -32,16 +32,20 @@ import buildamol.resources.pdbe_compounds as pdbe_compounds
 import buildamol.resources.pubchem as pubchem
 import buildamol.resources.charmm as charmm
 import buildamol.resources.defaults as defaults
+import buildamol.resources.molecule_library as molecule_library
 
 from buildamol.resources.pdbe_compounds import *
 from buildamol.resources.charmm import *
 from buildamol.resources.defaults import *
+from buildamol.resources.molecule_library import *
 
 # Keep CHARMM functionality available under `buildamol.resources.charmm`
 # while avoiding default star-export into the top-level `buildamol` namespace.
 __all__ = [
 	"pdbe_compounds",
 	"pubchem",
+	"molecule_library",
 	*pdbe_compounds.__all__,
 	*defaults.__all__,
+	*molecule_library.__all__,
 ]
