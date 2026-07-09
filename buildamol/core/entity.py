@@ -37,6 +37,7 @@ class BaseEntity:
 
     __slots__ = (
         "_base_struct",
+        "_active_conformer_id",
         "_model",
         "_id",
         "_bonds",
@@ -66,6 +67,7 @@ class BaseEntity:
         self._model = self._base_struct.child_list[model]
         if len(self._model.child_list) == 0:
             raise ValueError("The model is empty")
+        self._active_conformer_id = self._model.id
 
         self._bonds = []
         # self._locked_bonds = set()
@@ -150,49 +152,68 @@ class BaseEntity:
         content = string.split("\n")
         atoms = utils.pdb._parse_atom_lines(content)
 
-        if len(atoms) == 1:
-            atoms[0] = atoms[-1]
-        if 0 not in atoms:
-            atoms[0] = next(iter(atoms.values()))
-        atoms.pop(-1)
+        # Sentinel key -1 holds atoms not inside any MODEL block
+        if -1 in atoms and atoms[-1]:
+            # Single-model PDB (no MODEL keyword) — promote sentinel to model 0
+            if 0 not in atoms:
+                atoms[0] = atoms[-1]
+        atoms.pop(-1, None)
+
+        # If no model 0 (e.g. file was sliced to a later MODEL block),
+        # remap the first real model to id=0
+        if 0 not in atoms and atoms:
+            first_key = next(iter(atoms))
+            atoms[0] = atoms.pop(first_key)
 
         structure = base_classes.Structure(id)
+
+        # Build canonical model (id=0) with full atom hierarchy
+        canonical_model = base_classes.Model(0)
+        structure.add(canonical_model)
         chains = {}
         residues = {}
-        for model, _atoms in atoms.items():
-            model = base_classes.Model(model)
-            structure.add(model)
-            chains.clear()
-            residues.clear()
-            for atom_info in _atoms:
-                if atom_info["chain"] not in chains:
-                    chains[atom_info["chain"]] = base_classes.Chain(atom_info["chain"])
-                    model.add(chains[atom_info["chain"]])
+        for atom_info in atoms[0]:
+            if atom_info["chain"] not in chains:
+                chains[atom_info["chain"]] = base_classes.Chain(atom_info["chain"])
+                canonical_model.add(chains[atom_info["chain"]])
 
-                res_seq = (atom_info["chain"], atom_info["res_seq"])
-                if res_seq not in residues:
-                    residues[res_seq] = base_classes.Residue(
-                        atom_info["residue"], " ", atom_info["res_seq"]
-                    )
-                    chains[atom_info["chain"]].add(residues[res_seq])
-
-                atom = base_classes.Atom.new(
-                    atom_info["id"],
-                    generate_id=False,
-                    altloc=atom_info["alt_loc"],
-                    serial_number=atom_info["serial"],
-                    coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
-                    occupancy=atom_info["occ"],
-                    pqr_charge=int(atom_info.get("charge", 0) or 0),
-                    element=atom_info["element"],
+            res_seq = (atom_info["chain"], atom_info["res_seq"])
+            if res_seq not in residues:
+                residues[res_seq] = base_classes.Residue(
+                    atom_info["residue"], " ", atom_info["res_seq"]
                 )
-                residues[res_seq].add(atom)
+                chains[atom_info["chain"]].add(residues[res_seq])
+
+            atom = base_classes.Atom.new(
+                atom_info["id"],
+                generate_id=False,
+                altloc=atom_info["alt_loc"],
+                serial_number=atom_info["serial"],
+                coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
+                occupancy=atom_info["occ"],
+                pqr_charge=int(atom_info.get("charge", 0) or 0),
+                element=atom_info["element"],
+            )
+            residues[res_seq].add(atom)
+
+        # Build coordinate-only snapshot models for remaining MODEL blocks
+        for model_id, _atoms in atoms.items():
+            if model_id == 0:
+                continue
+            snapshot = base_classes.Model(model_id)
+            snapshot._atom_serials = [a["serial"] for a in _atoms]
+            snapshot._coords = np.array(
+                [[a["x"], a["y"], a["z"]] for a in _atoms], dtype=float
+            )
+            structure.add(snapshot)
 
         new = cls(structure)
         bonds = utils.pdb._parse_connect_lines(content)
         if len(bonds) != 0:
             atom_mapping = {a.serial_number: a for a in new.get_atoms()}
             for a1, a2, o in bonds:
+                if a1 not in atom_mapping or a2 not in atom_mapping:
+                    continue  # CONECT references atom not in ATOM/HETATM records
                 new._set_bond(atom_mapping[a1], atom_mapping[a2], o)
             del atom_mapping
         return new
@@ -257,7 +278,7 @@ class BaseEntity:
         _struct = base_classes.Structure(tree.attributes["id"])
         _model = base_classes.Model(0)
         _struct.add(_model)
-        _model._atom_index_mapping = {}
+        atom_index_mapping = {}
         for chain in tree.get_child("structure").children:
             _chain = base_classes.Chain(chain.get_attribute("id"))
             _model.add(_chain)
@@ -279,40 +300,43 @@ class BaseEntity:
                         if attr not in ["id", "serial", "element"]:
                             setattr(_atom, attr, atom.get_attribute(attr))
                     _residue.add(_atom)
-                    _model._atom_index_mapping[_atom.serial_number] = _atom
+                    atom_index_mapping[_atom.serial_number] = _atom
         new = cls(_struct)
 
         for bond in tree.get_child("connectivity").children:
-            atom1 = new._model._atom_index_mapping[bond.get_attribute("atom1", int)]
-            atom2 = new._model._atom_index_mapping[bond.get_attribute("atom2", int)]
-            new._set_bond(
-                atom1,
-                atom2,
-                bond.get_attribute("order", int),
-            )
+            atom1 = atom_index_mapping[bond.get_attribute("atom1", int)]
+            atom2 = atom_index_mapping[bond.get_attribute("atom2", int)]
+            new._set_bond(atom1, atom2, bond.get_attribute("order", int))
 
-        for model in tree.get_child("coordinates").children:
-            if model.get_attribute("id", int) != 0:
-                new_model = _model.copy()
-                new_model.id = model.get_attribute("id", int)
-                new.structure.add(new_model)
-                new._model = new_model
+        for model_entry in tree.get_child("coordinates").children:
+            model_id = model_entry.get_attribute("id", int)
+            if model_id == 0:
+                for atom_entry in model_entry.children:
+                    _atom = atom_index_mapping[atom_entry.get_attribute("serial", int)]
+                    _atom.coord = np.array(
+                        [
+                            atom_entry.get_attribute("x", float),
+                            atom_entry.get_attribute("y", float),
+                            atom_entry.get_attribute("z", float),
+                        ]
+                    )
+            else:
+                snapshot = base_classes.Model(model_id)
+                serials = []
+                coords_list = []
+                for atom_entry in model_entry.children:
+                    serials.append(atom_entry.get_attribute("serial", int))
+                    coords_list.append(
+                        [
+                            atom_entry.get_attribute("x", float),
+                            atom_entry.get_attribute("y", float),
+                            atom_entry.get_attribute("z", float),
+                        ]
+                    )
+                snapshot._atom_serials = serials
+                snapshot._coords = np.array(coords_list, dtype=float)
+                new._base_struct.add(snapshot)
 
-            for atom in model.children:
-                _atom = new._model._atom_index_mapping[
-                    atom.get_attribute("serial", int)
-                ]
-                _atom.coord = np.array(
-                    [
-                        atom.get_attribute("x", float),
-                        atom.get_attribute("y", float),
-                        atom.get_attribute("z", float),
-                    ]
-                )
-
-        new.set_model(0)
-        for model in new.get_models():
-            del model._atom_index_mapping
         return new
 
     @classmethod
@@ -1287,8 +1311,9 @@ class BaseEntity:
         """
         self._base_struct = other._base_struct
         self._model = other._model
-        self._AtomGraph = other._AtomGraph
+        self._active_conformer_id = other._active_conformer_id
         self._bonds = other._bonds
+        self._AtomGraph = other._AtomGraph
         return self
 
     def cleanup(
@@ -1348,8 +1373,8 @@ class BaseEntity:
         """
         Remove all empty models from the molecule
         """
-        for model in self.models:
-            if len(model) == 0:
+        for model in list(self.models):
+            if len(model.child_list) == 0 and model._coords is None:
                 self.remove_model(model)
         return self
 
@@ -2685,33 +2710,44 @@ class BaseEntity:
         """
         Split the molecule into multiple molecules, each containing one of the models.
         """
-        models = []
-        for model in self.models:
-            new = self.__class__.empty(id=self.id)
-            new.remove_chains("A")
-            m = model.copy() if _copy else model
-            new.add_chains(m.child_list)
-            for bond in self._bonds:
-                i, j = bond.atom1, bond.atom2
-                order = bond.order
-                new._set_bond(
-                    new.get_atom(i.serial_number), new.get_atom(j.serial_number), order
-                )
-            new.update_atom_graph()  # for some reason...
-            models.append(new)
+        import copy as copy_mod
+
+        results = []
+        saved_active_id = self._active_conformer_id
+
+        for model in list(self.models):
+            self.set_model(model)
+            new_mol = copy_mod.deepcopy(self)
+            # Keep only the canonical model in the copy
+            canonical = new_mol._base_struct.child_list[0]
+            new_mol._base_struct.child_list = [canonical]
+            new_mol._base_struct.child_dict = {canonical.get_id(): canonical}
+            new_mol._active_conformer_id = new_mol._model.id
+            results.append(new_mol)
 
         if not _copy:
             self.clear()
-        return models
+        else:
+            saved_model = next(
+                (m for m in self._base_struct.child_list if m.id == saved_active_id),
+                None,
+            )
+            if saved_model is not None:
+                self.set_model(saved_model)
+        return results
 
     def set_model(self, model: int):
         """
-        Set the current working model of the molecule
+        Set the current working model of the molecule.
+
+        Models no longer store separate atom copies — they store only a
+        coordinate snapshot. Switching models does a bulk numpy write of the
+        target conformer's coordinates into the canonical atom objects.
 
         Parameters
         ----------
-        model : Int
-            The id of the model to set as active
+        model : int or Model
+            The id (integer index) of the model, or the Model object itself.
         """
         if isinstance(model, int):
             if model < len(self._base_struct.child_list):
@@ -2727,15 +2763,32 @@ class BaseEntity:
                 raise ValueError(
                     f"Model {model} not in molecule. Available models: {self.models}. First add the model to the molecule to set it as the active model!"
                 )
-        # we have to update the bond references to the new model
-        # since each model stores copies of the atoms
-        atom_mapping = {i.serial_number: i for i in new_model.get_atoms()}
-        for bond in self.get_bonds():
-            bond.atom1 = atom_mapping[bond.atom1.serial_number]
-            bond.atom2 = atom_mapping[bond.atom2.serial_number]
-        del atom_mapping
-        self._model = new_model
-        self.update_atom_graph()
+        else:
+            raise TypeError(f"model must be int or Model, got {type(model)}")
+
+        if new_model.id == self._active_conformer_id:
+            return self
+
+        # Canonical atom list (deterministic order by serial number)
+        canonical_atoms = sorted(self._AtomGraph.nodes, key=lambda a: a.serial_number)
+
+        # Snapshot the currently-active conformer back into its Model object
+        active_model_obj = next(
+            (
+                m
+                for m in self._base_struct.child_list
+                if m.id == self._active_conformer_id
+            ),
+            None,
+        )
+        if active_model_obj is not None:
+            active_model_obj.snapshot(canonical_atoms)
+
+        # Restore the requested conformer's coords into canonical atoms
+        atom_map = {a.serial_number: a for a in canonical_atoms}
+        new_model.restore(atom_map)
+
+        self._active_conformer_id = new_model.id
         return self
 
     def get_model(self, model: int = None) -> base_classes.Model:
@@ -2767,25 +2820,37 @@ class BaseEntity:
 
     def add_model(self, model: Union[int, base_classes.Model] = None):
         """
-        Add a new model to the molecule's structure
+        Add a new conformer (model) to the molecule.
+
+        Rather than deep-copying atom objects, the new model stores only a
+        coordinate snapshot (numpy array).
 
         Parameters
         ----------
-        model : int or Model
-            If not given, a new completely blank model is created. If an integer is given, an existing model
-            is copied and added to the molecule. If a Model object is given, it is added to the molecule.
+        model : int or Model or None
         """
+        new_id = len(self._base_struct.child_list)
+        canonical_atoms = sorted(self._AtomGraph.nodes, key=lambda a: a.serial_number)
+
         if isinstance(model, int):
-            new = self.get_model(model).copy()
-            new.id = len(self._base_struct.child_list)
+            source = self.get_model(model)
+            new = base_classes.Model(new_id)
+            if source.id == self._active_conformer_id:
+                new.snapshot(canonical_atoms)
+            elif source._coords is not None:
+                new._atom_serials = list(source._atom_serials)
+                new._coords = source._coords.copy()
+            else:
+                new.snapshot(canonical_atoms)
         elif isinstance(model, base_classes.Model):
             new = model
-            new.id = len(self._base_struct.child_list)
+            new.id = new_id
         elif isinstance(model, BaseEntity):
-            new = model._model
-            new.id = len(self._base_struct.child_list)
+            new = base_classes.Model(new_id)
+            new.snapshot(list(model._model.get_atoms()))
         elif model is None:
-            new = base_classes.Model(len(self._base_struct.child_list))
+            new = base_classes.Model(new_id)
+            new.snapshot(canonical_atoms)
         else:
             raise ValueError(f"Unknown model type {type(model)}")
 
@@ -2823,7 +2888,9 @@ class BaseEntity:
             model = self.get_model(model)
         self._base_struct.child_list.remove(model)
         self._base_struct.child_dict.pop(model.get_id())
-        self.remove_chains(model.child_list)
+        if model._coords is None and model.child_list:
+            # Canonical model with real chains — remove them from the molecule too
+            self.remove_chains(model.child_list)
         return model
 
     def split_contiguous(self, target_residues: list = None):
@@ -4834,13 +4901,14 @@ class BaseEntity:
         bonds = structural.infer_residue_connections(
             self._base_struct, bond_length, triplet
         )
-        _bonds = [base_classes.Bond(*b) for b in bonds]
-        _bonds = [b for b in _bonds if b not in self._bonds]
-        self._bonds.extend(_bonds)
-        self._AtomGraph.add_edges_from(bonds)
-        for b in _bonds:
-            self._AtomGraph.edges[b[0], b[1]]["bond_order"] = 1
-            self._AtomGraph.edges[b[0], b[1]]["bond_obj"] = b
+        # Use the graph as the authoritative dedup source — Bond.__eq__ is
+        # object identity, so "b not in self._bonds" never filters correctly.
+        for atom1, atom2 in bonds:
+            if self._AtomGraph.has_edge(atom1, atom2):
+                continue
+            bond = base_classes.Bond(atom1, atom2, 1)
+            self._AtomGraph.add_edge(atom1, atom2, bond_order=1, bond_obj=bond)
+            self._bonds.append(bond)
         return bonds
 
     def apply_standard_bonds(self, _compounds=None) -> list:
@@ -5389,18 +5457,24 @@ class BaseEntity:
             mol.title = self.id
         return mol
 
-    def to_rdkit(self):
+    def to_rdkit(self, sanitize: bool = True, **kwargs):
         """
         Convert the molecule to an RDKit molecule
+
+        Parameters
+        ----------
+        sanitize : bool
+            Whether to sanitize the RDKit molecule. Full sanitization
+            includes SSSR ring detection, which can hang indefinitely on
+            large structures such as proteins. Set to False when only
+            3-D coordinates and connectivity are needed.
 
         Returns
         -------
         rdkit.Chem.rdchem.Mol
             The RDKit molecule
         """
-        conv = utils.convert.RDKITBiopythonConverter()
-        conv.molecule_to_pdbio(self)
-        mol = conv._pdbio_to_rdkit()
+        mol = utils.convert.molecule_to_rdkit(self, sanitize=sanitize, **kwargs)
         if self.id is not None:
             mol.SetProp("_Name", self.id)
         return mol

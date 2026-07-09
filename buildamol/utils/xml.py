@@ -174,18 +174,24 @@ def encode_molecule(mol: "Molecule", atom_attributes: list = None) -> XMLEntry:
     coords_entry = XMLEntry("coordinates")
     coords_entry.attributes["models"] = len(mol.structure.child_list)
     root.add_child(coords_entry)
+
+    saved_active_id = mol._active_conformer_id
     for model in mol.get_models():
+        mol.set_model(model)
         model_entry = XMLEntry("model")
         model_entry.attributes["id"] = model.id
         coords_entry.add_child(model_entry)
-
-        for atom in model.get_atoms():
+        for atom in mol.get_atoms():
             atom_entry = XMLEntry("atomcoord")
             atom_entry.attributes["serial"] = atom.serial_number
             atom_entry.attributes["x"] = round(atom.coord[0], 4)
             atom_entry.attributes["y"] = round(atom.coord[1], 4)
             atom_entry.attributes["z"] = round(atom.coord[2], 4)
             model_entry.add_child(atom_entry)
+
+    mol.set_model(
+        next(m for m in mol.get_models() if m.id == saved_active_id)
+    )
     return root
 
 

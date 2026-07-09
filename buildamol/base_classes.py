@@ -218,6 +218,34 @@ class Atom(ID):
             self.mass = None
         self.parent = None
 
+    # Precomputed hydrogen mass (avoids repeated periodic table lookups)
+    _H_MASS = None
+
+    @classmethod
+    def _hydrogen(cls, id: str, coord: "np.ndarray") -> "Atom":
+        """
+        Fast-path constructor for hydrogen atoms.
+        Bypasses the periodic table lookup and redundant np.asarray conversion.
+        For internal use by Hydrogenator only.
+        """
+        if cls._H_MASS is None:
+            cls._H_MASS = pt.elements.symbol("H").mass
+        H = cls.__new__(cls)
+        ID.__init__(H)
+        H.id = id
+        H.coord = coord  # caller guarantees float64 ndarray
+        H.bfactor = 0.0
+        H.occupancy = 1.0
+        H.altloc = " "
+        H.fullname = id
+        H.serial_number = 1
+        H.element = "H"
+        H.pqr_charge = None
+        H.radius = None
+        H.mass = cls._H_MASS
+        H.parent = None
+        return H
+
     @classmethod
     def new(
         cls,
@@ -1571,6 +1599,8 @@ class Model(_DrawableMixin, ID):
         "parent",
         "child_list",
         "child_dict",
+        "_coords",
+        "_atom_serials",
     )
 
     def __init__(self, id):
@@ -1579,6 +1609,8 @@ class Model(_DrawableMixin, ID):
         self.parent = None
         self.child_list = []
         self.child_dict = {}
+        self._coords = None
+        self._atom_serials = None
 
     @classmethod
     def new(cls, id: int = None) -> "Model":
@@ -1782,22 +1814,28 @@ class Model(_DrawableMixin, ID):
         )
 
     def copy(self):
-        """
-        Return a deep copy of the model with a new UUID4.
-
-        Returns
-        -------
-        Model
-            The copied model.
-        """
         new = ID.copy(self)
-        for chain in new.get_chains():
-            ID._new_id(chain)
-            for residue in chain.get_residues():
-                ID._new_id(residue)
-                for atom in residue.get_atoms():
-                    ID._new_id(atom)
+        if self._coords is None:
+            for chain in new.get_chains():
+                ID._new_id(chain)
+                for residue in chain.get_residues():
+                    ID._new_id(residue)
+                    for atom in residue.get_atoms():
+                        ID._new_id(atom)
         return new
+
+    def snapshot(self, atoms):
+        """Save coordinates of canonical atoms into this snapshot model."""
+        atoms = list(atoms)
+        self._atom_serials = [a.serial_number for a in atoms]
+        self._coords = np.array([a.coord for a in atoms], dtype=float)
+
+    def restore(self, atom_map):
+        """Write stored coordinates back into canonical atoms."""
+        for i, serial in enumerate(self._atom_serials):
+            at = atom_map.get(serial)
+            if at is not None:
+                at.coord = self._coords[i]
 
     @classmethod
     def from_biopython(cls, model):
