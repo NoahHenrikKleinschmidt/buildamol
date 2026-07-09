@@ -910,7 +910,7 @@ class Py3DmolViewer:
             )
 
         if hasattr(molecule, "to_pdb"):
-            self.pdb = utils.pdb.encode_pdb(molecule)
+            self.pdb = utils.pdb.encode_pdb(molecule, reindex=True)
         else:
             self.pdb = utils.pdb.make_atoms_table(molecule)
 
@@ -959,7 +959,7 @@ class Py3DmolViewer:
             if style is None:
                 style = other.style
         elif hasattr(other, "to_pdb"):
-            pdb = utils.pdb.encode_pdb(other)
+            pdb = utils.pdb.encode_pdb(other, reindex=True)
             self.view.addModel(pdb, "pdb")
             if style is None:
                 style = self.style
@@ -1017,9 +1017,9 @@ class NglViewer:
                 "NGLView is not available. Please install it with `pip install nglview` and be sure to use a compatible environment."
             )
         if hasattr(molecule, "to_pdb"):
-            self.pdb = utils.pdb.encode_pdb(molecule)
+            self.pdb = utils.pdb.encode_pdb(molecule, reindex=True)
         elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
-            self.pdb = utils.pdb.encode_pdb(molecule._molecule)
+            self.pdb = utils.pdb.encode_pdb(molecule._molecule, reindex=True)
         else:
             raise ValueError(
                 f"Unsupported molecule type: {molecule.__class__.__name__}"

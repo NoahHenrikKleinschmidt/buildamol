@@ -183,7 +183,7 @@ def write_pdb(mol, filename, symmetric: bool = True, safe: bool = True):
             f.write("\nEND\n")
 
 
-def encode_pdb(mol, symmetric: bool = True, safe: bool = True) -> str:
+def encode_pdb(mol, symmetric: bool = True, safe: bool = True, reindex: bool = False) -> str:
     """
     Encode a molecule to a PDB file without actually writing it to disk.
 
@@ -196,25 +196,36 @@ def encode_pdb(mol, symmetric: bool = True, safe: bool = True) -> str:
     safe : bool, optional
         Whether to truncate fixed-width text fields to PDB-compatible widths,
         by default True.
+    reindex : bool, optional
+        If True, remap all atom serials to a dense 1-based sequential range
+        before writing. This is required for viewers (e.g. py3Dmol) that do
+        not understand hybrid-36 encoded serial numbers (used when atom count
+        exceeds 99999), by default False.
 
     Returns
     -------
     str
         The PDB file contents.
     """
+    serial_map = None
+    res_serial_map = None
+    if reindex:
+        serial_map = {a.serial_number: i + 1 for i, a in enumerate(mol.get_atoms())}
+        res_serial_map = {r.serial_number: i + 1 for i, r in enumerate(mol.get_residues())}
+
     lines = []
     n_models = len(getattr(mol, "models", []))
     if n_models > 1:
         for model in mol.get_models():
             lines.append(f"MODEL {model.id}")
             mol.set_model(model)
-            lines.append(make_atoms_table(mol, safe=safe))
+            lines.append(make_atoms_table(mol, safe=safe, serial_map=serial_map, res_serial_map=res_serial_map))
             lines.append("ENDMDL")
-        lines.append(make_connect_table(mol, symmetric))
+        lines.append(make_connect_table(mol, symmetric, serial_map=serial_map))
         lines.append("END")
     else:
-        lines.append(make_atoms_table(mol, safe=safe))
-        lines.append(make_connect_table(mol, symmetric))
+        lines.append(make_atoms_table(mol, safe=safe, serial_map=serial_map, res_serial_map=res_serial_map))
+        lines.append(make_connect_table(mol, symmetric, serial_map=serial_map))
         lines.append("END")
     return "\n".join(lines)
 
@@ -372,7 +383,7 @@ def _parse_charge(line):
 
 
 
-def make_connect_table(mol, symmetric=True):
+def make_connect_table(mol, symmetric=True, serial_map=None):
     """
     Make a "CONECT" table for a PDB file.
     This is necessary since Biopython by default does not do that...
@@ -384,6 +395,9 @@ def make_connect_table(mol, symmetric=True):
     symmetric : bool, optional
         Whether to generate symmetric bonds (i.e. if A is bonded to B, then
         B is bonded to A as well). Default is True. And both are written to the file.
+    serial_map : dict, optional
+        A mapping from original atom serial numbers to new serial numbers.
+        Used when reindexing atoms for viewers that don't support hybrid-36 encoding.
 
     Returns
     -------
@@ -392,8 +406,10 @@ def make_connect_table(mol, symmetric=True):
     """
     connectivity = {}
     for bond in mol.get_bonds():
-        a = bond.atom1.serial_number
-        b = bond.atom2.serial_number
+        a_raw = bond.atom1.serial_number
+        b_raw = bond.atom2.serial_number
+        a = serial_map[a_raw] if serial_map else a_raw
+        b = serial_map[b_raw] if serial_map else b_raw
         if a not in connectivity:
             connectivity[a] = [b] * bond.order
         else:
@@ -421,7 +437,7 @@ def make_connect_table(mol, symmetric=True):
 atom_line = "{prefix}{serial}{neg_adj}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
 
 
-def make_atoms_table(mol, safe: bool = True):
+def make_atoms_table(mol, safe: bool = True, serial_map=None, res_serial_map=None):
     """
     Make a PDB atom table
 
@@ -432,6 +448,13 @@ def make_atoms_table(mol, safe: bool = True):
     safe : bool, optional
         Whether to truncate fixed-width text fields to PDB-compatible widths,
         by default True.
+    serial_map : dict, optional
+        A mapping from original atom serial numbers to new serial numbers.
+        Used when reindexing atoms for viewers that don't support hybrid-36 encoding.
+    res_serial_map : dict, optional
+        A mapping from original residue serial numbers to new serial numbers.
+        Used when reindexing residues for tools (e.g. meeko) that require plain
+        decimal residue sequence numbers.
 
     Returns
     -------
@@ -440,14 +463,27 @@ def make_atoms_table(mol, safe: bool = True):
     """
     lines = []
     for atom in mol.get_atoms():
-        new_line = encode_atom(atom, safe=safe)
+        serial = serial_map[atom.serial_number] if serial_map else None
+        res_serial = res_serial_map[atom.get_parent().serial_number] if res_serial_map else None
+        new_line = encode_atom(atom, safe=safe, serial=serial, res_serial=res_serial)
         lines.append(new_line)
     return "\n".join(lines)
 
 
-def encode_atom(atom, safe: bool = True) -> str:
+def encode_atom(atom, safe: bool = True, serial=None, res_serial=None) -> str:
     """
     Make an ATOM line for a PDB file.
+
+    Parameters
+    ----------
+    atom : Atom
+        The atom to encode.
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths.
+    serial : int, optional
+        Override for the atom serial number. If None, uses atom.serial_number.
+    res_serial : int, optional
+        Override for the residue sequence number. If None, uses atom.get_parent().serial_number.
     """
     neg_adj = " "
     # if len(atom.id) > 3:
@@ -471,7 +507,7 @@ def encode_atom(atom, safe: bool = True) -> str:
 
     new_line = atom_line.format(
         prefix=prefix,
-        serial=_format_extended_int(atom.serial_number, 5),
+        serial=_format_extended_int(serial if serial is not None else atom.serial_number, 5),
         neg_adj=neg_adj,
         id=_format_pdb_text_field(atom.id.upper(), 4, safe=safe),
         altloc=_format_pdb_text_field(atom.altloc, 1, safe=safe),
@@ -481,7 +517,7 @@ def encode_atom(atom, safe: bool = True) -> str:
         chain=_format_pdb_text_field(
             atom.get_parent().get_parent().id or " ", 1, safe=safe
         ),
-        res_serial=_format_extended_int(atom.get_parent().serial_number, 4),
+        res_serial=_format_extended_int(res_serial if res_serial is not None else atom.get_parent().serial_number, 4),
         icode="",  # atom.get_parent().id[2],
         x=f"{atom.coord[0]:>8.3f}",
         y=f"{atom.coord[1]:>8.3f}",
