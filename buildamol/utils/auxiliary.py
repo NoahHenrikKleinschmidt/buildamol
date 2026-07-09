@@ -52,6 +52,7 @@ Chem = importlib.import_module("rdkit.Chem")
 AllChem = importlib.import_module("rdkit.Chem.AllChem")
 RDLogger = importlib.import_module("rdkit.RDLogger")
 Draw = importlib.import_module("rdkit.Chem.Draw")
+rdGeometry = importlib.import_module("rdkit.Geometry.rdGeometry")
 MMFFGetMoleculeProperties = AllChem.MMFFGetMoleculeProperties
 MMFFGetMoleculeForceField = AllChem.MMFFGetMoleculeForceField
 

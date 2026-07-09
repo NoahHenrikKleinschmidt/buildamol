@@ -447,6 +447,103 @@ class PybelBioPythonConverter(PDBIO):
         return pybel_obj
 
 
+_BAM_TO_RDKIT_BOND = None
+_RDKIT_TO_BAM_BOND = None
+
+
+def _bond_type_maps():
+    global _BAM_TO_RDKIT_BOND, _RDKIT_TO_BAM_BOND
+    if _BAM_TO_RDKIT_BOND is None:
+        _BAM_TO_RDKIT_BOND = {
+            1: aux.Chem.BondType.SINGLE,
+            2: aux.Chem.BondType.DOUBLE,
+            3: aux.Chem.BondType.TRIPLE,
+        }
+        _RDKIT_TO_BAM_BOND = {v: k for k, v in _BAM_TO_RDKIT_BOND.items()}
+        _RDKIT_TO_BAM_BOND[aux.Chem.BondType.AROMATIC] = 1
+    return _BAM_TO_RDKIT_BOND, _RDKIT_TO_BAM_BOND
+
+
+def molecule_to_rdkit(mol, sanitize: bool = True, **kwargs) -> "Chem.rdchem.Mol":
+    """
+    Directly convert a BuildAMol Molecule to an RDKit Mol by building an
+    RWMol atom-by-atom and bond-by-bond, with no intermediate PDB file.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The BuildAMol molecule to convert
+    sanitize : bool
+        Whether to sanitize the RDKit molecule after construction.
+        Full sanitization includes RDKit's SSSR ring-finding algorithm,
+        which scales poorly with the number of atoms and bonds and can
+        hang indefinitely on large structures (ribosomes, large proteins).
+        Set to False for large molecules when only 3-D coordinates and
+        connectivity are needed.
+
+    Returns
+    -------
+    rdkit.Chem.rdchem.Mol
+        The RDKit molecule with a 3D conformer
+    """
+    bam_to_rd, _ = _bond_type_maps()
+    rw = aux.Chem.RWMol()
+
+    # Pre-collect all atom data before entering the RDKit loop so we do one
+    # pass over the biopython structure instead of interleaving Python and C++.
+    atoms = list(mol.get_atoms())
+    n = len(atoms)
+    elements = [(a.element or "C").capitalize() for a in atoms]
+    coords = np.empty((n, 3), dtype=np.float64)
+    serial_to_idx = {}
+    for i, a in enumerate(atoms):
+        coords[i] = a.coord
+        serial_to_idx[a.serial_number] = i
+
+    for elem in elements:
+        at = aux.Chem.Atom(elem)
+        at.SetNoImplicit(True)  # all Hs are explicit in the BuildAMol structure
+        rw.AddAtom(at)
+
+    # Set all 3-D positions in a single C++ call via the numpy array path
+    # rather than calling SetAtomPosition once per atom.
+    conf = aux.Chem.Conformer(n)
+    conf.SetPositions(coords)
+    rw.AddConformer(conf, assignId=True)
+
+    _seen_bonds = set()
+    for bond in mol.get_bonds():
+        idx1 = serial_to_idx.get(bond.atom1.serial_number)
+        idx2 = serial_to_idx.get(bond.atom2.serial_number)
+        if idx1 is not None and idx2 is not None:
+            key = (min(idx1, idx2), max(idx1, idx2))
+            if key not in _seen_bonds:
+                _seen_bonds.add(key)
+                rw.AddBond(
+                    idx1, idx2, bam_to_rd.get(bond.order, aux.Chem.BondType.SINGLE)
+                )
+
+    if sanitize:
+        try:
+            aux.Chem.SanitizeMol(rw)
+        except Exception:
+            # Full sanitization failed (e.g. valence error). Fall back to the
+            # cheap flags only — deliberately omitting SANITIZE_SYMMRINGS and
+            # SANITIZE_SETAROMATICITY, both of which invoke SSSR ring detection
+            # and can hang on large, densely connected structures.
+            try:
+                aux.Chem.SanitizeMol(
+                    rw,
+                    aux.Chem.SanitizeFlags.SANITIZE_FINDRADICALS
+                    | aux.Chem.SanitizeFlags.SANITIZE_SETCONJUGATION
+                    | aux.Chem.SanitizeFlags.SANITIZE_SETHYBRIDIZATION,
+                )
+            except Exception:
+                pass
+
+    return rw.GetMol()
+
+
 class RDKITBiopythonConverter(PDBIO):
     """
     A class to convert between RDKit and biopython objects
