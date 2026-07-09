@@ -12,6 +12,7 @@ import numpy as np
 
 EASYDOCK_VINA_BACKEND = "vina"
 
+
 def set_vina_backend(backend: str):
     """
     Set the default vina backend to use
@@ -24,6 +25,7 @@ def set_vina_backend(backend: str):
     global EASYDOCK_VINA_BACKEND
     EASYDOCK_VINA_BACKEND = backend
 
+
 def get_vina_backend():
     """
     Get the default vina backend
@@ -35,7 +37,18 @@ def get_vina_backend():
     """
     return EASYDOCK_VINA_BACKEND
 
-def dock(protein: core.Molecule, ligand: core.Molecule, center: tuple, box_size: tuple, backend: str = None, n_poses: int = 5, exhaustiveness: int = 8, ncpu: int = 1, **kwargs):
+
+def dock(
+    protein: core.Molecule,
+    ligand: core.Molecule,
+    center: tuple,
+    box_size: tuple,
+    backend: str = None,
+    n_poses: int = 5,
+    exhaustiveness: int = 8,
+    ncpu: int = 1,
+    **kwargs,
+):
     """
     Dock a ligand to a protein using AutoDock Vina via the `easydock` package.
 
@@ -84,8 +97,11 @@ def dock(protein: core.Molecule, ligand: core.Molecule, center: tuple, box_size:
     if backend is None:
         backend = EASYDOCK_VINA_BACKEND
     docker = Docker(backend)
-    docker.setup(protein, exhaustiveness=exhaustiveness, n_poses=n_poses, ncpu=ncpu, **kwargs)
+    docker.setup(
+        protein, exhaustiveness=exhaustiveness, n_poses=n_poses, ncpu=ncpu, **kwargs
+    )
     return docker.dock(ligand, center, box_size)
+
 
 class Docker:
     """
@@ -101,9 +117,9 @@ class Docker:
         self.backend = backend
         self.working_directory = None
         if backend == "vina":
-            from easydock.vina_dock import mol_dock
+            from easydock.dock.vina_dock import mol_dock
         elif backend == "gnina":
-            from easydock.gnina_dock import mol_dock
+            from easydock.dock.gnina_dock import mol_dock
         else:
             raise ValueError(
                 f"Backend {backend} not supported by `easydock`: use 'vina' or 'gnina'"
@@ -144,8 +160,8 @@ class Docker:
             Additional keyword arguments to pass to the docking backend
         """
         outdir = _prepare_outdir(dir)
-        proteinfile = outdir / "protein.pdbqt"
-        protein.to_pdbqt(proteinfile)
+        self._protein = protein
+        self._proteinfile = None
         _write_easydock_config(exhaustiveness, seed, n_poses, ncpu, outdir, **kwargs)
         self.working_directory = outdir
 
@@ -170,6 +186,16 @@ class Docker:
         """
         if self.working_directory is None:
             raise ValueError("Docker must be set up before docking")
+
+        if self._proteinfile is None:
+            from buildamol.utils.pdbqt import _encode_pdbqt_receptor
+
+            protein_pdbqt = _encode_pdbqt_receptor(
+                self._protein, box_center=center, box_size=box_size
+            )
+            with open(self.working_directory / "protein.pdbqt", "w") as f:
+                f.write(protein_pdbqt)
+            self._proteinfile = self.working_directory / "protein.pdbqt"
 
         _write_gridfile(center, box_size, self.working_directory)
         config = self.working_directory / "config.yaml"
@@ -207,8 +233,8 @@ class Docker:
             with open(self.working_directory / f"{id}.pdb", "w") as f:
                 f.write(pdb_string)
             new = core.Molecule.from_pdb(
-                    self.working_directory / f"{id}.pdb", id=id, model="all"
-                )
+                self.working_directory / f"{id}.pdb", id=id, model="all"
+            )
             new.docking_score = data["docking_score"]
             out.append(new)
 

@@ -2,11 +2,10 @@
 An extension for facilitating docking of ligand molecules to proteins.
 """
 
-AVAILABLE_DOCKING_BACKENDS = [
-    "easydock", "dockstring"
-]
+AVAILABLE_DOCKING_BACKENDS = ["easydock", "dockstring"]
 
 DOCKING_BACKEND = AVAILABLE_DOCKING_BACKENDS[0]
+
 
 def available_docking_backends():
     """
@@ -18,6 +17,7 @@ def available_docking_backends():
         The available docking backends
     """
     return AVAILABLE_DOCKING_BACKENDS
+
 
 def set_docking_backend(backend: str):
     """
@@ -34,10 +34,16 @@ def set_docking_backend(backend: str):
     DOCKING_BACKEND = backend
 
     import importlib
+
     # do from backend import __dock__ as dock
-    globals()["dock"] = importlib.import_module(f"buildamol.extensions.docking.{backend}").__dock__
+    globals()["dock"] = importlib.import_module(
+        f"buildamol.extensions.docking.backend_{backend}"
+    ).__dock__
     # make sure that the docstring is updated
-    globals()["dock"].__doc__ = importlib.import_module(f"buildamol.extensions.docking.{backend}").dock.__doc__
+    globals()["dock"].__doc__ = importlib.import_module(
+        f"buildamol.extensions.docking.backend_{backend}"
+    ).dock.__doc__
+
 
 def get_docking_backend():
     """
@@ -49,5 +55,6 @@ def get_docking_backend():
         The default docking backend
     """
     return DOCKING_BACKEND
+
 
 set_docking_backend(DOCKING_BACKEND)
