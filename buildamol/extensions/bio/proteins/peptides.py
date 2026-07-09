@@ -15,6 +15,7 @@ __all__ = [
     "amino_acids",
     "amino_acid_names_3letter",
     "amino_acid_names_1letter",
+    "apply_peptide_bonds",
 ]
 
 _1to3 = {
@@ -347,6 +348,38 @@ def omega(
     CA_next = _next.get_atom("CA")
 
     return structural.compute_dihedral(CA, C, N_next, CA_next)
+
+
+def apply_peptide_bonds(mol: core.Molecule) -> int:
+    """
+    Apply peptide backbone bonds (C→N) between consecutive amino acid residues.
+
+    This is a fast, rule-based alternative to `infer_residue_connections` for
+    proteins — no distance search. Bonds that already exist are silently skipped.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The protein (or mixed) molecule.
+
+    Returns
+    -------
+    int
+        Number of new bonds added.
+    """
+    added = 0
+    for chain in mol.get_chains():
+        residues = sorted(chain.get_residues(), key=lambda r: r.serial_number)
+        for i in range(len(residues) - 1):
+            res1, res2 = residues[i], residues[i + 1]
+            if res2.serial_number - res1.serial_number > 1:
+                continue  # gap in sequence numbering — not a real peptide bond
+            C = next((a for a in res1.get_atoms() if a.id == "C"), None)
+            N = next((a for a in res2.get_atoms() if a.id == "N"), None)
+            if C is not None and N is not None:
+                mol.set_bond(C, N)
+                added += 1
+    return added
 
 
 if __name__ == "__main__":

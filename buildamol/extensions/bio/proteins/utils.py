@@ -38,6 +38,23 @@ def select_protein(mol: core.Molecule, other_residues: list = None) -> core.Mole
     return mol
 
 
+def get_protein_residues(mol: core.Molecule) -> list:
+    """
+    Get the protein residues from a molecule.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The molecule to get the protein residues from.
+
+    Returns
+    -------
+    list
+        A list of protein residues.
+    """
+    return [i for i in mol.get_residues() if i.name.upper() in amino_acid_names_3letter]
+
+
 def split_protein_and_others(mol: core.Molecule) -> tuple[core.Molecule, core.Molecule]:
     """
     Split a molecule into two parts: the protein part and the rest.
@@ -77,8 +94,12 @@ def is_protein(mol: core.Molecule, allow_non_protein: bool = True) -> bool:
         True if the molecule is a protein, False otherwise.
     """
     if not allow_non_protein:
-        return all(res.name in amino_acid_names_3letter for res in mol.get_residues())
-    return any(res.name in amino_acid_names_3letter for res in mol.get_residues())
+        return all(
+            res.name.upper() in amino_acid_names_3letter for res in mol.get_residues()
+        )
+    return any(
+        res.name.upper() in amino_acid_names_3letter for res in mol.get_residues()
+    )
 
 
 if __name__ == "__main__":
