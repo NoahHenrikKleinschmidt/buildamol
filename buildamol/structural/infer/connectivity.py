@@ -13,15 +13,22 @@ from .constants import _MIN_BOND_LENGTH, _bond_cutoff_vdw, _max_search_radius_vd
 
 
 def _search_pairs(atoms, radius):
+    """
+    Return (atom_i, atom_j, dist_ij) triples for all pairs within *radius*.
+    Distances are included so callers avoid recomputing them.
+    """
     if len(atoms) < 2:
         return []
     coords = np.array([a.coord for a in atoms])
-    # Pairwise distances via broadcasting (upper triangle only)
     diff = coords[:, np.newaxis] - coords[np.newaxis, :]
     dists = np.linalg.norm(diff, axis=-1)
     i, j = np.where((dists < radius) & (dists > 0))
     mask = i < j
-    return [(atoms[int(ii)], atoms[int(jj)]) for ii, jj in zip(i[mask], j[mask])]
+    ii, jj = i[mask], j[mask]
+    return [
+        (atoms[int(a)], atoms[int(b)], float(dists[a, b]))
+        for a, b in zip(ii, jj)
+    ]
 
 
 def infer_residue_connections(
@@ -42,35 +49,82 @@ def infer_residue_connections(
             min_length, max_length = bond_length
             use_vdw = False
 
+        # Collect all non-H atoms once and build a global KDTree, which is
+        # O(N log N + M) vs the previous O(N_residues² × N_per_residue²) loop.
+        atoms = [a for a in structure.get_atoms() if a.element != "H"]
+        if len(atoms) < 2:
+            return []
+
+        search_radius = _max_search_radius_vdw(atoms) if use_vdw else max_length
+        if not search_radius:
+            return []
+
+        try:
+            from scipy.spatial import KDTree
+            coords = np.array([a.coord for a in atoms])
+            tree = KDTree(coords)
+            pair_indices = tree.query_pairs(r=search_radius, output_type="ndarray")
+        except Exception:
+            # Scipy unavailable or error — fall back to pairwise numpy broadcast.
+            # Only feasible for small structures.
+            pair_indices = None
+
         bonds = []
-        _seen_residues = set()
-        for residue1 in structure.get_residues():
-            for residue2 in structure.get_residues():
-                if residue1 == residue2:
-                    continue
-                elif residue2 in _seen_residues:
-                    continue
+        _cutoff_cache = {}  # (elem1, elem2) → float
 
-                atoms = list(i for i in residue1.get_atoms() if i.element != "H")
-                atoms.extend(i for i in residue2.get_atoms() if i.element != "H")
-
-                search_radius = _max_search_radius_vdw(atoms) if use_vdw else max_length
-                if search_radius == 0:
+        if pair_indices is not None and len(pair_indices):
+            for a_idx, b_idx in pair_indices:
+                atom1 = atoms[int(a_idx)]
+                atom2 = atoms[int(b_idx)]
+                if atom1.get_parent() is atom2.get_parent():
                     continue
 
-                _neighbors = _search_pairs(atoms, search_radius)
+                dist = float(np.linalg.norm(coords[a_idx] - coords[b_idx]))
 
-                for atom1, atom2 in _neighbors:
-                    if atom1.get_parent() == atom2.get_parent():
+                if use_vdw:
+                    key = (atom1.element, atom2.element)
+                    if key not in _cutoff_cache:
+                        _cutoff_cache[key] = _bond_cutoff_vdw(atom1, atom2)
+                        _cutoff_cache[(key[1], key[0])] = _cutoff_cache[key]
+                    cutoff = _cutoff_cache[key]
+                else:
+                    cutoff = max_length
+
+                if min_length < dist <= cutoff:
+                    bonds.append((atom1, atom2))
+
+        elif pair_indices is None:
+            # Fallback: pairwise broadcast per residue pair (original logic).
+            _seen_residues = set()
+            for residue1 in structure.get_residues():
+                for residue2 in structure.get_residues():
+                    if residue1 == residue2:
+                        continue
+                    elif residue2 in _seen_residues:
                         continue
 
-                    dist = np.linalg.norm(atom1.coord - atom2.coord)
-                    cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+                    res_atoms = [a for a in residue1.get_atoms() if a.element != "H"]
+                    res_atoms.extend(
+                        a for a in residue2.get_atoms() if a.element != "H"
+                    )
 
-                    if min_length < dist <= cutoff:
-                        bonds.append((atom1, atom2))
+                    sr = _max_search_radius_vdw(res_atoms) if use_vdw else max_length
+                    if not sr:
+                        continue
 
-            _seen_residues.add(residue1)
+                    for atom1, atom2, dist in _search_pairs(res_atoms, sr):
+                        if atom1.get_parent() is atom2.get_parent():
+                            continue
+                        key = (atom1.element, atom2.element)
+                        if key not in _cutoff_cache:
+                            _cutoff_cache[key] = _bond_cutoff_vdw(atom1, atom2)
+                            _cutoff_cache[(key[1], key[0])] = _cutoff_cache[key]
+                        cutoff = _cutoff_cache[key] if use_vdw else max_length
+                        if min_length < dist <= cutoff:
+                            bonds.append((atom1, atom2))
+
+                _seen_residues.add(residue1)
+
     else:
         connections = infer_residue_connections(
             structure, bond_length=bond_length, triplet=False
@@ -105,6 +159,8 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
         )
         use_vdw = False
 
+    _cutoff_cache = {}  # (elem1, elem2) → float
+
     bonds = []
     if restrict_residues:
         for residue in structure.get_residues():
@@ -113,13 +169,18 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
             if search_radius == 0:
                 continue
 
-            _neighbors = _search_pairs(atoms, search_radius)
-            for atom1, atom2 in _neighbors:
+            for atom1, atom2, dist in _search_pairs(atoms, search_radius):
                 if atom1.element == "H" and atom2.element == "H":
                     continue
 
-                dist = np.linalg.norm(atom1.coord - atom2.coord)
-                cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+                if use_vdw:
+                    key = (atom1.element, atom2.element)
+                    if key not in _cutoff_cache:
+                        _cutoff_cache[key] = _bond_cutoff_vdw(atom1, atom2)
+                        _cutoff_cache[(key[1], key[0])] = _cutoff_cache[key]
+                    cutoff = _cutoff_cache[key]
+                else:
+                    cutoff = max_length
 
                 if min_length < dist <= cutoff:
                     bonds.append((atom1, atom2))
@@ -129,15 +190,18 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
         if search_radius == 0:
             return []
 
-        _neighbors = _search_pairs(atoms, search_radius)
-
-        bonds = []
-        for atom1, atom2 in _neighbors:
+        for atom1, atom2, dist in _search_pairs(atoms, search_radius):
             if atom1.element == "H" and atom2.element == "H":
                 continue
 
-            dist = np.linalg.norm(atom1.coord - atom2.coord)
-            cutoff = _bond_cutoff_vdw(atom1, atom2) if use_vdw else max_length
+            if use_vdw:
+                key = (atom1.element, atom2.element)
+                if key not in _cutoff_cache:
+                    _cutoff_cache[key] = _bond_cutoff_vdw(atom1, atom2)
+                    _cutoff_cache[(key[1], key[0])] = _cutoff_cache[key]
+                cutoff = _cutoff_cache[key]
+            else:
+                cutoff = max_length
 
             if min_length < dist <= cutoff:
                 bonds.append((atom1, atom2))

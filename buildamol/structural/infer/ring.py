@@ -315,9 +315,10 @@ def split_into_contiguous_residues(molecule, target_residues: list = None):
             "The molecule has no bonds. Cannot split into contiguous residues due to missing connectivity information. First add bonds, for example by running `molecule.infer_bonds()`."
         )
 
-    atom_graph = molecule.get_atom_graph()
-
     if target_residues is not None:
+        # Need a subgraph view restricted to the target residues — copy required
+        # since we remove nodes before computing components.
+        atom_graph = molecule.get_atom_graph()
         target_residues = molecule.get_residues(target_residues)
         other_residues = [
             res for res in molecule.get_residues() if res not in target_residues
@@ -326,6 +327,9 @@ def split_into_contiguous_residues(molecule, target_residues: list = None):
         for res in other_residues:
             atom_nodes_to_drop.update(res.child_list)
         atom_graph.remove_nodes_from(atom_nodes_to_drop)
+    else:
+        # No filtering needed — read directly from the internal graph (no copy).
+        atom_graph = molecule._AtomGraph
 
     contiguous_subgraphs = nx.connected_components(atom_graph)
     old_residues_to_remove = set()
