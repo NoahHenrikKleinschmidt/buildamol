@@ -66,7 +66,10 @@ def make_smiles(
     """
     rdmol = molecule.to_rdkit()
     if not add_hydrogens:
-        rdmol = Chem.RemoveHs(rdmol)
+        try:
+            rdmol = Chem.RemoveHs(rdmol)
+        except Exception:
+            rdmol = Chem.RemoveHs(rdmol, sanitize=False)
     return Chem.MolToSmiles(rdmol, isomericSmiles=isomeric)
 
 

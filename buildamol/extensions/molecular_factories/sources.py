@@ -22,7 +22,7 @@ class Choice(ChainableBlock):
     def param_bounds(self) -> list:
         return [(0, len(self.molecules) - 1)]
 
-    def __call__(self, *args, **kwargs) -> Context:
+    def _call_buildamol_native(self, *args, **kwargs) -> "Context":
         param = self._next_param()
         if param is not None:
             idx = int(param) % len(self.molecules)
@@ -32,6 +32,21 @@ class Choice(ChainableBlock):
             idx = int(np.random.choice(len(self.molecules), p=self.p))
         context = Context()
         context.molecule = self.molecules[idx].copy()
+        return context
+
+    def _call_rdkit_accelerated(self, *args, **kwargs) -> "Context":
+        from .base import _bam_to_rdkit_2d
+        param = self._next_param()
+        if param is not None:
+            idx = int(param) % len(self.molecules)
+        else:
+            if self.seed is not None:
+                np.random.seed(self.seed)
+            idx = int(np.random.choice(len(self.molecules), p=self.p))
+        bam_mol = self.molecules[idx]
+        context = Context()
+        context.bam_molecule = bam_mol
+        context.molecule = _bam_to_rdkit_2d(bam_mol)
         return context
 
 
@@ -47,7 +62,14 @@ class Compound(ChainableBlock):
         self.molecule = molecule
         self.copy = copy
 
-    def __call__(self, *args, **kwargs) -> Context:
+    def _call_buildamol_native(self, *args, **kwargs) -> "Context":
         context = Context()
         context.molecule = self.molecule.copy() if self.copy else self.molecule
+        return context
+
+    def _call_rdkit_accelerated(self, *args, **kwargs) -> "Context":
+        from .base import _bam_to_rdkit_2d
+        context = Context()
+        context.bam_molecule = self.molecule
+        context.molecule = _bam_to_rdkit_2d(self.molecule)
         return context

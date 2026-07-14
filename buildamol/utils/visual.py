@@ -635,7 +635,10 @@ class Chem2DViewer:
             or the matplotlib axis (when ``ax`` is provided).
         """
         if not draw_hydrogens:
-            mol = Chem.rdmolops.RemoveHs(self.mol)
+            try:
+                mol = Chem.rdmolops.RemoveHs(self.mol)
+            except Exception:
+                mol = Chem.rdmolops.RemoveHs(self.mol, sanitize=False)
         else:
             mol = self.mol
 

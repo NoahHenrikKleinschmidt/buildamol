@@ -21,6 +21,7 @@ from .modifiers import (
     SetAttachResidue,
     FindLinkerAtoms,
     Connect,
-    Optimize,
+    Forge,
 )
+from .backend import set_backend, get_backend, backend
 from .optimizer import Optimizer

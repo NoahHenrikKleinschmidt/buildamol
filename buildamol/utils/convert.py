@@ -523,6 +523,23 @@ def molecule_to_rdkit(mol, sanitize: bool = True, **kwargs) -> "Chem.rdchem.Mol"
                     idx1, idx2, bam_to_rd.get(bond.order, aux.Chem.BondType.SINGLE)
                 )
 
+    # Infer formal charges for atoms whose explicit valence exceeds the neutral
+    # maximum. PDB / bam structures don't store formal charges, so quaternary N+
+    # (4 single bonds) and similar atoms would otherwise fail sanitization.
+    _bond_order_map = {
+        aux.Chem.BondType.SINGLE: 1,
+        aux.Chem.BondType.DOUBLE: 2,
+        aux.Chem.BondType.TRIPLE: 3,
+        aux.Chem.BondType.AROMATIC: 1,
+    }
+    _max_neutral_valence = {7: 3, 8: 2}
+    for _at in rw.GetAtoms():
+        _anum = _at.GetAtomicNum()
+        if _anum in _max_neutral_valence and _at.GetFormalCharge() == 0:
+            _val = sum(_bond_order_map.get(b.GetBondType(), 1) for b in _at.GetBonds())
+            if _val > _max_neutral_valence[_anum]:
+                _at.SetFormalCharge(_val - _max_neutral_valence[_anum])
+
     if sanitize:
         try:
             aux.Chem.SanitizeMol(rw)

@@ -11,8 +11,9 @@ class Modify(ChainableBlock):
     A modifier is a block that modifies a molecule. It has a `__call__` method that takes a molecule and returns a modified molecule.
     """
 
-    def __init__(self, func):
+    def __init__(self, func, mol=None):
         self.func = func
+        self.mol_type = mol
 
         # check if func needs an additional "atom" or "at_atom" argument aside from the mol
         sig = inspect.signature(func)
@@ -21,18 +22,32 @@ class Modify(ChainableBlock):
             for p in sig.parameters.values()
         )
 
-    def __call__(self, context: Context, *args, **kwargs) -> Context:
-        if self._needs_atom:
-            if context.linker_atom is None:
-                raise ValueError(
-                    "Linker atom is not set on the current context. "
-                    "Use SetLinkerAtoms or FindLinkerAtoms before Modify."
-                )
-            mol = self.func(context.molecule, context.linker_atom, *args, **kwargs)
+    def _call_default(self, context: Context, *args, **kwargs) -> Context:
+        from rdkit.Chem import rdchem
+        from buildamol.core import Molecule
+        from .base import _bam_to_rdkit_2d, _rdkit_to_bam_with_embed
+
+        mol = context.molecule
+        is_bam = isinstance(mol, Molecule)
+        is_rdkit = isinstance(mol, rdchem.Mol)
+
+        if self.mol_type == "rdkit" and is_bam:
+            converted = mol.to_rdkit()
+            result = self._apply_func(converted, context, *args, **kwargs)
+            context.molecule = Molecule.from_rdkit(result) if isinstance(result, rdchem.Mol) else result
+        elif self.mol_type == "buildamol" and is_rdkit:
+            converted = _rdkit_to_bam_with_embed(mol)
+            result = self._apply_func(converted, context, *args, **kwargs)
+            context.molecule = _bam_to_rdkit_2d(result) if isinstance(result, Molecule) else result
         else:
-            mol = self.func(context.molecule, *args, **kwargs)
-        context.molecule = mol
+            context.molecule = self._apply_func(mol, context, *args, **kwargs)
+
         return context
+
+    def _apply_func(self, mol, context, *args, **kwargs):
+        if self._needs_atom:
+            return self.func(mol, context.linker_atom, *args, **kwargs)
+        return self.func(mol, *args, **kwargs)
 
 
 class Random(ChainableBlock):
@@ -63,7 +78,7 @@ class Random(ChainableBlock):
     def param_bounds(self) -> list:
         return [(0.0, 1.0)] + self.block.param_bounds
 
-    def __call__(self, context: Context, *args, **kwargs) -> Context:
+    def _call_default(self, context: Context, *args, **kwargs) -> Context:
         param = self._next_param()
         apply = (param > 0.5) if param is not None else (_random.random() < self.p)
 
@@ -76,17 +91,6 @@ class Random(ChainableBlock):
         return context
 
 
-class Optimize(ChainableBlock):
-    def __init__(self, algorithm=None, **kwargs):
-        self.algorithm = algorithm
-        self.kwargs = kwargs
-
-    def __call__(self, context: Context, *args, **kwargs) -> Context:
-        mol = context.molecule
-        mol.optimize(self.algorithm, **self.kwargs, inplace=True)
-        return context
-
-
 class SetAttachResidue(ChainableBlock):
     """
     Sets the attach residue of a molecule. The attach residue is the residue that will be used to attach other molecules.
@@ -95,7 +99,7 @@ class SetAttachResidue(ChainableBlock):
     def __init__(self, residue):
         self.residue = residue
 
-    def __call__(self, context: Context, *args, **kwargs) -> Context:
+    def _call_buildamol_native(self, context: Context, *args, **kwargs) -> Context:
         if callable(self.residue):
             attach_residue = self.residue(context.molecule, *args, **kwargs)
         else:
@@ -104,39 +108,183 @@ class SetAttachResidue(ChainableBlock):
         context.attach_residue = context.molecule.get_attach_residue()
         return context
 
+    def _call_rdkit_accelerated(self, context: Context, *args, **kwargs) -> Context:
+        # Store the raw spec so SetLinkerAtoms can apply it to any bam mol it creates.
+        context.attach_residue = self.residue
+        bam_mol = context.bam_molecule
+        if bam_mol is not None:
+            if callable(self.residue):
+                attach_residue = self.residue(bam_mol, *args, **kwargs)
+            else:
+                attach_residue = bam_mol.get_residue(self.residue)
+            bam_mol.set_attach_residue(attach_residue)
+        return context
+
 
 class SetLinkerAtoms(ChainableBlock):
-    def __init__(self, link=None, delete=None):
+    """
+    Sets the linker and deleter atoms on the context.
+
+    ``mol`` controls what molecule type the ``link`` / ``delete`` callables
+    receive:
+
+    ``"auto"`` (default)
+        Native type of the active backend — a BuildAMol ``Molecule`` in
+        *buildamol-native*, an RDKit ``Mol`` in *rdkit-accelerated*.
+    ``"buildamol"``
+        Always pass a BuildAMol ``Molecule``.  In *rdkit-accelerated* mode a
+        lightweight 2-D molecule is created on-the-fly (cheap, no 3-D embed)
+        unless ``needs_conformer=True``, in which case a full ETKDGv3 embed
+        is performed instead.
+    ``"rdkit"``
+        Always pass an RDKit ``Mol``.  In *buildamol-native* mode the bam
+        molecule is stripped of Hs and conformers before being handed to the
+        callable.
+
+    ``needs_conformer`` only takes effect when ``mol="buildamol"`` in the
+    *rdkit-accelerated* backend.  Set it to ``True`` when the callable needs
+    physically meaningful 3-D coordinates (distance lookups, angular
+    constraints …).
+
+    In *rdkit-accelerated* mode the ``delete`` argument is always ignored
+    — Hs are implicit and ``Connect`` handles valence automatically.
+    """
+
+    def __init__(self, link=None, delete=None, mol="auto", needs_conformer=False):
         self.link = link
         self.delete = delete
+        self.mol_type = mol
+        self.needs_conformer = needs_conformer
 
-    def __call__(self, context: Context, *args, **kwargs) -> Context:
-        # Keep the current linker as default so that `delete`-only calls can
-        # still reference it (e.g. `_CH = lambda mol, atom: atom.get_left_hydrogen()`).
-        linker_atom = context.linker_atom
+    # ── mol-type resolution helpers ───────────────────────────────────────────
+
+    def _effective_mol_type(self, context):
+        """Resolve ``"auto"`` to ``"buildamol"`` or ``"rdkit"`` from context."""
+        if self.mol_type != "auto":
+            return self.mol_type
+        from rdkit.Chem import rdchem
+        return "rdkit" if isinstance(context.molecule, rdchem.Mol) else "buildamol"
+
+    def _get_working_mol(self, context):
+        """Return *(working_mol, mol_kind, bam_ref)*.
+
+        *working_mol* — what callables receive.
+        *mol_kind*    — ``"buildamol"`` or ``"rdkit"``.
+        *bam_ref*     — the bam mol used to back-map atom indices when
+                        ``context.molecule`` is an RDKit Mol.
+        """
+        from rdkit.Chem import rdchem
+        from buildamol.core import Molecule
+
+        mol_type = self._effective_mol_type(context)
+        ctx_mol = context.molecule
+
+        if mol_type == "buildamol":
+            if isinstance(ctx_mol, Molecule):
+                return ctx_mol, "buildamol", ctx_mol
+            # rdkit context → produce a bam mol
+            bam_mol = context.bam_molecule  # use cached original if available
+            if bam_mol is None:
+                from .base import _rdkit_to_bam_lightweight
+                bam_mol = _rdkit_to_bam_lightweight(ctx_mol, self.needs_conformer)
+                # Fresh mol — propagate attach_residue spec from context so
+                # callables that use mol.get_attach_residue() see the right residue.
+                spec = context.attach_residue
+                if spec is not None:
+                    if callable(spec):
+                        bam_mol.set_attach_residue(spec(bam_mol))
+                    else:
+                        bam_mol.set_attach_residue(spec)
+            return bam_mol, "buildamol", bam_mol
+        else:  # "rdkit"
+            if isinstance(ctx_mol, rdchem.Mol):
+                return ctx_mol, "rdkit", None
+            # bam context → produce a lightweight rdkit mol for the callable
+            from .base import _bam_to_rdkit_2d
+            return _bam_to_rdkit_2d(ctx_mol), "rdkit", ctx_mol
+
+    def _resolve_atom(self, val, working_mol, mol_kind, *extra):
+        """Resolve *val* (callable / int / str) to a raw atom in *working_mol*.
+
+        *extra* is forwarded to callables as positional arguments after the mol
+        (used for the delete callable which receives the linker atom).
+        """
+        if callable(val):
+            return val(working_mol, *extra)
+        if isinstance(val, int):
+            if mol_kind == "buildamol":
+                residue = getattr(working_mol, "get_attach_residue", lambda: None)()
+                return working_mol.get_atom(val, residue=residue)
+            return val  # rdkit atom index — pass through
+        # string atom name / id
+        if mol_kind == "buildamol":
+            residue = getattr(working_mol, "get_attach_residue", lambda: None)()
+            return working_mol.get_atom(val, residue=residue)
+        raise ValueError(
+            f"SetLinkerAtoms: cannot resolve atom {val!r} by name in rdkit mode. "
+            "Use mol='buildamol' or pass a callable."
+        )
+
+    def _to_context_linker(self, raw, mol_kind, bam_ref, context):
+        """Map a raw callable result to the linker representation for *context.molecule*.
+
+        * bam Atom  → rdkit int index  (when context.molecule is an RDKit Mol)
+        * RDKit Atom → rdkit int index (when context.molecule is an RDKit Mol)
+        * bam Atom  → bam Atom         (when context.molecule is a bam Molecule)
+        * int        → int              (no conversion needed)
+        """
+        from rdkit.Chem import rdchem
+        from buildamol.core import Molecule
+
+        if isinstance(raw, int):
+            if isinstance(context.molecule, Molecule):
+                # int index → look up heavy atom in bam mol
+                ref = bam_ref or context.molecule
+                heavy = [a for a in ref.get_atoms() if a.element.upper() != "H"]
+                return heavy[raw]
+            return raw  # rdkit context: int is already a valid index
+
+        if isinstance(raw, rdchem.Atom):
+            idx = raw.GetIdx()
+            if isinstance(context.molecule, Molecule):
+                ref = bam_ref or context.molecule
+                heavy = [a for a in ref.get_atoms() if a.element.upper() != "H"]
+                return heavy[idx]
+            return idx  # rdkit context: just the index
+
+        # bam Atom
+        if isinstance(context.molecule, rdchem.Mol):
+            # map bam atom → rdkit index via heavy-atom list of bam_ref
+            heavy = [a for a in bam_ref.get_atoms() if a.element.upper() != "H"]
+            return heavy.index(raw)
+        return raw  # bam context: return bam Atom directly
+
+    # ── unified dispatch ──────────────────────────────────────────────────────
+
+    def _call_default(self, context: Context, *args, **kwargs) -> Context:
+        """Handles both backends — delete is suppressed in *rdkit-accelerated*."""
+        from .backend import get_backend
+        is_rdkit_mode = get_backend() == "rdkit-accelerated"
+
+        working_mol, mol_kind, bam_ref = self._get_working_mol(context)
+        linker_raw = None  # raw result in working_mol's space (used by delete)
 
         if self.link is not None:
-            if callable(self.link):
-                linker_atom = self.link(context.molecule, *args, **kwargs)
-            else:
-                linker_atom = context.molecule.get_atom(
-                    self.link, residue=context.molecule.get_attach_residue()
-                )
-            context.linker_atom = linker_atom
+            linker_raw = self._resolve_atom(self.link, working_mol, mol_kind)
+            context.linker_atom = self._to_context_linker(linker_raw, mol_kind, bam_ref, context)
 
-        if self.delete is not None:
-            if callable(self.delete):
-                # Callable deleters receive (molecule, linker_atom) so they can
-                # navigate relative to the chosen linker atom, e.g.:
-                #   _CH = lambda mol, atom: atom.get_left_hydrogen()
-                deleter_atom = self.delete(
-                    context.molecule, linker_atom, *args, **kwargs
-                )
-            else:
-                deleter_atom = context.molecule.get_atom(
-                    self.delete, residue=context.molecule.get_attach_residue()
-                )
-            context.deleter_atom = deleter_atom
+        if is_rdkit_mode:
+            context.deleter_atom = None  # implicit Hs — Connect handles valence
+        elif self.delete is not None:
+            # Delete callables receive (mol, linker_in_working_mol) so they can
+            # navigate from the linker, e.g.:
+            #   _CH = lambda mol, atom: atom.get_left_hydrogen()
+            del_raw = self._resolve_atom(
+                self.delete, working_mol, mol_kind,
+                linker_raw if linker_raw is not None else context.linker_atom,
+            )
+            context.deleter_atom = self._to_context_linker(del_raw, mol_kind, bam_ref, context)
+
         return context
 
 
@@ -217,7 +365,7 @@ class FindLinkerAtoms(ChainableBlock):
     def _pick_h(linker):
         return min(linker.get_hydrogens(), key=lambda h: h.id)
 
-    # ── named strategies ──────────────────────────────────────────────────────
+    # ── named strategies (buildamol-native) ───────────────────────────────────
 
     def _how_random(self, molecule, *args, **kwargs):
         atoms = self._get_candidates(molecule)
@@ -379,9 +527,9 @@ class FindLinkerAtoms(ChainableBlock):
         deleter = next((a for a in linker.get_neighbors() if oc(a)), None)
         return linker, deleter
 
-    # ── call ─────────────────────────────────────────────────────────────────
+    # ── buildamol-native call ─────────────────────────────────────────────────
 
-    def __call__(self, context: Context, *args, **kwargs) -> Context:
+    def _call_buildamol_native(self, context: Context, *args, **kwargs) -> Context:
         if self._raw_how is None:
             # Optimisable: map a [0,1] float onto the candidate list.
             atoms = self._get_candidates(context.molecule)
@@ -400,6 +548,169 @@ class FindLinkerAtoms(ChainableBlock):
         context.deleter_atom = deleter
         return context
 
+    # ── RDKit candidate helpers ───────────────────────────────────────────────
+
+    def _rdkit_allowed_indices(self, context):
+        """Return the set of rdkit atom indices in the attach_residue, or None.
+
+        Uses the bam_molecule heavy-atom list as the index bridge: heavy atom *i*
+        in the bam mol equals rdkit atom *i* in the H-stripped mol produced by
+        ``_bam_to_rdkit_2d``.  After ``Connect``, source atoms still occupy
+        their original indices 0..n1-1, so the mapping stays valid.
+        """
+        bam_mol = context.bam_molecule
+        if bam_mol is None:
+            return None
+        attach_res = bam_mol.get_attach_residue()
+        if attach_res is None:
+            spec = context.attach_residue
+            if spec is None:
+                return None
+            attach_res = spec(bam_mol) if callable(spec) else bam_mol.get_residue(spec)
+        heavy = [a for a in bam_mol.get_atoms() if a.element.upper() != "H"]
+        res_atoms = set(attach_res.get_atoms())
+        return {i for i, a in enumerate(heavy) if a in res_atoms}
+
+    def _rdkit_get_candidates(self, mol, allowed_indices=None):
+        """H-bearing non-hydrogen atoms in an RDKit Mol, scoped to *allowed_indices*."""
+        candidates = [a for a in mol.GetAtoms()
+                      if a.GetAtomicNum() != 1 and a.GetTotalNumHs() > 0]
+        if allowed_indices is not None:
+            candidates = [a for a in candidates if a.GetIdx() in allowed_indices]
+        return candidates
+
+    def _rdkit_how_random(self, mol, allowed_indices=None):
+        atoms = self._rdkit_get_candidates(mol, allowed_indices)
+        if not atoms:
+            raise ValueError("No H-bearing atoms found.")
+        return _random.choice(atoms).GetIdx()
+
+    def _rdkit_how_highest_degree(self, mol, allowed_indices=None):
+        atoms = self._rdkit_get_candidates(mol, allowed_indices)
+        return max(atoms, key=lambda a: a.GetDegree()).GetIdx()
+
+    def _rdkit_how_lowest_degree(self, mol, allowed_indices=None):
+        atoms = self._rdkit_get_candidates(mol, allowed_indices)
+        return min(atoms, key=lambda a: a.GetDegree()).GetIdx()
+
+    def _rdkit_how_highest_cip(self, mol, allowed_indices=None):
+        from rdkit.Chem import AssignStereochemistry
+        AssignStereochemistry(mol, cleanIt=True, force=True)
+        atoms = self._rdkit_get_candidates(mol, allowed_indices)
+        return max(atoms, key=lambda a: int(a.GetPropsAsDict().get("_CIPRank", 0))).GetIdx()
+
+    def _rdkit_how_lowest_cip(self, mol, allowed_indices=None):
+        from rdkit.Chem import AssignStereochemistry
+        AssignStereochemistry(mol, cleanIt=True, force=True)
+        atoms = self._rdkit_get_candidates(mol, allowed_indices)
+        return min(atoms, key=lambda a: int(a.GetPropsAsDict().get("_CIPRank", 0))).GetIdx()
+
+    def _rdkit_how_highest_cip_and_degree(self, mol, allowed_indices=None):
+        from rdkit.Chem import AssignStereochemistry
+        AssignStereochemistry(mol, cleanIt=True, force=True)
+        atoms = self._rdkit_get_candidates(mol, allowed_indices)
+        return max(atoms, key=lambda a: (int(a.GetPropsAsDict().get("_CIPRank", 0)), a.GetDegree())).GetIdx()
+
+    def _rdkit_how_lowest_cip_and_degree(self, mol, allowed_indices=None):
+        from rdkit.Chem import AssignStereochemistry
+        AssignStereochemistry(mol, cleanIt=True, force=True)
+        atoms = self._rdkit_get_candidates(mol, allowed_indices)
+        return min(atoms, key=lambda a: (int(a.GetPropsAsDict().get("_CIPRank", 0)), a.GetDegree())).GetIdx()
+
+    def _rdkit_how_furthest_from_center(self, mol, allowed_indices=None):
+        raise NotImplementedError(
+            "'furthest_from_center' and 'closest_to_center' require 3D coordinates "
+            "and are not available in the 'rdkit-accelerated' backend."
+        )
+
+    def _rdkit_how_closest_to_center(self, mol, allowed_indices=None):
+        raise NotImplementedError(
+            "'furthest_from_center' and 'closest_to_center' require 3D coordinates "
+            "and are not available in the 'rdkit-accelerated' backend."
+        )
+
+    def _rdkit_how_amine_N(self, mol, allowed_indices=None):
+        atoms = [a for a in mol.GetAtoms()
+                 if a.GetAtomicNum() == 7 and a.GetTotalNumHs() > 0]
+        if allowed_indices is not None:
+            atoms = [a for a in atoms if a.GetIdx() in allowed_indices]
+        if not atoms:
+            raise ValueError("No amine nitrogen with H found.")
+        return atoms[0].GetIdx()
+
+    def _rdkit_how_hydroxyl_O(self, mol, allowed_indices=None):
+        atoms = [a for a in mol.GetAtoms()
+                 if a.GetAtomicNum() == 8 and a.GetTotalNumHs() > 0]
+        if allowed_indices is not None:
+            atoms = [a for a in atoms if a.GetIdx() in allowed_indices]
+        if not atoms:
+            raise ValueError("No hydroxyl oxygen with H found.")
+        return atoms[0].GetIdx()
+
+    def _rdkit_how_carbonyl_C(self, mol, allowed_indices=None):
+        from rdkit.Chem import MolFromSmarts
+        patt = MolFromSmarts("[CH](=O)")
+        matches = mol.GetSubstructMatches(patt)
+        if allowed_indices is not None:
+            matches = [m for m in matches if m[0] in allowed_indices]
+        if not matches:
+            raise ValueError("No carbonyl C-H found.")
+        return matches[0][0]
+
+    def _rdkit_how_carboxyl_O(self, mol, allowed_indices=None):
+        from rdkit.Chem import MolFromSmarts
+        patt = MolFromSmarts("[OH][C](=O)")
+        matches = mol.GetSubstructMatches(patt)
+        if allowed_indices is not None:
+            matches = [m for m in matches if m[0] in allowed_indices]
+        if not matches:
+            raise ValueError("No carboxyl OH oxygen found.")
+        return matches[0][0]
+
+    def _rdkit_how_carboxyl_C(self, mol, allowed_indices=None):
+        from rdkit.Chem import MolFromSmarts
+        patt = MolFromSmarts("[C](=O)[OH]")
+        matches = mol.GetSubstructMatches(patt)
+        if allowed_indices is not None:
+            matches = [m for m in matches if m[0] in allowed_indices]
+        if not matches:
+            raise ValueError("No carboxyl C found.")
+        return matches[0][0]
+
+    # ── rdkit-accelerated call ────────────────────────────────────────────────
+
+    def _call_rdkit_accelerated(self, context: Context, *args, **kwargs) -> Context:
+        mol = context.molecule
+        allowed_indices = self._rdkit_allowed_indices(context)
+
+        if self._raw_how is None:
+            atoms = self._rdkit_get_candidates(mol, allowed_indices)
+            if not atoms:
+                raise ValueError("No H-bearing atoms found in molecule.")
+            param = self._next_param()
+            if param is not None:
+                idx = int(param * len(atoms)) % len(atoms)
+                linker_idx = atoms[idx].GetIdx()
+            else:
+                linker_idx = _random.choice(atoms).GetIdx()
+        elif callable(self._raw_how):
+            result = self.how(mol, *args, **kwargs)
+            linker_idx = result[0] if isinstance(result, tuple) else result
+            if hasattr(linker_idx, "GetIdx"):
+                linker_idx = linker_idx.GetIdx()
+        else:
+            rdkit_method_name = f"_rdkit_how_{self._raw_how}"
+            rdkit_method = getattr(self, rdkit_method_name, None)
+            if rdkit_method is None:
+                raise NotImplementedError(
+                    f"Strategy '{self._raw_how}' has no rdkit-accelerated implementation."
+                )
+            linker_idx = rdkit_method(mol, allowed_indices)
+
+        context.linker_atom = linker_idx
+        context.deleter_atom = None  # implicit Hs — handled by Connect
+        return context
+
 
 class Connect(ChainableBlock):
     n_params = 0
@@ -414,11 +725,11 @@ class Connect(ChainableBlock):
     def param_bounds(self) -> list:
         return self.other_block.param_bounds
 
-    def __call__(self, context: Context, *args, **kwargs) -> Context:
+    def _call_buildamol_native(self, context: Context, *args, **kwargs) -> Context:
         if context.linker_atom is None:
             raise ValueError(
                 "Linker atom is not set on the current context. "
-                "Use SetLinkerAtoms or FindLinkerAtoms before Connect."
+                "Use FindLinkerAtoms or SetLinkerAtoms before Connect."
             )
 
         # Run the other (source) pipeline independently to obtain the fragment
@@ -483,3 +794,81 @@ class Connect(ChainableBlock):
             copy_b=True,
         )
         return out
+
+    def _call_rdkit_accelerated(self, context: Context, *args, **kwargs) -> Context:
+        if context.linker_atom is None:
+            raise ValueError(
+                "Linker atom is not set on the current context. "
+                "Use FindLinkerAtoms or SetLinkerAtoms before Connect."
+            )
+
+        other_context = self.other_block()
+
+        if other_context.linker_atom is None:
+            raise ValueError(
+                "The connected pipeline did not set a linker atom."
+            )
+
+        from rdkit.Chem import RWMol, BondType, SanitizeMol
+        from rdkit import Chem
+
+        mol1 = context.molecule
+        mol2 = other_context.molecule
+        n1 = mol1.GetNumAtoms()
+
+        combined = Chem.CombineMols(mol1, mol2)
+        rw = RWMol(combined)
+
+        # Consume one explicit H from each linker atom before forming the bond.
+        # If RemoveHs stored removed Hs as numExplicitHs (which counts toward
+        # explicit valence), not decrementing causes overvalence after AddBond.
+        for _idx in (context.linker_atom, other_context.linker_atom + n1):
+            _at = rw.GetAtomWithIdx(_idx)
+            _nh = _at.GetNumExplicitHs()
+            if _nh > 0:
+                _at.SetNumExplicitHs(_nh - 1)
+
+        rw.AddBond(context.linker_atom, other_context.linker_atom + n1, Chem.BondType.SINGLE)
+        Chem.SanitizeMol(rw)
+
+        out = Context()
+        out.molecule = rw.GetMol()
+        # Preserve the bam reference for the accumulating molecule so that
+        # downstream SetLinkerAtoms calls can still resolve bam-style atom
+        # references. Core atoms occupy indices 0..n1-1 in the combined mol —
+        # the same indices as in the original bam_molecule rdkit conversion —
+        # so the mapping remains valid even after the connection.
+        out.bam_molecule = context.bam_molecule
+        return out
+
+
+class Forge(ChainableBlock):
+    """
+    Terminal pipeline block that materialises the molecule into a BuildAMol Molecule.
+
+    In the ``buildamol-native`` backend the molecule is already assembled; Forge
+    is a no-op unless ``optimize=True``, in which case ``mol.optimize()`` is called.
+
+    In the ``rdkit-accelerated`` backend Forge embeds a 3-D conformer via RDKit's
+    ETKDGv3, optionally minimises with MMFF, and converts to a BuildAMol Molecule.
+
+    Parameters
+    ----------
+    optimize : bool
+        Run a force-field minimisation after materialisation (default ``False``).
+    """
+
+    n_params = 0
+
+    def __init__(self, optimize: bool = False):
+        self.optimize = optimize
+
+    def _call_buildamol_native(self, context: Context, *args, **kwargs) -> Context:
+        if self.optimize:
+            context.molecule.optimize(inplace=True)
+        return context
+
+    def _call_rdkit_accelerated(self, context: Context, *args, **kwargs) -> Context:
+        from .base import _rdkit_to_bam_with_embed
+        context.molecule = _rdkit_to_bam_with_embed(context.molecule, optimize=self.optimize)
+        return context
