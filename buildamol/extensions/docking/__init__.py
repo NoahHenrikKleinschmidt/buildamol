@@ -2,7 +2,7 @@
 An extension for facilitating docking of ligand molecules to proteins.
 """
 
-AVAILABLE_DOCKING_BACKENDS = ["easydock", "dockstring"]
+AVAILABLE_DOCKING_BACKENDS = ["easydock", "dockstring", "diffdock", "opendock"]
 
 DOCKING_BACKEND = AVAILABLE_DOCKING_BACKENDS[0]
 
