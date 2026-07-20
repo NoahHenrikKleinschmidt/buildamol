@@ -274,6 +274,9 @@ class Stitcher(base.Connector):
         """
         if steps == 0:
             return
+        from buildamol.structural.stitch_algorithm import get_stitching_algorithm
+        if get_stitching_algorithm()[0] == "none":
+            return
         import buildamol.optimizers as optimizers
 
         self.target.adjust_indexing(self.source)
@@ -362,12 +365,8 @@ class Stitcher(base.Connector):
             concatenation_function=optimizers.concatenation_function_linear,
         )
 
-        best, _ = optimizers.swarm_optimize(
-            env,
-            n_particles=kwargs.pop("n_particles", 5),
-            max_steps=int(steps),
-            **kwargs,
-        )
+        from buildamol.structural.stitch_algorithm import run_stitching_optimization
+        best, _ = run_stitching_optimization(env, steps, **kwargs)
         self._policy = edges, best
 
         self._target_residue.parent = target_residue_parent
