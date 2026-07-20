@@ -13,7 +13,7 @@ from .fragment_library import (
 
 # Pipeline building blocks
 from .base import ChainableBlock, ChainedBlock, Context, MultiContext
-from .sources import Choice, Compound
+from .sources import Choice, Compound, Input
 from .modifiers import (
     Modify,
     Random,
@@ -24,4 +24,6 @@ from .modifiers import (
     Forge,
 )
 from .backend import set_backend, get_backend, backend
+from .so_optimizer import SOOptimizer
+from .mo_optimizer import MOOptimizer
 from .optimizer import Optimizer

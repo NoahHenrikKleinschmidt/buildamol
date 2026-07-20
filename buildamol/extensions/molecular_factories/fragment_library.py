@@ -5,10 +5,35 @@ Functions for loading standard fragment libraries for use with the
 Sources
 -------
 ``"chembl"``
-    Rule-of-Three (Ro3) compliant molecules fetched live from the ChEMBL REST
-    API.  Requires internet access and ``requests`` (standard in most envs).
-    Key kwargs: ``n`` (default 200), ``max_mw`` (300), ``max_hbd`` (3),
-    ``max_hba`` (3), ``max_logp`` (3).
+    Molecules fetched live from the ChEMBL REST API.
+    Requires internet access and ``requests``.
+
+    API-side filters (applied server-side, efficient):
+
+    - ``n`` (int, default 200) — maximum fragments to return
+    - ``max_mw`` / ``min_mw`` (float) — molecular weight bounds (Da)
+    - ``max_hbd`` / ``min_hbd`` (int) — H-bond donor bounds
+    - ``max_hba`` / ``min_hba`` (int) — H-bond acceptor bounds
+    - ``max_logp`` / ``min_logp`` (float) — logP bounds
+    - ``max_psa`` / ``min_psa`` (float) — polar surface area bounds (Å²)
+    - ``max_rotatable_bonds`` (int) — rotatable bond count ceiling
+    - ``max_heavy_atoms`` / ``min_heavy_atoms`` (int) — total heavy-atom bounds
+    - ``max_aromatic_rings`` (int) — aromatic ring count ceiling
+    - ``ro3_pass`` (bool) — ``True`` restricts to Rule-of-Three compliant
+      molecules; ``False`` excludes them; ``None`` (default) ignores the flag
+    - ``min_qed`` (float 0–1) — minimum QED drug-likeness score
+    - ``max_ro5_violations`` (int) — maximum Lipinski Ro5 violations
+
+    Post-filters (applied locally via RDKit after fetching):
+
+    - ``max_carbons`` / ``min_carbons`` (int) — carbon atom count bounds
+    - ``allowed_elements`` (set of str) — element symbols that may appear;
+      any molecule containing an unlisted element is dropped
+      (e.g. ``{"C", "N", "O", "F"}``)
+    - ``forbidden_elements`` (set of str) — element symbols that must not
+      appear (e.g. ``{"S", "P"}`` to exclude sulfur and phosphorus)
+    - ``require_ring`` (bool) — ``True`` keeps only cyclic molecules,
+      ``False`` keeps only acyclic ones, ``None`` (default) ignores
 
 ``"brics"``
     BRICS retrosynthetic decomposition of a user-supplied molecule set, using
@@ -23,8 +48,18 @@ Examples
 
     from buildamol.extensions.molecular_factories import load_fragment_library
 
-    # ~200 Ro3-compliant fragments from ChEMBL (requires internet)
-    fragments = load_fragment_library("chembl", n=200)
+    # Ro3-compliant fragments from ChEMBL
+    fragments = load_fragment_library("chembl", n=200, ro3_pass=True)
+
+    # Small aliphatic C/N/O fragments — good for basic building blocks
+    fragments = load_fragment_library(
+        "chembl",
+        n=100,
+        max_heavy_atoms=12,
+        max_carbons=8,
+        allowed_elements={"C", "N", "O"},
+        require_ring=False,
+    )
 
     # Fragment a set of known drugs into BRICS building blocks
     import buildamol as bam
@@ -68,43 +103,117 @@ def make_brics_fragments(molecules, max_mw=200, min_heavy_atoms=3):
     return _from_brics(molecules, max_mw=max_mw, min_heavy_atoms=min_heavy_atoms)
 
 
-def get_chembl_fragments(n=200, max_mw=300, max_hbd=3, max_hba=3, max_logp=3):
+def get_chembl_fragments(
+    n=200,
+    max_mw=300,
+    min_mw=None,
+    max_hbd=3,
+    min_hbd=None,
+    max_hba=3,
+    min_hba=None,
+    max_logp=3,
+    min_logp=None,
+    max_psa=None,
+    min_psa=None,
+    max_rotatable_bonds=None,
+    max_heavy_atoms=None,
+    min_heavy_atoms=None,
+    max_aromatic_rings=None,
+    ro3_pass=None,
+    min_qed=None,
+    max_ro5_violations=None,
+    max_carbons=None,
+    min_carbons=None,
+    allowed_elements=None,
+    forbidden_elements=None,
+    require_ring=None,
+):
     """
-    Fetch Rule-of-Three compliant fragments from the ChEMBL REST API.
-
-    The Rule of Three (Ro3) is the standard physicochemical filter for
-    fragment-based drug discovery: MW ≤ 300 Da, H-bond donors ≤ 3,
-    H-bond acceptors ≤ 3, logP ≤ 3.
+    Fetch fragments from the ChEMBL REST API with flexible physicochemical
+    and structural filters.
 
     Parameters
     ----------
     n : int
         Maximum number of fragments to return.
-    max_mw : float
-        Maximum molecular weight (Da).
-    max_hbd : int
-        Maximum H-bond donor count.
-    max_hba : int
-        Maximum H-bond acceptor count.
-    max_logp : float
-        Maximum logP.
+    max_mw, min_mw : float, optional
+        Molecular weight bounds (Da).
+    max_hbd, min_hbd : int, optional
+        H-bond donor bounds.
+    max_hba, min_hba : int, optional
+        H-bond acceptor bounds.
+    max_logp, min_logp : float, optional
+        logP bounds.
+    max_psa, min_psa : float, optional
+        Polar surface area bounds (Å²).
+    max_rotatable_bonds : int, optional
+        Rotatable bond count ceiling.
+    max_heavy_atoms, min_heavy_atoms : int, optional
+        Total heavy-atom count bounds.
+    max_aromatic_rings : int, optional
+        Aromatic ring count ceiling.
+    ro3_pass : bool, optional
+        ``True`` restricts to Rule-of-Three compliant molecules (MW ≤ 300,
+        HBD ≤ 3, HBA ≤ 3, logP ≤ 3); ``False`` excludes them; ``None``
+        (default) ignores the flag entirely.
+    min_qed : float, optional
+        Minimum QED drug-likeness score (0–1).
+    max_ro5_violations : int, optional
+        Maximum number of Lipinski Ro5 violations.
+    max_carbons, min_carbons : int, optional
+        Carbon atom count bounds (applied locally via RDKit after fetching).
+    allowed_elements : set of str, optional
+        Element symbols that may appear.  Any molecule containing an element
+        not in this set is dropped (e.g. ``{"C", "N", "O", "F"}``).
+    forbidden_elements : set of str, optional
+        Element symbols that must not appear (e.g. ``{"S", "P"}``).
+    require_ring : bool, optional
+        ``True`` keeps only cyclic molecules; ``False`` keeps only acyclic
+        ones; ``None`` (default) ignores ring presence.
+
+    Returns
+    -------
+    list of Molecule
     """
     return _from_chembl(
-        n=n, max_mw=max_mw, max_hbd=max_hbd, max_hba=max_hba, max_logp=max_logp
+        n=n,
+        max_mw=max_mw,
+        min_mw=min_mw,
+        max_hbd=max_hbd,
+        min_hbd=min_hbd,
+        max_hba=max_hba,
+        min_hba=min_hba,
+        max_logp=max_logp,
+        min_logp=min_logp,
+        max_psa=max_psa,
+        min_psa=min_psa,
+        max_rotatable_bonds=max_rotatable_bonds,
+        max_heavy_atoms=max_heavy_atoms,
+        min_heavy_atoms=min_heavy_atoms,
+        max_aromatic_rings=max_aromatic_rings,
+        ro3_pass=ro3_pass,
+        min_qed=min_qed,
+        max_ro5_violations=max_ro5_violations,
+        max_carbons=max_carbons,
+        min_carbons=min_carbons,
+        allowed_elements=allowed_elements,
+        forbidden_elements=forbidden_elements,
+        require_ring=require_ring,
     )
 
 
 def load_fragment_library(source="chembl", **kwargs):
     """
     Load a standard fragment library from the given source.
-    This function allows for easy switching between different fragment sources.
 
     Parameters
     ----------
     source : str
         ``"chembl"`` or ``"brics"``.
     **kwargs
-        Source-specific keyword arguments (see module docstring).
+        Source-specific keyword arguments — see the module docstring or
+        :func:`get_chembl_fragments` / :func:`make_brics_fragments` for
+        the full parameter reference.
 
     Returns
     -------
@@ -126,50 +235,105 @@ def load_fragment_library(source="chembl", **kwargs):
 # ------------------------------------------------------------------
 
 
-def _from_chembl(n=200, max_mw=300, max_hbd=3, max_hba=3, max_logp=3):
-    """
-    Fetch Rule-of-Three compliant fragments from the ChEMBL REST API.
-
-    The Rule of Three (Ro3) is the standard physicochemical filter for
-    fragment-based drug discovery: MW ≤ 300 Da, H-bond donors ≤ 3,
-    H-bond acceptors ≤ 3, logP ≤ 3.
-
-    Parameters
-    ----------
-    n : int
-        Maximum number of fragments to return.
-    max_mw : float
-        Maximum molecular weight (Da).
-    max_hbd : int
-        Maximum H-bond donor count.
-    max_hba : int
-        Maximum H-bond acceptor count.
-    max_logp : float
-        Maximum logP.
-
-    Returns
-    -------
-    list of Molecule
-    """
+def _from_chembl(
+    n=200,
+    max_mw=300,
+    min_mw=None,
+    max_hbd=3,
+    min_hbd=None,
+    max_hba=3,
+    min_hba=None,
+    max_logp=3,
+    min_logp=None,
+    max_psa=None,
+    min_psa=None,
+    max_rotatable_bonds=None,
+    max_heavy_atoms=None,
+    min_heavy_atoms=None,
+    max_aromatic_rings=None,
+    ro3_pass=None,
+    min_qed=None,
+    max_ro5_violations=None,
+    max_carbons=None,
+    min_carbons=None,
+    allowed_elements=None,
+    forbidden_elements=None,
+    require_ring=None,
+):
     try:
         import requests
     except ImportError:
         raise ImportError("'requests' is required: pip install requests")
 
     from rdkit import Chem
+    from rdkit.Chem import rdMolDescriptors
 
     base = "https://www.ebi.ac.uk/chembl/api/data/molecule"
-    params = {
-        "molecule_properties__mw_freebase__lte": max_mw,
-        "molecule_properties__hbd__lte": max_hbd,
-        "molecule_properties__hba__lte": max_hba,
-        "molecule_properties__alogp__lte": max_logp,
-        "format": "json",
-    }
+
+    params = {"format": "json"}
+
+    def _set(key, val):
+        if val is not None:
+            params[key] = val
+
+    _set("molecule_properties__mw_freebase__lte", max_mw)
+    _set("molecule_properties__mw_freebase__gte", min_mw)
+    _set("molecule_properties__hbd__lte", max_hbd)
+    _set("molecule_properties__hbd__gte", min_hbd)
+    _set("molecule_properties__hba__lte", max_hba)
+    _set("molecule_properties__hba__gte", min_hba)
+    _set("molecule_properties__alogp__lte", max_logp)
+    _set("molecule_properties__alogp__gte", min_logp)
+    _set("molecule_properties__psa__lte", max_psa)
+    _set("molecule_properties__psa__gte", min_psa)
+    _set("molecule_properties__rtb__lte", max_rotatable_bonds)
+    _set("molecule_properties__heavy_atoms__lte", max_heavy_atoms)
+    _set("molecule_properties__heavy_atoms__gte", min_heavy_atoms)
+    _set("molecule_properties__aromatic_rings__lte", max_aromatic_rings)
+    _set("molecule_properties__qed_weighted__gte", min_qed)
+    _set("molecule_properties__num_ro5_violations__lte", max_ro5_violations)
+    if ro3_pass is not None:
+        params["molecule_properties__ro3_pass"] = "Y" if ro3_pass else "N"
+
+    has_local_filters = any(
+        v is not None
+        for v in (
+            max_carbons,
+            min_carbons,
+            allowed_elements,
+            forbidden_elements,
+            require_ring,
+        )
+    )
+
+    def _passes_local(rdmol):
+        if max_carbons is not None or min_carbons is not None:
+            n_c = sum(1 for a in rdmol.GetAtoms() if a.GetAtomicNum() == 6)
+            if max_carbons is not None and n_c > max_carbons:
+                return False
+            if min_carbons is not None and n_c < min_carbons:
+                return False
+        if allowed_elements is not None:
+            for atom in rdmol.GetAtoms():
+                if atom.GetSymbol() not in allowed_elements:
+                    return False
+        if forbidden_elements is not None:
+            for atom in rdmol.GetAtoms():
+                if atom.GetSymbol() in forbidden_elements:
+                    return False
+        if require_ring is not None:
+            n_rings = rdMolDescriptors.CalcNumRings(rdmol)
+            if require_ring and n_rings == 0:
+                return False
+            if not require_ring and n_rings > 0:
+                return False
+        return True
 
     collected = []
     offset = 0
-    page_size = min(n, 200)
+    # Fetch in pages of 200; when local filters are active we may need to
+    # paginate past n API results to collect n passing ones.
+    page_size = 200
 
     while len(collected) < n:
         params["limit"] = page_size
@@ -185,10 +349,11 @@ def _from_chembl(n=200, max_mw=300, max_hbd=3, max_hba=3, max_logp=3):
             smi = structs.get("canonical_smiles")
             if not smi:
                 continue
-            # Remove salt components — keep the largest fragment
             smi = max(smi.split("."), key=len)
             rdmol = Chem.MolFromSmiles(smi)
             if rdmol is None:
+                continue
+            if has_local_filters and not _passes_local(rdmol):
                 continue
             collected.append(Chem.MolToSmiles(rdmol))
             if len(collected) >= n:
@@ -255,6 +420,7 @@ def _from_brics(molecules, max_mw=200, min_heavy_atoms=3):
             rw.RemoveAtom(idx)
         try:
             from rdkit.Chem import SanitizeMol
+
             SanitizeMol(rw)
             frags = GetMolFrags(rw.GetMol(), asMols=True)
             if not frags:
@@ -295,10 +461,23 @@ def _to_molecules(smiles_list):
 if __name__ == "__main__":
     import buildamol as bam
 
-    print("Testing ChEMBL source (fetches ~20 fragments)...")
-    frags = load_fragment_library("chembl", n=20)
+    print("Testing ChEMBL source — basic Ro3 (fetches ~20 fragments)...")
+    frags = load_fragment_library("chembl", n=20, ro3_pass=True)
     print(f"  Got {len(frags)} fragments")
     for f in frags[:5]:
+        print(f"    {f.id}  {f.to_smiles()}")
+
+    print("\nTesting ChEMBL source — small aliphatic C/N/O only...")
+    frags2 = load_fragment_library(
+        "chembl",
+        n=10,
+        max_heavy_atoms=10,
+        max_carbons=6,
+        allowed_elements={"C", "N", "O"},
+        require_ring=False,
+    )
+    print(f"  Got {len(frags2)} fragments")
+    for f in frags2:
         print(f"    {f.id}  {f.to_smiles()}")
 
     print("\nTesting BRICS source (decomposes 3 known drugs)...")

@@ -65,10 +65,43 @@ class ChainableBlock:
     ``_inject_params()``.  Blocks pull values from the thread-local iterator
     with ``_next_param()``; when no vector is injected they fall back to their
     default (usually random) behaviour.
+
+    Named-input interface
+    ---------------------
+    Pipelines can be called with keyword arguments to bind named molecule
+    inputs at call time::
+
+        p = Input("core") | Connect(side_chain) | Forge()
+        ctx = p(core=my_molecule)
+
+    Keywords are stored in a thread-local dict before the chain runs and
+    cleared afterwards, so any block anywhere in the tree can read them via
+    ``_get_input(name)``.  This is the mechanism used by ``Input`` and
+    ``Compound(param=...)``.
     """
 
     # ── thread-local param iterator ───────────────────────────────────────────
     _param_local = threading.local()
+
+    # ── thread-local named inputs ─────────────────────────────────────────────
+    _input_local = threading.local()
+
+    @classmethod
+    def _inject_inputs(cls, inputs: dict):
+        """Store a dict of named molecule inputs for the current thread."""
+        existing = getattr(cls._input_local, "inputs", None) or {}
+        cls._input_local.inputs = {**existing, **inputs}
+
+    @classmethod
+    def _clear_inputs(cls):
+        """Remove the named inputs so the next call starts clean."""
+        cls._input_local.inputs = None
+
+    @classmethod
+    def _get_input(cls, name: str):
+        """Return the molecule bound to *name*, or ``None`` if not set."""
+        inputs = getattr(cls._input_local, "inputs", None)
+        return inputs.get(name) if inputs else None
 
     @classmethod
     def _inject_params(cls, values):
@@ -104,7 +137,8 @@ class ChainableBlock:
         return []
 
     # ── backend dispatch ──────────────────────────────────────────────────────
-    def __call__(self, *args, **kwargs):
+    def _call_backend(self, *args):
+        """Dispatch to the active backend's implementation method."""
         from .backend import get_backend
         key = get_backend().replace("-", "_")
         method = getattr(self, f"_call_{key}", None) or getattr(self, "_call_default", None)
@@ -113,7 +147,19 @@ class ChainableBlock:
                 f"{type(self).__name__} does not implement backend "
                 f"{get_backend()!r} and has no _call_default."
             )
-        return method(*args, **kwargs)
+        return method(*args)
+
+    def __call__(self, *args, **kwargs):
+        if kwargs:
+            # Top-level call with named inputs — inject into thread-local so
+            # any Input / Compound(param=...) block anywhere in the chain can
+            # read them, then clear after the chain completes.
+            ChainableBlock._inject_inputs(kwargs)
+            try:
+                return self._call_backend(*args)
+            finally:
+                ChainableBlock._clear_inputs()
+        return self._call_backend(*args)
 
     # ── chaining ──────────────────────────────────────────────────────────────
     def __or__(self, other):
@@ -133,7 +179,13 @@ class ChainedBlock(ChainableBlock):
         self.second = second
 
     def __call__(self, *args, **kwargs):
-        return self.second(self.first(*args, **kwargs))
+        if kwargs:
+            ChainableBlock._inject_inputs(kwargs)
+            try:
+                return self.second(self.first(*args))
+            finally:
+                ChainableBlock._clear_inputs()
+        return self.second(self.first(*args))
 
     def total_params(self) -> int:
         return self.first.total_params() + self.second.total_params()
