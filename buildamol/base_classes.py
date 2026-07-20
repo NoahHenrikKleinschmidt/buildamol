@@ -1228,8 +1228,9 @@ class Residue(_DrawableMixin, ID):
             The copied residue.
         """
         new = ID.copy(self)
-        for atom in new.get_atoms():
+        for atom in new.child_list:
             ID._new_id(atom)
+        new.child_dict = {atom.get_id(): atom for atom in new.child_list}
         return new
 
     @property
@@ -1533,10 +1534,12 @@ class Chain(_DrawableMixin, ID):
             The copied chain.
         """
         new = ID.copy(self)
-        for residue in new.get_residues():
+        for residue in new.child_list:
             ID._new_id(residue)
-            for atom in residue.get_atoms():
+            for atom in residue.child_list:
                 ID._new_id(atom)
+            residue.child_dict = {atom.get_id(): atom for atom in residue.child_list}
+        new.child_dict = {res.get_id(): res for res in new.child_list}
         return new
 
     def link(self, residue):
@@ -1816,12 +1819,15 @@ class Model(_DrawableMixin, ID):
     def copy(self):
         new = ID.copy(self)
         if self._coords is None:
-            for chain in new.get_chains():
+            for chain in new.child_list:
                 ID._new_id(chain)
-                for residue in chain.get_residues():
+                for residue in chain.child_list:
                     ID._new_id(residue)
-                    for atom in residue.get_atoms():
+                    for atom in residue.child_list:
                         ID._new_id(atom)
+                    residue.child_dict = {atom.get_id(): atom for atom in residue.child_list}
+                chain.child_dict = {res.get_id(): res for res in chain.child_list}
+        new.child_dict = {chain.get_id(): chain for chain in new.child_list}
         return new
 
     def snapshot(self, atoms):
@@ -2042,14 +2048,18 @@ class Structure(_DrawableMixin, ID):
             The copied structure.
         """
         new = ID.copy(self)
-        for model in new.get_models():
+        for model in new.child_list:
             ID._new_id(model)
-            for chain in model.get_chains():
+            for chain in model.child_list:
                 ID._new_id(chain)
-                for residue in chain.get_residues():
+                for residue in chain.child_list:
                     ID._new_id(residue)
-                    for atom in residue.get_atoms():
+                    for atom in residue.child_list:
                         ID._new_id(atom)
+                    residue.child_dict = {atom.get_id(): atom for atom in residue.child_list}
+                chain.child_dict = {res.get_id(): res for res in chain.child_list}
+            model.child_dict = {chain.get_id(): chain for chain in model.child_list}
+        new.child_dict = {model.get_id(): model for model in new.child_list}
         return new
 
     @classmethod
