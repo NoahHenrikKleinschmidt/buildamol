@@ -82,6 +82,9 @@ class _amino_acids_generator:
             raise ValueError(f"Unknown amino acid: '{name}'")
         return mol
 
+    def __getitem__(self, name: str) -> core.Molecule:
+        return self.__getattr__(name)
+
     def __dir__(self):
         return sorted(amino_acid_names_3letter)
 
