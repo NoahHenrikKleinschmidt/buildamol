@@ -287,7 +287,9 @@ class Chem2DViewer:
             raise ValueError(
                 f"Unsupported molecule type: {molecule.__class__.__name__}"
             )
-        mol.RemoveAllConformers()
+        if mol.GetNumConformers() > 0:
+            Chem.AssignStereochemistryFrom3D(mol)
+            aux.AllChem.Compute2DCoords(mol)
         self.mol = mol
 
         if atoms is not None:

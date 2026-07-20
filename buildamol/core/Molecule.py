@@ -652,7 +652,10 @@ def read_smiles(smiles: str, id: str = None) -> "Molecule":
 
 
 def make_smiles(
-    mol: "Molecule", isomeric: bool = True, write_hydrogens: bool = False
+    mol: "Molecule",
+    isomeric: bool = True,
+    write_hydrogens: bool = False,
+    assign_stereo: bool = False,
 ) -> str:
     """
     Generate a SMILES string from a molecule.
@@ -662,16 +665,21 @@ def make_smiles(
     mol : Molecule
         The molecule
     isomeric : bool
-        Whether to include stereochemistry information
+        Whether to include stereochemistry information (E/Z, @/@@)
     write_hydrogens : bool
         Whether to include hydrogens in the SMILES string
+    assign_stereo : bool
+        Whether to assign stereochemistry from the 3D coordinates before
+        generating SMILES. When True, chiral centres are perceived from the
+        3D structure and encoded as ``[C@H]``/``[C@@H]`` etc. Implies
+        ``isomeric=True``. Default is False.
 
     Returns
     -------
     smiles : str
         The SMILES string
     """
-    return mol.to_smiles(isomeric, write_hydrogens)
+    return mol.to_smiles(isomeric, write_hydrogens, assign_stereo=assign_stereo)
 
 
 def query_pubchem(query: str, by: str = "name") -> "Molecule":
@@ -1852,16 +1860,27 @@ class Molecule(entity.BaseEntity):
         new = cls.new(id=id, atoms=atoms, bonds=bonds, resname=resname)
         return new
 
-    def to_smiles(self, isomeric: bool = True, write_hydrogens: bool = False) -> str:
+    def to_smiles(
+        self,
+        isomeric: bool = True,
+        write_hydrogens: bool = False,
+        assign_stereo: bool = False,
+    ) -> str:
         """
         Convert the molecule to a SMILES string
 
         Parameters
         ----------
         isomeric : bool
-            Whether to include stereochemistry information in the SMILES string
+            Whether to include stereochemistry information (E/Z, @/@@) in the
+            SMILES string.
         write_hydrogens : bool
-            Whether to include hydrogens in the SMILES string
+            Whether to include hydrogens in the SMILES string.
+        assign_stereo : bool
+            Whether to assign stereochemistry from the 3D coordinates before
+            generating SMILES. When True, chiral centres are perceived from the
+            3D structure and encoded as ``[C@H]``/``[C@@H]`` etc. Implies
+            ``isomeric=True``. Default is False.
 
         Returns
         -------
@@ -1869,7 +1888,10 @@ class Molecule(entity.BaseEntity):
             The SMILES string
         """
         return structural.make_smiles(
-            self, isomeric=isomeric, add_hydrogens=write_hydrogens
+            self,
+            isomeric=isomeric,
+            add_hydrogens=write_hydrogens,
+            assign_stereo=assign_stereo,
         )
 
     def get_residue_connections(
