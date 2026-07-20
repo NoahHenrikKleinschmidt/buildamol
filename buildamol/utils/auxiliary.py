@@ -12,22 +12,22 @@ import warnings
 import numpy as np
 
 import importlib
+from rdkit import Chem
+from rdkit.Chem import AllChem, Draw
+from rdkit import RDLogger
+from rdkit.Geometry import rdGeometry
 
-# the version with the extra dictionary somehow
-# seems to prevent the loading issues where packages are
-# reassigned in sys.modules, raising errors. Thus we keep it like this...
-__lazy_modules__ = {}
+MMFFGetMoleculeProperties = AllChem.MMFFGetMoleculeProperties
+MMFFGetMoleculeForceField = AllChem.MMFFGetMoleculeForceField
 
 
 def lazy_module(fullname):
     base = fullname.split(".")[-1]
-    if base not in __lazy_modules__:
-        spec = importlib.util.find_spec(fullname)
-        module = importlib.util.module_from_spec(spec)
-        loader = importlib.util.LazyLoader(spec.loader)
-        loader.exec_module(module)
-        __lazy_modules__[base] = module
-    return __lazy_modules__[base]
+    spec = importlib.util.find_spec(fullname)
+    module = importlib.util.module_from_spec(spec)
+    loader = importlib.util.LazyLoader(spec.loader)
+    loader.exec_module(module)
+    return module
 
 
 def has_package(name):
@@ -40,21 +40,13 @@ def has_package(name):
 # =================================================================
 
 
+HAS_RDKIT = True
 HAS_PYBEL = has_package("openbabel")
 HAS_OPENMM = has_package("openmm")
 HAS_NUMBA = has_package("numba")
 HAS_JAX = has_package("jax")
 HAS_STK = has_package("stk")
 HAS_TQDM = has_package("tqdm")
-
-# rdkit is fast to load, so we can just load it here
-Chem = importlib.import_module("rdkit.Chem")
-AllChem = importlib.import_module("rdkit.Chem.AllChem")
-RDLogger = importlib.import_module("rdkit.RDLogger")
-Draw = importlib.import_module("rdkit.Chem.Draw")
-rdGeometry = importlib.import_module("rdkit.Geometry.rdGeometry")
-MMFFGetMoleculeProperties = AllChem.MMFFGetMoleculeProperties
-MMFFGetMoleculeForceField = AllChem.MMFFGetMoleculeForceField
 
 if HAS_PYBEL:
     pybel = lazy_module("openbabel.pybel")
