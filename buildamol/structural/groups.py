@@ -457,7 +457,7 @@ class FunctionalGroup(BaseFunctionalGroup):
             if len(assignment) == self.n:
                 matches.append(assignment)
 
-        self._assignment_cache[molecule].extend(matches)
+        self._assignment_cache[molecule] = matches
         return matches
 
     def matches(self, molecule, atoms: list) -> bool:
@@ -775,7 +775,7 @@ class AromaticGroup(BaseFunctionalGroup):
             self.seen_atoms.update(cycle)
             self.seen.append(cycle)
 
-        self._assignment_cache[molecule].extend(matches)
+        self._assignment_cache[molecule] = matches
         return matches
 
     def _apply_connectivity(self, molecule, atoms: List):
