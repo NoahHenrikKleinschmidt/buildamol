@@ -289,7 +289,7 @@ class Chem2DViewer:
             )
         if mol.GetNumConformers() > 0:
             Chem.AssignStereochemistryFrom3D(mol)
-            aux.AllChem.Compute2DCoords(mol)
+        mol.RemoveAllConformers()
         self.mol = mol
 
         if atoms is not None:
@@ -643,6 +643,8 @@ class Chem2DViewer:
                 mol = Chem.rdmolops.RemoveHs(self.mol, sanitize=False)
         else:
             mol = self.mol
+
+        aux.AllChem.Compute2DCoords(mol)
 
         drawer = (
             Draw.rdMolDraw2D.MolDraw2DSVG(width, height)
