@@ -218,7 +218,7 @@ class BaseGraph(nx.Graph):
                 if d in _seen:
                     continue
                 _desc_from_cache = self.__descendent_cache.get((neigh, d))
-                if _desc_from_cache:
+                if _desc_from_cache and _desc_from_cache[0] == len(self.nodes):
                     _seen.add(d)
                     _seen.update(_desc_from_cache[1])
                 else:
