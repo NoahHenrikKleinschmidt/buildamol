@@ -686,7 +686,7 @@ class Chem2DViewer:
                 fig_w, fig_h = fig.get_size_inches()
                 dpi = fig.get_dpi()
                 pos = ax.get_position()
-                width  = max(200, int(pos.width  * fig_w * dpi))
+                width = max(200, int(pos.width * fig_w * dpi))
                 height = max(200, int(pos.height * fig_h * dpi))
                 # recreate drawer at the auto-computed size
                 drawer = (
@@ -1834,6 +1834,86 @@ class ResidueGraphViewer3D(PlotlyViewer3D):
             if getattr(node, "element", None) is not None:
                 continue
             self.draw_atom(node, color=self._get_color())
+
+
+import math
+import matplotlib.pyplot as plt
+
+
+def gallery_grid(
+    mols: list,
+    ncols=None,
+    nrows=None,
+    figsize=None,
+    panel_size=3,
+    draw_molecules=True,
+    **kwargs,
+):
+    """
+    Draw a list of molecules in a (near-square) grid of subplots.
+
+    Note
+    ----
+    This function only works for 2D drawing!
+
+    Parameters
+    ----------
+    mols : list
+        The molecules to draw. This can be a number of molecules to draw, in which case only the grid is prepared.
+    ncols, nrows : int
+        The number of columns/rows. If only one is given the other is inferred.
+        If neither is given the grid is made as square as possible.
+    figsize : tuple
+        The figure size. Defaults to (ncols, nrows) * panel_size.
+    panel_size : float
+        The size (in inches) of each subplot when figsize is not given.
+    draw_molecules : bool
+        If False only the figure with axes grid is produced.
+    **kwargs
+        Additional keyword arguments passed on to each molecule's `draw2d().draw(**kwargs)`.
+
+    Returns
+    -------
+    fig, axs
+        The matplotlib figure and the flat array of axes.
+    """
+    if isinstance(mols, int):
+        mols = [None] * mols
+    n = len(mols)
+    if n == 0:
+        raise ValueError("No molecules to draw")
+
+    if ncols is None and nrows is None:
+        ncols = math.ceil(math.sqrt(n))
+        nrows = math.ceil(n / ncols)
+    elif ncols is None:
+        ncols = math.ceil(n / nrows)
+    elif nrows is None:
+        nrows = math.ceil(n / ncols)
+
+    if figsize is None:
+        figsize = (ncols * panel_size, nrows * panel_size)
+
+    fig, axs = plt.subplots(nrows, ncols, figsize=figsize)
+    axs = [axs] if nrows * ncols == 1 else list(axs.flat)
+
+    if draw_molecules:
+        for ax, mol in zip(axs, mols):
+            if hasattr(mol, "draw2d"):
+                mol.draw2d().draw(ax=ax, **kwargs)
+            else:
+                ax.text(
+                    0.5,
+                    0.5,
+                    f"Expected Molecule, got {type(mol).__name__}",
+                    ha="center",
+                    va="center",
+                )
+    for ax in axs[n:]:
+        ax.axis("off")
+
+    fig.tight_layout()
+    return fig, axs
 
 
 if __name__ == "__main__":
