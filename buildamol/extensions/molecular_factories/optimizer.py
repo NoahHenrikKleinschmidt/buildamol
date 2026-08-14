@@ -52,13 +52,23 @@ class Optimizer:
     def __init__(
         self,
         pipeline,
-        scoring_fn,
+        scoring_fn=None,
         mode: str = "single",
         n_workers: int = 1,
+        scoring_batch_fn=None,
     ):
         if mode == "single":
-            self.optimizer = SOOptimizer(pipeline, scoring_fn, n_workers=n_workers)
+            self.optimizer = SOOptimizer(
+                pipeline,
+                scoring_fn,
+                n_workers=n_workers,
+                scoring_batch_fn=scoring_batch_fn,
+            )
         elif mode == "multi":
+            if scoring_batch_fn is not None:
+                raise ValueError(
+                    "scoring_batch_fn is only supported in single-objective mode"
+                )
             self.optimizer = MOOptimizer(pipeline, scoring_fn, n_workers=n_workers)
         else:
             raise ValueError(f"mode must be 'single' or 'multi', got {mode!r}")

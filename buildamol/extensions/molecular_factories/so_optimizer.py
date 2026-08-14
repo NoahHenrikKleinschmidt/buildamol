@@ -22,7 +22,11 @@ class SOOptimizer:
         A fully assembled pipeline whose stochastic blocks expose
         ``n_params`` / ``param_bounds``.
     scoring_fn : callable
-        ``scoring_fn(molecule) -> float`` — higher is better.
+        ``scoring_fn(molecule) -> float`` — higher is better. Used when no
+        batch scorer is supplied and as the fallback for scalar evaluation.
+    scoring_batch_fn : callable, optional
+        ``scoring_batch_fn(molecules) -> sequence[float]``. Receives an
+        ordered batch and must return one score per molecule.
     n_workers : int
         Default number of parallel threads for pipeline execution and scoring.
 
@@ -33,9 +37,18 @@ class SOOptimizer:
     >>> best = opt.top(5)
     """
 
-    def __init__(self, pipeline: ChainableBlock, scoring_fn, n_workers: int = 1):
+    def __init__(
+        self,
+        pipeline: ChainableBlock,
+        scoring_fn=None,
+        n_workers: int = 1,
+        scoring_batch_fn=None,
+    ):
+        if scoring_fn is None and scoring_batch_fn is None:
+            raise ValueError("provide scoring_fn or scoring_batch_fn")
         self.pipeline = pipeline
         self.scoring_fn = scoring_fn
+        self.scoring_batch_fn = scoring_batch_fn
         self.n_workers = n_workers
         self._results: list[tuple[float, object, object]] = []
         self._executor = None
@@ -82,14 +95,19 @@ class SOOptimizer:
         n_workers = n_workers if n_workers is not None else self.n_workers
         if n_workers > 1:
             from concurrent.futures import ThreadPoolExecutor
+
             with ThreadPoolExecutor(max_workers=n_workers) as exe:
                 self._executor = exe
                 try:
-                    dispatch[strategy](steps=steps, population=population, verbose=verbose, **kwargs)
+                    dispatch[strategy](
+                        steps=steps, population=population, verbose=verbose, **kwargs
+                    )
                 finally:
                     self._executor = None
         else:
-            dispatch[strategy](steps=steps, population=population, verbose=verbose, **kwargs)
+            dispatch[strategy](
+                steps=steps, population=population, verbose=verbose, **kwargs
+            )
         self._results.sort(key=lambda x: x[0], reverse=True)
 
     def top(self, n: int = 10) -> list:
@@ -128,17 +146,65 @@ class SOOptimizer:
     # ── core evaluation ───────────────────────────────────────────────────────
 
     def _evaluate(self, params) -> tuple[float, object, object] | None:
+        """Generate and score one parameter vector."""
+        generated = self._generate(params)
+        if generated is None:
+            return None
+        mol, stored_params = generated
+        try:
+            if self.scoring_fn is not None:
+                score = self.scoring_fn(mol)
+            elif self.scoring_batch_fn is not None:
+                score = list(self.scoring_batch_fn([mol]))[0]
+            else:
+                raise ValueError("no scoring function configured")
+            return float(score), mol, stored_params
+        except Exception:
+            return None
+
+    def _generate(self, params):
         ChainableBlock._inject_params(params)
         try:
             ctx = self.pipeline()
             mol = ctx.molecule
-            score = float(self.scoring_fn(mol))
-            stored_params = np.array(params) if params is not None and len(params) else None
-            return score, mol, stored_params
+            stored_params = (
+                np.array(params) if params is not None and len(params) else None
+            )
+            return mol, stored_params
         except Exception:
             return None
         finally:
             ChainableBlock._clear_params()
+
+    def _evaluate_batch(self, params_list):
+        """Generate an ordered parameter batch and score it in one call."""
+        generated = []
+        if self._executor is not None:
+            generated = list(self._executor.map(self._generate, params_list))
+        else:
+            generated = [self._generate(params) for params in params_list]
+
+        valid = [
+            (index, item) for index, item in enumerate(generated) if item is not None
+        ]
+        if not valid:
+            return [None] * len(params_list)
+
+        molecules = [item[1][0] for item in valid]
+        try:
+            if self.scoring_batch_fn is not None:
+                scores = list(self.scoring_batch_fn(molecules))
+            else:
+                scores = [self.scoring_fn(molecule) for molecule in molecules]
+            if len(scores) != len(molecules):
+                raise ValueError("batch scorer must return one score per molecule")
+        except Exception:
+            return [None] * len(params_list)
+
+        results = [None] * len(params_list)
+        for (index, (molecule, stored_params)), score in zip(valid, scores):
+            results[index] = (float(score), molecule, stored_params)
+        return results
 
     # ── strategies ────────────────────────────────────────────────────────────
 
@@ -149,16 +215,25 @@ class SOOptimizer:
         else:
             lo = np.array([b[0] for b in bounds], dtype=float)
             hi = np.array([b[1] for b in bounds], dtype=float)
-            param_list = [lo + np.random.random(len(bounds)) * (hi - lo) for _ in range(steps)]
+            param_list = [
+                lo + np.random.random(len(bounds)) * (hi - lo) for _ in range(steps)
+            ]
 
         bar = progress_bar(total=steps, desc="random", disable=not verbose)
         best = float("-inf")
         try:
             if self._executor is not None:
-                from concurrent.futures import as_completed
-                futures = {self._executor.submit(self._evaluate, p) for p in param_list}
-                for fut in as_completed(futures):
-                    result = fut.result()
+                if self.scoring_batch_fn is not None:
+                    batch_results = self._evaluate_batch(param_list)
+                    result_iter = batch_results
+                else:
+                    from concurrent.futures import as_completed
+
+                    futures = {
+                        self._executor.submit(self._evaluate, p) for p in param_list
+                    }
+                    result_iter = (future.result() for future in as_completed(futures))
+                for result in result_iter:
                     bar.update(1)
                     if result is not None:
                         self._results.append(result)
@@ -166,8 +241,12 @@ class SOOptimizer:
                             best = result[0]
                             bar.set_postfix(best=f"{best:.4f}")
             else:
-                for p in param_list:
-                    result = self._evaluate(p)
+                result_iter = (
+                    self._evaluate_batch(param_list)
+                    if self.scoring_batch_fn is not None
+                    else (self._evaluate(p) for p in param_list)
+                )
+                for result in result_iter:
                     bar.update(1)
                     if result is not None:
                         self._results.append(result)
@@ -215,10 +294,7 @@ class SOOptimizer:
         bar = progress_bar(range(steps), desc="pso", disable=not verbose)
         for _ in bar:
             params = [pos[i] for i in range(population)]
-            if self._executor is not None:
-                raw = list(self._executor.map(self._evaluate, params))
-            else:
-                raw = [self._evaluate(p) for p in params]
+            raw = self._evaluate_batch(params)
 
             for i, result in enumerate(raw):
                 if result is None:
@@ -279,7 +355,9 @@ class SOOptimizer:
             return -score
 
         elite = self._elite_params(1, n)
-        x0 = np.clip(elite[0], lo, hi) if elite else lo + np.random.random(n) * (hi - lo)
+        x0 = (
+            np.clip(elite[0], lo, hi) if elite else lo + np.random.random(n) * (hi - lo)
+        )
         try:
             minimize(objective, x0, method=scipy_method, options={"maxiter": steps})
         finally:
