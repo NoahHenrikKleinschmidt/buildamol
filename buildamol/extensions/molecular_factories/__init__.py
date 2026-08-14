@@ -17,6 +17,7 @@ from .sources import Choice, Compound, Input
 from .modifiers import (
     Modify,
     Random,
+    Branch,
     SetLinkerAtoms,
     SetAttachResidue,
     FindLinkerAtoms,

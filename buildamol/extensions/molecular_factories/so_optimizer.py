@@ -120,6 +120,32 @@ class SOOptimizer:
         pairs = [(score, mol) for score, mol, _ in results]
         return pairs[:n] if n is not None else pairs
 
+    def to_dataframe(self, n: int = None, molecules: bool = False):
+        """
+        Return the unique results as a ``pandas.DataFrame`` with columns
+        ``'score'`` and ``'smiles'``, sorted best-first.
+
+        Parameters
+        ----------
+        n : int, optional
+            Only include the top *n* results. If None, all results are included.
+        molecules : bool
+            Also include a ``'molecule'`` column with the Molecule objects.
+        """
+        import pandas as pd
+
+        rows = []
+        for score, mol, _ in self._unique_results()[:n]:
+            try:
+                smiles = mol.to_smiles() if hasattr(mol, "to_smiles") else None
+            except Exception:
+                smiles = None
+            row = {"score": score, "smiles": smiles}
+            if molecules:
+                row["molecule"] = mol
+            rows.append(row)
+        return pd.DataFrame(rows)
+
     def _unique_results(self) -> list:
         seen: set = set()
         unique = []

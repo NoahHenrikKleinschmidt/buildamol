@@ -19,8 +19,8 @@ import numpy as np
 from .base import ChainableBlock
 from buildamol.utils.auxiliary import progress_bar
 
-
 # ── Pareto utilities ──────────────────────────────────────────────────────────
+
 
 def _dominates(a: np.ndarray, b: np.ndarray) -> bool:
     """True if *a* dominates *b* (a ≤ b on all objectives, a < b on ≥ 1)."""
@@ -35,7 +35,7 @@ def _fast_non_dominated_sort(objectives: list) -> list[list[int]]:
     """
     n = len(objectives)
     dominated_by = [[] for _ in range(n)]  # dominated_by[i] = indices i dominates
-    n_dom = [0] * n                        # how many individuals dominate i
+    n_dom = [0] * n  # how many individuals dominate i
     fronts: list[list[int]] = [[]]
 
     for i in range(n):
@@ -69,7 +69,7 @@ def _crowding_distance(objectives: list) -> np.ndarray:
     if n == 0:
         return np.array([])
     distances = np.zeros(n)
-    obj_array = np.array(objectives)     # (n, m)
+    obj_array = np.array(objectives)  # (n, m)
     m = obj_array.shape[1]
     for k in range(m):
         col = obj_array[:, k]
@@ -83,7 +83,9 @@ def _crowding_distance(objectives: list) -> np.ndarray:
     return distances
 
 
-def _tournament_select(objectives: list, ranks: list[int], crowd: list[float], n: int) -> list[int]:
+def _tournament_select(
+    objectives: list, ranks: list[int], crowd: list[float], n: int
+) -> list[int]:
     """Binary tournament selection based on Pareto rank and crowding distance."""
     pool = list(range(len(objectives)))
     selected = []
@@ -129,6 +131,7 @@ def _survivor_selection(objectives: list, n: int) -> list[int]:
 
 
 # ── Main class ────────────────────────────────────────────────────────────────
+
 
 class MOOptimizer:
     """
@@ -209,14 +212,19 @@ class MOOptimizer:
         n_workers = n_workers if n_workers is not None else self.n_workers
         if n_workers > 1:
             from concurrent.futures import ThreadPoolExecutor
+
             with ThreadPoolExecutor(max_workers=n_workers) as exe:
                 self._executor = exe
                 try:
-                    dispatch[strategy](steps=steps, population=population, verbose=verbose, **kwargs)
+                    dispatch[strategy](
+                        steps=steps, population=population, verbose=verbose, **kwargs
+                    )
                 finally:
                     self._executor = None
         else:
-            dispatch[strategy](steps=steps, population=population, verbose=verbose, **kwargs)
+            dispatch[strategy](
+                steps=steps, population=population, verbose=verbose, **kwargs
+            )
 
     def pareto_front(self) -> list:
         """Return all molecules on the current Pareto front (non-dominated set)."""
@@ -264,8 +272,75 @@ class MOOptimizer:
         front_idx = fronts[0]
         dist = _crowding_distance([objectives[i] for i in front_idx])
         order = np.argsort(-dist)
-        pairs = [(objectives[front_idx[int(i)]], unique[front_idx[int(i)]][1]) for i in order]
+        pairs = [
+            (objectives[front_idx[int(i)]], unique[front_idx[int(i)]][1]) for i in order
+        ]
         return pairs[:n] if n is not None else pairs
+
+    def to_dataframe(
+        self,
+        n: int = None,
+        pareto_only: bool = False,
+        molecules: bool = False,
+        objective_names: list = None,
+    ):
+        """
+        Return the results as a ``pandas.DataFrame`` with one column per
+        objective plus ``'smiles'`` and ``'is_pareto'``.
+
+        Parameters
+        ----------
+        n : int, optional
+            Only include the first *n* rows.
+        pareto_only : bool
+            Only include molecules on the Pareto front (sorted by crowding
+            distance). Otherwise all unique results are included.
+        molecules : bool
+            Also include a ``'molecule'`` column with the Molecule objects.
+        objective_names : list, optional
+            Names to use for the objective columns. Defaults to
+            ``objective_0``, ``objective_1``, ...
+        """
+        import pandas as pd
+
+        unique = self._unique_results()
+        if not unique:
+            return pd.DataFrame()
+
+        front = set()
+        objectives = [obj for obj, _, _ in unique]
+        fronts = _fast_non_dominated_sort(objectives)
+        if fronts:
+            front = set(fronts[0])
+
+        if pareto_only:
+            front_idx = list(fronts[0]) if fronts else []
+            dist = _crowding_distance([objectives[i] for i in front_idx])
+            indices = [front_idx[int(i)] for i in np.argsort(-dist)]
+        else:
+            indices = range(len(unique))
+
+        rows = []
+        for i in indices:
+            obj, mol, _ = unique[i]
+            try:
+                smiles = mol.to_smiles() if hasattr(mol, "to_smiles") else None
+            except Exception:
+                smiles = None
+            row = {}
+            for j, value in enumerate(np.atleast_1d(obj)):
+                name = (
+                    objective_names[j]
+                    if objective_names is not None and j < len(objective_names)
+                    else f"objective_{j}"
+                )
+                row[name] = float(value)
+            row["smiles"] = smiles
+            row["is_pareto"] = i in front
+            if molecules:
+                row["molecule"] = mol
+            rows.append(row)
+        return pd.DataFrame(rows[:n] if n is not None else rows)
 
     def _unique_results(self) -> list:
         seen: set = set()
@@ -289,7 +364,9 @@ class MOOptimizer:
             ctx = self.pipeline()
             mol = ctx.molecule
             obj = np.asarray(self.objectives_fn(mol), dtype=float)
-            stored_params = np.array(params) if params is not None and len(params) else None
+            stored_params = (
+                np.array(params) if params is not None and len(params) else None
+            )
             return obj, mol, stored_params
         except Exception:
             return None
@@ -313,12 +390,15 @@ class MOOptimizer:
         else:
             lo = np.array([b[0] for b in bounds], dtype=float)
             hi = np.array([b[1] for b in bounds], dtype=float)
-            param_list = [lo + np.random.random(len(bounds)) * (hi - lo) for _ in range(steps)]
+            param_list = [
+                lo + np.random.random(len(bounds)) * (hi - lo) for _ in range(steps)
+            ]
 
         bar = progress_bar(total=steps, desc="random (MO)", disable=not verbose)
         try:
             if self._executor is not None:
                 from concurrent.futures import as_completed
+
                 futures = {self._executor.submit(self._evaluate, p) for p in param_list}
                 for fut in as_completed(futures):
                     result = fut.result()
@@ -373,7 +453,9 @@ class MOOptimizer:
         hi = np.array([b[1] for b in bounds], dtype=float)
 
         # ── initialise ────────────────────────────────────────────────────────
-        pop_params = [lo + np.random.random(n_params) * (hi - lo) for _ in range(population)]
+        pop_params = [
+            lo + np.random.random(n_params) * (hi - lo) for _ in range(population)
+        ]
         init_results = self._evaluate_many(pop_params)
         self._results.extend(init_results)
 
@@ -403,7 +485,9 @@ class MOOptimizer:
                     c1, c2 = p1.copy(), p2.copy()
                 for c in (c1, c2):
                     mut = np.random.random(n_params) < mutation_prob
-                    c[mut] = lo[mut] + np.random.random(int(mut.sum())) * (hi[mut] - lo[mut])
+                    c[mut] = lo[mut] + np.random.random(int(mut.sum())) * (
+                        hi[mut] - lo[mut]
+                    )
                 offspring_params.extend([c1, c2])
 
             off_results = self._evaluate_many(offspring_params)
@@ -419,5 +503,7 @@ class MOOptimizer:
             pop_mols = [comb_mols[i] for i in survivors]
             pop_params = [comb_params[min(i, len(comb_params) - 1)] for i in survivors]
 
-            front_size = sum(1 for i in survivors if _rank_and_crowd(comb_objs)[0][i] == 0)
+            front_size = sum(
+                1 for i in survivors if _rank_and_crowd(comb_objs)[0][i] == 0
+            )
             bar.set_postfix(front=front_size, pop=len(pop_objs))

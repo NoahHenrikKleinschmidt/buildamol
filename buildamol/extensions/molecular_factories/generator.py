@@ -4,7 +4,13 @@ function and a pluggable search strategy to find high-scoring molecules automati
 
 The scoring function must accept a single `Molecule` argument and return a float.
 Any conversion to SMILES, fingerprints, coordinates, etc. is the responsibility of
-the scoring function — the Generator stays in BuildAMol-land throughout.
+the scoring function.
+
+Note
+----
+The Generator is a general purpose lightweight factory using the ``Assembler`` class.
+Therefore the generation process cannot be customized in detail. If you need a more controlled
+setup, check out the stand-alone building blocks of the newer factories API.
 
 Usage
 -----
@@ -22,20 +28,33 @@ Example
     from rdkit.Chem import QED
 
     bam.load_small_molecules()
-    fragments = [bam.molecule(name) for name in ("benzene", "ethanol", "dimethylamine")]
-    for f in fragments:
-        f.autolabel()
+    fragments = [bam.molecule(name) for name in ("benzene", "isopropanol", "dimethylamine")]
+    fragments = [i[0] if isinstance(i, list) else i for i in fragments]
 
     def qed_score(mol):
         return QED.qed(mol.to_rdkit())
 
     gen = Generator(fragments, qed_score, n_fragments=3, maximize=True)
-    gen.run(n_steps=200, method="random")
-    gen.run(n_steps=50,  method="genetic", population_size=20)
-    gen.run(n_steps=30,  method="swarm",   n_particles=15)
+    gen.run(n_steps=50, method="random")
+    gen.run(n_steps=10,  method="genetic", population_size=20)
+    gen.run(n_steps=10,  method="swarm",   n_particles=15)
 
-    print(gen.best)
     print(gen.to_dataframe().head())
+
+
+========== ===========================
+    score   smiles
+========== ===========================
+ 0.828336   CC(O)(Cc1ccccc1)c1ccccc1
+ 0.827453   CC(O)Cc1ccc(-c2ccccc2)cc1
+ 0.827453   CC(O)Cc1cccc(-c2ccccc2)c1
+ 0.827453   CC(O)Cc1ccccc1-c1ccccc1
+ 0.825895   OC(Cc1ccccc1)Cc1ccccc1
+========== ===========================
+
+
+.. image:: examples/files/generator_output_example1.png
+
 
 Search methods
 --------------

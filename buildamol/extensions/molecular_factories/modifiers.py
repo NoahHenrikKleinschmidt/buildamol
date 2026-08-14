@@ -34,11 +34,17 @@ class Modify(ChainableBlock):
         if self.mol_type == "rdkit" and is_bam:
             converted = mol.to_rdkit()
             result = self._apply_func(converted, context, *args, **kwargs)
-            context.molecule = Molecule.from_rdkit(result) if isinstance(result, rdchem.Mol) else result
+            context.molecule = (
+                Molecule.from_rdkit(result)
+                if isinstance(result, rdchem.Mol)
+                else result
+            )
         elif self.mol_type == "buildamol" and is_rdkit:
             converted = _rdkit_to_bam_with_embed(mol)
             result = self._apply_func(converted, context, *args, **kwargs)
-            context.molecule = _bam_to_rdkit_2d(result) if isinstance(result, Molecule) else result
+            context.molecule = (
+                _bam_to_rdkit_2d(result) if isinstance(result, Molecule) else result
+            )
         else:
             context.molecule = self._apply_func(mol, context, *args, **kwargs)
 
@@ -88,6 +94,91 @@ class Random(ChainableBlock):
         # Consume the inner block's params so downstream blocks stay aligned.
         for _ in range(self.block.total_params()):
             self._next_param()
+        return context
+
+
+class Branch(ChainableBlock):
+    """
+    Conditionally route the context through one of two blocks.
+
+    Parameters
+    ----------
+    condition : callable
+        ``condition(context) -> bool``. For convenience a callable that only
+        accepts a single molecule argument is also supported — it then receives
+        ``context.molecule`` instead.
+    if_true : ChainableBlock
+        The block to apply when the condition evaluates truthy.
+    if_false : ChainableBlock, optional
+        The block to apply otherwise. If None, the context is passed through
+        unchanged.
+
+    Examples
+    --------
+    >>> pipeline = Choice(fragments) | Branch(
+    ...     lambda ctx: ctx.molecule.count_atoms() > 20,
+    ...     if_true=Modify(trim),
+    ...     if_false=Connect(extender),
+    ... )
+
+    Optimisation interface
+    ----------------------
+    Both branches contribute their parameters, laid out as
+    ``[*if_true.params, *if_false.params]``. The branch that is not taken has
+    its parameters consumed (but unused) so downstream blocks stay aligned.
+    """
+
+    def __init__(
+        self,
+        condition,
+        if_true: ChainableBlock,
+        if_false: ChainableBlock = None,
+    ):
+        if not callable(condition):
+            raise TypeError("condition must be a callable taking a context")
+        if not isinstance(if_true, ChainableBlock):
+            raise TypeError("if_true must be a ChainableBlock")
+        if if_false is not None and not isinstance(if_false, ChainableBlock):
+            raise TypeError("if_false must be a ChainableBlock or None")
+        self.condition = condition
+        self.if_true = if_true
+        self.if_false = if_false
+
+        sig = inspect.signature(condition)
+        self._condition_takes_molecule = any(
+            p.name in ("mol", "molecule") for p in sig.parameters.values()
+        )
+
+    def total_params(self) -> int:
+        return self.if_true.total_params() + self._false_params()
+
+    @property
+    def param_bounds(self) -> list:
+        false_bounds = self.if_false.param_bounds if self.if_false is not None else []
+        return self.if_true.param_bounds + false_bounds
+
+    def _false_params(self) -> int:
+        return self.if_false.total_params() if self.if_false is not None else 0
+
+    def _evaluate_condition(self, context: Context) -> bool:
+        if self._condition_takes_molecule:
+            return bool(self.condition(context.molecule))
+        return bool(self.condition(context))
+
+    def _call_default(self, context: Context, *args, **kwargs) -> Context:
+        take_true = self._evaluate_condition(context)
+
+        # Params are always consumed in the fixed order [if_true, if_false]
+        # so that the vector layout does not depend on the branch taken.
+        if take_true:
+            context = self.if_true(context, *args, **kwargs)
+            for _ in range(self._false_params()):
+                self._next_param()
+        else:
+            for _ in range(self.if_true.total_params()):
+                self._next_param()
+            if self.if_false is not None:
+                context = self.if_false(context, *args, **kwargs)
         return context
 
 
@@ -163,6 +254,7 @@ class SetLinkerAtoms(ChainableBlock):
         if self.mol_type != "auto":
             return self.mol_type
         from rdkit.Chem import rdchem
+
         return "rdkit" if isinstance(context.molecule, rdchem.Mol) else "buildamol"
 
     def _get_working_mol(self, context):
@@ -186,6 +278,7 @@ class SetLinkerAtoms(ChainableBlock):
             bam_mol = context.bam_molecule  # use cached original if available
             if bam_mol is None:
                 from .base import _rdkit_to_bam_lightweight
+
                 bam_mol = _rdkit_to_bam_lightweight(ctx_mol, self.needs_conformer)
                 # Fresh mol — propagate attach_residue spec from context so
                 # callables that use mol.get_attach_residue() see the right residue.
@@ -201,6 +294,7 @@ class SetLinkerAtoms(ChainableBlock):
                 return ctx_mol, "rdkit", None
             # bam context → produce a lightweight rdkit mol for the callable
             from .base import _bam_to_rdkit_2d
+
             return _bam_to_rdkit_2d(ctx_mol), "rdkit", ctx_mol
 
     def _resolve_atom(self, val, working_mol, mol_kind, *extra):
@@ -264,6 +358,7 @@ class SetLinkerAtoms(ChainableBlock):
     def _call_default(self, context: Context, *args, **kwargs) -> Context:
         """Handles both backends — delete is suppressed in *rdkit-accelerated*."""
         from .backend import get_backend
+
         is_rdkit_mode = get_backend() == "rdkit-accelerated"
 
         working_mol, mol_kind, bam_ref = self._get_working_mol(context)
@@ -271,7 +366,9 @@ class SetLinkerAtoms(ChainableBlock):
 
         if self.link is not None:
             linker_raw = self._resolve_atom(self.link, working_mol, mol_kind)
-            context.linker_atom = self._to_context_linker(linker_raw, mol_kind, bam_ref, context)
+            context.linker_atom = self._to_context_linker(
+                linker_raw, mol_kind, bam_ref, context
+            )
 
         if is_rdkit_mode:
             context.deleter_atom = None  # implicit Hs — Connect handles valence
@@ -280,10 +377,14 @@ class SetLinkerAtoms(ChainableBlock):
             # navigate from the linker, e.g.:
             #   _CH = lambda mol, atom: atom.get_left_hydrogen()
             del_raw = self._resolve_atom(
-                self.delete, working_mol, mol_kind,
+                self.delete,
+                working_mol,
+                mol_kind,
                 linker_raw if linker_raw is not None else context.linker_atom,
             )
-            context.deleter_atom = self._to_context_linker(del_raw, mol_kind, bam_ref, context)
+            context.deleter_atom = self._to_context_linker(
+                del_raw, mol_kind, bam_ref, context
+            )
 
         return context
 
@@ -375,6 +476,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _how_highest_cip(self, molecule, *args, **kwargs):
         from buildamol.structural.chirality import _cip_priority_key
+
         atoms = self._get_candidates(molecule)
         atoms.sort(key=_cip_priority_key, reverse=True)
         linker = atoms[0]
@@ -382,6 +484,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _how_lowest_cip(self, molecule, *args, **kwargs):
         from buildamol.structural.chirality import _cip_priority_key
+
         atoms = self._get_candidates(molecule)
         atoms.sort(key=_cip_priority_key)
         linker = atoms[0]
@@ -418,6 +521,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _how_highest_cip_and_degree(self, molecule, *args, **kwargs):
         from buildamol.structural.chirality import _cip_priority_key
+
         atoms = self._get_candidates(molecule)
         atoms.sort(
             key=lambda a: (
@@ -431,6 +535,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _how_lowest_cip_and_degree(self, molecule, *args, **kwargs):
         from buildamol.structural.chirality import _cip_priority_key
+
         atoms = self._get_candidates(molecule)
         atoms.sort(
             key=lambda a: (
@@ -443,7 +548,9 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _how_amine_N(self, molecule, *args, **kwargs):
         residue = self._get_residue(molecule)
-        atoms = [a for a in residue.get_atoms() if a.element == "N" and a.get_hydrogens()]
+        atoms = [
+            a for a in residue.get_atoms() if a.element == "N" and a.get_hydrogens()
+        ]
         if not atoms:
             raise ValueError(
                 f"No amine nitrogen atoms with hydrogen neighbours found in residue {residue}."
@@ -453,6 +560,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _how_hydroxyl_O(self, molecule, *args, **kwargs):
         from buildamol.structural import constraints_v2 as c
+
         residue = self._get_residue(molecule)
         cc = c.and_(c.has_element("O"), c.has_bond_of_order_with(1, "H"))
         atoms = [a for a in residue.get_atoms() if cc(a)]
@@ -465,6 +573,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _how_carbonyl_C(self, molecule, *args, **kwargs):
         from buildamol.structural import constraints_v2 as c
+
         residue = self._get_residue(molecule)
         cc = c.and_(
             c.has_element("C"),
@@ -481,6 +590,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _how_carboxyl_O(self, molecule, *args, **kwargs):
         from buildamol.structural import constraints_v2 as c
+
         residue = self._get_residue(molecule)
         c_cc = c.and_(
             c.has_element("C"),
@@ -489,9 +599,7 @@ class FindLinkerAtoms(ChainableBlock):
         )
         c_atoms = [a for a in residue.get_atoms() if c_cc(a)]
         if not c_atoms:
-            raise ValueError(
-                f"No carboxyl group found in residue {residue}."
-            )
+            raise ValueError(f"No carboxyl group found in residue {residue}.")
         oc = c.and_(
             c.has_element("O"),
             c.has_bond_of_order_with(1, "C"),
@@ -499,14 +607,13 @@ class FindLinkerAtoms(ChainableBlock):
         )
         atoms = [a for a in c_atoms[0].get_neighbors() if oc(a)]
         if not atoms:
-            raise ValueError(
-                f"No carboxyl OH oxygen found in residue {residue}."
-            )
+            raise ValueError(f"No carboxyl OH oxygen found in residue {residue}.")
         linker = atoms[0]
         return linker, self._pick_h(linker)
 
     def _how_carboxyl_C(self, molecule, *args, **kwargs):
         from buildamol.structural import constraints_v2 as c
+
         residue = self._get_residue(molecule)
         cc = c.and_(
             c.has_element("C"),
@@ -515,9 +622,7 @@ class FindLinkerAtoms(ChainableBlock):
         )
         atoms = [a for a in residue.get_atoms() if cc(a)]
         if not atoms:
-            raise ValueError(
-                f"No carboxyl carbon found in residue {residue}."
-            )
+            raise ValueError(f"No carboxyl carbon found in residue {residue}.")
         linker = atoms[0]
         oc = c.and_(
             c.has_element("O"),
@@ -573,8 +678,9 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _rdkit_get_candidates(self, mol, allowed_indices=None):
         """H-bearing non-hydrogen atoms in an RDKit Mol, scoped to *allowed_indices*."""
-        candidates = [a for a in mol.GetAtoms()
-                      if a.GetAtomicNum() != 1 and a.GetTotalNumHs() > 0]
+        candidates = [
+            a for a in mol.GetAtoms() if a.GetAtomicNum() != 1 and a.GetTotalNumHs() > 0
+        ]
         if allowed_indices is not None:
             candidates = [a for a in candidates if a.GetIdx() in allowed_indices]
         return candidates
@@ -595,27 +701,41 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _rdkit_how_highest_cip(self, mol, allowed_indices=None):
         from rdkit.Chem import AssignStereochemistry
+
         AssignStereochemistry(mol, cleanIt=True, force=True)
         atoms = self._rdkit_get_candidates(mol, allowed_indices)
-        return max(atoms, key=lambda a: int(a.GetPropsAsDict().get("_CIPRank", 0))).GetIdx()
+        return max(
+            atoms, key=lambda a: int(a.GetPropsAsDict().get("_CIPRank", 0))
+        ).GetIdx()
 
     def _rdkit_how_lowest_cip(self, mol, allowed_indices=None):
         from rdkit.Chem import AssignStereochemistry
+
         AssignStereochemistry(mol, cleanIt=True, force=True)
         atoms = self._rdkit_get_candidates(mol, allowed_indices)
-        return min(atoms, key=lambda a: int(a.GetPropsAsDict().get("_CIPRank", 0))).GetIdx()
+        return min(
+            atoms, key=lambda a: int(a.GetPropsAsDict().get("_CIPRank", 0))
+        ).GetIdx()
 
     def _rdkit_how_highest_cip_and_degree(self, mol, allowed_indices=None):
         from rdkit.Chem import AssignStereochemistry
+
         AssignStereochemistry(mol, cleanIt=True, force=True)
         atoms = self._rdkit_get_candidates(mol, allowed_indices)
-        return max(atoms, key=lambda a: (int(a.GetPropsAsDict().get("_CIPRank", 0)), a.GetDegree())).GetIdx()
+        return max(
+            atoms,
+            key=lambda a: (int(a.GetPropsAsDict().get("_CIPRank", 0)), a.GetDegree()),
+        ).GetIdx()
 
     def _rdkit_how_lowest_cip_and_degree(self, mol, allowed_indices=None):
         from rdkit.Chem import AssignStereochemistry
+
         AssignStereochemistry(mol, cleanIt=True, force=True)
         atoms = self._rdkit_get_candidates(mol, allowed_indices)
-        return min(atoms, key=lambda a: (int(a.GetPropsAsDict().get("_CIPRank", 0)), a.GetDegree())).GetIdx()
+        return min(
+            atoms,
+            key=lambda a: (int(a.GetPropsAsDict().get("_CIPRank", 0)), a.GetDegree()),
+        ).GetIdx()
 
     def _rdkit_how_furthest_from_center(self, mol, allowed_indices=None):
         raise NotImplementedError(
@@ -630,8 +750,9 @@ class FindLinkerAtoms(ChainableBlock):
         )
 
     def _rdkit_how_amine_N(self, mol, allowed_indices=None):
-        atoms = [a for a in mol.GetAtoms()
-                 if a.GetAtomicNum() == 7 and a.GetTotalNumHs() > 0]
+        atoms = [
+            a for a in mol.GetAtoms() if a.GetAtomicNum() == 7 and a.GetTotalNumHs() > 0
+        ]
         if allowed_indices is not None:
             atoms = [a for a in atoms if a.GetIdx() in allowed_indices]
         if not atoms:
@@ -639,8 +760,9 @@ class FindLinkerAtoms(ChainableBlock):
         return atoms[0].GetIdx()
 
     def _rdkit_how_hydroxyl_O(self, mol, allowed_indices=None):
-        atoms = [a for a in mol.GetAtoms()
-                 if a.GetAtomicNum() == 8 and a.GetTotalNumHs() > 0]
+        atoms = [
+            a for a in mol.GetAtoms() if a.GetAtomicNum() == 8 and a.GetTotalNumHs() > 0
+        ]
         if allowed_indices is not None:
             atoms = [a for a in atoms if a.GetIdx() in allowed_indices]
         if not atoms:
@@ -649,6 +771,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _rdkit_how_carbonyl_C(self, mol, allowed_indices=None):
         from rdkit.Chem import MolFromSmarts
+
         patt = MolFromSmarts("[CH](=O)")
         matches = mol.GetSubstructMatches(patt)
         if allowed_indices is not None:
@@ -659,6 +782,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _rdkit_how_carboxyl_O(self, mol, allowed_indices=None):
         from rdkit.Chem import MolFromSmarts
+
         patt = MolFromSmarts("[OH][C](=O)")
         matches = mol.GetSubstructMatches(patt)
         if allowed_indices is not None:
@@ -669,6 +793,7 @@ class FindLinkerAtoms(ChainableBlock):
 
     def _rdkit_how_carboxyl_C(self, mol, allowed_indices=None):
         from rdkit.Chem import MolFromSmarts
+
         patt = MolFromSmarts("[C](=O)[OH]")
         matches = mol.GetSubstructMatches(patt)
         if allowed_indices is not None:
@@ -805,9 +930,7 @@ class Connect(ChainableBlock):
         other_context = self.other_block()
 
         if other_context.linker_atom is None:
-            raise ValueError(
-                "The connected pipeline did not set a linker atom."
-            )
+            raise ValueError("The connected pipeline did not set a linker atom.")
 
         from rdkit.Chem import RWMol, BondType, SanitizeMol
         from rdkit import Chem
@@ -828,7 +951,9 @@ class Connect(ChainableBlock):
             if _nh > 0:
                 _at.SetNumExplicitHs(_nh - 1)
 
-        rw.AddBond(context.linker_atom, other_context.linker_atom + n1, Chem.BondType.SINGLE)
+        rw.AddBond(
+            context.linker_atom, other_context.linker_atom + n1, Chem.BondType.SINGLE
+        )
         Chem.SanitizeMol(rw)
 
         out = Context()
@@ -870,5 +995,8 @@ class Forge(ChainableBlock):
 
     def _call_rdkit_accelerated(self, context: Context, *args, **kwargs) -> Context:
         from .base import _rdkit_to_bam_with_embed
-        context.molecule = _rdkit_to_bam_with_embed(context.molecule, optimize=self.optimize)
+
+        context.molecule = _rdkit_to_bam_with_embed(
+            context.molecule, optimize=self.optimize
+        )
         return context

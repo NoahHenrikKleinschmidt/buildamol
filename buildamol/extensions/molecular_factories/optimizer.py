@@ -77,5 +77,16 @@ class Optimizer:
         # forward everything not found on Optimizer itself to the inner optimizer
         return getattr(self.optimizer, name)
 
+    def to_dataframe(self, *args, **kwargs):
+        """
+        Return the results as a ``pandas.DataFrame``. Forwards to
+        :meth:`SOOptimizer.to_dataframe` or :meth:`MOOptimizer.to_dataframe`
+        depending on the mode.
+        """
+        return self.optimizer.to_dataframe(*args, **kwargs)
+
     def __repr__(self) -> str:
         return f"Optimizer(mode={'single' if isinstance(self.optimizer, SOOptimizer) else 'multi'}, optimizer={self.optimizer!r})"
+
+
+__all__ = ["Optimizer", "SOOptimizer", "MOOptimizer"]
