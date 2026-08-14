@@ -1771,6 +1771,7 @@ class Molecule(entity.BaseEntity):
         root_atom: Union[str, int] = None,
         by: str = "name",
         idx: int = 0,
+        id: str = None,
     ) -> "Molecule":
         """
         Create a Molecule from PubChem
@@ -1799,6 +1800,8 @@ class Molecule(entity.BaseEntity):
             - formula
         idx : int
             The index of the result to use if multiple are found. By default, the first result is used.
+        id : str
+            The id of the Molecule. By default the provided query string is used.
 
         Returns
         -------
@@ -1808,11 +1811,14 @@ class Molecule(entity.BaseEntity):
         _compound_2d, _compound_3d = resources.pubchem.query(query, by=by, idx=idx)
         new = _molecule_from_pubchem(_compound_2d.iupac_name, _compound_3d)
         _new = cls(new.structure)
-        _new.add_bonds(*(i.to_tuple() for i in new._bonds))
+        _new.set_bonds(*(i.to_tuple() for i in new._bonds))
         new = _new
         new.id = _compound_2d.iupac_name
         if root_atom:
             new.set_root(root_atom)
+        _id = id or _compound_2d.iupac_name
+        new.rename_residue(1, _id[:3])
+        new.id = _id
         return new
 
     @classmethod
