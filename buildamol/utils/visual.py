@@ -874,6 +874,27 @@ class Chem2DViewer:
         return _atom
 
 
+def _single_model_pdb(pdb: str) -> str:
+    """Extract the first conformer from a multi-model PDB, keeping all CONECT records."""
+    if "MODEL " not in pdb:
+        return pdb
+    atom_lines, conect_lines = [], []
+    in_first, done = False, False
+    for line in pdb.splitlines():
+        if line.startswith("MODEL "):
+            if not in_first:
+                in_first = True
+            else:
+                done = True
+        elif line.startswith("ENDMDL"):
+            done = True
+        elif line.startswith("CONECT"):
+            conect_lines.append(line)
+        elif in_first and not done:
+            atom_lines.append(line)
+    return "\n".join(atom_lines + conect_lines + ["END"])
+
+
 class Py3DmolViewer:
     """
     View a molecule in 3D using the py3Dmol library.
@@ -917,9 +938,16 @@ class Py3DmolViewer:
             )
 
         if hasattr(molecule, "to_pdb"):
-            self.pdb = utils.pdb.encode_pdb(molecule, reindex=True)
+            self.pdb = _single_model_pdb(utils.pdb.encode_pdb(molecule, reindex=True))
         else:
             self.pdb = utils.pdb.make_atoms_table(molecule)
+
+        self._molecule = molecule
+        # Map original atom serial numbers to the reindexed 1-based serials used
+        # in the PDB text so that highlight selections can target the right atoms.
+        self._serial_map = {
+            a.serial_number: i + 1 for i, a in enumerate(molecule.get_atoms())
+        }
 
         self.style = dict(Py3DmolViewer.default_style)
         if style:
@@ -966,7 +994,7 @@ class Py3DmolViewer:
             if style is None:
                 style = other.style
         elif hasattr(other, "to_pdb"):
-            pdb = utils.pdb.encode_pdb(other, reindex=True)
+            pdb = _single_model_pdb(utils.pdb.encode_pdb(other, reindex=True))
             self.view.addModel(pdb, "pdb")
             if style is None:
                 style = self.style
@@ -993,6 +1021,125 @@ class Py3DmolViewer:
 
     def __add__(self, other):
         return self.add(other)
+
+    def highlight_atoms(self, *atoms, color="red", radius=0.4, style="sphere"):
+        """
+        Highlight specific atoms by overlaying spheres.
+
+        Parameters
+        ----------
+        *atoms
+            BuildAMol Atoms, atom serial numbers (int), or a single list of either.
+        color : str or tuple
+            Color for the highlighted atoms.
+        radius : float
+            Sphere radius.
+        style : str
+            py3Dmol style type to use (e.g. ``"sphere"``, ``"stick"``).
+        """
+        if atoms and isinstance(atoms[0], (list, tuple, set)) and len(atoms) == 1:
+            atoms = tuple(atoms[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        serials = []
+        for atom in atoms:
+            if hasattr(atom, "serial_number"):
+                serials.append(self._serial_map.get(atom.serial_number, atom.serial_number))
+            elif isinstance(atom, int):
+                serials.append(atom)
+
+        if serials:
+            self.view.addStyle({"serial": serials}, {style: {"color": color, "radius": radius}})
+        return self
+
+    def highlight_bonds(self, *bonds, color="red", radius=0.15):
+        """
+        Highlight specific bonds by drawing cylinders over them.
+
+        Parameters
+        ----------
+        *bonds
+            Bond objects (with ``.atom1`` / ``.atom2``) or two-element
+            tuples/lists of BuildAMol Atoms. A single list of bonds is also accepted.
+        color : str or tuple
+            Color for the highlighted bonds.
+        radius : float
+            Cylinder radius.
+        """
+        if bonds and isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
+            bonds = tuple(bonds[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        for bond in bonds:
+            if hasattr(bond, "atom1") and hasattr(bond, "atom2"):
+                a1, a2 = bond.atom1, bond.atom2
+            elif isinstance(bond, (tuple, list)) and len(bond) >= 2:
+                a1, a2 = bond[0], bond[1]
+            else:
+                continue
+
+            c1, c2 = a1.coord, a2.coord
+            try:
+                self.view.addCylinder(
+                    {
+                        "start": {"x": float(c1[0]), "y": float(c1[1]), "z": float(c1[2])},
+                        "end": {"x": float(c2[0]), "y": float(c2[1]), "z": float(c2[2])},
+                        "color": color,
+                        "radius": radius,
+                        "dashed": False,
+                    }
+                )
+            except Exception:
+                # Fallback: overlay spheres on both endpoints
+                s1 = self._serial_map.get(a1.serial_number, a1.serial_number)
+                s2 = self._serial_map.get(a2.serial_number, a2.serial_number)
+                self.view.addStyle(
+                    {"serial": [s1, s2]},
+                    {"sphere": {"color": color, "radius": 0.3}},
+                )
+
+        return self
+
+    def highlight_residues(self, *residues, color="red", style="stick"):
+        """
+        Highlight entire residues.
+
+        Parameters
+        ----------
+        *residues
+            BuildAMol Residue objects, residue sequence numbers (int), or residue
+            name strings. A single list of residues is also accepted.
+        color : str or tuple
+            Color for the highlighted residues.
+        style : str
+            py3Dmol style type to use (e.g. ``"stick"``, ``"sphere"``).
+        """
+        if residues and isinstance(residues[0], (list, tuple, set)) and len(residues) == 1:
+            residues = tuple(residues[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        res_nums = []
+        for res in residues:
+            if hasattr(res, "id"):
+                res_id = res.id
+                res_nums.append(res_id[1] if isinstance(res_id, tuple) else int(res_id))
+            elif isinstance(res, int):
+                res_nums.append(res)
+            elif isinstance(res, str) and hasattr(self._molecule, "get_residue"):
+                r = self._molecule.get_residue(res)
+                if r is not None:
+                    r_id = r.id
+                    res_nums.append(r_id[1] if isinstance(r_id, tuple) else int(r_id))
+
+        if res_nums:
+            self.view.addStyle({"resi": res_nums}, {style: {"color": color}})
+        return self
 
     def show(self):
         """
@@ -1023,26 +1170,151 @@ class NglViewer:
             raise ImportError(
                 "NGLView is not available. Please install it with `pip install nglview` and be sure to use a compatible environment."
             )
-        if hasattr(molecule, "to_pdb"):
-            self.pdb = utils.pdb.encode_pdb(molecule, reindex=True)
-        elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
-            self.pdb = utils.pdb.encode_pdb(molecule._molecule, reindex=True)
+        _src = molecule
+        if molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+            _src = molecule._molecule
+
+        if hasattr(_src, "to_pdb"):
+            self.pdb = utils.pdb.encode_pdb(_src, reindex=True)
         else:
             raise ValueError(
                 f"Unsupported molecule type: {molecule.__class__.__name__}"
             )
 
+        self._molecule = _src
+        # 0-based atom indices used by NGL @N selection syntax
+        self._serial_map = {
+            a.serial_number: i for i, a in enumerate(_src.get_atoms())
+        }
+        self._pending_highlights = []
+
+    def highlight_atoms(self, *atoms, color="red", style="ball+stick"):
+        """
+        Highlight specific atoms. Takes effect on the next :meth:`show` call.
+
+        Parameters
+        ----------
+        *atoms
+            BuildAMol Atoms, atom serial numbers (int), or a single list of either.
+        color : str or tuple
+            Color for the highlighted atoms.
+        style : str
+            NGL representation type (e.g. ``"ball+stick"``, ``"spacefill"``).
+        """
+        if atoms and isinstance(atoms[0], (list, tuple, set)) and len(atoms) == 1:
+            atoms = tuple(atoms[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        indices = []
+        for atom in atoms:
+            if hasattr(atom, "serial_number"):
+                idx = self._serial_map.get(atom.serial_number)
+                if idx is not None:
+                    indices.append(idx)
+            elif isinstance(atom, int):
+                indices.append(atom)
+
+        if indices:
+            selection = "@" + ",".join(str(i) for i in indices)
+            self._pending_highlights.append(
+                {"type": style, "selection": selection, "color": color}
+            )
+        return self
+
+    def highlight_bonds(self, *bonds, color="red", style="ball+stick"):
+        """
+        Highlight the atoms at each end of the specified bonds.
+        Takes effect on the next :meth:`show` call.
+
+        Parameters
+        ----------
+        *bonds
+            Bond objects (with ``.atom1`` / ``.atom2``) or two-element
+            tuples/lists of BuildAMol Atoms. A single list of bonds is also accepted.
+        color : str or tuple
+            Color for the highlighted bond endpoints.
+        style : str
+            NGL representation type.
+        """
+        if bonds and isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
+            bonds = tuple(bonds[0])
+
+        atoms = []
+        for bond in bonds:
+            if hasattr(bond, "atom1") and hasattr(bond, "atom2"):
+                atoms.extend([bond.atom1, bond.atom2])
+            elif isinstance(bond, (tuple, list)) and len(bond) >= 2:
+                atoms.extend([bond[0], bond[1]])
+
+        if atoms:
+            self.highlight_atoms(*atoms, color=color, style=style)
+        return self
+
+    def highlight_residues(self, *residues, color="red", style="ball+stick"):
+        """
+        Highlight entire residues. Takes effect on the next :meth:`show` call.
+
+        Parameters
+        ----------
+        *residues
+            BuildAMol Residue objects, residue sequence numbers (int), or residue
+            name strings. A single list of residues is also accepted.
+        color : str or tuple
+            Color for the highlighted residues.
+        style : str
+            NGL representation type.
+        """
+        if residues and isinstance(residues[0], (list, tuple, set)) and len(residues) == 1:
+            residues = tuple(residues[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        res_nums = []
+        for res in residues:
+            if hasattr(res, "id"):
+                res_id = res.id
+                res_nums.append(str(res_id[1] if isinstance(res_id, tuple) else int(res_id)))
+            elif isinstance(res, int):
+                res_nums.append(str(res))
+            elif isinstance(res, str) and hasattr(self._molecule, "get_residue"):
+                r = self._molecule.get_residue(res)
+                if r is not None:
+                    r_id = r.id
+                    res_nums.append(
+                        str(r_id[1] if isinstance(r_id, tuple) else int(r_id))
+                    )
+
+        if res_nums:
+            selection = " or ".join(res_nums)
+            self._pending_highlights.append(
+                {"type": style, "selection": selection, "color": color}
+            )
+        return self
+
     def show(self):
         """
-        Show the molecule in a Jupyter notebook
+        Show the molecule in a Jupyter notebook.
+        Any :meth:`highlight_atoms`, :meth:`highlight_bonds`, or
+        :meth:`highlight_residues` calls made before ``show()`` are applied here.
         """
         import nglview
         import io
 
         f = io.StringIO(self.pdb)
         f.seek(0)
-        fig = nglview.show_file(f, ext="pdb")
-        return fig
+        widget = nglview.show_file(f, ext="pdb")
+
+        for req in self._pending_highlights:
+            widget.add_representation(
+                req["type"],
+                selection=req["selection"],
+                color=req["color"],
+            )
+
+        return widget
 
 
 def rgba_to_hex(rgba: tuple) -> str:
@@ -1477,11 +1749,14 @@ class PlotlyViewer3D:
     def highlight_residues(
         self,
         *residues,
+        color=None,
         bond_colors: list = None,
         opacity: float = 0.6,
         linewidth: float = 2,
         draw_atoms: bool = False,
     ):
+        if color is not None and bond_colors is None:
+            bond_colors = color
         if not isinstance(bond_colors, list):
             bond_colors = [bond_colors] * len(residues)
 
@@ -1505,6 +1780,69 @@ class PlotlyViewer3D:
             self.opacity = _op
             bonds.loc[:, "bond_order"] = bonds["bond_order"] - linewidth
         self.add(residue_traces)
+        return self
+
+    def _node_key(self, node):
+        """Return the key used in _bond_df / _atom_df for this node."""
+        if hasattr(node, "serial_number"):
+            return node.serial_number
+        if hasattr(node, "get_id"):
+            return node.get_id()
+        return node
+
+    def highlight_bonds(self, *bonds, color="red", linewidth=4, opacity=None):
+        """
+        Highlight specific bonds by overlaying them with a custom color and linewidth.
+
+        Parameters
+        ----------
+        *bonds
+            Bonds to highlight. Each may be a Bond object (with ``.atom1`` / ``.atom2``)
+            or a two-element tuple/list of atoms/nodes.
+            A single list/tuple of bonds is also accepted.
+        color : str or tuple
+            Color for the highlighted bonds.
+        linewidth : float
+            Line width multiplier for the highlighted bonds.
+        opacity : float, optional
+            Opacity for the highlighted bonds. Defaults to ``min(1, self.opacity * 2)``.
+        """
+        if bonds and isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
+            bonds = tuple(bonds[0])
+
+        if opacity is None:
+            opacity = min(1.0, self.opacity * 2)
+
+        rows = []
+        for bond in bonds:
+            if hasattr(bond, "atom1") and hasattr(bond, "atom2"):
+                node_a, node_b = bond.atom1, bond.atom2
+            elif isinstance(bond, (tuple, list)) and len(bond) >= 2:
+                node_a, node_b = bond[0], bond[1]
+            else:
+                continue
+
+            key_a = self._node_key(node_a)
+            key_b = self._node_key(node_b)
+
+            mask = (
+                (self._bond_df["a"] == key_a) & (self._bond_df["b"] == key_b)
+            ) | (
+                (self._bond_df["a"] == key_b) & (self._bond_df["b"] == key_a)
+            )
+
+            if mask.any():
+                selected = self._bond_df[mask].copy()
+                selected["bond_color"] = color
+                selected["bond_width"] = linewidth
+                rows.append(selected)
+
+        if not rows:
+            return self
+
+        import pandas as pd
+        highlight_df = pd.concat(rows)
+        self.add(self._build_bond_traces(self._atom_df, highlight_df, opacity=opacity))
         return self
 
     def draw_atoms(

@@ -500,9 +500,24 @@ def molecule_to_rdkit(mol, sanitize: bool = True, **kwargs) -> "Chem.rdchem.Mol"
         coords[i] = a.coord
         serial_to_idx[a.serial_number] = i
 
-    for elem in elements:
+    for bam_atom, elem in zip(atoms, elements):
         at = aux.Chem.Atom(elem)
         at.SetNoImplicit(True)  # all Hs are explicit in the BuildAMol structure
+        try:
+            parent = bam_atom.get_parent()
+            resname = getattr(parent, "resname", "")
+            res_id = getattr(parent, "id", ("", 0, ""))
+            resnum = res_id[1] if isinstance(res_id, tuple) else int(res_id)
+            info = aux.Chem.AtomPDBResidueInfo(
+                bam_atom.id,
+                bam_atom.serial_number,
+                "",
+                resname,
+                resnum,
+            )
+            at.SetMonomerInfo(info)
+        except Exception:
+            pass
         rw.AddAtom(at)
 
     # Set all 3-D positions in a single C++ call via the numpy array path

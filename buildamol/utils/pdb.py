@@ -151,6 +151,35 @@ def find_models(filename):
     return models
 
 
+def _all_models_complete(mol) -> bool:
+    """
+    Return True if every snapshot model covers all canonical atoms.
+
+    When atoms are added to a molecule after loading (e.g. attaching a ligand
+    to an NMR ensemble), the extra MODEL snapshots only know about the original
+    atoms.  Writing those models produces PDB records where the new atoms appear
+    at the wrong position (they retain the active conformer's coords).  This
+    helper detects that situation so callers can fall back to single-model output.
+    """
+    n_atoms = sum(1 for _ in mol.get_atoms())
+    for model in getattr(mol, "_base_struct", mol).child_list:
+        sn = getattr(model, "_atom_serials", None)
+        if sn is not None and len(sn) < n_atoms:
+            return False
+    return True
+
+
+def _save_active_model(mol):
+    """Return the currently active Model object (for later restore), or None."""
+    active_id = getattr(mol, "_active_conformer_id", None)
+    if active_id is None:
+        return None
+    for m in getattr(getattr(mol, "_base_struct", None), "child_list", []):
+        if m.id == active_id:
+            return m
+    return None
+
+
 def write_pdb(mol, filename, symmetric: bool = True, safe: bool = True):
     """
     Write a molecule to a PDB file.
@@ -168,14 +197,19 @@ def write_pdb(mol, filename, symmetric: bool = True, safe: bool = True):
         by default True.
     """
     with open(filename, "w") as f:
-        if len(mol.models) > 1:
-            for model in mol.get_models():
-                f.write(f"MODEL {model.id}\n")
-                mol.set_model(model)
-                f.write(make_atoms_table(mol, safe=safe))
-                f.write("\nENDMDL\n")
-            f.write(make_connect_table(mol, symmetric))
-            f.write("\nEND\n")
+        if len(mol.models) > 1 and _all_models_complete(mol):
+            saved = _save_active_model(mol)
+            try:
+                for model in mol.get_models():
+                    f.write(f"MODEL {model.id}\n")
+                    mol.set_model(model)
+                    f.write(make_atoms_table(mol, safe=safe))
+                    f.write("\nENDMDL\n")
+                f.write(make_connect_table(mol, symmetric))
+                f.write("\nEND\n")
+            finally:
+                if saved is not None:
+                    mol.set_model(saved)
         else:
             f.write(make_atoms_table(mol, safe=safe))
             f.write("\n")
@@ -215,14 +249,19 @@ def encode_pdb(mol, symmetric: bool = True, safe: bool = True, reindex: bool = F
 
     lines = []
     n_models = len(getattr(mol, "models", []))
-    if n_models > 1:
-        for model in mol.get_models():
-            lines.append(f"MODEL {model.id}")
-            mol.set_model(model)
-            lines.append(make_atoms_table(mol, safe=safe, serial_map=serial_map, res_serial_map=res_serial_map))
-            lines.append("ENDMDL")
-        lines.append(make_connect_table(mol, symmetric, serial_map=serial_map))
-        lines.append("END")
+    if n_models > 1 and _all_models_complete(mol):
+        saved = _save_active_model(mol)
+        try:
+            for model in mol.get_models():
+                lines.append(f"MODEL {model.id}")
+                mol.set_model(model)
+                lines.append(make_atoms_table(mol, safe=safe, serial_map=serial_map, res_serial_map=res_serial_map))
+                lines.append("ENDMDL")
+            lines.append(make_connect_table(mol, symmetric, serial_map=serial_map))
+            lines.append("END")
+        finally:
+            if saved is not None:
+                mol.set_model(saved)
     else:
         lines.append(make_atoms_table(mol, safe=safe, serial_map=serial_map, res_serial_map=res_serial_map))
         lines.append(make_connect_table(mol, symmetric, serial_map=serial_map))
