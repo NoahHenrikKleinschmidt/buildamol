@@ -1895,13 +1895,13 @@ def gallery_grid(
         figsize = (ncols * panel_size, nrows * panel_size)
 
     fig, axs = plt.subplots(nrows, ncols, figsize=figsize)
-    axs = [axs] if nrows * ncols == 1 else list(axs.flat)
+    _axs = [axs] if nrows * ncols == 1 else list(axs.flat)
 
     if draw_molecules:
-        for ax, mol in zip(axs, mols):
+        for ax, mol in zip(_axs, mols):
             if hasattr(mol, "draw2d"):
                 mol.draw2d().draw(ax=ax, **kwargs)
-            else:
+            elif mol is not None:
                 ax.text(
                     0.5,
                     0.5,
@@ -1909,7 +1909,7 @@ def gallery_grid(
                     ha="center",
                     va="center",
                 )
-    for ax in axs[n:]:
+    for ax in _axs[n:]:
         ax.axis("off")
 
     fig.tight_layout()
