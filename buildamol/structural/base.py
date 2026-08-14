@@ -577,12 +577,15 @@ def superimpose_points(
             "The number of points in points1 and points2 must be the same."
         )
 
-    # compute translation vector
-    old_centroid = _old_coords.mean(axis=0)
-    new_centroid = _new_coords.mean(axis=0)
+    # Use first point as the translation anchor so that points1[0] maps exactly
+    # onto points2[0]. Using the centroid instead would distribute alignment
+    # error across all point pairs (none lands exactly) when the shapes are
+    # non-congruent (e.g. after force-field optimisation).
+    old_anchor = _old_coords[0]
+    new_anchor = _new_coords[0]
 
-    _relative_old_coords = _old_coords - old_centroid
-    _relative_new_coords = _new_coords - new_centroid
+    _relative_old_coords = _old_coords - old_anchor
+    _relative_new_coords = _new_coords - new_anchor
 
     H = (_relative_old_coords).T.dot(_relative_new_coords)
     U, S, VT = np.linalg.svd(H)
@@ -593,7 +596,7 @@ def superimpose_points(
         VT[-1, :] *= -1
         R = VT.T @ U.T
 
-    new_coords = (R @ (coords - old_centroid).T).T + new_centroid
+    new_coords = (R @ (coords - old_anchor).T).T + new_anchor
 
     return new_coords
 
