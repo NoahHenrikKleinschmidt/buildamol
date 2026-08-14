@@ -2337,6 +2337,7 @@ class Molecule(entity.BaseEntity):
         rotatron: str = None,
         rotatron_kws: dict = None,
         algorithm_kws: dict = None,
+        freeze_atoms: list = None,
         inplace: bool = True,
     ):
         """
@@ -2368,6 +2369,11 @@ class Molecule(entity.BaseEntity):
             Keyword arguments to pass to the optimization algorithm
         rotatron_kws : dict
             Keyword arguments to pass to the rotatron
+        freeze_atoms : list, optional
+            Atoms whose positions are held fixed during optimization. Each entry may be
+            an ``int`` (serial number), ``str`` (atom id), ``tuple`` (full_id), or
+            ``Atom`` object — the same conventions used throughout the BuildAMol API.
+            Only applies when ``algorithm`` is ``"rdkit"``, ``"mmff"``, or ``"uff"``.
         inplace : bool
             Whether to optimize the molecule in place or return a copy.
 
@@ -2389,20 +2395,29 @@ class Molecule(entity.BaseEntity):
 
         algorithm = algorithm or optimizers.auto_algorithm(self)
 
+        # Resolve freeze_atoms to 0-based RDKit indices.
+        # get_atoms() iteration order matches the RDKit atom order (verified by the
+        # zip-based coord copy-back that follows each rdkit/mmff/uff call).
+        frozen_indices = None
+        if freeze_atoms is not None:
+            all_atoms = list(self.get_atoms())
+            resolved = self.get_atoms(*freeze_atoms)
+            frozen_indices = [all_atoms.index(a) for a in resolved]
+
         if algorithm == "rdkit":
-            opt = optimizers.rdkit_optimize(self)
+            opt = optimizers.rdkit_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
             return out
         elif algorithm == "mmff":
-            opt = optimizers.mmff_optimize(self)
+            opt = optimizers.mmff_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
             return out
         elif algorithm == "uff":
-            opt = optimizers.uff_optimize(self)
+            opt = optimizers.uff_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
