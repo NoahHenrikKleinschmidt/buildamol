@@ -32,6 +32,15 @@ def read_smiles(smiles: str, add_hydrogens: bool = True):
     if add_hydrogens:
         mol = Chem.AddHs(mol)
 
+    for serial_number, atom in enumerate(mol.GetAtoms(), start=1):
+        info = Chem.AtomPDBResidueInfo()
+        info.SetSerialNumber(serial_number)
+        info.SetName(f"{atom.GetSymbol()}{serial_number}".rjust(4))
+        info.SetResidueName("UNL")
+        info.SetResidueNumber(1)
+        info.SetChainId("A")
+        atom.SetMonomerInfo(info)
+
     # Use ETKDGv3 with a fixed seed for deterministic, stereo-correct conformers.
     # useRandomCoords fallback handles edge cases where the standard embedding fails.
     params = AllChem.ETKDGv3()

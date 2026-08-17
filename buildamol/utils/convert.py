@@ -547,13 +547,22 @@ def molecule_to_rdkit(mol, sanitize: bool = True, **kwargs) -> "Chem.rdchem.Mol"
         aux.Chem.BondType.TRIPLE: 3,
         aux.Chem.BondType.AROMATIC: 1,
     }
-    _max_neutral_valence = {7: 3, 8: 2}
+    # Elements with a single neutral valence get charged by the excess only.
+    # S and P have several allowed valences; an intermediate valence (e.g. a ring
+    # sulfur carrying a double bond) is charged up to the next allowed one so it
+    # becomes a thiopyrylium S+ instead of an un-kekulizable neutral valence-3 S.
+    _neutral_valences = {7: (3,), 8: (2,), 15: (3, 5), 16: (2, 4, 6)}
     for _at in rw.GetAtoms():
         _anum = _at.GetAtomicNum()
-        if _anum in _max_neutral_valence and _at.GetFormalCharge() == 0:
+        if _anum in _neutral_valences and _at.GetFormalCharge() == 0:
+            _allowed = _neutral_valences[_anum]
             _val = sum(_bond_order_map.get(b.GetBondType(), 1) for b in _at.GetBonds())
-            if _val > _max_neutral_valence[_anum]:
-                _at.SetFormalCharge(_val - _max_neutral_valence[_anum])
+            if _val in _allowed or _val < _allowed[0]:
+                continue
+            if _val > _allowed[-1]:
+                _at.SetFormalCharge(_val - _allowed[-1])
+            else:
+                _at.SetFormalCharge(min(v for v in _allowed if v > _val) - _val)
 
     if sanitize:
         try:
