@@ -1771,6 +1771,7 @@ class Molecule(entity.BaseEntity):
         root_atom: Union[str, int] = None,
         by: str = "name",
         idx: int = 0,
+        id: str = None,
     ) -> "Molecule":
         """
         Create a Molecule from PubChem
@@ -1799,6 +1800,8 @@ class Molecule(entity.BaseEntity):
             - formula
         idx : int
             The index of the result to use if multiple are found. By default, the first result is used.
+        id : str
+            The id of the Molecule. By default the provided query string is used.
 
         Returns
         -------
@@ -1808,11 +1811,14 @@ class Molecule(entity.BaseEntity):
         _compound_2d, _compound_3d = resources.pubchem.query(query, by=by, idx=idx)
         new = _molecule_from_pubchem(_compound_2d.iupac_name, _compound_3d)
         _new = cls(new.structure)
-        _new.add_bonds(*(i.to_tuple() for i in new._bonds))
+        _new.set_bonds(*(i.to_tuple() for i in new._bonds))
         new = _new
         new.id = _compound_2d.iupac_name
         if root_atom:
             new.set_root(root_atom)
+        _id = id or _compound_2d.iupac_name
+        new.rename_residue(1, _id[:3])
+        new.id = _id
         return new
 
     @classmethod
@@ -2331,6 +2337,7 @@ class Molecule(entity.BaseEntity):
         rotatron: str = None,
         rotatron_kws: dict = None,
         algorithm_kws: dict = None,
+        freeze_atoms: list = None,
         inplace: bool = True,
     ):
         """
@@ -2362,6 +2369,11 @@ class Molecule(entity.BaseEntity):
             Keyword arguments to pass to the optimization algorithm
         rotatron_kws : dict
             Keyword arguments to pass to the rotatron
+        freeze_atoms : list, optional
+            Atoms whose positions are held fixed during optimization. Each entry may be
+            an ``int`` (serial number), ``str`` (atom id), ``tuple`` (full_id), or
+            ``Atom`` object — the same conventions used throughout the BuildAMol API.
+            Only applies when ``algorithm`` is ``"rdkit"``, ``"mmff"``, or ``"uff"``.
         inplace : bool
             Whether to optimize the molecule in place or return a copy.
 
@@ -2383,20 +2395,29 @@ class Molecule(entity.BaseEntity):
 
         algorithm = algorithm or optimizers.auto_algorithm(self)
 
+        # Resolve freeze_atoms to 0-based RDKit indices.
+        # get_atoms() iteration order matches the RDKit atom order (verified by the
+        # zip-based coord copy-back that follows each rdkit/mmff/uff call).
+        frozen_indices = None
+        if freeze_atoms is not None:
+            all_atoms = list(self.get_atoms())
+            resolved = self.get_atoms(*freeze_atoms)
+            frozen_indices = [all_atoms.index(a) for a in resolved]
+
         if algorithm == "rdkit":
-            opt = optimizers.rdkit_optimize(self)
+            opt = optimizers.rdkit_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
             return out
         elif algorithm == "mmff":
-            opt = optimizers.mmff_optimize(self)
+            opt = optimizers.mmff_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
             return out
         elif algorithm == "uff":
-            opt = optimizers.uff_optimize(self)
+            opt = optimizers.uff_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)

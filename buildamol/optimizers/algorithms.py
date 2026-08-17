@@ -792,7 +792,7 @@ _numba_wrapper_accept = aux.njit(_accept)
 # =====================================================================================
 
 
-def mmff_optimize(mol, steps=1000):
+def mmff_optimize(mol, steps=1000, freeze_atoms=None):
     """
     Optimize a molecule using RDKit's MMFF force field optimization.
 
@@ -802,6 +802,8 @@ def mmff_optimize(mol, steps=1000):
         The molecule to optimize
     steps : int, optional
         The number of steps to take, by default 1000
+    freeze_atoms : list of int, optional
+        0-based RDKit atom indices whose positions are held fixed during optimization.
 
     Returns
     -------
@@ -810,11 +812,18 @@ def mmff_optimize(mol, steps=1000):
     """
     cls = mol.__class__
     rdmol = mol.to_rdkit()
-    aux.AllChem.MMFFOptimizeMolecule(rdmol, maxIters=steps)
+    if freeze_atoms:
+        props = aux.MMFFGetMoleculeProperties(rdmol)
+        ff = aux.MMFFGetMoleculeForceField(rdmol, props)
+        for idx in freeze_atoms:
+            ff.MMFFAddPositionConstraint(idx, 0.0, 1.0e4)
+        ff.Minimize(maxIts=steps)
+    else:
+        aux.AllChem.MMFFOptimizeMolecule(rdmol, maxIters=steps)
     return cls.from_rdkit(rdmol)
 
 
-def uff_optimize(mol, steps=1000):
+def uff_optimize(mol, steps=1000, freeze_atoms=None):
     """
     Optimize a molecule using RDKit's UFF force field optimization.
 
@@ -824,6 +833,8 @@ def uff_optimize(mol, steps=1000):
         The molecule to optimize
     steps : int, optional
         The number of steps to take, by default 1000
+    freeze_atoms : list of int, optional
+        0-based RDKit atom indices whose positions are held fixed during optimization.
 
     Returns
     -------
@@ -832,7 +843,13 @@ def uff_optimize(mol, steps=1000):
     """
     cls = mol.__class__
     rdmol = mol.to_rdkit()
-    aux.AllChem.UFFOptimizeMolecule(rdmol, maxIters=steps)
+    if freeze_atoms:
+        ff = aux.AllChem.UFFGetMoleculeForceField(rdmol)
+        for idx in freeze_atoms:
+            ff.UFFAddPositionConstraint(idx, 0.0, 1.0e4)
+        ff.Minimize(maxIts=steps)
+    else:
+        aux.AllChem.UFFOptimizeMolecule(rdmol, maxIters=steps)
     return cls.from_rdkit(rdmol)
 
 
