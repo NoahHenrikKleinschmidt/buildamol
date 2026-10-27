@@ -2,6 +2,8 @@
 Auxiliary tools for PDB files.
 """
 
+import warnings
+
 _BASE36_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _EXTENDED_PREFIXES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
@@ -165,6 +167,10 @@ def _all_models_complete(mol) -> bool:
     for model in getattr(mol, "_base_struct", mol).child_list:
         sn = getattr(model, "_atom_serials", None)
         if sn is not None and len(sn) < n_atoms:
+            warnings.warn(
+                f"Model {model.id} does not have coordinates for all atoms (atoms were probably added after the model was created). "
+                "Only the active model is written."
+            )
             return False
     return True
 
