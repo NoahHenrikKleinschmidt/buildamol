@@ -3205,3 +3205,91 @@ def test_default_infer_bonds_setter():
     mol.infer_bonds()
     M = mol.count_bonds()
     assert M > N, "Should have inferred more bonds with default set to 'all'"
+
+
+def _model_coords_from_pdb(filename):
+    models = {}
+    current = None
+    with open(filename) as f:
+        for line in f:
+            if line.startswith("MODEL"):
+                current = int(line.split()[1])
+                models[current] = []
+            elif line.startswith(("ATOM", "HETATM")):
+                models.setdefault(current, []).append(
+                    [float(line[30:38]), float(line[38:46]), float(line[46:54])]
+                )
+    return {k: np.array(v) for k, v in models.items()}
+
+
+def test_write_models_from_any_active_model(tmp_path):
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    x0 = mol.get_coords().copy()
+    for shift in (10, 20):
+        mol.add_model()
+        mol.set_model(len(mol.models) - 1)
+        mol.set_coords(x0 + shift)
+
+    # the working model always remains the canonical model with the atoms
+    assert mol._model is mol.models[0]
+    assert mol.count_atoms() == len(x0)
+    assert np.allclose(mol.get_coords(), x0 + 20)
+
+    mol.to_pdb(tmp_path / "models.pdb")
+    written = _model_coords_from_pdb(tmp_path / "models.pdb")
+    assert sorted(written) == [0, 1, 2]
+    for k, shift in zip((0, 1, 2), (0, 10, 20)):
+        assert np.allclose(written[k], x0 + shift, atol=1e-3)
+
+    # writing restores the active model
+    assert mol._active_conformer_id == 2
+    assert np.allclose(mol.get_coords(), x0 + 20)
+
+
+def test_add_model_from_other_molecule_model(tmp_path):
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    other = mol.copy()
+    other.set_coords(other.get_coords() + 5)
+
+    mol.add_model(other._model)
+    # only the coordinates are taken over, the other molecule is untouched
+    assert len(mol.models) == 2
+    assert mol.models[1]._coords is not None
+    assert len(mol.models[1].child_list) == 0
+    assert other._model.id == 0 and other._model.parent is other.structure
+
+    mol.to_pdb(tmp_path / "models.pdb")
+    written = _model_coords_from_pdb(tmp_path / "models.pdb")
+    assert np.allclose(written[1], written[0] + 5, atol=1e-3)
+
+
+def test_models_from_one_based_pdb_are_renumbered(tmp_path):
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    x0 = mol.get_coords().copy()
+    lines = []
+    for k in (1, 2, 3):
+        mol.set_coords(x0 + 10 * k)
+        mol.to_pdb(tmp_path / "single.pdb")
+        with open(tmp_path / "single.pdb") as f:
+            atoms = [l.rstrip("\n") for l in f if l.startswith(("ATOM", "HETATM"))]
+        lines += [f"MODEL {k}", *atoms, "ENDMDL"]
+    with open(tmp_path / "one_based.pdb", "w") as f:
+        f.write("\n".join(lines) + "\nEND\n")
+
+    new = bam.Molecule.from_pdb(tmp_path / "one_based.pdb", model="all")
+    assert [m.id for m in new.models] == [0, 1, 2]
+    new.add_model()
+    assert [m.id for m in new.models] == [0, 1, 2, 3]
+    for i, k in enumerate((1, 2, 3)):
+        new.set_model(i)
+        assert np.allclose(new.get_coords(), x0 + 10 * k, atol=1e-3)
+
+
+def test_restore_without_snapshot_raises():
+    model = bam.base_classes.Model(1)
+    try:
+        model.restore({})
+    except ValueError:
+        pass
+    else:
+        assert False, "Should have raised a ValueError"
