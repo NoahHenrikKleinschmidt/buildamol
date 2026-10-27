@@ -196,11 +196,9 @@ class BaseGraph(nx.Graph):
         if use_cache:
             _seen = self.__descendent_cache.get((node_1, node_2))
             if _seen:
-                size, _seen = _seen
+                size, _seen, _ = _seen
                 if size == len(self.nodes):
                     return _seen
-
-        __all_nodes = set(self.nodes)
 
         # if use_cache:
         #     _seen = self.__descendent_cache.get((node_2, node_1))
@@ -218,19 +216,27 @@ class BaseGraph(nx.Graph):
                 if d in _seen:
                     continue
                 _desc_from_cache = self.__descendent_cache.get((neigh, d))
-                if _desc_from_cache and _desc_from_cache[0] == len(self.nodes):
+                # cached descendants can only be re-used for bridge edges, otherwise
+                # they may contain nodes that lie beyond node_1 through a cycle
+                if (
+                    _desc_from_cache
+                    and _desc_from_cache[0] == len(self.nodes)
+                    and _desc_from_cache[2]
+                ):
                     _seen.add(d)
                     _seen.update(_desc_from_cache[1])
                 else:
                     _new_neighs.add(d)
             _new_neighs.difference_update(_seen)
 
+        # if node_1 is reachable from node_2 without the edge itself, the edge is part of a cycle
+        _is_bridge = not any(n in _seen for n in self.adj[node_1] if n is not node_2)
+
         _seen.difference_update((node_1, node_2))
 
-        self.__descendent_cache[(node_1, node_2)] = len(self.nodes), _seen
-        self.__descendent_cache[(node_2, node_1)] = len(self.nodes), (
-            __all_nodes - _seen - {node_1, node_2}
-        )
+        # the reverse direction is not cached as the complement of _seen,
+        # since this is only valid for connected graphs without cycles through the edge
+        self.__descendent_cache[(node_1, node_2)] = len(self.nodes), _seen, _is_bridge
 
         # v = self._molecule.draw()
         # v.draw_vector("edge", node_1.coord, node_2.coord, elongate=1.3, linewidth=4, color="limegreen")
