@@ -213,7 +213,9 @@ class Atom(ID):
         self.pqr_charge = pqr_charge
         self.radius = radius
         try:
-            self.mass = pt.elements.symbol(element.capitalize()).mass if element else None
+            self.mass = (
+                pt.elements.symbol(element.capitalize()).mass if element else None
+            )
         except ValueError:
             self.mass = None
         self.parent = None
@@ -814,7 +816,11 @@ class Atom(ID):
 
     def _element_number(self):
         try:
-            return pt.elements.symbol(self.element.capitalize()).number if self.element else 0
+            return (
+                pt.elements.symbol(self.element.capitalize()).number
+                if self.element
+                else 0
+            )
         except ValueError:
             return 0
 
@@ -1825,23 +1831,36 @@ class Model(_DrawableMixin, ID):
                     ID._new_id(residue)
                     for atom in residue.child_list:
                         ID._new_id(atom)
-                    residue.child_dict = {atom.get_id(): atom for atom in residue.child_list}
+                    residue.child_dict = {
+                        atom.get_id(): atom for atom in residue.child_list
+                    }
                 chain.child_dict = {res.get_id(): res for res in chain.child_list}
         new.child_dict = {chain.get_id(): chain for chain in new.child_list}
         return new
 
-    def snapshot(self, atoms):
+    def snapshot(self, atoms=None):
         """Save coordinates of canonical atoms into this snapshot model."""
+        if atoms is None:
+            atoms = list(self.get_atoms())
         atoms = list(atoms)
         self._atom_serials = [a.serial_number for a in atoms]
         self._coords = np.array([a.coord for a in atoms], dtype=float)
 
-    def restore(self, atom_map):
+    def restore(self, atom_map=None):
         """Write stored coordinates back into canonical atoms."""
+        # the slots always exist (initialized to None), so check for actual data
+        if self._atom_serials is None or self._coords is None:
+            raise ValueError(
+                "Snapshot data is not available. First call snapshot() to save coordinates."
+            )
+        if atom_map is None:
+            atom_map = {a.serial_number: a for a in self.get_atoms()}
+        # copy so that in-place edits of atom coordinates do not alter the stored snapshot
+        coords = self._coords.copy()
         for i, serial in enumerate(self._atom_serials):
             at = atom_map.get(serial)
             if at is not None:
-                at.coord = self._coords[i]
+                at.coord = coords[i]
 
     @classmethod
     def from_biopython(cls, model):
@@ -2056,7 +2075,9 @@ class Structure(_DrawableMixin, ID):
                     ID._new_id(residue)
                     for atom in residue.child_list:
                         ID._new_id(atom)
-                    residue.child_dict = {atom.get_id(): atom for atom in residue.child_list}
+                    residue.child_dict = {
+                        atom.get_id(): atom for atom in residue.child_list
+                    }
                 chain.child_dict = {res.get_id(): res for res in chain.child_list}
             model.child_dict = {chain.get_id(): chain for chain in model.child_list}
         new.child_dict = {model.get_id(): model for model in new.child_list}
