@@ -197,10 +197,13 @@ class BaseEntity:
             residues[res_seq].add(atom)
 
         # Build coordinate-only snapshot models for remaining MODEL blocks
+        # (models are numbered by their position since set_model(int) uses the index,
+        # and files often number their models starting from 1)
+        model_ids = (i for i in range(1, len(atoms)))
         for model_id, _atoms in atoms.items():
             if model_id == 0:
                 continue
-            snapshot = base_classes.Model(model_id)
+            snapshot = base_classes.Model(next(model_ids))
             snapshot._atom_serials = [a["serial"] for a in _atoms]
             snapshot._coords = np.array(
                 [[a["x"], a["y"], a["z"]] for a in _atoms], dtype=float
@@ -2788,6 +2791,8 @@ class BaseEntity:
         atom_map = {a.serial_number: a for a in canonical_atoms}
         new_model.restore(atom_map)
 
+        # self._model always remains the canonical model that holds the chains/residues/atoms,
+        # the active conformer only determines which coordinates the canonical atoms currently have
         self._active_conformer_id = new_model.id
         return self
 
@@ -2830,6 +2835,8 @@ class BaseEntity:
         model : int or Model or None
         """
         new_id = len(self._base_struct.child_list)
+        while new_id in self._base_struct.child_dict:
+            new_id += 1
         canonical_atoms = sorted(self._AtomGraph.nodes, key=lambda a: a.serial_number)
 
         if isinstance(model, int):
@@ -2843,8 +2850,14 @@ class BaseEntity:
             else:
                 new.snapshot(canonical_atoms)
         elif isinstance(model, base_classes.Model):
-            new = model
-            new.id = new_id
+            new = base_classes.Model(new_id)
+            if model._coords is not None:
+                new._atom_serials = list(model._atom_serials)
+                new._coords = model._coords.copy()
+            else:
+                # a model with actual atoms (e.g. the canonical model of another molecule)
+                # only contributes its coordinates, we do not adopt its chains
+                new.snapshot(list(model.get_atoms()))
         elif isinstance(model, BaseEntity):
             new = base_classes.Model(new_id)
             new.snapshot(list(model._model.get_atoms()))
