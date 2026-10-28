@@ -14,7 +14,6 @@ import buildamol.optimizers.algorithms as agents
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
-
 __all__ = [
     "apply_rotatron_solution",
     "apply_translatron_solution",
@@ -61,6 +60,10 @@ def apply_rotatron_solution(
     mol._AtomGraph.clear_cache()
     for i, bond in enumerate(bonds):
         angle = float(sol[i])
+        # evals skip small rotations, so we have to skip them here as well
+        # to avoid skewing the final conformations
+        if -1e-3 < angle < 1e-3:
+            continue
         # used to be full_id to account for the fact that the bond might
         # come from another molecule. But there is no reason to assume someone
         # would apply the solutions of one molecule to another.
@@ -99,9 +102,12 @@ def apply_translatron_solution(
     if hasattr(sol, "__array__") and not isinstance(sol, np.ndarray):
         sol = np.asarray(sol)
 
-    mol.rotate(float(sol[3]), "x", angle_is_degrees=False)
-    mol.rotate(float(sol[4]), "y", angle_is_degrees=False)
-    mol.rotate(float(sol[5]), "z", angle_is_degrees=False)
+    # the environment rotates around the center of the graph nodes, which is not necessarily
+    # the center of geometry of the molecule (e.g. for residue graphs or subsets of atoms)
+    center = getattr(env, "center", None)
+    mol.rotate(float(sol[3]), "x", center=center, angle_is_degrees=False)
+    mol.rotate(float(sol[4]), "y", center=center, angle_is_degrees=False)
+    mol.rotate(float(sol[5]), "z", center=center, angle_is_degrees=False)
     mol.move(np.asarray(sol[:3]))
     return mol
 
@@ -128,12 +134,14 @@ def optimize(
         The molecule to optimize. This molecule will be modified in-place.
     env : Rotatron or Translatron, optional
         The environment to use. This needs to be a Rotatron instance or Translatron instance that is fully set up and ready to use.
+        If not provided, a KDTreeRotatron is created that resolves clashes along automatically chosen rotatable edges.
     algorithm : str or callable, optional
         The algorithm to use. If not provided, an algorithm is automatically determined, depending on the molecule size.
         If provided, this can be:
         - "genetic": A genetic algorithm
         - "swarm": A particle swarm optimization algorithm
         - "anneal": A simulated annealing algorithm
+        - "evolution": A differential evolution algorithm (never returns a solution worse than the starting conformation)
         - "scipy": A gradient descent algorithm (default scipy implementation, can be changed using a 'method' keyword argument)
         - "rdkit": A force field based optimization using RDKit (if installed)
         - or some other callable that takes an environment as its first argument
@@ -154,13 +162,17 @@ def optimize(
         agent = agents.scipy_optimize
     elif algorithm == "anneal":
         agent = agents.anneal_optimize
+    elif algorithm == "evolution":
+        agent = agents.evolution_optimize
     elif algorithm == "rdkit":
         return agents.rdkit_optimize(mol, **kwargs)
-    elif not callable(algorithm):
+    elif callable(algorithm):
+        agent = algorithm
+    else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
 
     if env is None:
-        from buildamol.optimizers.distance_rotatron import DistanceRotatron
+        from buildamol.optimizers.kdtree_rotatron import KDTreeRotatron
 
         if mol.count_atoms() > 500:
             graph = mol.make_residue_graph()
@@ -169,9 +181,13 @@ def optimize(
             edges = graph.direct_edges(None, edges)
         else:
             graph = mol.make_atom_graph()
-            edges = graph.find_rotatable_edges(min_descendants=5, max_descendants=10)
+            edges = graph.find_rotatable_edges(
+                graph.central_node, min_ancestors=1, min_descendants=1
+            )
+            if len(edges) > 150:
+                edges = graph.sample_edges(edges, len(edges) // 5)
 
-        env = DistanceRotatron(graph, edges, radius=25)
+        env = KDTreeRotatron(graph, edges)
 
     applier = auto_applier(env)
 
@@ -226,14 +242,17 @@ def split_environment(
     env : Rotatron
         The environment to split
     n : int
-        The number of sub-environments to create
+        The number of sub-environments to create. By default, the number of available CPUs (at most the number of rotatable edges).
 
     Returns
     -------
     list
         A list of sub-environments
     """
-    _all_edges = np.array(env.rotatable_edges)
+    if n is None:
+        n = cpu_count()
+    n = max(1, min(n, env.n_edges))
+
     all_edges = np.array([(*i.coord, *j.coord) for i, j in env.rotatable_edges])
 
     # cluster the edges into n clusters
@@ -246,14 +265,20 @@ def split_environment(
     # create the sub-environments
     sub_envs = []
     hyperparams = dict(env.hyperparameters)
+    # the graph of the environment is already cropped (if cropping was enabled)
+    if "crop_nodes_further_than" in hyperparams:
+        hyperparams["crop_nodes_further_than"] = -1
     for i in range(n):
         mask = labels == i
-        edges = _all_edges[mask].tolist()
+        if not mask.any():
+            continue
+        edges = [env.rotatable_edges[j] for j in np.where(mask)[0]]
 
         sub_env = env.__class__(env.graph, edges, setup=False, **hyperparams)
 
         sub_env.edge_masks = env.edge_masks[mask]
         sub_env.edge_lengths = env.edge_lengths[mask]
+        sub_env.rotation_unit_masks = env.rotation_unit_masks
         sub_envs.append(sub_env)
 
     return sub_envs
@@ -282,6 +307,7 @@ def parallel_optimize(
         - "genetic": A genetic algorithm
         - "swarm": A particle swarm optimization algorithm
         - "anneal": A simulated annealing algorithm
+        - "evolution": A differential evolution algorithm (never returns a solution worse than the starting conformation)
         - "scipy": A gradient descent algorithm (default scipy implementation, can be changed using a 'method' keyword argument)
         - or some other callable that takes an environment as its first argument
     n_processes : int, optional
@@ -297,7 +323,7 @@ def parallel_optimize(
     Molecule
         The optimized molecule
     """
-    algorithm = algorithm or auto_algorithm(envs[0])
+    algorithm = algorithm or auto_algorithm(mol, envs[0])
     if algorithm == "genetic":
         agent = partial(agents.genetic_optimize, **kwargs)
     elif algorithm == "swarm":
@@ -306,9 +332,13 @@ def parallel_optimize(
         agent = partial(agents.scipy_optimize, **kwargs)
     elif algorithm == "anneal":
         agent = partial(agents.anneal_optimize, **kwargs)
+    elif algorithm == "evolution":
+        agent = partial(agents.evolution_optimize, **kwargs)
     elif algorithm == "rdkit":
         raise ValueError("RDKit optimization is not supported in parallel mode")
-    elif not callable(algorithm):
+    elif callable(algorithm):
+        agent = partial(algorithm, **kwargs)
+    else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
 
     if n_processes is None:
