@@ -41,3 +41,10 @@ Available backends are:
         :members:
         :undoc-members:
         :show-inheritance:
+
+.. dropdown:: Diffdock Backend
+
+    .. automodule:: buildamol.extensions.docking.backend_diffdock
+        :members:
+        :undoc-members:
+        :show-inheritance:
