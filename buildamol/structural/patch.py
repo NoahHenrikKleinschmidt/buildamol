@@ -1,7 +1,3 @@
-"""
-Functions to patch molecules together
-"""
-
 import numpy as np
 
 # import buildamol.utils.abstract as abstract

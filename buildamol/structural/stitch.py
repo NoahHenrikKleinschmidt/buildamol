@@ -1,7 +1,3 @@
-"""
-Functions to stitch molecules together even in the absence of a patch
-"""
-
 from typing import Union
 
 import numpy as np
@@ -275,6 +271,7 @@ class Stitcher(base.Connector):
         if steps == 0:
             return
         from buildamol.structural.stitch_algorithm import get_stitching_algorithm
+
         if get_stitching_algorithm()[0] == "none":
             return
         import buildamol.optimizers as optimizers
@@ -366,6 +363,7 @@ class Stitcher(base.Connector):
         )
 
         from buildamol.structural.stitch_algorithm import run_stitching_optimization
+
         best, _ = run_stitching_optimization(env, steps, **kwargs)
         self._policy = edges, best
 

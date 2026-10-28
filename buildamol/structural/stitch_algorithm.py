@@ -5,6 +5,8 @@ The stitcher optimizes bond rotation angles to minimize steric clashes after
 two molecules are joined. By default it uses particle swarm optimization (PSO).
 This module lets you switch algorithms globally or per-block:
 
+.. code-block:: python
+
     # Change the global default:
     import buildamol as bam
     bam.set_stitching_algorithm("grid", n_points=72)
