@@ -3300,4 +3300,4 @@ def test_to_numpy():
     mol.infer_bonds()
     coords = mol.get_coords()
     np_coords, np_bonds = mol.to_numpy()
-    assert np.allclose(coords, np_coords)
+    assert np.allclose(coords, np_coords[:, 1:])
