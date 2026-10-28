@@ -19,7 +19,24 @@ class BaseGraph(nx.Graph):
     The basic class for molecular graphs
     """
 
-    def __init__(self, id, bonds: list):
+    # attributes that belong to the networkx graph itself or are caches
+    # that are rebuilt for a copy of the graph
+    _copy_exclude = {
+        "_node",
+        "_adj",
+        "graph",
+        "nodes",
+        "edges",
+        "adj",
+        "degree",
+        "_neighborhood",
+        "_BaseGraph__descendent_cache",
+        "_BaseGraph__last_cache_size",
+        "_cycle_cache",
+        "_cycle_cache_edge_count",
+    }
+
+    def __init__(self, id=None, bonds: list = None):
         super().__init__(bonds)
         self.id = id
         self._structure = None
@@ -31,6 +48,33 @@ class BaseGraph(nx.Graph):
         self.__last_cache_size = len(self.nodes)
         self._cycle_cache = None
         self._cycle_cache_edge_count = -1
+
+    def copy(self, as_view: bool = False):
+        """
+        Make a copy of the graph. The nodes (atoms or residues) themselves are not copied
+        but shared with the original graph, so that the copy can be modified (e.g. nodes removed)
+        without affecting the original graph.
+
+        Parameters
+        ----------
+        as_view : bool
+            If True, return a read-only view of the graph instead of a copy.
+
+        Returns
+        -------
+        BaseGraph
+            The copied graph
+        """
+        new = super().copy(as_view=as_view)
+        if as_view:
+            return new
+        for key, value in self.__dict__.items():
+            if key in self._copy_exclude:
+                continue
+            if isinstance(value, (set, dict, list)):
+                value = type(value)(value)
+            new.__dict__[key] = value
+        return new
 
     @property
     def structure(self):
@@ -560,7 +604,7 @@ class BaseGraph(nx.Graph):
         list
             A list of sampled edges
         """
-        center = np.mean([i.coord for i in self.nodes])
+        center = np.mean([i.coord for i in self.nodes], axis=0)
         if edges is None:
             edges = self.find_rotatable_edges()
         rotatable_edges = np.array(edges)

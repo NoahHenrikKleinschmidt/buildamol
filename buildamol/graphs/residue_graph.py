@@ -17,7 +17,7 @@ class ResidueGraph(BaseGraph):
         x.serial_number if hasattr(x, "serial_number") else x.id[1]
     )
 
-    def __init__(self, id, bonds: list):
+    def __init__(self, id=None, bonds: list = None):
         super().__init__(id, bonds)
         self._AtomGraph = None
         self._molecule = None
