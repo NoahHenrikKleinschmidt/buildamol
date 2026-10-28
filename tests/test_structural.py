@@ -444,6 +444,93 @@ def test_infer_bonds():
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
+def test_infer_bonds2():
+    man2 = bam.molecule(MANNOSE) % "14bb" * 2
+    bonds = bam.structural.infer_bonds(man2, restrict_residues=False)
+
+    _recieved = len(bonds)
+    _expected = 24 * 2 - 2
+    _what = "bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    bonds = [set((i.id, j.id)) for i, j in bonds]
+
+    _bond = set(("C5", "O5"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C5", "C6"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C5", "C4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C6", "O6"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C4", "C3"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C1", "C2"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "C4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "O3"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    # inter-residue bond
+    _bond = set(("C1", "O4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+
 def test_infer_residue_connections():
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MAN9PDB)
     bonds = bam.structural.infer_residue_connections(_man9)
@@ -777,7 +864,7 @@ def test_patcher_anchors():
     man1.infer_bonds()
     man2 = deepcopy(man1)
 
-    top = bam.get_default_topology()
+    top = bam.resources.get_default_topology()
     patch = top.get_patch("12aa")
 
     p = bam.structural.Patcher()
@@ -795,7 +882,7 @@ def test_patcher_anchors_2():
     bam.load_sugars()
     glc = bam.Molecule.from_compound("GLC")
 
-    top = bam.get_default_topology()
+    top = bam.resources.get_default_topology()
     patch = top.get_patch("14bb")
 
     p = bam.structural.Patcher(True, True)
@@ -818,7 +905,7 @@ def test_patcher_two_man():
     man1.lock_all()
     man2.lock_all()
 
-    top = bam.get_default_topology()
+    top = bam.resources.get_default_topology()
     patches = ("12aa", "12ab", "14bb")
     p = bam.structural.Patcher(copy_target=True, copy_source=True)
     for patch in patches:
@@ -887,7 +974,7 @@ def test_patcher_multiple_man():
     man3 = man1.copy()
     man4 = man1.copy()
 
-    top = bam.get_default_topology()
+    top = bam.resources.get_default_topology()
 
     orig_residues = len(man1.residues)
     orig_atoms = len(man1.atoms)
@@ -947,7 +1034,7 @@ def test_keep_copy_patcher():
     glc = bam.Molecule.from_compound("GLC")
 
     patcher = bam.structural.Patcher(copy_target=True, copy_source=True)
-    patch = bam.get_default_topology().get_patch("12aa")
+    patch = bam.resources.get_default_topology().get_patch("12aa")
 
     patcher.apply(patch, glc, glc)
     new = patcher.merge()
@@ -1295,7 +1382,8 @@ def test_rotate_molecule():
 
     assert not np.allclose(old_coords, new_coords)
 
-    d.show()
+    if base.ALLOW_VISUAL:
+        d.show()
 
 
 def test_flip():
@@ -1311,7 +1399,8 @@ def test_flip():
     d.draw_edges(*mol.get_bonds(), color="blue", linewidth=2)
     new_coords = np.array([a.coord for a in mol.get_atoms()])
     assert not np.allclose(old_coords, new_coords)
-    d.show()
+    if base.ALLOW_VISUAL:
+        d.show()
 
 
 def test_infer_hydrogens_glucose():
@@ -1345,7 +1434,9 @@ def test_infer_hydrogens_glucose():
     # evaluate that each of the inferred atoms is close
     # by one of the references. (this is primarily because
     # H61/H62 may have swapped labels when inferred)
-    d = bam.structural.cdist(new_coords, ref_coords)
+    from scipy.spatial.distance import cdist
+
+    d = cdist(new_coords, ref_coords)
 
     assert d[0].min() < 0.5
     assert d[1].min() < 0.5
@@ -1384,7 +1475,9 @@ def test_infer_hydrogens_glucose_all():
     # evaluate that each of the inferred atoms is close
     # by one of the references. (this is primarily because
     # H61/H62 may have swapped labels when inferred)
-    d = bam.structural.cdist(new_coords, ref_coords)
+    from scipy.spatial.distance import cdist
+
+    d = cdist(new_coords, ref_coords)
 
     assert d[0].min() < 0.1
     assert d[1].min() < 0.1
@@ -1415,7 +1508,9 @@ def test_infer_hydrogens_tyrosine_all():
     ref_coords = ref.get_coords("HD2", "HB2", "HB3", "HXT")
     new_coords = mol.get_coords("HD2", "HB1", "HB2", "HOXT")
 
-    d = bam.structural.cdist(new_coords, ref_coords)
+    from scipy.spatial.distance import cdist
+
+    d = cdist(new_coords, ref_coords)
     assert d[0].min() < 0.1
     assert d[1].min() < 0.1
     assert d[2].min() < 0.1
@@ -1508,7 +1603,7 @@ def test_planar():
     mol = bam.molecule("ethene").autolabel()
     assert mol is not None
 
-    planar = bam.structural.geometry.TriangularPlanar()
+    planar = bam.structural.geometry.TrigonalPlanar()
 
     C1 = mol.get_atom("C1")
     C2 = mol.get_atom("C2")
@@ -2053,9 +2148,9 @@ def test_infer_bond_orders():
         for bond in mol.get_bonds():
             mol.set_bond_order(*bond, 1)
 
-        bam.structural.infer_bond_orders(mol)
+        bam.structural.infer_bond_orders(mol, method="native")
         assert (
-            sum(1 for i in mol.get_double_bonds()) == n_double_bonds
+            sum(list(1 for i in mol.get_double_bonds())) == n_double_bonds
         ), f"wrong number of double bonds for {m=}"
         if base.ALLOW_VISUAL:
             mol.show()
@@ -2071,8 +2166,6 @@ def test_infer_bond_orders_2():
     mol.infer_bonds(infer_bond_orders=True)
 
     assert len([i for i in mol.get_bonds() if i.order == 2]) == len(double_bonds)
-
-    pass
 
 
 def test_match_aromatic():
@@ -2694,3 +2787,193 @@ def test_multisite_react2():
     assert out.count_residues() == n_attachment_points + 1
     for bond in out.bonds:
         assert bond.length < 3, "All bonds should be reasonable"
+
+
+def test_adopt_from_template1():
+    bam.load_small_molecules()
+    mol = bam.molecule("CCCO").autolabel()
+    template = mol.copy().rename_atom("C1", "CA")
+
+    mol.bonds = []
+    atom_mapping, bonds_mapping = bam.structural.infer_mapping_from_template(
+        mol,
+        template,
+        anchors={
+            "C1": "CA",
+            "C2": "C2",
+            "O1": "O1",
+        },
+    )
+
+    assert len(atom_mapping) == len(mol.atoms)
+    assert len(bonds_mapping) == template.count_bonds()
+
+    for bond in bonds_mapping:
+        mol._set_bond(*bond)
+
+    for bond in mol.bonds:
+        template_bond = template.get_bond(
+            bond.atom1.serial_number, bond.atom2.serial_number
+        )
+        assert template_bond is not None
+        assert bond.order == template_bond.order
+
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_adopt_from_template2():
+    template = bam.read_smiles("CC(=O)C(C)(C)").autolabel()
+    target = template.copy().optimize().drop_hydrogens()
+    target.bonds = []
+    from buildamol.structural import constraints_v2 as constraints
+
+    O = template.get_atom("O", by="element")
+    C = O.get_neighbors().pop()
+    C2 = template.get_atoms(
+        "C", by="element", filter=constraints.has_neighbor_hist({"C": 3})
+    ).pop()
+    anchors = [O, C, C2]
+    anchors = {a.serial_number: a.serial_number for a in anchors}
+    target.adopt_from_template(template, anchors=anchors, rename=True, strict=False)
+
+    for bond in target.bonds:
+        template_bond = template.get_bond(
+            bond.atom1.serial_number, bond.atom2.serial_number
+        )
+        assert template_bond is not None
+        assert bond.order == template_bond.order
+
+    if base.ALLOW_VISUAL:
+        target.show()
+        target.show2d()
+
+
+def test_adopt_from_template_partial_template():
+    template = bam.read_smiles("c1ccccc1")
+    target = bam.read_smiles("CCc1ccccc1CO")
+    target.drop_hydrogens()
+    target.bonds = []
+    target.infer_bonds()
+
+    from buildamol.structural.groups import aromatic
+
+    template_anchor1 = aromatic.find_matches(template, template.atoms)[0][0]
+    target_anchor1 = aromatic.find_matches(target, target.atoms)[0][0]
+
+    template_anchors23 = sorted(
+        template_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+    )
+    target_anchors23 = sorted(
+        target_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+    )
+
+    anchors = {
+        target_anchor1: template_anchor1,
+        target_anchors23[0]: template_anchors23[0],
+        target_anchors23[1]: template_anchors23[1],
+    }
+
+    target.bonds = []
+
+    target.adopt_from_template(template, anchors=anchors, strict=False)
+
+    if base.ALLOW_VISUAL:
+        target.show()
+
+    n_double_bonds = 0
+    for bond in target.bonds:
+        if bond.order == 2:
+            n_double_bonds += 1
+    assert n_double_bonds == 3
+
+
+def test_adopt_from_template_partial_target():
+    template = bam.read_smiles("CCc1ccccc1CO")
+    target = bam.read_smiles("Cc1ccccc1").drop_hydrogens()
+
+    from buildamol.structural.groups import aromatic
+
+    template_anchor1 = aromatic.find_matches(template, template.atoms)[0][0]
+    target_anchor1 = aromatic.find_matches(target, target.atoms)[0][0]
+    template_anchors23 = sorted(
+        template_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+    )
+    target_anchors23 = sorted(
+        target_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+    )
+
+    anchors = {
+        target_anchor1: template_anchor1,
+        target_anchors23[0]: template_anchors23[0],
+        target_anchors23[1]: template_anchors23[1],
+    }
+
+    target.bonds = []
+    target.adopt_from_template(template, anchors=anchors, strict=False)
+    if base.ALLOW_VISUAL:
+        target.show()
+
+    n_double_bonds = 0
+    for bond in target.bonds:
+        if bond.order == 2:
+            n_double_bonds += 1
+    assert n_double_bonds == 3
+
+
+# ============================================================
+# ChiralCenter tests
+# ============================================================
+
+
+def test_chiral_center_error_on_non_tetrahedral_atom():
+    """ChiralCenter raises ValueError for atoms that do not have exactly 4 neighbours."""
+    bam.load_sugars()
+    mol = bam.Molecule.from_compound("GLC")
+    # O1 has only 2 neighbours (C1 and HO1) – not a chiral centre
+    o1 = mol.get_atom("O1")
+    with pytest.raises(ValueError):
+        bam.structural.ChiralCenter(o1)
+    bam.unload_sugars()
+
+
+def test_chiral_center_priority_ordering():
+    """A/B/C/D substituents must be in descending CIP priority (A highest, D lowest)."""
+    bam.load_sugars()
+    mol = bam.Molecule.from_compound("GLC")
+    # C1 has four neighbours: O1, O5, C2, H1
+    # CIP: O (8) > C (6) > H (1), so A must be an oxygen and D must be the hydrogen
+    c1 = mol.get_atom("C1")
+    cc = bam.structural.ChiralCenter(c1)
+
+    assert cc.A.element == "O", f"Expected O as highest-priority substituent, got {cc.A.element}"
+    assert cc.D.element == "H", f"Expected H as lowest-priority substituent, got {cc.D.element}"
+    assert cc.B is not None
+    assert cc.C is not None
+    bam.unload_sugars()
+
+
+def test_chiral_center_orientation_exclusive():
+    """is_R() and is_S() are mutually exclusive and orientation is always 'R' or 'S'."""
+    bam.load_sugars()
+    mol = bam.Molecule.from_compound("GLC")
+    c1 = mol.get_atom("C1")
+    cc = bam.structural.ChiralCenter(c1)
+
+    assert cc.orientation in ("R", "S"), f"Unexpected orientation value: {cc.orientation!r}"
+    assert cc.is_R() != cc.is_S(), "is_R() and is_S() must not both return the same value"
+    bam.unload_sugars()
+
+
+def test_chiral_center_L_alanine_alpha_carbon_is_S():
+    """The Cα of L-alanine (the natural amino acid) must be (S)-configured."""
+    bam.load_amino_acids()
+    mol = bam.Molecule.from_compound("ALA")
+    ca = mol.get_atom("CA")
+    cc = bam.structural.ChiralCenter(ca)
+
+    assert cc.is_S(), (
+        f"L-alanine Cα should be (S); got ({cc.orientation}). "
+        f"Priority order: A={cc.A.id}({cc.A.element}), B={cc.B.id}({cc.B.element}), "
+        f"C={cc.C.id}({cc.C.element}), D={cc.D.id}({cc.D.element})"
+    )

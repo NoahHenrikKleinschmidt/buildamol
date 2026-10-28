@@ -6,15 +6,19 @@ from io import StringIO
 import buildamol.utils.auxiliary as aux
 import buildamol.utils.pdb as pdb
 
-if not aux.has_package("pdbfixer"):
-    raise ImportError(
-        "PDBFixer is not available. Please install PDBFixer to use this feature."
-    )
+HAS_PDBFIXER = aux.has_package("pdbfixer")
 
-from pdbfixer import PDBFixer
-from openmm.unit import molar, nanometer
-from openmm.vec3 import Vec3
-from openmm.app import PDBFile
+if HAS_PDBFIXER:
+    from pdbfixer import PDBFixer
+    from openmm.unit import molar, nanometer
+    from openmm.vec3 import Vec3
+    from openmm.app import PDBFile
+else:
+    PDBFixer = None
+    molar = None
+    nanometer = None
+    Vec3 = None
+    PDBFile = None
 
 
 class Ions:
@@ -108,6 +112,11 @@ def solvate(
     Molecule
         The solvated molecule, which will contain a new chain with the water molecules. Water molecules are named HOH and do not have any bonds.
     """
+    if not HAS_PDBFIXER:
+        raise ImportError(
+            "PDBFixer is not available. Please install PDBFixer to use this feature."
+        )
+
     pdb_string = StringIO(pdb.encode_pdb(mol))
     box_size = _determine_box_size(mol)
     if symmetric_box:
@@ -149,8 +158,18 @@ def solvate(
             tmp,
         )
         tmp.seek(0)
-        out = mol.__class__._from_pdb_string(tmp.read())
+        solvated = mol.__class__._from_pdb_string(tmp.read())
         tmp.close()
+        out = mol.copy()
+
+        out.add_chains(solvated.chains[-1])
+        for hoh in out.chains[-1].residues:
+            h1 = hoh.get_atom("H1")
+            h2 = hoh.get_atom("H2")
+            o = hoh.get_atom("O")
+            out.set_bond(o, h1)
+            out.set_bond(o, h2)
+
         return out
 
 
@@ -184,3 +203,4 @@ if __name__ == "__main__":
         ionic_strength=0.1,
     )
     pass
+    solvated_mol.plotly().show()

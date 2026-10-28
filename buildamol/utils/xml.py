@@ -174,18 +174,24 @@ def encode_molecule(mol: "Molecule", atom_attributes: list = None) -> XMLEntry:
     coords_entry = XMLEntry("coordinates")
     coords_entry.attributes["models"] = len(mol.structure.child_list)
     root.add_child(coords_entry)
+
+    saved_active_id = mol._active_conformer_id
     for model in mol.get_models():
+        mol.set_model(model)
         model_entry = XMLEntry("model")
         model_entry.attributes["id"] = model.id
         coords_entry.add_child(model_entry)
-
-        for atom in model.get_atoms():
+        for atom in mol.get_atoms():
             atom_entry = XMLEntry("atomcoord")
             atom_entry.attributes["serial"] = atom.serial_number
             atom_entry.attributes["x"] = round(atom.coord[0], 4)
             atom_entry.attributes["y"] = round(atom.coord[1], 4)
             atom_entry.attributes["z"] = round(atom.coord[2], 4)
             model_entry.add_child(atom_entry)
+
+    mol.set_model(
+        next(m for m in mol.get_models() if m.id == saved_active_id)
+    )
     return root
 
 
@@ -427,6 +433,97 @@ def read_xml(filename: str) -> XMLEntry:
     xml = f.read()
     f.close()
     return decode_xml(xml)
+
+
+def encode_molecule_library(lib: "MoleculeLibrary") -> XMLEntry:
+    """
+    Encode a MoleculeLibrary as an XML tree.
+
+    Parameters
+    ----------
+    lib : MoleculeLibrary
+
+    Returns
+    -------
+    XMLEntry
+    """
+    root = XMLEntry("molecule_library")
+    root.attributes["id"] = lib.id if lib.id is not None else ""
+    root.attributes["count"] = len(lib)
+
+    molecules = XMLEntry("molecules")
+    root.add_child(molecules)
+
+    for mol_id, mol, meta in lib:
+        smiles = meta.get("smiles", "")
+        if not smiles:
+            try:
+                smiles = mol.to_smiles()
+            except Exception:
+                smiles = ""
+        mol_entry = XMLEntry("molecule")
+        mol_entry.attributes["id"] = mol_id
+        mol_entry.attributes["smiles"] = smiles
+        # encode remaining metadata (excluding "smiles", already stored above)
+        meta_entry = XMLEntry("metadata")
+        for k, v in meta.items():
+            if k == "smiles":
+                continue
+            item = XMLEntry("entry")
+            item.attributes["key"] = str(k)
+            item.attributes["value"] = str(v)
+            meta_entry.add_child(item)
+        mol_entry.add_child(meta_entry)
+        molecules.add_child(mol_entry)
+
+    root.adjust_indent()
+    return root
+
+
+def decode_molecule_library(root: XMLEntry) -> "MoleculeLibrary":
+    """
+    Reconstruct a MoleculeLibrary from an XMLEntry produced by
+    :func:`encode_molecule_library`.
+
+    Parameters
+    ----------
+    root : XMLEntry
+
+    Returns
+    -------
+    MoleculeLibrary
+    """
+    import warnings
+    from buildamol.resources.molecule_library import MoleculeLibrary
+    from buildamol.core import Molecule
+
+    lib_id = root.attributes.get("id") or None
+    lib = MoleculeLibrary(id=lib_id)
+
+    molecules_entry = root.get_child("molecules")
+    if molecules_entry is None:
+        return lib
+
+    for mol_entry in molecules_entry:
+        mol_id = mol_entry.attributes.get("id", "")
+        smiles = mol_entry.attributes.get("smiles", "")
+        if not smiles:
+            warnings.warn(f"Entry '{mol_id}' has no SMILES; skipping.")
+            continue
+        try:
+            mol = Molecule.from_smiles(smiles, id=mol_id)
+        except Exception:
+            warnings.warn(f"Could not reconstruct molecule '{mol_id}' from SMILES '{smiles}'; skipping.")
+            continue
+        meta = {"smiles": smiles}
+        meta_entry = mol_entry.get_child("metadata")
+        if meta_entry is not None:
+            for item in meta_entry:
+                meta[item.attributes["key"]] = item.attributes["value"]
+        lib._molecules[mol_id] = mol
+        lib._metadata[mol_id] = meta
+
+    return lib
 
 
 if __name__ == "__main__":

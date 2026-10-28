@@ -6,6 +6,8 @@ import numpy as np
 import Bio.PDB as bio
 
 import buildamol.utils.auxiliary as aux
+import buildamol.base_classes as base_classes
+from buildamol.backends.api import backend_dispatched
 
 origin = np.array([0, 0, 0], dtype=np.float64)
 """
@@ -91,11 +93,6 @@ def model_make_full_id(self):
 def set_full_id(self, value):
     pass
 
-
-bio.Atom.Atom.full_id = property(atom_make_full_id, set_full_id)
-bio.Residue.Residue.full_id = property(residue_make_full_id, set_full_id)
-bio.Chain.Chain.full_id = property(chain_make_full_id, set_full_id)
-bio.Model.Model.full_id = property(model_make_full_id, set_full_id)
 
 # --------------------------- POSSIBLE DELETE ---------------------------
 
@@ -505,10 +502,23 @@ def rotate_molecule(
     return molecule
 
 
+def _rotate_coords_numpy(
+    coords: np.ndarray,
+    angle: float,
+    axis: np.ndarray,
+):
+    """NumPy implementation of coordinate rotation."""
+    coords = np.asarray(coords)
+    rot = _rotation_matrix(axis, angle)
+    return np.dot(coords, rot.T)
+
+
+@backend_dispatched("structural", "rotate_coords")
 def rotate_coords(
     coords: np.ndarray,
     angle: float,
     axis: np.ndarray,
+    backend=None,
 ):
     """
     Rotate a set of coordinates around an axis by a given angle.
@@ -521,14 +531,16 @@ def rotate_coords(
         The angle to rotate by (in radians)
     axis : array-like
         The axis to rotate around
+    backend : str, optional
+        Compute backend to use. One of "numpy", "numba", or "jax".
+        If None, uses the global backend selection.
 
     Returns
     -------
     rotated_coords : array-like
         The rotated coordinates
     """
-    rot = _rotation_matrix(axis, angle)
-    return np.dot(np.asarray(coords), rot.T)
+    return _rotate_coords_numpy(coords, angle, axis)
 
 
 def superimpose_points(
@@ -565,12 +577,15 @@ def superimpose_points(
             "The number of points in points1 and points2 must be the same."
         )
 
-    # compute translation vector
-    old_centroid = _old_coords.mean(axis=0)
-    new_centroid = _new_coords.mean(axis=0)
+    # Use first point as the translation anchor so that points1[0] maps exactly
+    # onto points2[0]. Using the centroid instead would distribute alignment
+    # error across all point pairs (none lands exactly) when the shapes are
+    # non-congruent (e.g. after force-field optimisation).
+    old_anchor = _old_coords[0]
+    new_anchor = _new_coords[0]
 
-    _relative_old_coords = _old_coords - old_centroid
-    _relative_new_coords = _new_coords - new_centroid
+    _relative_old_coords = _old_coords - old_anchor
+    _relative_new_coords = _new_coords - new_anchor
 
     H = (_relative_old_coords).T.dot(_relative_new_coords)
     U, S, VT = np.linalg.svd(H)
@@ -581,7 +596,7 @@ def superimpose_points(
         VT[-1, :] *= -1
         R = VT.T @ U.T
 
-    new_coords = (R @ (coords - old_centroid).T).T + new_centroid
+    new_coords = (R @ (coords - old_anchor).T).T + new_anchor
 
     return new_coords
 
@@ -691,7 +706,7 @@ def length_along_axis(coords, axis) -> float:
     length : float
         The length of the coordinates along the axis
     """
-    return np.dot(coords, axis).ptp()
+    return np.ptp(np.dot(coords, axis))
 
 
 @aux.njit
@@ -701,7 +716,7 @@ def _numba_wrapper_rotate_coords(
     axis: np.ndarray,
 ):
     rot = _numba_wrapper_rotation_matrix(axis, angle)
-    return np.dot(np.asarray(coords), rot.T)
+    return np.dot(coords, rot.T)
 
 
 def _rotate_coords_base_classes(
@@ -767,6 +782,12 @@ bio.Residue.Residue.rotate = _rotate_coords_base_classes
 bio.Chain.Chain.rotate = _rotate_coords_base_classes
 bio.Model.Model.rotate = _rotate_coords_base_classes
 bio.Structure.Structure.rotate = _rotate_coords_base_classes
+
+base_classes.Atom.rotate = _rotate_coords_base_classes
+base_classes.Residue.rotate = _rotate_coords_base_classes
+base_classes.Chain.rotate = _rotate_coords_base_classes
+base_classes.Model.rotate = _rotate_coords_base_classes
+base_classes.Structure.rotate = _rotate_coords_base_classes
 
 
 def flip_molecule(mol, plane_vector: np.ndarray, center: np.ndarray = None):

@@ -6,12 +6,12 @@ from typing import Union
 
 import numpy as np
 
-
 __all__ = [
     "fatty_acid",
     "triacylglycerol",
     "phospholipid",
     "sphingolipid",
+    "orient_for_membrane",
 ]
 
 
@@ -251,6 +251,129 @@ def sphingolipid(
     return out
 
 
+def orient_for_membrane(
+    lipid: core.Molecule,
+    tail_down: bool = True,
+    inplace: bool = True,
+) -> core.Molecule:
+    """
+    Orient a lipid molecule for membrane assembly.
+
+    Rotates the molecule so that its hydrophobic tails point along the -z axis
+    (or +z if *tail_down* is False) and the polar head group points in the
+    opposite direction.  The resulting orientation matches a lipid sitting in
+    the upper leaflet (tail_down=True) or lower leaflet (tail_down=False) of a
+    bilayer and is a prerequisite for arranging lipids into a membrane grid.
+
+    The orientation is determined entirely from the 3-D coordinates:
+
+    1. **Head centroid** — centroid of all phosphorus atoms (P); if none are
+       present, nitrogen atoms (N) are used; if still none, all oxygen atoms (O).
+    2. **Tail centroid** — centroid of the terminal methyl carbons, i.e. carbon
+       atoms that have no heteroatom neighbours and at most one carbon neighbour
+       (the ω-carbon at the end of each acyl chain).  Carbons closer than half
+       the maximum distance to the head centroid are excluded to avoid picking
+       up short branches near the glycerol backbone.
+    3. A single rigid-body rotation aligns the head→tail vector to ±z.
+
+    Parameters
+    ----------
+    lipid : Molecule
+        An assembled lipid molecule produced by :func:`phospholipid`,
+        :func:`triacylglycerol`, :func:`sphingolipid`, or similar.
+    tail_down : bool
+        If ``True`` (default) the tails point in the -z direction (upper leaflet).
+        If ``False`` the tails point in the +z direction (lower leaflet).
+    inplace : bool
+        If ``True`` (default) the molecule is modified in place and returned.
+        If ``False`` a deep copy is rotated and returned, leaving the original
+        unchanged.
+
+    Returns
+    -------
+    Molecule
+        The oriented lipid molecule.
+
+    Raises
+    ------
+    ValueError
+        If no heteroatoms are found (cannot locate head group) or if no
+        terminal chain carbons are found.
+
+    Examples
+    --------
+    >>> chain1 = fatty_acid(16, 0, [])
+    >>> chain2 = fatty_acid(18, 1, [True])
+    >>> import buildamol.resources as resources
+    >>> resources.load_sugars()
+    >>> import buildamol.core as core
+    >>> choline = core.Molecule.from_compound("CHO")
+    >>> link = core.linkage(None, "C1", delete_in_source=["O1", "HO1"])
+    >>> pl = phospholipid(chain1, chain2, choline, link, id="DPPC")
+    >>> oriented = orient_for_membrane(pl)
+    """
+    if not inplace:
+        lipid = lipid.copy()
+
+    atoms = list(lipid.get_atoms())
+
+    # --- locate the polar head group ---
+    head_atoms = [a for a in atoms if a.element == "P"]
+    if not head_atoms:
+        head_atoms = [a for a in atoms if a.element == "N"]
+    if not head_atoms:
+        head_atoms = [a for a in atoms if a.element == "O"]
+    if not head_atoms:
+        raise ValueError("Cannot determine head group: no heteroatoms (P, N, O) found.")
+    head_centroid = np.mean([a.coord for a in head_atoms], axis=0)
+
+    # --- locate terminal tail carbons (ω-methyls) ---
+    # Qualifying atoms: element C, no heavy heteroatom neighbours, ≤1 C neighbour.
+    terminal_carbons = []
+    for a in atoms:
+        if a.element != "C":
+            continue
+        neighbors = lipid.get_neighbors(a)
+        if any(n.element not in ("C", "H") for n in neighbors):
+            continue
+        if sum(1 for n in neighbors if n.element == "C") <= 1:
+            terminal_carbons.append(a)
+
+    if not terminal_carbons:
+        raise ValueError(
+            "Cannot identify terminal chain carbons. "
+            "Ensure the molecule contains aliphatic chain termini."
+        )
+
+    # keep only the distal termini (distance ≥ 50 % of the maximum)
+    dists = np.array(
+        [np.linalg.norm(a.coord - head_centroid) for a in terminal_carbons]
+    )
+    tail_atoms = [a for a, d in zip(terminal_carbons, dists) if d >= dists.max() * 0.5]
+    tail_centroid = np.mean([a.coord for a in tail_atoms], axis=0)
+
+    # --- compute and apply rotation ---
+    tail_vec = tail_centroid - head_centroid
+    norm = np.linalg.norm(tail_vec)
+    if norm < 1e-10:
+        raise ValueError(
+            "Head and tail centroids coincide; cannot determine orientation."
+        )
+    tail_vec /= norm
+
+    target = np.array([0.0, 0.0, -1.0 if tail_down else 1.0])
+
+    axis = np.cross(tail_vec, target)
+    axis_norm = np.linalg.norm(axis)
+    if axis_norm > 1e-10:
+        angle = np.degrees(
+            np.arccos(float(np.clip(np.dot(tail_vec, target), -1.0, 1.0)))
+        )
+        lipid.rotate(angle, axis / axis_norm, center=lipid.center_of_geometry)
+
+    return lipid
+
+
 if __name__ == "__main__":
 
     mol1 = fatty_acid(20, 4, 0.5)
@@ -266,7 +389,9 @@ if __name__ == "__main__":
     resources.load_sugars()
     glc = core.Molecule.from_compound("GLC")
     link = core.linkage(None, "C1", delete_in_source=["O1", "HO1"])
-    phos = phospholipid(mol1, mol3, glc, link)
+    phos = phospholipid(mol1, mol3, glc.copy(), link)
 
     sphing = sphingolipid(mol2, glc, link)
     sphing.show()
+
+    orient_for_membrane(phos.copy(), tail_down=True).show()

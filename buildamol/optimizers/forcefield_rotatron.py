@@ -1,18 +1,19 @@
 """
-The ForceFieldRotatron is a rotatron that uses RDKit's MMFF94 force field to evaluate a given state. Consequently, this environment can only function if RDKIt is installed. 
+The ForceFieldRotatron is a rotatron that uses RDKit's MMFF94 force field to evaluate a given state. Consequently, this environment can only function if RDKIt is installed.
 
 .. note::
 
-    Because this environment uses an actual energy function to evaluate states, this environment performs very poorly with ResidueGraph inputs! ResidueGraphs are abstractions without a valid chemical structure.
-    Consequently, even though this environment **can** be used with ResidueGraphs, it is not recommended.
-    
+    Because this environment uses an actual energy function to evaluate states, it always requires all atoms of the molecule.
+    If a ResidueGraph or a graph that only contains a subset of the atoms is provided, the full AtomGraph of the molecule is used instead.
+
 """
 
-import gym
+import warnings
+
+import gymnasium as gym
 
 import numpy as np
 
-from scipy.spatial.distance import cdist
 
 import buildamol.optimizers.base_rotatron as Rotatron
 import buildamol.graphs.base_graph as base_graph
@@ -38,10 +39,9 @@ class ForceFieldRotatron(Rotatron.Rotatron):
     clash_distance : float
         The distance at which two atoms are considered to be clashing.
     crop_nodes_further_than : float
-        If greater than 0, crop nodes that are further than this distance from the
-        rotatable edges so that they are not considered in the overlap calculation.
+        Not supported by this environment (the force field always requires all atoms). Kept for compatibility.
     mmff_variant : str
-        The MMFF variant to use. Can be one of "mmff94", "mmff94s", "uff", "mmff94splus"
+        The MMFF variant to use. Can be one of "mmff94" or "mmff94s"
     n_processes : int
         The number of processes to use for parallelization when computing edge masks
     bounds : tuple
@@ -59,12 +59,8 @@ class ForceFieldRotatron(Rotatron.Rotatron):
         mmff_variant: str = "mmff94",
         n_processes: int = 1,
         bounds: tuple = (-np.pi, np.pi),
-        **kwargs
+        **kwargs,
     ):
-        if not aux.HAS_RDKIT:
-            raise ImportError(
-                "ForceFieldRotatron requires RDKit to be installed. Please install RDKit to use this rotatron."
-            )
         self.hyperparameters = {
             "clash_distance": clash_distance,
             "crop_nodes_further_than": crop_nodes_further_than,
@@ -80,24 +76,23 @@ class ForceFieldRotatron(Rotatron.Rotatron):
         # =====================================
 
         rotatable_edges = self._get_rotatable_edges(graph, rotatable_edges)
+        molecule = graph._molecule
+
+        # the energy can only be computed if all atoms move with their rotatable edges
+        # (any atom that is not part of the graph would stay in place and break its bonds)
+        if set(graph.nodes) != set(molecule.get_atoms()):
+            warnings.warn(
+                "The ForceFieldRotatron requires a graph with all atoms of the molecule. Using the molecule's AtomGraph instead."
+            )
+            graph = molecule.get_atom_graph()
+        if self.crop_radius > 0:
+            warnings.warn(
+                "The ForceFieldRotatron requires all atoms of the molecule. 'crop_nodes_further_than' is ignored."
+            )
+
         self.graph = graph
         self.rotatable_edges = rotatable_edges
-        self.mol = graph._molecule.to_rdkit()
-
-        # =====================================
-        if self.crop_radius > 0:
-            edge_coords = np.array(
-                [(a.coord + b.coord) / 2 for a, b in rotatable_edges]
-            )
-            nodes = list(graph.nodes)
-            node_coords = np.array([node.coord for node in nodes])
-
-            dists = cdist(edge_coords, node_coords)
-            dists = dists > self.crop_radius
-            dists = np.apply_along_axis(np.all, 0, dists)
-            if np.max(dists) != 0:
-                nodes_to_drop = [nodes[i] for i, d in enumerate(dists) if d]
-                graph.remove_nodes_from(nodes_to_drop)
+        self.mol = molecule.to_rdkit()
 
         # =====================================
 
@@ -111,36 +106,54 @@ class ForceFieldRotatron(Rotatron.Rotatron):
             low=-np.inf, high=np.inf, shape=(len(self.graph.nodes), 3)
         )
 
+        self._ff_props = aux.MMFFGetMoleculeProperties(
+            self.mol, mmffVariant=self.mmff_variant
+        )
+        self._ff = aux.MMFFGetMoleculeForceField(self.mol, self._ff_props)
+
+        # map explicitily to atoms since we cannot be sure that the graph nodes correspond 1:1
+        atom_index = {a: i for i, a in enumerate(molecule.get_atoms())}
+        self._state_rows = np.array(
+            [i for i, n in enumerate(self.graph.nodes) if n in atom_index], dtype=int
+        )
+        self._rdkit_rows = np.array(
+            [atom_index[n] for n in self.graph.nodes if n in atom_index], dtype=int
+        )
+        self._positions = np.array(self.mol.GetConformer(0).GetPositions())
+
         # =====================================
 
     def _update_positions(self, state):
         """
         Update the rdkit molecule's positions
         """
-        state = state.astype(np.double)
+        self._positions[self._rdkit_rows] = state[self._state_rows]
         conformer = self.mol.GetConformer(0)
-        for idx, i in enumerate(state):
-            conformer.SetAtomPosition(idx, i)
-        # self.mol.AddConformer(conformer)
+        for idx, coord in enumerate(self._positions):
+            conformer.SetAtomPosition(idx, coord)
 
-    def energy(self):
+    def energy(self, state: np.ndarray = None):
         """
         Calculate the energy of a given state
 
         Parameters
         ----------
         state : np.ndarray
-            The state of the environment
+            The state of the environment. If None, the energy of the
+            current positions of the rdkit molecule is computed.
 
         Returns
         -------
         float
             The energy for the state
         """
-        # calculate the energy
-        p = aux.MMFFGetMoleculeProperties(self.mol, mmffVariant=self.mmff_variant)
-        e = aux.MMFFGetMoleculeForceField(self.mol, p).CalcEnergy()
-        return e
+        if state is None:
+            self._positions[:] = self.mol.GetConformer(0).GetPositions()
+        else:
+            self._positions[self._rdkit_rows] = state[self._state_rows]
+        # the positions are passed explicitly because the force field does not
+        # reliably pick up changes of the conformer positions
+        return self._ff.CalcEnergy(self._positions.ravel().tolist())
 
     def eval(self, state):
         """
@@ -156,8 +169,7 @@ class ForceFieldRotatron(Rotatron.Rotatron):
         float
             The evaluation for the state
         """
-        self._update_positions(state)
-        return self.energy()
+        return self.energy(state)
 
 
 if __name__ == "__main__":

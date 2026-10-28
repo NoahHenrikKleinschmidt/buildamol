@@ -50,4 +50,9 @@ Currently available extensions
 
     The Docking extension provides a set of tools to help with docking drug-like molecules to proteins.
 
+.. card:: CHARMM
+    :link: charmm
+    :link-type: ref
+
+    The CHARMM extension provides tools and interfaces for enhancing molecule compatibility with the CHARMM molecular dynamics environment.
     

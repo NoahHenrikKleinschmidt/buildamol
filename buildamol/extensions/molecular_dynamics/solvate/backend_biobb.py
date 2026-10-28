@@ -4,12 +4,12 @@ from pathlib import Path
 from uuid import uuid4
 
 
-if not aux.has_package("biobb_amber"):
-    raise ImportError(
-        "biobb_amber is not available. Please install biobb_amber to use this feature."
-    )
+HAS_BIOBB_AMBER = aux.has_package("biobb_amber")
 
-from biobb_amber.leap.leap_solvate import leap_solvate
+if HAS_BIOBB_AMBER:
+    from biobb_amber.leap.leap_solvate import leap_solvate
+else:
+    leap_solvate = None
 
 
 def solvate(
@@ -38,6 +38,11 @@ def solvate(
     **kwargs
         Any additional keyword arguments are interpreted as "properties" and will be merged with the dictionary passed in the properties parameter.
     """
+
+    if not HAS_BIOBB_AMBER:
+        raise ImportError(
+            "biobb_amber is not available. Please install biobb_amber to use this feature."
+        )
 
     # Check if the molecule is a valid input
     if not isinstance(mol, Molecule) or not hasattr(mol, "to_pdb"):

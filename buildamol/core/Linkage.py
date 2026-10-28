@@ -157,6 +157,11 @@ def patch(
     Linkage
         The new linkage.
     """
+    warn(
+        "buildamol.patch(...) is deprecated and will be removed in a future release; use buildamol.linkage(..., internal_coordinates=...) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return linkage(
         atom1,
         atom2,
@@ -206,6 +211,11 @@ def recipe(
     Linkage
         The new linkage.
     """
+    warn(
+        "buildamol.recipe(...) is deprecated and will be removed in a future release; use buildamol.linkage(...) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return linkage(
         atom1,
         atom2,
@@ -839,6 +849,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                     )
             else:
                 for i in self.deletes[0]:
+                    if isinstance(i, tuple) and len(i) == 1:
+                        i = i[0]
                     atom = target.get_atom(i, residue=target_residue)
                     if atom is not None:
                         target.remove_atoms(atom)
@@ -859,6 +871,8 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
                     )
             else:
                 for i in self.deletes[1]:
+                    if isinstance(i, tuple) and len(i) == 1:
+                        i = i[0]
                     atom = source.get_atom(
                         i, residue=source_residue or source.attach_residue
                     )
@@ -1046,9 +1060,10 @@ class Linkage(utils.abstract.AbstractEntity_with_IC):
 
         _delete_ids = [None] * len(self._delete_ids)
         for idx, i in enumerate(self._delete_ids):
-            placement, id = i
-            if isinstance(id, tuple) and len(id) == 1:
-                id = id[0]
+            if isinstance(i, tuple):
+                placement, id = i
+            else:
+                placement, id = i[0], i[1:]
             if placement == "1":
                 _delete_ids[idx] = ("2", id)
             elif placement == "2":

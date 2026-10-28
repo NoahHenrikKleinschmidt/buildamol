@@ -11,6 +11,7 @@ import numpy as np
 
 # from scipy.spatial.transform import Rotation
 import buildamol.structural.base as base
+import buildamol.base_classes as base_classes
 
 
 class BaseGraph(nx.Graph):
@@ -18,7 +19,24 @@ class BaseGraph(nx.Graph):
     The basic class for molecular graphs
     """
 
-    def __init__(self, id, bonds: list):
+    # attributes that belong to the networkx graph itself or are caches
+    # that are rebuilt for a copy of the graph
+    _copy_exclude = {
+        "_node",
+        "_adj",
+        "graph",
+        "nodes",
+        "edges",
+        "adj",
+        "degree",
+        "_neighborhood",
+        "_BaseGraph__descendent_cache",
+        "_BaseGraph__last_cache_size",
+        "_cycle_cache",
+        "_cycle_cache_edge_count",
+    }
+
+    def __init__(self, id=None, bonds: list = None):
         super().__init__(bonds)
         self.id = id
         self._structure = None
@@ -28,6 +46,35 @@ class BaseGraph(nx.Graph):
         self._structure_was_searched = False
         self.__descendent_cache = {}
         self.__last_cache_size = len(self.nodes)
+        self._cycle_cache = None
+        self._cycle_cache_edge_count = -1
+
+    def copy(self, as_view: bool = False):
+        """
+        Make a copy of the graph. The nodes (atoms or residues) themselves are not copied
+        but shared with the original graph, so that the copy can be modified (e.g. nodes removed)
+        without affecting the original graph.
+
+        Parameters
+        ----------
+        as_view : bool
+            If True, return a read-only view of the graph instead of a copy.
+
+        Returns
+        -------
+        BaseGraph
+            The copied graph
+        """
+        new = super().copy(as_view=as_view)
+        if as_view:
+            return new
+        for key, value in self.__dict__.items():
+            if key in self._copy_exclude:
+                continue
+            if isinstance(value, (set, dict, list)):
+                value = type(value)(value)
+            new.__dict__[key] = value
+        return new
 
     @property
     def structure(self):
@@ -83,7 +130,7 @@ class BaseGraph(nx.Graph):
         """
         Returns the nodes in cycles
         """
-        cycles = nx.cycle_basis(self)
+        cycles = self._get_cycles()
         if len(cycles) == 0:
             return set()
         return set.union(*[set(i) for i in cycles])
@@ -193,11 +240,9 @@ class BaseGraph(nx.Graph):
         if use_cache:
             _seen = self.__descendent_cache.get((node_1, node_2))
             if _seen:
-                size, _seen = _seen
+                size, _seen, _ = _seen
                 if size == len(self.nodes):
                     return _seen
-
-        __all_nodes = set(self.nodes)
 
         # if use_cache:
         #     _seen = self.__descendent_cache.get((node_2, node_1))
@@ -208,32 +253,34 @@ class BaseGraph(nx.Graph):
 
         _seen = set((node_1, node_2))
         _new_neighs = {node_2}
-        descendants = set()
         while _new_neighs:
             neigh = _new_neighs.pop()
             _seen.add(neigh)
-
-            descendants.clear()
             for d in self.adj[neigh]:
                 if d in _seen:
                     continue
                 _desc_from_cache = self.__descendent_cache.get((neigh, d))
-                if _desc_from_cache:
-                    _desc_from_cache = _desc_from_cache[1]
+                # cached descendants can only be re-used for bridge edges, otherwise
+                # they may contain nodes that lie beyond node_1 through a cycle
+                if (
+                    _desc_from_cache
+                    and _desc_from_cache[0] == len(self.nodes)
+                    and _desc_from_cache[2]
+                ):
                     _seen.add(d)
-                    _seen.update(_desc_from_cache)
+                    _seen.update(_desc_from_cache[1])
                 else:
-                    descendants.add(d)
-
-            _new_neighs.update(descendants)
+                    _new_neighs.add(d)
             _new_neighs.difference_update(_seen)
+
+        # if node_1 is reachable from node_2 without the edge itself, the edge is part of a cycle
+        _is_bridge = not any(n in _seen for n in self.adj[node_1] if n is not node_2)
 
         _seen.difference_update((node_1, node_2))
 
-        self.__descendent_cache[(node_1, node_2)] = len(self.nodes), _seen
-        self.__descendent_cache[(node_2, node_1)] = len(self.nodes), (
-            __all_nodes - _seen - {node_1, node_2}
-        )
+        # the reverse direction is not cached as the complement of _seen,
+        # since this is only valid for connected graphs without cycles through the edge
+        self.__descendent_cache[(node_1, node_2)] = len(self.nodes), _seen, _is_bridge
 
         # v = self._molecule.draw()
         # v.draw_vector("edge", node_1.coord, node_2.coord, elongate=1.3, linewidth=4, color="limegreen")
@@ -323,7 +370,7 @@ class BaseGraph(nx.Graph):
         list
             A list of cycles in the graph, where each cycle is a list of nodes
         """
-        return nx.cycle_basis(self)
+        return self._get_cycles()
 
     def find_nodes_in_cycles(self) -> set:
         """
@@ -334,7 +381,7 @@ class BaseGraph(nx.Graph):
         set
             The nodes in cycles
         """
-        cycles = [set(i) for i in nx.cycle_basis(self)]
+        cycles = [set(i) for i in self._get_cycles()]
         if len(cycles) == 0:
             return set()
         return set.union(*cycles)
@@ -389,7 +436,7 @@ class BaseGraph(nx.Graph):
             max_descendants = np.inf
         if not max_ancestors:
             max_ancestors = np.inf
-        circulars = [set(i) for i in nx.cycle_basis(self)]
+        circulars = [set(i) for i in self._get_cycles()]
         # we changed stuff to generators to gain some performance
         # revert if it causes issues. We know that the root_node
         # step needs a list so we unpack if needed...
@@ -557,7 +604,7 @@ class BaseGraph(nx.Graph):
         list
             A list of sampled edges
         """
-        center = np.mean([i.coord for i in self.nodes])
+        center = np.mean([i.coord for i in self.nodes], axis=0)
         if edges is None:
             edges = self.find_rotatable_edges()
         rotatable_edges = np.array(edges)
@@ -619,8 +666,8 @@ class BaseGraph(nx.Graph):
         bool
             True if the nodes are in the same cycle, False otherwise
         """
-        if not cycles:
-            cycles = nx.cycle_basis(self)
+        if cycles is None:
+            cycles = self._get_cycles()
         for cycle in cycles:
             if node_1 in cycle and node_2 in cycle:
                 return True
@@ -640,8 +687,8 @@ class BaseGraph(nx.Graph):
         bool
             True if the node is in a cycle, False otherwise
         """
-        if not cycles:
-            cycles = nx.cycle_basis(self)
+        if cycles is None:
+            cycles = self._get_cycles()
         for cycle in cycles:
             if node in cycle:
                 return True
@@ -662,11 +709,11 @@ class BaseGraph(nx.Graph):
             The nodes in the cycle that the node is in.
             If the node is not in a cycle, None is returned.
         """
-        if not cycles:
-            cycles = nx.cycle_basis(self)
+        if cycles is None:
+            cycles = self._get_cycles()
         for cycle in cycles:
             if node in cycle:
-                return set(cycle)
+                return sorted(cycle)
         return None
 
     def direct_edges(self, root_node=None, edges: list = None) -> list:
@@ -705,9 +752,43 @@ class BaseGraph(nx.Graph):
 
     def clear_cache(self):
         """
-        Clear the descendant cache
+        Clear the descendant and cycle caches.
         """
         self.__descendent_cache.clear()
+        self._cycle_cache = None
+        self._cycle_cache_edge_count = -1
+
+    def _get_cycles(self) -> list:
+        """Return cached cycle basis, recomputing only when the edge count changes."""
+        n = len(self.edges)
+        if self._cycle_cache is None or n != self._cycle_cache_edge_count:
+            self._cycle_cache = nx.cycle_basis(self)
+            self._cycle_cache_edge_count = n
+        return self._cycle_cache
+
+    def distance(self, node_1, node_2) -> int:
+        """
+        Compute the graph distance (number of bonds/edges) between two nodes.
+
+        Parameters
+        ----------
+        node_1, node_2
+            The two nodes to compute the distance between.
+
+        Returns
+        -------
+        int or float
+            The shortest-path length in edges, or ``numpy.inf`` if no path exists.
+
+        Raises
+        ------
+        KeyError
+            If either node is not in the graph.
+        """
+        try:
+            return nx.shortest_path_length(self, node_1, node_2)
+        except nx.NetworkXNoPath:
+            return np.inf
 
     def lock_edge(self, node_1, node_2):
         """
@@ -880,7 +961,7 @@ class BaseGraph(nx.Graph):
         if structure is None:
             warnings.warn("Nodes do not seem to have linked parents!")
             return None
-        while not isinstance(structure, bio.Structure.Structure):
+        while structure is not None and not isinstance(structure, base_classes.Structure):
             structure = structure.get_parent()
         return structure
 

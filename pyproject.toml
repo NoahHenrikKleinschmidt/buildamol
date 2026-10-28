@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "buildamol"
+dynamic = ["version"]
+description = "A fragment-based molecular assembly toolkit for python."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "GPL-3.0-only"
+license-files = ["LICENSE.md"]
+authors = [
+  { name = "Noah H. Kleinschmidt", email = "noah.kleinschmidt@unibe.ch" },
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+  "rdkit",
+  "numpy",
+  "pandas",
+  "scipy",
+  "matplotlib",
+  "networkx",
+  "biopython",
+  "pdbecif",
+  "periodictable",
+  "plotly",
+  "gymnasium",
+  "pubchempy",
+  "tabulate",
+  "scikit-learn",
+  "attrs",
+  "Deprecated",
+]
+
+[project.optional-dependencies]
+visual = [
+  "py3Dmol",
+  "nglview",
+  "ipywidgets",
+  "svglib",
+  "reportlab",
+  "Pillow",
+]
+openbabel = ["openbabel"]
+openmm = ["openmm"]
+full = [
+  "rdkit",
+  "openbabel",
+  "openmm",
+  "py3Dmol",
+  "nglview",
+  "svglib",
+  "reportlab",
+  "Pillow",
+]
+
+[project.urls]
+Homepage = "https://github.com/NoahHenrikKleinschmidt/buildamol"
+Repository = "https://github.com/NoahHenrikKleinschmidt/buildamol"
+Documentation = "https://biobuild.readthedocs.io/en/latest/"
+
+[tool.setuptools.dynamic]
+version = { attr = "buildamol.utils.info.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["buildamol*"]
+
+[tool.setuptools.package-data]
+"buildamol.resources" = ["*.pkl", "*.json", "*.cif", "*.xml"]

@@ -131,3 +131,12 @@ def test_reaction_can_apply_with_multiple_targets():
     assert R.can_apply(A, B)
     out2 = R(A, B)
     assert out1.to_smiles() == out2.to_smiles()
+
+
+def test_visual_setters():
+    from buildamol import visual
+
+    visual.render_2d()
+
+    mol = bam.molecule("CCO")
+    mol.show()

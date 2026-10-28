@@ -132,3 +132,5 @@ __tutorials copy__/
 __vs_stk__/
 
 *.DS_Store
+
+.vscode/

@@ -28,6 +28,7 @@ Among these are connections, or atom labels.
       
    .. automodule:: buildamol.structural.infer
       :members:
+      :imported-members:
       :undoc-members:
       :show-inheritance:
 

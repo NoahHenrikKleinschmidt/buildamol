@@ -37,6 +37,7 @@ class BaseEntity:
 
     __slots__ = (
         "_base_struct",
+        "_active_conformer_id",
         "_model",
         "_id",
         "_bonds",
@@ -44,7 +45,11 @@ class BaseEntity:
         "_linkage",
         "_root_atom",
         "_attach_residue",
+        "__itemgetter",
     )
+
+    default_getitem_method = None
+    default_bonds_infer = "residue_internal"  # or "all"
 
     def __init__(self, structure, model: int = 0):
         if not isinstance(structure, base_classes.Structure):
@@ -62,6 +67,7 @@ class BaseEntity:
         self._model = self._base_struct.child_list[model]
         if len(self._model.child_list) == 0:
             raise ValueError("The model is empty")
+        self._active_conformer_id = self._model.id
 
         self._bonds = []
         # self._locked_bonds = set()
@@ -79,6 +85,11 @@ class BaseEntity:
         # self._working_chain_index = None
         self._root_atom = None
         self._attach_residue = None
+
+        if self.default_getitem_method is not None:
+            self.set_getitem(self.default_getitem_method)
+        else:
+            self.__itemgetter = None
 
     @classmethod
     def from_pdb(
@@ -120,7 +131,7 @@ class BaseEntity:
             content = content[start:end]
         f.close()
         new = cls._from_pdb_string(content, id=id)
-        new.cleanup()
+        new.cleanup(reindex=False)
         if not has_atom_ids:
             new.autolabel()
 
@@ -141,49 +152,71 @@ class BaseEntity:
         content = string.split("\n")
         atoms = utils.pdb._parse_atom_lines(content)
 
-        if len(atoms) == 1:
-            atoms[0] = atoms[-1]
-        if 0 not in atoms:
-            atoms[0] = next(iter(atoms.values()))
-        atoms.pop(-1)
+        # Sentinel key -1 holds atoms not inside any MODEL block
+        if -1 in atoms and atoms[-1]:
+            # Single-model PDB (no MODEL keyword) — promote sentinel to model 0
+            if 0 not in atoms:
+                atoms[0] = atoms[-1]
+        atoms.pop(-1, None)
+
+        # If no model 0 (e.g. file was sliced to a later MODEL block),
+        # remap the first real model to id=0
+        if 0 not in atoms and atoms:
+            first_key = next(iter(atoms))
+            atoms[0] = atoms.pop(first_key)
 
         structure = base_classes.Structure(id)
+
+        # Build canonical model (id=0) with full atom hierarchy
+        canonical_model = base_classes.Model(0)
+        structure.add(canonical_model)
         chains = {}
         residues = {}
-        for model, _atoms in atoms.items():
-            model = base_classes.Model(model)
-            structure.add(model)
-            chains.clear()
-            residues.clear()
-            for atom_info in _atoms:
-                if atom_info["chain"] not in chains:
-                    chains[atom_info["chain"]] = base_classes.Chain(atom_info["chain"])
-                    model.add(chains[atom_info["chain"]])
+        for atom_info in atoms[0]:
+            if atom_info["chain"] not in chains:
+                chains[atom_info["chain"]] = base_classes.Chain(atom_info["chain"])
+                canonical_model.add(chains[atom_info["chain"]])
 
-                res_seq = (atom_info["chain"], atom_info["res_seq"])
-                if res_seq not in residues:
-                    residues[res_seq] = base_classes.Residue(
-                        atom_info["residue"], " ", atom_info["res_seq"]
-                    )
-                    chains[atom_info["chain"]].add(residues[res_seq])
-
-                atom = base_classes.Atom.new(
-                    atom_info["id"],
-                    generate_id=False,
-                    altloc=atom_info["alt_loc"],
-                    serial_number=atom_info["serial"],
-                    coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
-                    occupancy=atom_info["occ"],
-                    pqr_charge=int(atom_info.get("charge", 0) or 0),
-                    element=atom_info["element"],
+            res_seq = (atom_info["chain"], atom_info["res_seq"])
+            if res_seq not in residues:
+                residues[res_seq] = base_classes.Residue(
+                    atom_info["residue"], " ", atom_info["res_seq"]
                 )
-                residues[res_seq].add(atom)
+                chains[atom_info["chain"]].add(residues[res_seq])
+
+            atom = base_classes.Atom.new(
+                atom_info["id"],
+                generate_id=False,
+                altloc=atom_info["alt_loc"],
+                serial_number=atom_info["serial"],
+                coord=(atom_info["x"], atom_info["y"], atom_info["z"]),
+                occupancy=atom_info["occ"],
+                pqr_charge=int(atom_info.get("charge", 0) or 0),
+                element=atom_info["element"],
+            )
+            residues[res_seq].add(atom)
+
+        # Build coordinate-only snapshot models for remaining MODEL blocks
+        # (models are numbered by their position since set_model(int) uses the index,
+        # and files often number their models starting from 1)
+        model_ids = (i for i in range(1, len(atoms)))
+        for model_id, _atoms in atoms.items():
+            if model_id == 0:
+                continue
+            snapshot = base_classes.Model(next(model_ids))
+            snapshot._atom_serials = [a["serial"] for a in _atoms]
+            snapshot._coords = np.array(
+                [[a["x"], a["y"], a["z"]] for a in _atoms], dtype=float
+            )
+            structure.add(snapshot)
 
         new = cls(structure)
         bonds = utils.pdb._parse_connect_lines(content)
         if len(bonds) != 0:
             atom_mapping = {a.serial_number: a for a in new.get_atoms()}
             for a1, a2, o in bonds:
+                if a1 not in atom_mapping or a2 not in atom_mapping:
+                    continue  # CONECT references atom not in ATOM/HETATM records
                 new._set_bond(atom_mapping[a1], atom_mapping[a2], o)
             del atom_mapping
         return new
@@ -248,7 +281,7 @@ class BaseEntity:
         _struct = base_classes.Structure(tree.attributes["id"])
         _model = base_classes.Model(0)
         _struct.add(_model)
-        _model._atom_index_mapping = {}
+        atom_index_mapping = {}
         for chain in tree.get_child("structure").children:
             _chain = base_classes.Chain(chain.get_attribute("id"))
             _model.add(_chain)
@@ -270,40 +303,43 @@ class BaseEntity:
                         if attr not in ["id", "serial", "element"]:
                             setattr(_atom, attr, atom.get_attribute(attr))
                     _residue.add(_atom)
-                    _model._atom_index_mapping[_atom.serial_number] = _atom
+                    atom_index_mapping[_atom.serial_number] = _atom
         new = cls(_struct)
 
         for bond in tree.get_child("connectivity").children:
-            atom1 = new._model._atom_index_mapping[bond.get_attribute("atom1", int)]
-            atom2 = new._model._atom_index_mapping[bond.get_attribute("atom2", int)]
-            new._set_bond(
-                atom1,
-                atom2,
-                bond.get_attribute("order", int),
-            )
+            atom1 = atom_index_mapping[bond.get_attribute("atom1", int)]
+            atom2 = atom_index_mapping[bond.get_attribute("atom2", int)]
+            new._set_bond(atom1, atom2, bond.get_attribute("order", int))
 
-        for model in tree.get_child("coordinates").children:
-            if model.get_attribute("id", int) != 0:
-                new_model = _model.copy()
-                new_model.id = model.get_attribute("id", int)
-                new.structure.add(new_model)
-                new._model = new_model
+        for model_entry in tree.get_child("coordinates").children:
+            model_id = model_entry.get_attribute("id", int)
+            if model_id == 0:
+                for atom_entry in model_entry.children:
+                    _atom = atom_index_mapping[atom_entry.get_attribute("serial", int)]
+                    _atom.coord = np.array(
+                        [
+                            atom_entry.get_attribute("x", float),
+                            atom_entry.get_attribute("y", float),
+                            atom_entry.get_attribute("z", float),
+                        ]
+                    )
+            else:
+                snapshot = base_classes.Model(model_id)
+                serials = []
+                coords_list = []
+                for atom_entry in model_entry.children:
+                    serials.append(atom_entry.get_attribute("serial", int))
+                    coords_list.append(
+                        [
+                            atom_entry.get_attribute("x", float),
+                            atom_entry.get_attribute("y", float),
+                            atom_entry.get_attribute("z", float),
+                        ]
+                    )
+                snapshot._atom_serials = serials
+                snapshot._coords = np.array(coords_list, dtype=float)
+                new._base_struct.add(snapshot)
 
-            for atom in model.children:
-                _atom = new._model._atom_index_mapping[
-                    atom.get_attribute("serial", int)
-                ]
-                _atom.coord = np.array(
-                    [
-                        atom.get_attribute("x", float),
-                        atom.get_attribute("y", float),
-                        atom.get_attribute("z", float),
-                    ]
-                )
-
-        new.set_model(0)
-        for model in new.get_models():
-            del model._atom_index_mapping
         return new
 
     @classmethod
@@ -642,6 +678,11 @@ class BaseEntity:
         return list(self._model.get_chains())
 
     @property
+    def chains_(self):
+        # alias for _chains
+        return self._chains
+
+    @property
     def residues(self):
         """
         A sorted list of all residues in the molecule
@@ -654,6 +695,11 @@ class BaseEntity:
         Get the list of residues as returned by the get_residues() method
         """
         return list(self._model.get_residues())
+
+    @property
+    def residues_(self):
+        # alias for _residues
+        return self._residues
 
     @property
     def atoms(self):
@@ -669,6 +715,11 @@ class BaseEntity:
         Get the list of atoms as returned by the get_atoms() method
         """
         return list(self.get_atoms())
+
+    @property
+    def atoms_(self):
+        # alias for _atoms
+        return self._atoms
 
     @property
     def center_of_mass(self):
@@ -914,6 +965,7 @@ class BaseEntity:
         linewidth: float = None,
         atoms: str = None,
         highlight_color: str = None,
+        ax=None,
         **kwargs,
     ):
         """
@@ -935,10 +987,19 @@ class BaseEntity:
             - any function that takes an (rdkit) atom and returns a string
         highlight_color : str
             The color to use for highlighting atoms
+        ax : matplotlib.axes.Axes, optional
+            If provided, render immediately into this axis and return it.
+            Equivalent to ``mol.draw2d().draw(ax=ax, **kwargs)``.
+        **kwargs
+            When ``ax`` is provided, forwarded to ``Chem2DViewer.draw()``.
         """
         viewer = utils.visual.Chem2DViewer(
             self, highlight_color=highlight_color, linewidth=linewidth, atoms=atoms
         )
+        if ax is not None:
+            if linewidth is not None:
+                kwargs.setdefault("linewidth", linewidth)
+            return viewer.draw(ax=ax, **kwargs)
         return viewer
 
     draw2d = chem2dview
@@ -985,15 +1046,22 @@ class BaseEntity:
             return v
 
     def draw(self, *args, **kwargs):
+        if utils.visual.DEFAULT_MODE == "2d":
+            return self.draw2d(*args, **kwargs)
+        else:
+            return self.draw3d(*args, **kwargs)
+
+    def draw3d(self, *args, **kwargs):
         backend = utils.visual.DEFAULT_BACKEND
         return getattr(self, backend)(*args, **kwargs)
-
-    draw3d = draw
 
     def show(self, *args, **kwargs):
         self.draw(*args, **kwargs).show()
 
-    show3d = show
+    def show3d(self, *args, **kwargs):
+        backend = utils.visual.DEFAULT_BACKEND
+        viewer = getattr(self, backend)(*args, **kwargs)
+        viewer.show()
 
     # def vet(
     #     self, clash_range: tuple = (0.7, 1.7), angle_range: tuple = (90, 180)
@@ -1170,7 +1238,22 @@ class BaseEntity:
         if n > 1:
             return [self.copy() for i in range(n)]
         else:
-            new = deepcopy(self)
+            # Inject an empty AtomGraph into the deepcopy memo so deepcopy
+            # skips copying the full NetworkX graph — it gets cleared and
+            # rebuilt immediately after, so copying it is pure overhead.
+            empty_graph = graphs.AtomGraph(self._id, bonds=[])
+            memo = {id(self._AtomGraph): empty_graph}
+            new = deepcopy(self, memo)
+
+            # Restore back-reference and any locked edges (mapped to new atoms).
+            new._AtomGraph._molecule = new
+            if self._AtomGraph._locked_edges:
+                new._AtomGraph._locked_edges = {
+                    (memo[id(a)], memo[id(b)])
+                    for a, b in self._AtomGraph._locked_edges
+                    if id(a) in memo and id(b) in memo
+                }
+
             new._base_struct._new_id()
             new._AtomGraph.clear()
 
@@ -1197,9 +1280,6 @@ class BaseEntity:
             new._AtomGraph.add_nodes_from(new.get_atoms())
             new._AtomGraph.add_edges_from(new.get_bonds())
             for b in new.get_bonds():
-                # I don't think this is necessary. Add again if it causes problems...
-                # b.atom1 = new.get_atom(b.atom1.serial_number)
-                # b.atom2 = new.get_atom(b.atom2.serial_number)
                 new._AtomGraph.edges[b]["bond_order"] = b.order
                 new._AtomGraph.edges[b]["bond_obj"] = b
             return new
@@ -1234,8 +1314,9 @@ class BaseEntity:
         """
         self._base_struct = other._base_struct
         self._model = other._model
-        self._AtomGraph = other._AtomGraph
+        self._active_conformer_id = other._active_conformer_id
         self._bonds = other._bonds
+        self._AtomGraph = other._AtomGraph
         return self
 
     def cleanup(
@@ -1272,17 +1353,17 @@ class BaseEntity:
             Whether to infer bonds from the atom positions and element types
         """
         if remove_empty_residues:
-            self.remove_empty_residues()
+            self.drop_empty_residues()
         if remove_empty_chains:
-            self.remove_empty_chains()
+            self.drop_empty_chains()
         if remove_empty_models:
-            self.remove_empty_models()
+            self.drop_empty_models()
         if reindex:
             self.reindex()
         if remove_hydrogens and add_hydrogens:
             raise ValueError("Cannot remove and add hydrogens at the same time")
         elif remove_hydrogens:
-            self.remove_hydrogens()
+            self.drop_hydrogens()
         elif add_hydrogens:
             self.add_hydrogens()
         if apply_standard_bonds:
@@ -1295,8 +1376,8 @@ class BaseEntity:
         """
         Remove all empty models from the molecule
         """
-        for model in self.models:
-            if len(model) == 0:
+        for model in list(self.models):
+            if len(model.child_list) == 0 and model._coords is None:
                 self.remove_model(model)
         return self
 
@@ -2583,7 +2664,7 @@ class BaseEntity:
             adx = start_atomid
 
             for chain in model.child_list:
-                chain._id = utils.auxiliary.chain_id_maker(cdx)
+                chain.id = utils.auxiliary.chain_id_maker(cdx)
                 cdx += 1
 
                 for residue in chain.child_list:
@@ -2632,33 +2713,44 @@ class BaseEntity:
         """
         Split the molecule into multiple molecules, each containing one of the models.
         """
-        models = []
-        for model in self.models:
-            new = self.__class__.empty(id=self.id)
-            new.remove_chains("A")
-            m = model.copy() if _copy else model
-            new.add_chains(m.child_list)
-            for bond in self._bonds:
-                i, j = bond.atom1, bond.atom2
-                order = bond.order
-                new._set_bond(
-                    new.get_atom(i.serial_number), new.get_atom(j.serial_number), order
-                )
-            new.update_atom_graph()  # for some reason...
-            models.append(new)
+        import copy as copy_mod
+
+        results = []
+        saved_active_id = self._active_conformer_id
+
+        for model in list(self.models):
+            self.set_model(model)
+            new_mol = copy_mod.deepcopy(self)
+            # Keep only the canonical model in the copy
+            canonical = new_mol._base_struct.child_list[0]
+            new_mol._base_struct.child_list = [canonical]
+            new_mol._base_struct.child_dict = {canonical.get_id(): canonical}
+            new_mol._active_conformer_id = new_mol._model.id
+            results.append(new_mol)
 
         if not _copy:
             self.clear()
-        return models
+        else:
+            saved_model = next(
+                (m for m in self._base_struct.child_list if m.id == saved_active_id),
+                None,
+            )
+            if saved_model is not None:
+                self.set_model(saved_model)
+        return results
 
     def set_model(self, model: int):
         """
-        Set the current working model of the molecule
+        Set the current working model of the molecule.
+
+        Models no longer store separate atom copies — they store only a
+        coordinate snapshot. Switching models does a bulk numpy write of the
+        target conformer's coordinates into the canonical atom objects.
 
         Parameters
         ----------
-        model : Int
-            The id of the model to set as active
+        model : int or Model
+            The id (integer index) of the model, or the Model object itself.
         """
         if isinstance(model, int):
             if model < len(self._base_struct.child_list):
@@ -2674,15 +2766,34 @@ class BaseEntity:
                 raise ValueError(
                     f"Model {model} not in molecule. Available models: {self.models}. First add the model to the molecule to set it as the active model!"
                 )
-        # we have to update the bond references to the new model
-        # since each model stores copies of the atoms
-        atom_mapping = {i.serial_number: i for i in new_model.get_atoms()}
-        for bond in self.get_bonds():
-            bond.atom1 = atom_mapping[bond.atom1.serial_number]
-            bond.atom2 = atom_mapping[bond.atom2.serial_number]
-        del atom_mapping
-        self._model = new_model
-        self.update_atom_graph()
+        else:
+            raise TypeError(f"model must be int or Model, got {type(model)}")
+
+        if new_model.id == self._active_conformer_id:
+            return self
+
+        # Canonical atom list (deterministic order by serial number)
+        canonical_atoms = sorted(self._AtomGraph.nodes, key=lambda a: a.serial_number)
+
+        # Snapshot the currently-active conformer back into its Model object
+        active_model_obj = next(
+            (
+                m
+                for m in self._base_struct.child_list
+                if m.id == self._active_conformer_id
+            ),
+            None,
+        )
+        if active_model_obj is not None:
+            active_model_obj.snapshot(canonical_atoms)
+
+        # Restore the requested conformer's coords into canonical atoms
+        atom_map = {a.serial_number: a for a in canonical_atoms}
+        new_model.restore(atom_map)
+
+        # self._model always remains the canonical model that holds the chains/residues/atoms,
+        # the active conformer only determines which coordinates the canonical atoms currently have
+        self._active_conformer_id = new_model.id
         return self
 
     def get_model(self, model: int = None) -> base_classes.Model:
@@ -2714,25 +2825,45 @@ class BaseEntity:
 
     def add_model(self, model: Union[int, base_classes.Model] = None):
         """
-        Add a new model to the molecule's structure
+        Add a new conformer (model) to the molecule.
+
+        Rather than deep-copying atom objects, the new model stores only a
+        coordinate snapshot (numpy array).
 
         Parameters
         ----------
-        model : int or Model
-            If not given, a new completely blank model is created. If an integer is given, an existing model
-            is copied and added to the molecule. If a Model object is given, it is added to the molecule.
+        model : int or Model or None
         """
+        new_id = len(self._base_struct.child_list)
+        while new_id in self._base_struct.child_dict:
+            new_id += 1
+        canonical_atoms = sorted(self._AtomGraph.nodes, key=lambda a: a.serial_number)
+
         if isinstance(model, int):
-            new = self.get_model(model).copy()
-            new.id = len(self._base_struct.child_list)
+            source = self.get_model(model)
+            new = base_classes.Model(new_id)
+            if source.id == self._active_conformer_id:
+                new.snapshot(canonical_atoms)
+            elif source._coords is not None:
+                new._atom_serials = list(source._atom_serials)
+                new._coords = source._coords.copy()
+            else:
+                new.snapshot(canonical_atoms)
         elif isinstance(model, base_classes.Model):
-            new = model
-            new.id = len(self._base_struct.child_list)
+            new = base_classes.Model(new_id)
+            if model._coords is not None:
+                new._atom_serials = list(model._atom_serials)
+                new._coords = model._coords.copy()
+            else:
+                # a model with actual atoms (e.g. the canonical model of another molecule)
+                # only contributes its coordinates, we do not adopt its chains
+                new.snapshot(list(model.get_atoms()))
         elif isinstance(model, BaseEntity):
-            new = model._model
-            new.id = len(self._base_struct.child_list)
+            new = base_classes.Model(new_id)
+            new.snapshot(list(model._model.get_atoms()))
         elif model is None:
-            new = base_classes.Model(len(self._base_struct.child_list))
+            new = base_classes.Model(new_id)
+            new.snapshot(canonical_atoms)
         else:
             raise ValueError(f"Unknown model type {type(model)}")
 
@@ -2770,7 +2901,9 @@ class BaseEntity:
             model = self.get_model(model)
         self._base_struct.child_list.remove(model)
         self._base_struct.child_dict.pop(model.get_id())
-        self.remove_chains(model.child_list)
+        if model._coords is None and model.child_list:
+            # Canonical model with real chains — remove them from the molecule too
+            self.remove_chains(model.child_list)
         return model
 
     def split_contiguous(self, target_residues: list = None):
@@ -3566,7 +3699,7 @@ class BaseEntity:
             if _copy:
                 chain = chain.copy()
             if adjust_seqid:
-                chain._id = utils.auxiliary.chain_id_maker(len(self.chains))
+                chain.id = utils.auxiliary.chain_id_maker(len(self.chains))
             self._model.add(chain)
         return self
 
@@ -3727,7 +3860,7 @@ class BaseEntity:
             The new name
         """
         chain = self.get_chain(chain)
-        chain._id = name
+        chain.id = name
         return self
 
     def rename_residue(self, residue: Union[int, base_classes.Residue], name: str):
@@ -4458,7 +4591,7 @@ class BaseEntity:
     def infer_bonds(
         self,
         max_bond_length: float = None,
-        restrict_residues: bool = True,
+        restrict_residues: bool = None,
         infer_bond_orders: bool = False,
     ) -> list:
         """
@@ -4481,6 +4614,8 @@ class BaseEntity:
         list
             A list of tuples of atom pairs that are bonded
         """
+        if restrict_residues is None:
+            restrict_residues = self.default_bonds_infer.strip().lower() != "all"
         bonds = structural.infer_bonds(self._model, max_bond_length, restrict_residues)
         self._set_bonds(*bonds)
         if infer_bond_orders:
@@ -4780,13 +4915,14 @@ class BaseEntity:
         bonds = structural.infer_residue_connections(
             self._base_struct, bond_length, triplet
         )
-        _bonds = [base_classes.Bond(*b) for b in bonds]
-        _bonds = [b for b in _bonds if b not in self._bonds]
-        self._bonds.extend(_bonds)
-        self._AtomGraph.add_edges_from(bonds)
-        for b in _bonds:
-            self._AtomGraph.edges[b[0], b[1]]["bond_order"] = 1
-            self._AtomGraph.edges[b[0], b[1]]["bond_obj"] = b
+        # Use the graph as the authoritative dedup source — Bond.__eq__ is
+        # object identity, so "b not in self._bonds" never filters correctly.
+        for atom1, atom2 in bonds:
+            if self._AtomGraph.has_edge(atom1, atom2):
+                continue
+            bond = base_classes.Bond(atom1, atom2, 1)
+            self._AtomGraph.add_edge(atom1, atom2, bond_order=1, bond_obj=bond)
+            self._bonds.append(bond)
         return bonds
 
     def apply_standard_bonds(self, _compounds=None) -> list:
@@ -4833,6 +4969,72 @@ class BaseEntity:
         self._set_bonds(*bonds)
         return bonds
 
+    def adopt_from_template(
+        self,
+        template: "Molecule",
+        anchors: dict,
+        rename: bool = False,
+        strict: bool = False,
+        infer_missing: bool = False,
+        infer_bond_orders: bool = False,
+        recompute_hydrogens: bool = True,
+    ):
+        """
+        Adopt the connectivity (bonds) from another (template) molecule into this molecule.
+        This is useful if you have a molecule with the correct 3D coordinates, but
+         - `infer_bonds` does not yield satisfactory results
+         - you have no reference compounds for `apply_standard_bonds`
+         - your reference compound has a different atom naming scheme than your molecule
+
+        Parameters
+        ----------
+        template : Molecule
+            The template molecule to adopt the bonds from
+        anchors : dict
+            A mapping of atoms in this molecule to atoms in the template molecule that should be used as anchors for the adoption.
+            The keys are atoms in this molecule (specified by serial number, id, or Atom object) and the values are atoms in the template molecule (specified by serial number, id, or Atom object).
+            At least three anchor pairs must be provided for a successful adoption. Also, these anchors must be part of the same connected component in both molecules (i.e. they must be connected by bonds).
+        rename : bool
+            If True, the atom ids in this molecule will be renamed to match the template molecule.
+        strict : bool
+            If True, the atom sets of both this and the template molecule must match exactly. Otherwise a lenient mapping is attempted allowing for missing atoms in either molecule.
+        infer_missing : bool
+            If True, bonds that could not be adopted from the template molecule will be inferred using `infer_bonds`.
+        infer_bond_orders : bool
+            If True and `infer_missing` is True, the bond orders of the inferred bonds will be determined based on registered functional groups.
+        recompute_hydrogens : bool
+            If True, hydrogens are dropped before the adoption and re-added afterwards. Since this makes the adoption less sensitive to potential differences in hydrogen placement, this is recommended.
+
+        Returns
+        -------
+        Molecule
+            The molecule with the adopted bonds (in-place modification).
+        """
+        if recompute_hydrogens:
+            had_hydrogens_at_start = self.has_hydrogens()
+            atoms_with_hydrogens = set(
+                atom for atom in self.get_atoms() if self.get_hydrogen(atom) is not None
+            )
+            self.drop_hydrogens(atoms_with_hydrogens)
+
+        target_to_template, mapped_bonds = structural.infer_mapping_from_template(
+            target=self,
+            template=template,
+            anchors=anchors,
+            strict=strict,
+        )
+        # apply the mapped bonds
+        self._set_bonds(*mapped_bonds)
+        if rename:
+            for target_atom, template_atom in target_to_template.items():
+                target_atom.id = template_atom.id
+
+        if infer_missing:
+            self.infer_bonds(infer_bond_orders=infer_bond_orders)
+        if recompute_hydrogens and had_hydrogens_at_start:
+            self.add_hydrogens(atoms_with_hydrogens)
+        return self
+
     def autolabel(self, atoms: list = None):
         """
         Automatically label atoms in the structure to match the CHARMM force field
@@ -4843,7 +5045,7 @@ class BaseEntity:
         ----------
         atoms : list
             Optionally restrict the autolabelling to a specific set of atoms. If None, all atoms are considered.
-        
+
         Returns
         -------
         Molecule
@@ -5108,7 +5310,7 @@ class BaseEntity:
     get_residue_graph = make_residue_graph
     make_atom_graph = get_atom_graph
 
-    def to_pdb(self, filename: str, symmetric: bool = True):
+    def to_pdb(self, filename: str, symmetric: bool = True, safe: bool = True):
         """
         Write the molecule to a PDB file
 
@@ -5120,8 +5322,11 @@ class BaseEntity:
             If True, bonds are written symmetrically - i.e. if atom A is bonded to atom B, then atom B is also bonded to atom A,
             and both atoms will get an entry in the "CONECT" section. If False, only one of the atoms will get an entry in the
             "CONECT" section.
+        safe : bool
+            If True, fixed-width text fields are truncated to PDB-compatible widths
+            before writing. If False, overlong names are written verbatim.
         """
-        utils.pdb.write_pdb(self, filename, symmetric=symmetric)
+        utils.pdb.write_pdb(self, filename, symmetric=symmetric, safe=safe)
 
     def to_cif(self, filename: str):
         """
@@ -5266,18 +5471,24 @@ class BaseEntity:
             mol.title = self.id
         return mol
 
-    def to_rdkit(self):
+    def to_rdkit(self, sanitize: bool = True, **kwargs):
         """
         Convert the molecule to an RDKit molecule
+
+        Parameters
+        ----------
+        sanitize : bool
+            Whether to sanitize the RDKit molecule. Full sanitization
+            includes SSSR ring detection, which can hang indefinitely on
+            large structures such as proteins. Set to False when only
+            3-D coordinates and connectivity are needed.
 
         Returns
         -------
         rdkit.Chem.rdchem.Mol
             The RDKit molecule
         """
-        conv = utils.convert.RDKITBiopythonConverter()
-        conv.molecule_to_pdbio(self)
-        mol = conv._pdbio_to_rdkit()
+        mol = utils.convert.molecule_to_rdkit(self, sanitize=sanitize, **kwargs)
         if self.id is not None:
             mol.SetProp("_Name", self.id)
         return mol
@@ -5684,6 +5895,117 @@ class BaseEntity:
         using the @ operator (i.e. mol @ 1, for residue 1)
         """
         self.set_attach_residue(residue)
+        return self
+
+    def __sub__(self, other):
+        """
+        Remove atoms, residues, chains, or bonds from the molecule using the ``-`` operator.
+
+        The type of removal is inferred from the type of *other*:
+
+        * :class:`~buildamol.base_classes.Atom` (or a list/tuple/set thereof) → ``drop_atoms``
+        * :class:`~buildamol.base_classes.Residue` (or a list/tuple/set thereof) → ``drop_residues``
+        * :class:`~buildamol.base_classes.Chain` (or a list/tuple/set thereof) → ``drop_chains``
+        * :class:`~buildamol.base_classes.Bond` (or a list/tuple/set thereof) → ``drop_bond``
+
+        Returns a copy of the molecule with the specified elements removed.
+        """
+        result = self.copy()
+        result.__isub__(other)
+        return result
+
+    def __isub__(self, other):
+        """
+        Remove atoms, residues, chains, or bonds from the molecule in-place using the ``-=`` operator.
+
+        The type of removal is inferred from the type of *other*:
+
+        * :class:`~buildamol.base_classes.Atom` (or a list/tuple/set thereof) → ``drop_atoms``
+        * :class:`~buildamol.base_classes.Residue` (or a list/tuple/set thereof) → ``drop_residues``
+        * :class:`~buildamol.base_classes.Chain` (or a list/tuple/set thereof) → ``drop_chains``
+        * :class:`~buildamol.base_classes.Bond` (or a list/tuple/set thereof) → ``drop_bond``
+        """
+        if isinstance(other, (list, tuple, set)):
+            items = list(other)
+        else:
+            items = [other]
+
+        if len(items) == 0:
+            return self
+
+        first = items[0]
+        if isinstance(first, base_classes.Bond):
+            for bond in items:
+                self._remove_bond(bond.atom1, bond.atom2)
+        elif isinstance(first, base_classes.Atom):
+            self.drop_atoms(*items)
+        elif isinstance(first, base_classes.Residue):
+            self.drop_residues(*items)
+        elif isinstance(first, base_classes.Chain):
+            self.drop_chains(*items)
+        else:
+            raise TypeError(
+                f"Unsupported type for '-' operator: {type(first).__name__}. "
+                "Expected Atom, Residue, Chain, or Bond (or a list/tuple/set thereof)."
+            )
+        return self
+
+    def __getitem__(self, idx):
+        if not self.__itemgetter:
+            raise NotImplementedError(
+                "Item getting is not supported by default, use set_getitem to define how items should be retrieved using the [] operator."
+            )
+        return self.__itemgetter(idx)
+
+    def set_getitem(self, how: Union[str, callable]):
+        """
+        Set the method for retrieving items using the [] operator.
+
+        Parameters
+        ----------
+        how : str or callable
+            If a callable is provided it should be a function that takes the molecule and an index as input and returns the corresponding item.
+            If a string is provided, it can be any of:
+            - atom-serial (retrieve atom by serial number)
+            - atom-index (retrieve atom by index in the list of atoms)
+            - atom-id (retrieve atom by id/name, will return the first match)
+            - residue-serial (retrieve residue by serial number)
+            - residue-index (retrieve residue by index in the list of residues)
+            - residue-id (retrieve residue by id/name, will return the first match)
+            - chain-id (retrieve chain by id/name, will return the first match)
+            - chain-index (retrieve chain by index in the list of chains)
+            - model-id (retrieve model by id/name, will return the first match)
+            - model-index (retrieve model by index in the list of models)
+        """
+        if callable(how):
+            self.__itemgetter = lambda idx: how(self, idx)
+        elif isinstance(how, str):
+            if "-name" in how:
+                how = how.replace("-name", "-id")
+            if how == "atom-serial":
+                self.__itemgetter = lambda idx: self.get_atom(idx, by="serial")
+            elif how == "atom-id":
+                self.__itemgetter = lambda idx: self.get_atom(idx, by="id")
+            elif how == "atom-index":
+                self.__itemgetter = lambda idx: self._atoms[idx]
+            elif how == "residue-serial":
+                self.__itemgetter = lambda idx: self.get_residue(idx, by="serial")
+            elif how == "residue-index":
+                self.__itemgetter = lambda idx: self._residues[idx]
+            elif how == "residue-id":
+                self.__itemgetter = lambda idx: self.get_residue(idx, by="id")
+            elif how == "chain-id":
+                self.__itemgetter = lambda idx: self.get_chain(idx)
+            elif how == "chain-index":
+                self.__itemgetter = lambda idx: self._chains[idx]
+            elif how == "model-id":
+                self.__itemgetter = lambda idx: self.get_model(idx)
+            elif how == "model-index":
+                self.__itemgetter = lambda idx: self.models[idx]
+            else:
+                raise ValueError(f"Unknown getitem method {how}")
+        else:
+            raise ValueError("how must be either a string or a callable")
         return self
 
 

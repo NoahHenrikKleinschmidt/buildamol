@@ -2,6 +2,106 @@
 Auxiliary tools for PDB files.
 """
 
+import warnings
+
+_BASE36_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_EXTENDED_PREFIXES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+
+def _to_base36(value: int) -> str:
+    if value == 0:
+        return "0"
+    encoded = []
+    while value > 0:
+        value, remainder = divmod(value, 36)
+        encoded.append(_BASE36_ALPHABET[remainder])
+    return "".join(reversed(encoded))
+
+
+def _parse_extended_int(value: str) -> int:
+    token = value.strip()
+    if len(token) == 0:
+        return 0
+
+    sign = 1
+    if token[0] == "-":
+        sign = -1
+        token = token[1:]
+    elif token[0] == "+":
+        token = token[1:]
+
+    if len(token) == 0:
+        return 0
+
+    if token.isdigit():
+        return sign * int(token)
+
+    lead = token[0]
+    if lead not in _EXTENDED_PREFIXES:
+        return 0
+
+    suffix = token[1:].upper()
+    if any(char not in _BASE36_ALPHABET for char in suffix):
+        return 0
+
+    width = len(token)
+    decimal_limit = 10**width - 1
+    suffix_value = 0
+    for char in suffix:
+        suffix_value = suffix_value * 36 + _BASE36_ALPHABET.index(char)
+
+    prefix_index = _EXTENDED_PREFIXES.index(lead)
+    value = decimal_limit + 1 + prefix_index * (36 ** (width - 1)) + suffix_value
+    return sign * value
+
+
+def _format_extended_int(value: int, width: int) -> str:
+    value = int(value)
+    if value >= 0 and len(str(value)) <= width:
+        return f"{value:>{width}d}"
+
+    if value < 0:
+        raise ValueError(
+            f"Cannot encode negative integer {value} into an extended PDB field."
+        )
+
+    decimal_limit = 10**width - 1
+    offset = value - (decimal_limit + 1)
+    if offset < 0:
+        return f"{value:>{width}d}"
+
+    span = 36 ** (width - 1)
+    prefix_index, suffix_value = divmod(offset, span)
+    if prefix_index >= len(_EXTENDED_PREFIXES):
+        raise ValueError(
+            f"Cannot encode integer {value} into a width-{width} PDB field."
+        )
+
+    prefix = _EXTENDED_PREFIXES[prefix_index]
+    suffix = _to_base36(suffix_value).rjust(width - 1, "0")
+    return f"{prefix}{suffix}"
+
+
+def _parse_float_field(value, default=0.0):
+    token = value.strip()
+    if len(token) == 0:
+        return default
+    try:
+        return float(token)
+    except ValueError:
+        return default
+
+
+def _format_pdb_text_field(value, width: int, align: str = "<", safe: bool = True) -> str:
+    text = "" if value is None else str(value)
+    if safe:
+        text = text[:width]
+
+    if align == ">":
+        return f"{text:>{width}}"
+    return f"{text:<{width}}"
+
+
 __amino_acids = set(
     (
         "ALA",
@@ -53,7 +153,40 @@ def find_models(filename):
     return models
 
 
-def write_pdb(mol, filename, symmetric: bool = True):
+def _all_models_complete(mol) -> bool:
+    """
+    Return True if every snapshot model covers all canonical atoms.
+
+    When atoms are added to a molecule after loading (e.g. attaching a ligand
+    to an NMR ensemble), the extra MODEL snapshots only know about the original
+    atoms.  Writing those models produces PDB records where the new atoms appear
+    at the wrong position (they retain the active conformer's coords).  This
+    helper detects that situation so callers can fall back to single-model output.
+    """
+    n_atoms = sum(1 for _ in mol.get_atoms())
+    for model in getattr(mol, "_base_struct", mol).child_list:
+        sn = getattr(model, "_atom_serials", None)
+        if sn is not None and len(sn) < n_atoms:
+            warnings.warn(
+                f"Model {model.id} does not have coordinates for all atoms (atoms were probably added after the model was created). "
+                "Only the active model is written."
+            )
+            return False
+    return True
+
+
+def _save_active_model(mol):
+    """Return the currently active Model object (for later restore), or None."""
+    active_id = getattr(mol, "_active_conformer_id", None)
+    if active_id is None:
+        return None
+    for m in getattr(getattr(mol, "_base_struct", None), "child_list", []):
+        if m.id == active_id:
+            return m
+    return None
+
+
+def write_pdb(mol, filename, symmetric: bool = True, safe: bool = True):
     """
     Write a molecule to a PDB file.
 
@@ -65,24 +198,32 @@ def write_pdb(mol, filename, symmetric: bool = True):
         The filename to write to.
     symmetric : bool, optional
         Whether to write the molecule in a symmetric way, by default True.
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths,
+        by default True.
     """
     with open(filename, "w") as f:
-        if len(mol.models) > 1:
-            for model in mol.get_models():
-                f.write(f"MODEL {model.id}\n")
-                mol.set_model(model)
-                f.write(make_atoms_table(mol))
-                f.write("\nENDMDL\n")
-            f.write(make_connect_table(mol, symmetric))
-            f.write("\nEND\n")
+        if len(mol.models) > 1 and _all_models_complete(mol):
+            saved = _save_active_model(mol)
+            try:
+                for model in mol.get_models():
+                    f.write(f"MODEL {model.id}\n")
+                    mol.set_model(model)
+                    f.write(make_atoms_table(mol, safe=safe))
+                    f.write("\nENDMDL\n")
+                f.write(make_connect_table(mol, symmetric))
+                f.write("\nEND\n")
+            finally:
+                if saved is not None:
+                    mol.set_model(saved)
         else:
-            f.write(make_atoms_table(mol))
+            f.write(make_atoms_table(mol, safe=safe))
             f.write("\n")
             f.write(make_connect_table(mol, symmetric))
             f.write("\nEND\n")
 
 
-def encode_pdb(mol, symmetric: bool = True) -> str:
+def encode_pdb(mol, symmetric: bool = True, safe: bool = True, reindex: bool = False) -> str:
     """
     Encode a molecule to a PDB file without actually writing it to disk.
 
@@ -92,24 +233,44 @@ def encode_pdb(mol, symmetric: bool = True) -> str:
         The molecule to write.
     symmetric : bool, optional
         Whether to write the molecule in a symmetric way, by default True.
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths,
+        by default True.
+    reindex : bool, optional
+        If True, remap all atom serials to a dense 1-based sequential range
+        before writing. This is required for viewers (e.g. py3Dmol) that do
+        not understand hybrid-36 encoded serial numbers (used when atom count
+        exceeds 99999), by default False.
 
     Returns
     -------
     str
         The PDB file contents.
     """
+    serial_map = None
+    res_serial_map = None
+    if reindex:
+        serial_map = {a.serial_number: i + 1 for i, a in enumerate(mol.get_atoms())}
+        res_serial_map = {r.serial_number: i + 1 for i, r in enumerate(mol.get_residues())}
+
     lines = []
-    if len(mol.models) > 1:
-        for model in mol.get_models():
-            lines.append(f"MODEL {model.id}")
-            mol.set_model(model)
-            lines.append(make_atoms_table(mol))
-            lines.append("ENDMDL")
-        lines.append(make_connect_table(mol, symmetric))
-        lines.append("END")
+    n_models = len(getattr(mol, "models", []))
+    if n_models > 1 and _all_models_complete(mol):
+        saved = _save_active_model(mol)
+        try:
+            for model in mol.get_models():
+                lines.append(f"MODEL {model.id}")
+                mol.set_model(model)
+                lines.append(make_atoms_table(mol, safe=safe, serial_map=serial_map, res_serial_map=res_serial_map))
+                lines.append("ENDMDL")
+            lines.append(make_connect_table(mol, symmetric, serial_map=serial_map))
+            lines.append("END")
+        finally:
+            if saved is not None:
+                mol.set_model(saved)
     else:
-        lines.append(make_atoms_table(mol))
-        lines.append(make_connect_table(mol, symmetric))
+        lines.append(make_atoms_table(mol, safe=safe, serial_map=serial_map, res_serial_map=res_serial_map))
+        lines.append(make_connect_table(mol, symmetric, serial_map=serial_map))
         lines.append("END")
     return "\n".join(lines)
 
@@ -189,9 +350,9 @@ def _parse_connect_lines(lines):
                 if len(line[i : i + 5].strip()) > 0
             ]
 
-            atom_a = int(tokens[0])
+            atom_a = _parse_extended_int(tokens[0])
             for token in tokens[1:]:
-                b = (atom_a, int(token))
+                b = (atom_a, _parse_extended_int(token))
                 # make sure we don't add the same bond twice
                 if b[::-1] in known_bonds:
                     continue
@@ -212,7 +373,7 @@ def _parse_atom_lines(lines, model=None):
     _skip_lines = False
     for line in lines:
         if line.startswith("MODEL"):
-            _model = int(line.split()[-1])
+            _model = _parse_extended_int(line.split()[-1])
             if model is not None and not _model == model:
                 _skip_lines = True
             else:
@@ -228,34 +389,46 @@ def _parse_atom_lines(lines, model=None):
 
 def _split_atom_line(line) -> tuple:
     info = {
-        "serial": int(line[6:11].strip()),
+        "serial": _parse_extended_int(line[6:11]),
         "id": line[12:16].strip(),
         "alt_loc": line[16].strip(),
         "residue": line[17:20].strip(),
         "chain": line[21].strip(),
-        "res_seq": int(line[22:26].strip()),
+        "res_seq": _parse_extended_int(line[22:26]),
         "icode": line[26].strip(),
-        "x": line[30:38].strip(),
-        "y": line[38:46].strip(),
-        "z": line[46:54].strip(),
-        "occ": float(line[54:60].strip()),
-        "temp": float(line[60:66].strip()),
+        "x": _parse_float_field(line[30:38]),
+        "y": _parse_float_field(line[38:46]),
+        "z": _parse_float_field(line[46:54]),
+        "occ": _parse_float_field(line[54:60], default=1.0),
+        "temp": _parse_float_field(line[60:66]),
         "element": line[76:78].strip(),
         "charge": _parse_charge(line),
     }
     return info
 
+
 _plusminus = ("+", "-")
+
+
 def _parse_charge(line):
     charge = line[78:80].strip()
     if len(charge) == 0:
         return 0
     elif charge[0] in _plusminus:
-        return int(charge)
+        try:
+            return int(charge)
+        except ValueError:
+            return 0
     elif charge[-1] in _plusminus:
-        return int(charge[::-1])
+        try:
+            return int(charge[::-1])
+        except ValueError:
+            return 0
+    return 0
 
-def make_connect_table(mol, symmetric=True):
+
+
+def make_connect_table(mol, symmetric=True, serial_map=None):
     """
     Make a "CONECT" table for a PDB file.
     This is necessary since Biopython by default does not do that...
@@ -267,6 +440,9 @@ def make_connect_table(mol, symmetric=True):
     symmetric : bool, optional
         Whether to generate symmetric bonds (i.e. if A is bonded to B, then
         B is bonded to A as well). Default is True. And both are written to the file.
+    serial_map : dict, optional
+        A mapping from original atom serial numbers to new serial numbers.
+        Used when reindexing atoms for viewers that don't support hybrid-36 encoding.
 
     Returns
     -------
@@ -275,8 +451,10 @@ def make_connect_table(mol, symmetric=True):
     """
     connectivity = {}
     for bond in mol.get_bonds():
-        a = bond.atom1.serial_number
-        b = bond.atom2.serial_number
+        a_raw = bond.atom1.serial_number
+        b_raw = bond.atom2.serial_number
+        a = serial_map[a_raw] if serial_map else a_raw
+        b = serial_map[b_raw] if serial_map else b_raw
         if a not in connectivity:
             connectivity[a] = [b] * bond.order
         else:
@@ -290,12 +468,12 @@ def make_connect_table(mol, symmetric=True):
 
     lines = []
     for atom in connectivity:
-        line = "CONECT" + left_adjust(str(atom), 5)
+        line = "CONECT" + _format_extended_int(atom, 5)
         for c in connectivity[atom]:
-            line += left_adjust(str(c), 5)
+            line += _format_extended_int(c, 5)
             if len(line) > 70:
                 lines.append(line)
-                line = "CONECT" + left_adjust(str(atom), 5)
+                line = "CONECT" + _format_extended_int(atom, 5)
         lines.append(line)
     return "\n".join(lines)
 
@@ -304,7 +482,7 @@ def make_connect_table(mol, symmetric=True):
 atom_line = "{prefix}{serial}{neg_adj}{id}{altloc}{residue} {chain}{res_serial}{icode}    {x}{y}{z}{occ}{temp}       {seg}{element}{charge}"
 
 
-def make_atoms_table(mol):
+def make_atoms_table(mol, safe: bool = True, serial_map=None, res_serial_map=None):
     """
     Make a PDB atom table
 
@@ -312,6 +490,16 @@ def make_atoms_table(mol):
     ----------
     mol : bam.Molecule
         The molecule to generate the table for.
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths,
+        by default True.
+    serial_map : dict, optional
+        A mapping from original atom serial numbers to new serial numbers.
+        Used when reindexing atoms for viewers that don't support hybrid-36 encoding.
+    res_serial_map : dict, optional
+        A mapping from original residue serial numbers to new serial numbers.
+        Used when reindexing residues for tools (e.g. meeko) that require plain
+        decimal residue sequence numbers.
 
     Returns
     -------
@@ -320,14 +508,27 @@ def make_atoms_table(mol):
     """
     lines = []
     for atom in mol.get_atoms():
-        new_line = encode_atom(atom)
+        serial = serial_map[atom.serial_number] if serial_map else None
+        res_serial = res_serial_map[atom.get_parent().serial_number] if res_serial_map else None
+        new_line = encode_atom(atom, safe=safe, serial=serial, res_serial=res_serial)
         lines.append(new_line)
     return "\n".join(lines)
 
 
-def encode_atom(atom) -> str:
+def encode_atom(atom, safe: bool = True, serial=None, res_serial=None) -> str:
     """
     Make an ATOM line for a PDB file.
+
+    Parameters
+    ----------
+    atom : Atom
+        The atom to encode.
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths.
+    serial : int, optional
+        Override for the atom serial number. If None, uses atom.serial_number.
+    res_serial : int, optional
+        Override for the residue sequence number. If None, uses atom.get_parent().serial_number.
     """
     neg_adj = " "
     # if len(atom.id) > 3:
@@ -346,74 +547,34 @@ def encode_atom(atom) -> str:
     else:
         prefix = "HETATM"
 
+    occupancy = atom.occupancy if atom.occupancy is not None else 1.0
+    bfactor = atom.bfactor if atom.bfactor is not None else 0.0
+
     new_line = atom_line.format(
         prefix=prefix,
-        serial=left_adjust(str(atom.serial_number), 5),
+        serial=_format_extended_int(serial if serial is not None else atom.serial_number, 5),
         neg_adj=neg_adj,
-        id=right_adjust(atom.id.upper()[:4], 4),
-        # id=right_adjust(
-        #     atom.id.replace(atom.element.upper(), "").replace(
-        #         atom.element.title(), ""
-        #     ),
-        #     2,
-        # ),
-        altloc=right_adjust(atom.altloc, 1),
-        residue=left_adjust(atom.get_parent().resname, 3),
-        chain=atom.get_parent().get_parent().id or " ",
-        # resseq=left_adjust(" ", 3),
-        res_serial=left_adjust(str(atom.get_parent().serial_number), 4),
+        id=_format_pdb_text_field(atom.id.upper(), 4, safe=safe),
+        altloc=_format_pdb_text_field(atom.altloc, 1, safe=safe),
+        residue=_format_pdb_text_field(
+            atom.get_parent().resname, 3, align=">", safe=safe
+        ),
+        chain=_format_pdb_text_field(
+            atom.get_parent().get_parent().id or " ", 1, safe=safe
+        ),
+        res_serial=_format_extended_int(res_serial if res_serial is not None else atom.get_parent().serial_number, 4),
         icode="",  # atom.get_parent().id[2],
-        x=left_adjust(f"{atom.coord[0]:.3f}", 8),
-        y=left_adjust(f"{atom.coord[1]:.3f}", 8),
-        z=left_adjust(f"{atom.coord[2]:.3f}", 8),
-        # occ=left_adjust("1.00", 6),
-        occ=left_adjust(f"{atom.occupancy:.2f}", 6),
-        # temp=left_adjust("0.00", 6),
-        temp=left_adjust(f"{atom.bfactor:.2f}", 6),
-        seg=right_adjust("", 3),
-        element=right_adjust(atom.element.upper(), 2),
-        charge=left_adjust(charge, 2),
+        x=f"{atom.coord[0]:>8.3f}",
+        y=f"{atom.coord[1]:>8.3f}",
+        z=f"{atom.coord[2]:>8.3f}",
+        occ=f"{occupancy:>6.2f}",
+        temp=f"{bfactor:>6.2f}",
+        seg=f"{'':<3}",
+        element=_format_pdb_text_field(atom.element.upper(), 2, align=">", safe=safe),
+        charge=f"{charge:>2}",
     )
 
     return new_line
-
-
-def right_adjust(s, n):
-    """
-    Right adjust a string to a certain length.
-
-    Parameters
-    ----------
-    s : str
-        The string to adjust.
-    n : int
-        The length to adjust to.
-
-    Returns
-    -------
-    str
-        The adjusted string.
-    """
-    return s + " " * (n - len(s))
-
-
-def left_adjust(s, n):
-    """
-    Left adjust a string to a certain length.
-
-    Parameters
-    ----------
-    s : str
-        The string to adjust.
-    n : int
-        The length to adjust to.
-
-    Returns
-    -------
-    str
-        The adjusted string.
-    """
-    return " " * (n - len(s)) + s
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-The ConstraintRotatron allows for the optimization of a molecule's conformation while also accepting an additional constraint function that will also contribute to the evaluation. 
+The ConstraintRotatron allows for the optimization of a molecule's conformation while also accepting an additional constraint function that will also contribute to the evaluation.
 """
 
 import buildamol.optimizers.base_rotatron as Rotatron
@@ -33,7 +33,7 @@ class ConstraintRotatron(Rotatron.Rotatron):
         rotatron: Rotatron,
         constraint: callable,
         finisher: callable = None,
-        **kwargs
+        **kwargs,
     ):
         self.rotatron = rotatron
         self.constraint = constraint
@@ -98,15 +98,22 @@ class ConstraintRotatron(Rotatron.Rotatron):
     def _step_with_finish(self, action):
         new_state, _eval, done, info = self.rotatron.step(action)
         _eval += self.constraint(self.rotatron, new_state, **self.kwargs)
-        done = done and self.finisher(self.rotatron, new_state, **self.kwargs)
+        done = bool(done and self.finisher(self.rotatron, new_state, **self.kwargs))
         return new_state, _eval, done, info
 
     def _step_without_finish(self, action):
         new_state, _eval, done, info = self.rotatron.step(action)
         _eval += self.constraint(self.rotatron, new_state, **self.kwargs)
-        return new_state, _eval, done, info
+        return new_state, _eval, bool(done), info
 
-    def done(self, state):
+    def __getattr__(self, name):
+        # everything that is not defined here (graph, state, n_edges, edge_masks, ...)
+        # is provided by the base rotatron
+        if name == "rotatron":
+            raise AttributeError(name)
+        return getattr(self.rotatron, name)
+
+    def is_done(self, state):
         """
         Check if the state is done.
 
@@ -120,10 +127,13 @@ class ConstraintRotatron(Rotatron.Rotatron):
         bool
             Whether the state is done.
         """
-        _done = self.rotatron.done(state)
+        _done = self.rotatron.is_done(state)
         if self.finisher is not None:
             _done = _done and self.finisher(self.rotatron, state, **self.kwargs)
-        return _done
+        return bool(_done)
+
+    # Backward-compatible alias
+    done = is_done
 
 
 if __name__ == "__main__":

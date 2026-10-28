@@ -44,12 +44,12 @@ then all atoms, residues, chains and models will be converted to their BuildAMol
 
 from copy import deepcopy
 from typing import Union, List
+import threading
 
 # from uuid import uuid4
 import Bio.PDB as bio
 import numpy as np
 import periodictable as pt
-
 
 __all__ = ["Atom", "Residue", "Chain", "Model", "Structure", "Bond"]
 
@@ -64,17 +64,27 @@ __global_counters__ = {
 __global_element_counters__ = {}
 
 
-class ID:
+class BuildAMolDataObject:
+    """
+    The foundation for all data-containing objects in BuildAMol.
+    """
+
+    pass
+
+
+class ID(BuildAMolDataObject):
     """
     The base class for BuildAMol's internal object identification.
     All classes that inheret from this class will be recorded as unique objects.
     """
 
     __global_idx__ = 0
+    _id_lock = threading.Lock()
 
     def __init__(self):
-        self.__id = ID.__global_idx__ + 1
-        ID.__global_idx__ += 1
+        with ID._id_lock:
+            ID.__global_idx__ += 1
+            self.__id = ID.__global_idx__
 
     def copy(self):
         new = deepcopy(self)
@@ -88,29 +98,50 @@ class ID:
         return id in self.child_dict
 
     def _new_id(self):
-        self.__id = ID.__global_idx__ + 1
-        ID.__global_idx__ += 1
+        with ID._id_lock:
+            ID.__global_idx__ += 1
+            self.__id = ID.__global_idx__
 
     def _adopt_id(self, id):
         self.__id = id
 
     def __hash__(self):
-        return self.__id
+        return object.__hash__(self)
 
     def __eq__(self, other):
-        if not isinstance(other, ID):
-            return False
-        return self.__id == other.__id
+        return self is other
 
     def __ne__(self, other):
-        if not isinstance(other, ID):
-            return True
-        return self.__id != other.__id
+        return self is not other
 
 
-class Atom(ID, bio.Atom.Atom):
+class _DrawableMixin:
+    """Mixin that gives any atom-containing class 2D/3D draw and show methods."""
+
+    def draw2d(self, **kwargs):
+        """Draw this object in 2D using RDKit. Returns a Chem2DViewer."""
+        from buildamol.utils import visual
+
+        return visual.draw2d(self, **kwargs)
+
+    def draw3d(self, **kwargs):
+        """Draw this object in 3D using the default backend. Returns the viewer."""
+        from buildamol.utils import visual
+
+        return visual.draw3d(self, **kwargs)
+
+    def show2d(self, **kwargs):
+        """Show this object in 2D."""
+        return self.draw2d(**kwargs).show()
+
+    def show3d(self, **kwargs):
+        """Show this object in 3D."""
+        return self.draw3d(**kwargs).show()
+
+
+class Atom(ID):
     """
-    An Atom object that inherits from Biopython's Atom class.
+    An Atom object.
 
     Parameters
     ----------
@@ -136,10 +167,11 @@ class Atom(ID, bio.Atom.Atom):
         The atom radius. The default is None.
     """
 
+    level = "A"
+
     __slots__ = (
         "id",
         "parent",
-        # "name",
         "fullname",
         "coord",
         "mass",
@@ -150,13 +182,6 @@ class Atom(ID, bio.Atom.Atom):
         "element",
         "pqr_charge",
         "radius",
-        "level",
-        "disordered_flag",
-        "anisou_array",
-        "siguij_array",
-        "sigatm_array",
-        "xtra",
-        "_sorting_keys",
     )
 
     def __init__(
@@ -177,20 +202,51 @@ class Atom(ID, bio.Atom.Atom):
         ID.__init__(self)
         if element:
             element = element.upper()
-        bio.Atom.Atom.__init__(
-            self,
-            id,
-            np.asarray(coord, dtype=np.float64),
-            bfactor,
-            occupancy,
-            altloc,
-            fullname,
-            serial_number,
-            element,
-            pqr_charge,
-            radius,
-        )
-        self.level = "A"
+        self.id = id
+        self.coord = np.asarray(coord, dtype=np.float64)
+        self.bfactor = bfactor
+        self.occupancy = occupancy
+        self.altloc = altloc
+        self.fullname = fullname
+        self.serial_number = serial_number
+        self.element = element
+        self.pqr_charge = pqr_charge
+        self.radius = radius
+        try:
+            self.mass = (
+                pt.elements.symbol(element.capitalize()).mass if element else None
+            )
+        except ValueError:
+            self.mass = None
+        self.parent = None
+
+    # Precomputed hydrogen mass (avoids repeated periodic table lookups)
+    _H_MASS = None
+
+    @classmethod
+    def _hydrogen(cls, id: str, coord: "np.ndarray") -> "Atom":
+        """
+        Fast-path constructor for hydrogen atoms.
+        Bypasses the periodic table lookup and redundant np.asarray conversion.
+        For internal use by Hydrogenator only.
+        """
+        if cls._H_MASS is None:
+            cls._H_MASS = pt.elements.symbol("H").mass
+        H = cls.__new__(cls)
+        ID.__init__(H)
+        H.id = id
+        H.coord = coord  # caller guarantees float64 ndarray
+        H.bfactor = 0.0
+        H.occupancy = 1.0
+        H.altloc = " "
+        H.fullname = id
+        H.serial_number = 1
+        H.element = "H"
+        H.pqr_charge = None
+        H.radius = None
+        H.mass = cls._H_MASS
+        H.parent = None
+        return H
 
     @classmethod
     def new(
@@ -291,6 +347,12 @@ class Atom(ID, bio.Atom.Atom):
     def charge(self, value):
         self.pqr_charge = value
 
+    def set_charge(self, value):
+        self.pqr_charge = value
+
+    def get_charge(self):
+        return self.pqr_charge
+
     @property
     def full_id(self):
         p = self.get_parent()
@@ -330,6 +392,34 @@ class Atom(ID, bio.Atom.Atom):
         return self.matches(other, include_id=True, include_coord=include_coord) and (
             self.parent.id[1] == other.parent.id[1]
         )
+
+    def get_parent(self):
+        return self.parent
+
+    def set_parent(self, parent):
+        self.parent = parent
+
+    def detach_parent(self):
+        self.parent = None
+
+    def get_full_id(self):
+        return self.full_id
+
+    def get_coord(self):
+        return self.coord
+
+    def set_coord(self, coord):
+        self.coord = np.asarray(coord, dtype=np.float64)
+
+    def __sub__(self, other):
+        """Return the Euclidean distance between two atoms (matches BioPython Atom behaviour)."""
+        return float(np.linalg.norm(self.coord - other.coord))
+
+    def get_serial_number(self):
+        return self.serial_number
+
+    def set_serial_number(self, n):
+        self.serial_number = n
 
     @classmethod
     def from_biopython(cls, atom) -> "Atom":
@@ -469,6 +559,25 @@ class Atom(ID, bio.Atom.Atom):
         if filter:
             return {a for a in out if filter(a)}
         return out
+
+    def get_hydrogen(self) -> "Atom":
+        """
+        Get a hydrogen neighbor of an atom.
+
+        Parameters
+        ----------
+        atom
+            The atom
+
+        Returns
+        -------
+        Atom
+            A hydrogen neighbor, if it exists, None otherwise
+        """
+        hydrogens = self.get_hydrogens()
+        if hydrogens:
+            return next(iter(hydrogens))
+        return None
 
     def get_hydrogens(self) -> set:
         """
@@ -705,32 +814,41 @@ class Atom(ID, bio.Atom.Atom):
     def __repr__(self):
         return f"Atom({self.id}, {self.serial_number})"
 
+    def _element_number(self):
+        try:
+            return (
+                pt.elements.symbol(self.element.capitalize()).number
+                if self.element
+                else 0
+            )
+        except ValueError:
+            return 0
+
     def __lt__(self, other):
-        return (self.serial_number < other.serial_number) or (
-            pt.elements.symbol(self.element.title()).number
-            < pt.elements.symbol(other.element.title()).number
-        )
+        en_s, en_o = self._element_number(), other._element_number()
+        if en_s != en_o:
+            return en_s < en_o
+        return self.serial_number < other.serial_number
 
     def __gt__(self, other):
-        return self.serial_number > other.serial_number or (
-            pt.elements.symbol(self.element.title()).number
-            > pt.elements.symbol(other.element.title()).number
-        )
+        en_s, en_o = self._element_number(), other._element_number()
+        if en_s != en_o:
+            return en_s > en_o
+        return self.serial_number > other.serial_number
 
     def __le__(self, other):
-        return self.serial_number <= other.serial_number or (
-            pt.elements.symbol(self.element.title()).number
-            <= pt.elements.symbol(other.element.title()).number
-        )
+        en_s, en_o = self._element_number(), other._element_number()
+        if en_s != en_o:
+            return en_s < en_o
+        return self.serial_number <= other.serial_number
 
     def __ge__(self, other):
-        return self.serial_number >= other.serial_number or (
-            pt.elements.symbol(self.element.title()).number
-            >= pt.elements.symbol(other.element.title()).number
-        )
+        en_s, en_o = self._element_number(), other._element_number()
+        if en_s != en_o:
+            return en_s > en_o
+        return self.serial_number >= other.serial_number
 
-    def __hash__(self):
-        return ID.__hash__(self)
+    __hash__ = ID.__hash__
 
     # def __eq__(self, other):
     #     return self.serial_number == other.serial_number and (
@@ -745,9 +863,9 @@ class Atom(ID, bio.Atom.Atom):
     #     )
 
 
-class Residue(ID, bio.Residue.Residue):
+class Residue(_DrawableMixin, ID):
     """
-    A Residue object that inherits from Biopython's Residue class.
+    A Residue object.
 
     Parameters
     ----------
@@ -760,27 +878,26 @@ class Residue(ID, bio.Residue.Residue):
         This is the residue serial number.
     """
 
+    level = "R"
+
     __slots__ = (
-        "level",
-        "disordered",
         "resname",
         "segid",
-        "internal_coord",
-        "_id",
+        "serial_number",
         "parent",
         "child_list",
         "child_dict",
-        "xtra",
         "_coord",
     )
 
     def __init__(self, resname, segid=" ", icode=1):
         ID.__init__(self)
-        bio.Residue.Residue.__init__(
-            self, ("H_" + resname, icode, segid), resname, segid
-        )
-        self.level = "R"
+        self.resname = resname
+        self.segid = segid
         self.serial_number = icode
+        self.parent = None
+        self.child_list = []
+        self.child_dict = {}
         self._coord = None
 
     @classmethod
@@ -852,6 +969,15 @@ class Residue(ID, bio.Residue.Residue):
     def coord(self, value):
         self._coord = value
 
+    def center_of_mass(self, geometric: bool = True) -> "np.ndarray":
+        coords = np.array([a.coord for a in self.child_list])
+        if coords.size == 0:
+            return np.zeros(3)
+        if geometric:
+            return coords.mean(axis=0)
+        masses = np.array([a.mass or 1.0 for a in self.child_list])
+        return np.average(coords, weights=masses, axis=0)
+
     def get_coord(self) -> "np.ndarray":
         """
         Get the center of mass of the residue.
@@ -873,6 +999,9 @@ class Residue(ID, bio.Residue.Residue):
     @property
     def atoms(self):
         return sorted(self.get_atoms(), key=lambda x: x.serial_number)
+
+    def __len__(self):
+        return len(self.child_list)
 
     def count_atoms(self) -> int:
         """
@@ -916,7 +1045,7 @@ class Residue(ID, bio.Residue.Residue):
             The list of atoms. If no atoms argument is specified the default generator is returned.
         """
         if len(atoms) == 0:
-            return super().get_atoms()
+            return iter(self.child_list)
         elif len(atoms) == 1 and isinstance(atoms[0], (tuple, list, set)):
             atoms = atoms[0]
 
@@ -1059,10 +1188,29 @@ class Residue(ID, bio.Residue.Residue):
             new.add(atom.to_biopython())
         return new
 
+    def get_parent(self):
+        return self.parent
+
+    def set_parent(self, parent):
+        self.parent = parent
+
+    def detach_parent(self):
+        self.parent = None
+
+    def get_full_id(self):
+        return self.full_id
+
+    def detach_child(self, id):
+        child = self.child_dict.pop(id)
+        self.child_list.remove(child)
+        child.parent = None
+
     def add(self, atom):
         if not isinstance(atom, Atom):
             atom = Atom.from_biopython(atom)
-        bio.Residue.Residue.add(self, atom)
+        self.child_list.append(atom)
+        self.child_dict[atom.get_id()] = atom
+        atom.parent = self
 
     def move(self, vector):
         """
@@ -1086,8 +1234,9 @@ class Residue(ID, bio.Residue.Residue):
             The copied residue.
         """
         new = ID.copy(self)
-        for atom in new.get_atoms():
+        for atom in new.child_list:
             ID._new_id(atom)
+        new.child_dict = {atom.get_id(): atom for atom in new.child_list}
         return new
 
     @property
@@ -1135,9 +1284,9 @@ class Residue(ID, bio.Residue.Residue):
     #     )
 
 
-class Chain(ID, bio.Chain.Chain):
+class Chain(_DrawableMixin, ID):
     """
-    A Chain object that inherits from Biopython's Chain class.
+    A Chain object.
 
     Parameters
     ----------
@@ -1145,20 +1294,21 @@ class Chain(ID, bio.Chain.Chain):
         The chain identifier
     """
 
+    level = "C"
+
     __slots__ = (
-        "level",
-        "internal_coord",
-        "_id",
+        "id",
         "parent",
         "child_list",
         "child_dict",
-        "xtra",
     )
 
     def __init__(self, id):
         ID.__init__(self)
-        super(bio.Chain.Chain, self).__init__(id)
-        self.level = "C"
+        self.id = id
+        self.parent = None
+        self.child_list = []
+        self.child_dict = {}
 
     @classmethod
     def new(cls, id: str) -> "Chain":
@@ -1184,7 +1334,7 @@ class Chain(ID, bio.Chain.Chain):
 
     @name.setter
     def name(self, value):
-        self._id = value
+        self.id = value
 
     @property
     def full_id(self):
@@ -1198,10 +1348,29 @@ class Chain(ID, bio.Chain.Chain):
     def full_id(self, value):
         pass
 
+    def get_parent(self):
+        return self.parent
+
+    def set_parent(self, parent):
+        self.parent = parent
+
+    def detach_parent(self):
+        self.parent = None
+
+    def get_full_id(self):
+        return self.full_id
+
+    def detach_child(self, id):
+        child = self.child_dict.pop(id)
+        self.child_list.remove(child)
+        child.parent = None
+
     def add(self, residue):
         if not isinstance(residue, Residue):
             residue = Residue.from_biopython(residue)
-        bio.Chain.Chain.add(self, residue)
+        self.child_list.append(residue)
+        self.child_dict[residue.get_id()] = residue
+        residue.parent = self
 
     @property
     def residues(self):
@@ -1210,6 +1379,9 @@ class Chain(ID, bio.Chain.Chain):
     @property
     def atoms(self):
         return sorted(self.get_atoms(), key=lambda x: x.serial_number)
+
+    def __len__(self):
+        return len(self.child_list)
 
     def count_residues(self) -> int:
         """
@@ -1261,7 +1433,7 @@ class Chain(ID, bio.Chain.Chain):
             The list of residues. If no residues argument is specified the default generator is returned.
         """
         if len(residues) == 0:
-            return super().get_residues()
+            return iter(self.child_list)
         elif len(residues) == 1 and isinstance(residues[0], (tuple, list, set)):
             residues = residues[0]
 
@@ -1274,6 +1446,10 @@ class Chain(ID, bio.Chain.Chain):
             raise TypeError(
                 f"residues must be either a list, tuple, or set of string or integer, not {residues=}"
             )
+
+    def get_atoms(self):
+        for residue in self.child_list:
+            yield from residue.child_list
 
     def get_coords(self) -> "np.ndarray":
         """
@@ -1364,10 +1540,12 @@ class Chain(ID, bio.Chain.Chain):
             The copied chain.
         """
         new = ID.copy(self)
-        for residue in new.get_residues():
+        for residue in new.child_list:
             ID._new_id(residue)
-            for atom in residue.get_atoms():
+            for atom in residue.child_list:
                 ID._new_id(atom)
+            residue.child_dict = {atom.get_id(): atom for atom in residue.child_list}
+        new.child_dict = {res.get_id(): res for res in new.child_list}
         return new
 
     def link(self, residue):
@@ -1392,7 +1570,7 @@ class Chain(ID, bio.Chain.Chain):
         return getattr(p, "_molecule", None)
 
     def __repr__(self):
-        return f"Chain({self._id})"
+        return f"Chain({self.id})"
 
     def __lt__(self, other):
         return ord(self.id) < ord(other.id)
@@ -1413,9 +1591,9 @@ class Chain(ID, bio.Chain.Chain):
     #     return ord(self.id) != ord(other.id)
 
 
-class Model(bio.Model.Model, ID):
+class Model(_DrawableMixin, ID):
     """
-    A Model object that inherits from Biopython's Model class.
+    A Model object.
 
     Parameters
     ----------
@@ -1423,20 +1601,25 @@ class Model(bio.Model.Model, ID):
         The model identifier
     """
 
+    level = "M"
+
     __slots__ = (
-        "level",
-        # "serial_num",
-        "_id",
+        "id",
         "parent",
         "child_list",
         "child_dict",
-        "xtra",
+        "_coords",
+        "_atom_serials",
     )
 
     def __init__(self, id):
         ID.__init__(self)
-        super(bio.Model.Model, self).__init__(id)
-        self.level = "M"
+        self.id = id
+        self.parent = None
+        self.child_list = []
+        self.child_dict = {}
+        self._coords = None
+        self._atom_serials = None
 
     @classmethod
     def new(cls, id: int = None) -> "Model":
@@ -1489,10 +1672,37 @@ class Model(bio.Model.Model, ID):
     def full_id(self, value):
         pass
 
+    def get_parent(self):
+        return self.parent
+
+    def set_parent(self, parent):
+        self.parent = parent
+
+    def detach_parent(self):
+        self.parent = None
+
+    def get_full_id(self):
+        return self.full_id
+
+    def detach_child(self, id):
+        child = self.child_dict.pop(id)
+        self.child_list.remove(child)
+        child.parent = None
+
+    def get_atoms(self):
+        for chain in self.child_list:
+            yield from chain.get_atoms()
+
+    def get_residues(self):
+        for chain in self.child_list:
+            yield from chain.child_list
+
     def add(self, chain):
         if not isinstance(chain, Chain):
             chain = Chain.from_biopython(chain)
-        bio.Model.Model.add(self, chain)
+        self.child_list.append(chain)
+        self.child_dict[chain.get_id()] = chain
+        chain.parent = self
 
     @property
     def chains(self):
@@ -1500,6 +1710,9 @@ class Model(bio.Model.Model, ID):
         Get the chains in the model.
         """
         return sorted(self.get_chains(), key=lambda x: x.id)
+
+    def __len__(self):
+        return len(self.child_list)
 
     def count_chains(self) -> int:
         """
@@ -1545,7 +1758,7 @@ class Model(bio.Model.Model, ID):
             The list of chains. If no chains argument is specified the default generator is returned.
         """
         if len(chains) == 0:
-            return super().get_chains()
+            return iter(self.child_list)
         elif len(chains) == 1 and isinstance(chains[0], (tuple, list, set)):
             chains = chains[0]
 
@@ -1610,22 +1823,44 @@ class Model(bio.Model.Model, ID):
         )
 
     def copy(self):
-        """
-        Return a deep copy of the model with a new UUID4.
-
-        Returns
-        -------
-        Model
-            The copied model.
-        """
         new = ID.copy(self)
-        for chain in new.get_chains():
-            ID._new_id(chain)
-            for residue in chain.get_residues():
-                ID._new_id(residue)
-                for atom in residue.get_atoms():
-                    ID._new_id(atom)
+        if self._coords is None:
+            for chain in new.child_list:
+                ID._new_id(chain)
+                for residue in chain.child_list:
+                    ID._new_id(residue)
+                    for atom in residue.child_list:
+                        ID._new_id(atom)
+                    residue.child_dict = {
+                        atom.get_id(): atom for atom in residue.child_list
+                    }
+                chain.child_dict = {res.get_id(): res for res in chain.child_list}
+        new.child_dict = {chain.get_id(): chain for chain in new.child_list}
         return new
+
+    def snapshot(self, atoms=None):
+        """Save coordinates of canonical atoms into this snapshot model."""
+        if atoms is None:
+            atoms = list(self.get_atoms())
+        atoms = list(atoms)
+        self._atom_serials = [a.serial_number for a in atoms]
+        self._coords = np.array([a.coord for a in atoms], dtype=float)
+
+    def restore(self, atom_map=None):
+        """Write stored coordinates back into canonical atoms."""
+        # the slots always exist (initialized to None), so check for actual data
+        if self._atom_serials is None or self._coords is None:
+            raise ValueError(
+                "Snapshot data is not available. First call snapshot() to save coordinates."
+            )
+        if atom_map is None:
+            atom_map = {a.serial_number: a for a in self.get_atoms()}
+        # copy so that in-place edits of atom coordinates do not alter the stored snapshot
+        coords = self._coords.copy()
+        for i, serial in enumerate(self._atom_serials):
+            at = atom_map.get(serial)
+            if at is not None:
+                at.coord = coords[i]
 
     @classmethod
     def from_biopython(cls, model):
@@ -1683,7 +1918,7 @@ class Model(bio.Model.Model, ID):
         return getattr(p, "_molecule", None)
 
     def __repr__(self):
-        return f"Model({self._id})"
+        return f"Model({self.id})"
 
     # somehow the __eq__ was not inherited from ID...
     def __eq__(self, other):
@@ -1704,9 +1939,9 @@ class Model(bio.Model.Model, ID):
         return self.id >= other.id
 
 
-class Structure(ID, bio.Structure.Structure):
+class Structure(_DrawableMixin, ID):
     """
-    A Structure object that inherits from Biopython's Structure class.
+    A Structure object.
 
     Parameters
     ----------
@@ -1714,20 +1949,22 @@ class Structure(ID, bio.Structure.Structure):
         The structure identifier
     """
 
+    level = "S"
+
     __slots__ = (
-        "level",
-        "_id",
+        "id",
         "parent",
         "child_list",
         "child_dict",
-        "xtra",
         "_molecule",
     )
 
     def __init__(self, id):
         ID.__init__(self)
-        super(bio.Structure.Structure, self).__init__(id)
-        self.level = "S"
+        self.id = id
+        self.parent = None
+        self.child_list = []
+        self.child_dict = {}
         self._molecule = None
 
     @classmethod
@@ -1755,10 +1992,48 @@ class Structure(ID, bio.Structure.Structure):
     def full_id(self, value):
         pass
 
+    def get_parent(self):
+        return self.parent
+
+    def set_parent(self, parent):
+        self.parent = parent
+
+    def detach_parent(self):
+        self.parent = None
+
+    def get_full_id(self):
+        return self.full_id
+
+    def detach_child(self, id):
+        child = self.child_dict.pop(id)
+        self.child_list.remove(child)
+        child.parent = None
+
+    def get_atoms(self):
+        for model in self.child_list:
+            yield from model.get_atoms()
+
+    def get_residues(self):
+        for model in self.child_list:
+            for chain in model.child_list:
+                yield from chain.child_list
+
+    def get_chains(self):
+        for model in self.child_list:
+            yield from model.child_list
+
+    def get_models(self):
+        return iter(self.child_list)
+
     def add(self, model):
         if not isinstance(model, Model):
             model = Model.from_biopython(model)
-        bio.Structure.Structure.add(self, model)
+        self.child_list.append(model)
+        self.child_dict[model.get_id()] = model
+        model.parent = self
+
+    def __len__(self):
+        return len(self.child_list)
 
     def get_coords(self) -> "np.ndarray":
         """
@@ -1792,14 +2067,20 @@ class Structure(ID, bio.Structure.Structure):
             The copied structure.
         """
         new = ID.copy(self)
-        for model in new.get_models():
+        for model in new.child_list:
             ID._new_id(model)
-            for chain in model.get_chains():
+            for chain in model.child_list:
                 ID._new_id(chain)
-                for residue in chain.get_residues():
+                for residue in chain.child_list:
                     ID._new_id(residue)
-                    for atom in residue.get_atoms():
+                    for atom in residue.child_list:
                         ID._new_id(atom)
+                    residue.child_dict = {
+                        atom.get_id(): atom for atom in residue.child_list
+                    }
+                chain.child_dict = {res.get_id(): res for res in chain.child_list}
+            model.child_dict = {chain.get_id(): chain for chain in model.child_list}
+        new.child_dict = {model.get_id(): model for model in new.child_list}
         return new
 
     @classmethod
@@ -1930,7 +2211,7 @@ class Structure(ID, bio.Structure.Structure):
         return self._ID__id == other._ID__id
 
     def __repr__(self):
-        return f"Structure({self._id})"
+        return f"Structure({self.id})"
 
     def __lt__(self, other):
         return self.id < other.id
@@ -2198,6 +2479,18 @@ class Bond:
             The bond as a tuple.
         """
         return (self.atom1, self.atom2, self.order)
+
+    def to_serials(self) -> tuple:
+        """
+        Convert the bond to a tuple of
+        atom1_serial, atom2_serial, bond_order.
+
+        Returns
+        -------
+        tuple
+            The bond as a tuple of serial numbers and bond order.
+        """
+        return (self.atom1.serial_number, self.atom2.serial_number, self.order)
 
     def __iter__(self):
         yield self.atom1

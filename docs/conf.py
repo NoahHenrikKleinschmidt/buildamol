@@ -7,13 +7,22 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "buildamol"
-copyright = "2025, Noah Kleinschmidt"
+copyright = "2026, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "1.2.12"
+release = "1.3.0"
 
+autodoc_mock_imports = [
+    "rdkit",
+    "openbabel",
+    "mdtraj",
+    "openmm",
+    "openff.toolkit",
+    "openff.interchange",
+    "easydock",
+    "dockstring",
+]  # add whatever is optional
 
 import plotly.io as pio
-
 
 pio.renderers.default = "sphinx_gallery"
 
@@ -61,3 +70,31 @@ html_theme = "pydata_sphinx_theme"
 html_logo = "_resources/logo_small.svg"
 html_static_path = ["_static"]
 html_css_files = ["css/styles.css"]
+pygments_style = "github-light"
+pygments_dark_style = "github-dark"
+
+# pydata_sphinx_theme configuration
+html_theme_options = {
+    "logo": {
+        "text": "BuildAMol",
+        "image_light": "_resources/logo_small.svg",
+        "image_dark": "_resources/logo_small.svg",
+    },
+    "github_url": "https://github.com/noahhkdsarla/buildamol",
+    "use_edit_page_button": True,
+    "navbar_start": ["navbar-logo"],
+    "navbar_end": ["navbar-icon-links"],
+    "navbar_center": ["navbar-nav"],
+    "footer_start": ["copyright"],
+    "footer_end": ["sphinx-version"],
+    "show_prev_next": False,
+    "secondary_sidebar_items": ["page-toc"],
+    "header_links_before_dropdown": 7,
+    # Additional styling options
+    "show_toc_level": 2,
+    "search_bar_text": "Search documentation...",
+    "article_header_start": ["breadcrumbs"],
+    "article_footer_items": [],
+    "body_max_width": "1200px",
+    "content_footer_items": ["last-updated"],
+}
