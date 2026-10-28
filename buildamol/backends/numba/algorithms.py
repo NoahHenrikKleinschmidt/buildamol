@@ -73,7 +73,8 @@ def swarm_optimize(
     positions = np.empty((n_particles, env.action_space.shape[0]))
     for i in range(n_particles):
         positions[i] = env.action_space.sample()
-    velocities = np.random.rand(n_particles, env.action_space.shape[0])
+    # random initial velocities in both directions (not only positive)
+    velocities = np.random.uniform(-1, 1, (n_particles, env.action_space.shape[0]))
     best_positions = positions.copy()
     best_fitnesses = np.full(n_particles, np.inf)
     fitnesses = np.zeros(n_particles)

@@ -72,7 +72,10 @@ def swarm_optimize(
         n_particles = max(15, len(env.rotatable_edges) // 3)
 
     positions = jnp.array([env.action_space.sample() for i in range(n_particles)])
-    velocities = jnp.array(np.random.rand(n_particles, env.action_space.shape[0]))
+    # random initial velocities in both directions (not only positive)
+    velocities = jnp.array(
+        np.random.uniform(-1, 1, (n_particles, env.action_space.shape[0]))
+    )
     best_positions = positions.copy()
     best_fitnesses = jnp.full(n_particles, jnp.inf)
     fitnesses = jnp.zeros(n_particles)

@@ -2357,12 +2357,14 @@ class Molecule(entity.BaseEntity):
             - "scipy" for a scipy-implemented gradient-based optimization
             - "swarm" for a particle swarm optimization
             - "anneal" for a simulated annealing optimization
+            - "evolution" for a differential evolution optimization
             - "rdkit" for an RDKit-implemented force-field-based optimization (defaults to MMFF, if RDKit is installed)
             - "mmff" for an RDKit-implemented MMFF94 force-field-based optimization (if RDKit is installed)
             - "uff" for an RDKit-implemented UFF force-field-based optimization (if RDKit is installed)
         rotatron : str
             The rotatron to use. This can be one of the following:
-            - "distance" for a distance-based rotatron (default)
+            - "kdtree" for a clash-based rotatron (default)
+            - "distance" for a distance-based rotatron
             - "overlap" for an overlap-based rotatron
             - "forcefield" for a force-field-based rotatron
         algorithm_kws : dict
@@ -2422,11 +2424,13 @@ class Molecule(entity.BaseEntity):
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
             return out
-        elif algorithm not in ("scipy", "genetic", "swarm", "anneal"):
+        elif algorithm not in ("scipy", "genetic", "swarm", "anneal", "evolution"):
             raise ValueError(f"Unknown algorithm {algorithm}")
 
-        rotatron = rotatron or "distance"
-        if rotatron == "distance":
+        rotatron = rotatron or "kdtree"
+        if rotatron == "kdtree":
+            rotatron = optimizers.KDTreeRotatron
+        elif rotatron == "distance":
             rotatron = optimizers.DistanceRotatron
         elif rotatron == "overlap":
             rotatron = optimizers.OverlapRotatron
@@ -2449,7 +2453,7 @@ class Molecule(entity.BaseEntity):
             graph.central_node, min_ancestors=1, min_descendants=1
         )
         if len(edges) > 150:
-            edges = graph.sample_edges(edges, edges // 5)
+            edges = graph.sample_edges(edges, len(edges) // 5)
 
         env = rotatron(graph, edges, **rotatron_kws)
 
