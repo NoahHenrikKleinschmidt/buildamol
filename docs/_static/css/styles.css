@@ -1,38 +1,537 @@
-/* Custom styling for PyData Sphinx Theme */
+/* =========================================================================
+   BuildAMol Custom Styling - Seaborn-inspired Design
+   ========================================================================= */
 
-/* Header navbar styling - only target the main top navbar, not sidebar navigation */
+/* =========================================================================
+   Color Palette
+   ========================================================================= */
+:root {
+    --primary-color: #1f4e8c;
+    --primary-light: #4f8fd6;
+    --primary-dark: #0f2747;
+    --secondary-color: #cf222e;
+    --accent-color: #0969da;
+    --text-dark: #2c3e50;
+    --text-light: #5d6d7b;
+    --bg-light: #f8f9fa;
+    --bg-lighter: #f0f2f5;
+    --border-color: #e0e0e0;
+    --shadow-light: rgba(0, 0, 0, 0.05);
+    --shadow-medium: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode palette */
+[data-theme="dark"] {
+    --primary-color: #4f8fd6;
+    --primary-light: #7ab2ef;
+    --primary-dark: #1f4e8c;
+    --secondary-color: #ff7b72;
+    --accent-color: #79c0ff;
+    --text-dark: #e8eaed;
+    --text-light: #b0b8c1;
+    --bg-light: #1e1e1e;
+    --bg-lighter: #2d2d2d;
+    --border-color: #3d3d3d;
+    --shadow-light: rgba(255, 255, 255, 0.05);
+    --shadow-medium: rgba(255, 255, 255, 0.1);
+}
+
+/* =========================================================================
+   Hero Section
+   ========================================================================= */
+.hero-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3rem;
+    margin: 2rem 0 4rem 0;
+    padding: 3rem 2rem;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-radius: 12px;
+    color: white;
+    box-shadow: 0 10px 40px var(--shadow-medium);
+}
+
+.hero-content {
+    flex: 1;
+}
+
+.hero-content h2 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+    color: white;
+}
+
+.hero-content p {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.95;
+    line-height: 1.6;
+}
+
+.hero-slide {
+    flex: 1;
+    text-align: center;
+}
+
+.hero-slide img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    border: 2px solid transparent;
+}
+
+.btn-primary {
+    background-color: white;
+    color: var(--primary-color);
+    border-color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--bg-light);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: white;
+    border-color: white;
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .hero-section {
+        flex-direction: column;
+        gap: 2rem;
+        padding: 2rem 1rem;
+    }
+
+    .hero-content h2 {
+        font-size: 1.8rem;
+    }
+
+    .hero-content p {
+        font-size: 1rem;
+    }
+}
+
+/* =========================================================================
+   Feature Cards Section
+   ========================================================================= */
+.feature-cards {
+    margin: 3rem 0;
+}
+
+.grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.grid-item-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+[data-theme="dark"] .grid-item-card {
+    background: var(--bg-lighter);
+    border-color: var(--border-color);
+}
+
+.grid-item-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 8px 24px var(--shadow-medium);
+    transform: translateY(-4px);
+}
+
+.card-title-emphasized {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.grid-item-card p {
+    margin: 0;
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+/* =========================================================================
+   Gallery Showcase
+   ========================================================================= */
+.showcase-rotator-wrap {
+    margin: 2rem auto 2.5rem auto;
+    max-width: 980px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px var(--shadow-medium);
+    background: var(--bg-lighter);
+}
+
+.showcase-rotator-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 460px;
+    object-fit: contain;
+    transition: opacity 0.24s ease;
+    background: var(--bg-lighter);
+}
+
+.showcase-rotator-image.is-fading {
+    opacity: 0.25;
+}
+
+/* =========================================================================
+   Typography
+   ========================================================================= */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+h1 {
+    font-size: 2.2rem;
+    margin-bottom: 1.5rem;
+}
+
+h2 {
+    font-size: 1.8rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid var(--bg-lighter);
+    padding-bottom: 0.5rem;
+}
+
+h3 {
+    font-size: 1.3rem;
+    margin-top: 1.5rem;
+}
+
+p {
+    color: var(--text-light);
+    line-height: 1.7;
+    font-size: 1rem;
+}
+
+/* =========================================================================
+   Navigation & Header
+   ========================================================================= */
 .bd-header {
-    background-color: #4f4f4f !important;
-}
-
-.bd-footer {
-    background-color: #4f4f4f !important;
-    color: white !important;
-}
-
-.bd-footer a {
-    color: rgb(107, 164, 255) !important;
+    background: linear-gradient(135deg, #356fa8 0%, #3b78af 100%);
+    box-shadow: 0 2px 8px var(--shadow-medium);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 1030;
 }
 
 .bd-header .navbar {
-    background-color: #1aff00 !important;
+    background: transparent;
+    padding: 0.5rem 0;
 }
 
-.bd-header .navbar-nav {
-    color: white !important;
+.bd-header ul.navbar-nav > li.nav-item > .nav-link {
+    color: #ffffff;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    margin: 0 0.5rem;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
 }
 
-.bd-header .navbar-nav .nav-link {
-    color: white !important;
+.bd-header ul.navbar-nav > li.nav-item > .nav-link:hover,
+.bd-header ul.navbar-nav > li.nav-item > .nav-link:focus {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
 }
 
-.bd-header .navbar-nav .nav-link:hover,
-.bd-header .navbar-nav .nav-link:focus {
-    color: #e6f3ff !important;
-    background-color: rgba(255, 255, 255, 0.1) !important;
+.bd-header ul.navbar-nav > li.nav-item > .nav-link.active,
+.bd-header ul.navbar-nav > li.nav-item.current > .nav-link,
+.bd-header ul.navbar-nav > li.nav-item.active > .nav-link {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.24);
+    border-radius: 4px;
 }
 
+.bd-header .navbar-brand {
+    color: white;
+    font-weight: 700;
+    font-size: 1.3rem;
+}
 
-.bd-header .btn {
-    color: rgb(133, 141, 149) !important;
+.bd-header .navbar-brand,
+.bd-header .navbar-brand p,
+.bd-header .navbar-brand:hover,
+.bd-header .navbar-brand:focus,
+.bd-header .btn,
+.bd-header .btn:hover,
+.bd-header .btn:focus,
+.bd-header .theme-switch-button,
+.bd-header .theme-switch-button:hover,
+.bd-header .theme-switch-button:focus,
+.bd-header .pst-navbar-icon,
+.bd-header .pst-navbar-icon:hover,
+.bd-header .pst-navbar-icon:focus,
+.bd-header button.sidebar-toggle {
+    color: #ffffff;
+}
+
+.bd-header ul.navbar-nav > li.nav-item > .nav-link:hover::before,
+.bd-header ul.navbar-nav > li.nav-item.current > .nav-link::before,
+.bd-header .pst-navbar-icon:hover::before {
+    border-bottom-color: #ffffff;
+}
+
+.bd-header .search-button-field {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.bd-header .search-button-field .kbd-shortcut__modifier {
+    color: #ffffff;
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: none;
+}
+
+.bd-header ul.navbar-nav > li.nav-item > .nav-link:focus-visible,
+.bd-header .pst-navbar-icon:focus-visible,
+.bd-header .search-button-field:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 3px;
+}
+
+/* =========================================================================
+   Footer
+   ========================================================================= */
+.bd-footer {
+    background: var(--text-dark);
+    color: rgba(255, 255, 255, 0.8);
+    padding: 2rem;
+    margin-top: 3rem;
+    border-top: 2px solid var(--border-color);
+}
+
+.bd-footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.bd-footer a:hover {
+    color: var(--primary-light);
+}
+
+/* =========================================================================
+   Content Areas
+   ========================================================================= */
+.tutorials-intro {
+    background: var(--bg-light);
+    border-left: 4px solid var(--primary-color);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 4px;
+    font-size: 1.05rem;
+}
+
+[data-theme="dark"] .tutorials-intro {
+    background: var(--bg-lighter);
+}
+
+.tutorials-intro p {
+    margin: 0;
+    color: var(--text-dark);
+}
+
+/* =========================================================================
+   Code & Blocks
+   ========================================================================= */
+pre {
+    background: var(--bg-lighter);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+    color: var(--secondary-color);
+    background: #f6f8fa;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+
+[data-theme="dark"] code {
+    background: #161b22;
+}
+
+pre code {
+    color: inherit;
+    background: transparent;
+    padding: 0;
+}
+
+/* =========================================================================
+   Admonitions & Notes
+   ========================================================================= */
+.admonition {
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary-color);
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    background: var(--bg-light);
+}
+
+[data-theme="dark"] .admonition {
+    background: var(--bg-lighter);
+}
+
+.admonition-title {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin: 0 0 0.5rem 0;
+}
+
+/* =========================================================================
+   Links & Interactive Elements
+   ========================================================================= */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+    border-bottom: 1px solid transparent;
+}
+
+a:hover {
+    color: var(--primary-light);
+    border-bottom: 1px dotted var(--primary-color);
+}
+
+/* =========================================================================
+   Sphinx Design Components
+   ========================================================================= */
+.sd-card {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--shadow-light);
+    transition: all 0.3s ease;
+}
+
+.sd-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 8px 24px var(--shadow-medium);
+    transform: translateY(-4px);
+}
+
+.sd-card-text {
+    padding: 1.5rem;
+}
+
+.sd-card-title {
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* =========================================================================
+   Responsive Design
+   ========================================================================= */
+@media (max-width: 992px) {
+    .sidebar {
+        max-width: 250px;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    h2 {
+        font-size: 1.4rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-section {
+        padding: 1.5rem;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.2rem;
+    }
+
+    p {
+        font-size: 0.95rem;
+    }
+
+    .grid-item-card {
+        padding: 1rem;
+    }
+}
+
+/* =========================================================================
+   Print Styles
+   ========================================================================= */
+@media print {
+    .hero-section,
+    .bd-header,
+    .bd-footer {
+        display: none;
+    }
+}
+
+/* =========================================================================
+   Accessibility
+   ========================================================================= */
+:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Ensure good contrast for readability */
+strong {
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+em {
+    font-style: italic;
 }
