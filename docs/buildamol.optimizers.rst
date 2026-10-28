@@ -22,6 +22,13 @@ that can be used for optimization heads-on. These are:
 
 .. tab-set::
 
+   .. tab-item:: The KDTreeRotatron
+
+      .. automodule:: buildamol.optimizers.kdtree_rotatron
+         :members:
+         :undoc-members:
+         :show-inheritance:
+
    .. tab-item:: The DistanceRotatron
 
       .. automodule:: buildamol.optimizers.distance_rotatron
@@ -83,6 +90,14 @@ Optimization algorithms
 
 The `Rotatron` environments are used to specify the problems to solve. The optimization algorithms are used to solve them. Buildamol implements a number of classical optimization algorithms
 that are tailored to work with the Rotatron environments. These are:
+
+.. dropdown:: Differential Evolution Optimization
+
+   Differential Evolution Optimization is a population-based optimization algorithm that iteratively improves a candidate solution with respect to a given objective over time, 
+   combining particle swarm and genetic algorithm concepts. 
+   It performs well on both large and small input graphs and strikes a good balance between speed and quality.
+   
+   .. autofunction:: buildamol.optimizers.algorithms.evolution_optimize
 
 .. dropdown:: Particle Swarm Optimization
 

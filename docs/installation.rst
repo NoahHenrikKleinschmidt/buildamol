@@ -1,19 +1,69 @@
-.. biobuild documentation master file, created by
-   sphinx-quickstart on Tue Jun 13 14:40:03 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Installation
-------------
+============
 
+BuildAMol supports Python 3.8+ and is published on PyPI.
 
-`BuildAMol` can be directly installed via `pip` from the python package index:
+Install from PyPI
+-----------------
 
 .. code-block:: bash
 
    pip install buildamol
 
-If you want to install BuildAMol from source, you can clone the repository and install it using the following command:
+This installs BuildAMol together with its required dependencies as defined in `pyproject.toml`.
+
+.. note::
+
+   RDKit is now a required dependency of BuildAMol (not an optional extra).
+
+
+Optional extras
+---------------
+
+BuildAMol provides optional extras for visualization and selected integrations:
+
+.. code-block:: bash
+
+   # visualization stack (py3Dmol, nglview, ipywidgets, ...)
+   pip install "buildamol[visual]"
+
+   # Open Babel integration
+   pip install "buildamol[openbabel]"
+
+   # OpenMM integration
+   pip install "buildamol[openmm]"
+
+   # install all optional extras defined by BuildAMol
+   pip install "buildamol[full]"
+
+Current extras in this release:
+
+- `visual`
+- `openbabel`
+- `openmm`
+- `full`
+
+
+Conda/mamba installation (recommended for compiled dependencies)
+-----------------------------------------------------------------
+
+If you run into binary/wheel issues for compiled packages on your platform, use conda-forge:
+
+.. code-block:: bash
+
+   mamba create -n buildamol -c conda-forge python=3.11 buildamol
+   mamba activate buildamol
+
+Equivalent with conda:
+
+.. code-block:: bash
+
+   conda create -n buildamol -c conda-forge python=3.11 buildamol
+   conda activate buildamol
+
+
+Install from source
+-------------------
 
 .. code-block:: bash
 
@@ -21,45 +71,48 @@ If you want to install BuildAMol from source, you can clone the repository and i
    cd buildamol
    pip install .
 
-Optional dependencies
----------------------
-
-BuildAMol relies only on `biopython <https://biopython.org/>`_ for its core functions. However, many additional features may require other libraries.
-Especially, `RDKit <https://www.rdkit.org/>`_ provides many useful features that BuildAMol can use if it is installed. Apart from RDKit,
-BuildAMol supports data exchange between `Openbabel <http://openbabel.org/wiki/Main_Page>`_ and `OpenMM <http://openmm.org/>`_. If you want to install 
-these libraries you can use the following commands:
+For development (editable install):
 
 .. code-block:: bash
 
-   pip install buildamol[rdkit]
-   pip install buildamol[openbabel]
-   pip install buildamol[openmm]
-   # or all at once
-   pip install buildamol[full]
+   pip install -e .
 
-We recommend to install at least `buildamol[rdkit]` if you want to use most features of `BuildAMol`.
+
+Verify installation
+-------------------
+
+.. code-block:: python
+
+   import buildamol as bam
+   print(bam.__version__)
 
 
 Updating BuildAMol
 ------------------
 
-.. warning:: 
+.. warning::
 
-   When updating BuildAMol to a newer version, make sure to export any custom default `PDBECompounds` or `CHARMMTopology` settings
-   before updating, as the update will overwrite the pickle files where defaults are stored. You can re-set the custom settings after the update.
+   Before updating, export any custom default `PDBECompounds` or `CHARMMTopology`
+   settings. Updating may overwrite stored pickle files for defaults.
 
-In order to export the custom data it is recommended not to pickle the objects (as a pickled object may not be compatbile with a newer version of BuildAMol).
-Instead we recommend to export your data to an agnostic format before updating. BuildAMol offers quick-exports to JSON and XML formats for such purposes.
-Both the `PDBECompounds` and `CHARMMTopology` classes have methods to export their data to JSON and XML formats. Alternatively, to export all custom resources at once, you can use the following functions:
+We recommend exporting custom resources in a version-agnostic format (JSON/XML)
+before updating:
 
 .. code-block:: python
 
    import buildamol as bam
 
-   bam.export_custom_resources('my_settings')
-   
-   # update ...
+   bam.export_custom_resources("my_settings")
 
-   # after updating buildamol
-   bam.import_custom_resources('my_settings')
+   # update BuildAMol ...
+
+   bam.import_custom_resources("my_settings")
+
+
+Notes on additional external tools
+----------------------------------
+
+Some extension backends require third-party tools that are not installed by
+default with BuildAMol extras (for example backend-specific MD solvation tools).
+Refer to the corresponding extension pages for backend-specific setup steps.
 

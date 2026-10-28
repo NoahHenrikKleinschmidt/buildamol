@@ -7,7 +7,15 @@ import buildamol.resources as resources
 
 resources.load_nucleotides()
 
-__all__ = ["dna", "rna", "nucleic_acid", "get_5prime", "get_3prime"]
+__all__ = [
+    "dna",
+    "rna",
+    "nucleic_acid",
+    "get_5prime",
+    "get_3prime",
+    "apply_phosphodiester_bonds",
+]
+
 
 nucleotide_linkage = core.linkage(
     "C3'", "OP3", delete_in_target=["O3'", "HO3'"], id="phosphodiester"
@@ -122,6 +130,38 @@ def nucleic_acid(sequence: str) -> core.Molecule:
     mol = _construct_from_seq(sequence)
     mol.id = sequence
     return mol
+
+
+def apply_phosphodiester_bonds(mol: core.Molecule) -> int:
+    """
+    Apply phosphodiester backbone bonds (O3'→P) between consecutive nucleotide residues.
+
+    This is a fast, rule-based alternative to `infer_residue_connections` for nucleic
+    acids — no distance search. Bonds that already exist are silently skipped.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The nucleic acid (or mixed) molecule.
+
+    Returns
+    -------
+    int
+        Number of new bonds added.
+    """
+    added = 0
+    for chain in mol.get_chains():
+        residues = sorted(chain.get_residues(), key=lambda r: r.serial_number)
+        for i in range(len(residues) - 1):
+            res1, res2 = residues[i], residues[i + 1]
+            if res2.serial_number - res1.serial_number > 1:
+                continue  # gap in sequence numbering — not a real phosphodiester bond
+            O3 = next((a for a in res1.get_atoms() if a.id == "O3'"), None)
+            P = next((a for a in res2.get_atoms() if a.id == "P"), None)
+            if O3 is not None and P is not None:
+                mol.set_bond(O3, P)
+                added += 1
+    return added
 
 
 def _construct_from_seq(sequence: str) -> core.Molecule:

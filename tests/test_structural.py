@@ -2861,15 +2861,17 @@ def test_adopt_from_template_partial_template():
     template_anchor1 = aromatic.find_matches(template, template.atoms)[0][0]
     target_anchor1 = aromatic.find_matches(target, target.atoms)[0][0]
 
-    template_anchors23 = template_anchor1.get_neighbors(
-        filter=lambda a: a.element == "C"
+    template_anchors23 = sorted(
+        template_anchor1.get_neighbors(filter=lambda a: a.element == "C")
     )
-    target_anchors23 = target_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+    target_anchors23 = sorted(
+        target_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+    )
 
     anchors = {
         target_anchor1: template_anchor1,
-        target_anchors23.pop(): template_anchors23.pop(),
-        target_anchors23.pop(): template_anchors23.pop(),
+        target_anchors23[0]: template_anchors23[0],
+        target_anchors23[1]: template_anchors23[1],
     }
 
     target.bonds = []
@@ -2894,15 +2896,17 @@ def test_adopt_from_template_partial_target():
 
     template_anchor1 = aromatic.find_matches(template, template.atoms)[0][0]
     target_anchor1 = aromatic.find_matches(target, target.atoms)[0][0]
-    template_anchors23 = template_anchor1.get_neighbors(
-        filter=lambda a: a.element == "C"
+    template_anchors23 = sorted(
+        template_anchor1.get_neighbors(filter=lambda a: a.element == "C")
     )
-    target_anchors23 = target_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+    target_anchors23 = sorted(
+        target_anchor1.get_neighbors(filter=lambda a: a.element == "C")
+    )
 
     anchors = {
         target_anchor1: template_anchor1,
-        target_anchors23.pop(): template_anchors23.pop(),
-        target_anchors23.pop(): template_anchors23.pop(),
+        target_anchors23[0]: template_anchors23[0],
+        target_anchors23[1]: template_anchors23[1],
     }
 
     target.bonds = []

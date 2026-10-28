@@ -8,6 +8,7 @@ from importlib import import_module
 __all__ = [
     "Rotatron",
     "DistanceRotatron",
+    "KDTreeRotatron",
     "OverlapRotatron",
     "ForceFieldRotatron",
     "Translatron",
@@ -24,6 +25,7 @@ __all__ = [
     "genetic_optimize",
     "scipy_optimize",
     "anneal_optimize",
+    "evolution_optimize",
     "rdkit_optimize",
     "mmff_optimize",
     "uff_optimize",
@@ -40,6 +42,7 @@ __all__ = [
 _LAZY_IMPORTS = {
     "Rotatron": ("buildamol.optimizers.base_rotatron", "Rotatron"),
     "DistanceRotatron": ("buildamol.optimizers.distance_rotatron", "DistanceRotatron"),
+    "KDTreeRotatron": ("buildamol.optimizers.kdtree_rotatron", "KDTreeRotatron"),
     "OverlapRotatron": ("buildamol.optimizers.overlap_rotatron", "OverlapRotatron"),
     "ForceFieldRotatron": (
         "buildamol.optimizers.forcefield_rotatron",
@@ -80,6 +83,7 @@ _LAZY_IMPORTS = {
     "genetic_optimize": ("buildamol.optimizers.algorithms", "genetic_optimize"),
     "scipy_optimize": ("buildamol.optimizers.algorithms", "scipy_optimize"),
     "anneal_optimize": ("buildamol.optimizers.algorithms", "anneal_optimize"),
+    "evolution_optimize": ("buildamol.optimizers.algorithms", "evolution_optimize"),
     "rdkit_optimize": ("buildamol.optimizers.algorithms", "rdkit_optimize"),
     "mmff_optimize": ("buildamol.optimizers.algorithms", "mmff_optimize"),
     "uff_optimize": ("buildamol.optimizers.algorithms", "uff_optimize"),

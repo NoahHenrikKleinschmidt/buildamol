@@ -106,7 +106,14 @@ class ConstraintRotatron(Rotatron.Rotatron):
         _eval += self.constraint(self.rotatron, new_state, **self.kwargs)
         return new_state, _eval, bool(done), info
 
-    def done(self, state):
+    def __getattr__(self, name):
+        # everything that is not defined here (graph, state, n_edges, edge_masks, ...)
+        # is provided by the base rotatron
+        if name == "rotatron":
+            raise AttributeError(name)
+        return getattr(self.rotatron, name)
+
+    def is_done(self, state):
         """
         Check if the state is done.
 
@@ -120,13 +127,13 @@ class ConstraintRotatron(Rotatron.Rotatron):
         bool
             Whether the state is done.
         """
-        done_handle = getattr(self.rotatron, "done", None)
-        if done_handle is None:
-            done_handle = self.rotatron.is_done
-        _done = done_handle(state)
+        _done = self.rotatron.is_done(state)
         if self.finisher is not None:
             _done = _done and self.finisher(self.rotatron, state, **self.kwargs)
         return bool(_done)
+
+    # Backward-compatible alias
+    done = is_done
 
 
 if __name__ == "__main__":

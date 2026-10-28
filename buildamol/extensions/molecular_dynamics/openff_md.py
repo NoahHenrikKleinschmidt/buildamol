@@ -38,6 +38,9 @@ Then run energy minimization and/or molecular dynamics:
     aspirin_relaxed = system.to_molecule()
 
 
+The `System` object returned by the parametriser contains the OpenMM System, Topology, and initial coordinates. It can be used to run simulations, save PDB files, and retrieve the relaxed molecule.
+
+
 Notes
 -----
 Partial charge assignment uses ``mmff94`` by default, which requires only RDKit

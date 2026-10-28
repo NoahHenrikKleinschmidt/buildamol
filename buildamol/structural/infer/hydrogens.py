@@ -46,6 +46,22 @@ class Hydrogenator:
 
     _bond_length = 1.05
 
+    # Precomputed H-position offsets (relative to atom center, at bond_length=1.0)
+    # for atoms with ZERO existing neighbors. Keyed by (bond_order, connectivity).
+    # These are translation-invariant: H_coord = atom.coord + offset * actual_length.
+    # Populated lazily on first use via _ensure_zero_neighbor_offsets().
+    _zero_neighbor_offsets = None
+
+    @classmethod
+    def _ensure_zero_neighbor_offsets(cls):
+        if cls._zero_neighbor_offsets is not None:
+            return
+        fake = base_classes.Atom("XX", np.zeros(3), element="C")
+        cls._zero_neighbor_offsets = {
+            key: geom.make_coords(fake, length=1.0)[1:]
+            for key, geom in cls.__geometries__.items()
+        }
+
     def infer_hydrogens(self, molecule, bond_length: float = 1):
         """
         Add hydrogen atoms to a molecule.
@@ -65,7 +81,20 @@ class Hydrogenator:
         self._molecule = molecule
         self._bond_length = bond_length
 
-        for atom in self._molecule._atoms:
+        Hydrogenator._ensure_zero_neighbor_offsets()
+        _zn_offsets = Hydrogenator._zero_neighbor_offsets
+
+        # Phase 1 — collect all H atoms and bonds without touching the molecule.
+        # Keeping mutation out of the loop avoids the O(n²) serial-number recount
+        # that add_atoms() performs on every call (it counts all existing atoms
+        # each time to assign the next serial number).
+        pending_atoms = []   # (Atom, parent_residue)
+        pending_bonds = []   # Bond objects
+
+        graph = self._molecule._AtomGraph
+        _graph_adj = graph._adj
+        _label_cache = {}  # (atom.id, atom.element, free_slots) → labels list
+        for atom in graph.nodes:
             if atom.element == "H":
                 continue
 
@@ -73,21 +102,85 @@ class Hydrogenator:
             if connectivity == 0:
                 continue
 
-            bonds = self._molecule.get_bonds(atom)
-            free_slots = (
-                connectivity - sum(b.order for b in bonds) - (atom.pqr_charge or 0)
-            )
+            # Gate on degree first: avoids building an edge list for the very
+            # common case of 0-bonded atoms (e.g. atoms loaded from PDB without
+            # inferred connectivity). Direct _adj lookup is O(1).
+            _adj_atom = _graph_adj.get(atom)
+            if _adj_atom:
+                bonds = [d["bond_obj"] for d in _adj_atom.values()]
+                free_slots = (
+                    connectivity - sum(b.order for b in bonds) - (atom.pqr_charge or 0)
+                )
+                bond_order = max((b.order for b in bonds), default=1)
+                neighbors = set(j for b in bonds for j in b if j != atom)
+            else:
+                free_slots = connectivity - (atom.pqr_charge or 0)
+                bond_order = 1
+                neighbors = set()
+                bonds = []
 
-            if free_slots > 0:
-                neighbors = set(j for i in bonds for j in i if j != atom)
-                bond_order = max((i.order for i in bonds), default=1)
-                self._add_hydrogens(
+            if free_slots <= 0:
+                continue
+
+            _geometry = Hydrogenator.__geometries__.get((bond_order, connectivity))
+            if _geometry is None:
+                continue
+
+            if not neighbors:
+                # Fast path: no existing neighbors — H positions are fixed offsets
+                # from the atom center (translation-invariant), precomputed at
+                # length=1.0 and scaled to the element-specific bond length here.
+                off = _zn_offsets.get((bond_order, connectivity))
+                if off is None:
+                    Hs, h_bonds = self._collect_hydrogens(
+                        atom, neighbors, free_slots, bond_order, connectivity
+                    )
+                else:
+                    bl = element_to_hydrogen_bond_lengths.get(atom.element, bond_length)
+                    H_coords = atom.coord + off[:free_slots] * bl
+                    _lkey = (atom.id, atom.element, free_slots)
+                    if _lkey not in _label_cache:
+                        _lbl = AutoLabel.hydrogen_neighbors(atom)
+                        if free_slots > 1:
+                            _lbl.pop(0)
+                        _label_cache[_lkey] = _lbl
+                    labels = _label_cache[_lkey]
+                    Hs = [
+                        base_classes.Atom._hydrogen(labels[i], H_coords[i])
+                        for i in range(free_slots)
+                    ]
+                    h_bonds = [base_classes.Bond(atom, H, 1) for H in Hs]
+            else:
+                Hs, h_bonds = self._collect_hydrogens(
                     atom=atom,
                     neighbors=neighbors,
                     free_slots=free_slots,
                     bond_order=bond_order,
                     connectivity=connectivity,
                 )
+
+            for H in Hs:
+                pending_atoms.append((H, atom.parent))
+            pending_bonds.extend(h_bonds)
+
+        if not pending_atoms:
+            return self._molecule
+
+        # Phase 2 — one serial-number count, then direct residue insertion for
+        # every H atom, followed by a single bulk bond registration.
+        _max_serial = sum(1 for _ in self._molecule._model.get_atoms())
+        for H, residue in pending_atoms:
+            _max_serial += 1
+            H.set_serial_number(_max_serial)
+            residue.add(H)
+        # Batch-add nodes (faster than 474k individual add_node calls).
+        graph.add_nodes_from(H for H, _ in pending_atoms)
+
+        # Bypass _add_bonds: we know all pending_bonds are new (H atoms just
+        # inserted), so skip has_edge checks and duplicate Bond construction.
+        for bond in pending_bonds:
+            graph.add_edge(bond.atom1, bond.atom2, bond_order=bond.order, bond_obj=bond)
+        self._molecule._bonds.extend(pending_bonds)
 
         return self._molecule
 
@@ -113,33 +206,17 @@ class Hydrogenator:
                 connectivity=connectivity,
             )
 
-    def _add_hydrogens(self, atom, neighbors, free_slots, bond_order, connectivity):
+    def _collect_hydrogens(self, atom, neighbors, free_slots, bond_order, connectivity):
         """
-        Add hydrogen atoms to a molecule.
-
-        Parameters
-        ----------
-        atom : Atom
-            The atom to add hydrogen atoms to.
-        neighbors : set
-            The eighbors the atom has.
-        free_slots : int
-            The number of free slots the atom has.
-        bond_order : int
-            The highest bond order of all bonds that connects the atom to a neighbor.
-        connectivity: int
-            The theoretically possible number of bonds the atom can form.
+        Compute hydrogen positions and return them without mutating the molecule.
 
         Returns
         -------
-        list
-            A list of hydrogen atoms.
-        list
-            A list of bonds to the atom for each hydrogen.
+        tuple[list[Atom], list[Bond]]
         """
         _geometry = Hydrogenator.__geometries__.get((bond_order, connectivity), None)
         if _geometry is None:
-            return
+            return [], []
 
         _neighbors = list(neighbors)[: _geometry.max_points - 1]
         out = _geometry.make_coords(atom, *_neighbors, length=self._bond_length)[
@@ -171,8 +248,16 @@ class Hydrogenator:
         for b in bonds:
             base.adjust_bond_length(b, length)
 
-        self._molecule.add_atoms(*Hs, residue=atom.parent)
-        self._molecule.add_bonds(*bonds)
+        return Hs, bonds
+
+    def _add_hydrogens(self, atom, neighbors, free_slots, bond_order, connectivity):
+        """Compute and immediately add hydrogens to one atom (used by add_hydrogens())."""
+        Hs, bonds = self._collect_hydrogens(
+            atom, neighbors, free_slots, bond_order, connectivity
+        )
+        if Hs:
+            self._molecule.add_atoms(*Hs, residue=atom.parent)
+            self._molecule.add_bonds(*bonds)
 
 
 def adjust_protonation(molecule, atom, new_charge):

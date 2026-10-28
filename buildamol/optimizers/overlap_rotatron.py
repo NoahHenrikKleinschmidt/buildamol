@@ -12,7 +12,7 @@ Both terms are minimized, so lower score = better conformation.
 
 import gymnasium as gym
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist
 
 import buildamol.optimizers.base_rotatron as Rotatron
 import buildamol.graphs.base_graph as base_graph
@@ -145,6 +145,19 @@ class OverlapRotatron(Rotatron.Rotatron):
             k: np.array(v, dtype=int) for k, v in self.rotation_units.items()
         }
 
+        # flat arrays to compute the unit gaussians with vectorized reductions
+        unit_ids = sorted(self.rotation_units.keys())
+        self._unit_order = np.concatenate([self.rotation_units[k] for k in unit_ids])
+        self._unit_sizes = np.array([len(self.rotation_units[k]) for k in unit_ids])
+        self._unit_starts = np.concatenate([[0], np.cumsum(self._unit_sizes)[:-1]])
+
+        # only pairs of atoms in different rotation units can change their distance
+        unit_of = np.empty(self.n_nodes, dtype=int)
+        for k in unit_ids:
+            unit_of[self.rotation_units[k]] = k
+        i, j = np.triu_indices(self.n_nodes, k=1)
+        self._clash_pairs = unit_of[i] != unit_of[j]
+
     def eval(self, state):
         """
         Evaluate conformation quality as sum of overlap + clash penalties.
@@ -173,91 +186,46 @@ class OverlapRotatron(Rotatron.Rotatron):
         """
         Compute pairwise Gaussian overlap penalty between all rotation units.
 
-        Uses a simple spread-based measure: penalty increases as units get closer
-        relative to their spread.
+        Each unit is described by its center and its spread (its radius of gyration). The penalty increases as the distance between two units
+        becomes smaller than the sum of their spreads.
         """
-        unit_ids = sorted(self.rotation_units.keys())
-        gaussians = []
+        sizes = self._unit_sizes
+        coords = state[self._unit_order]
+        means = np.add.reduceat(coords, self._unit_starts, axis=0) / sizes[:, None]
 
-        for unit_id in unit_ids:
-            atom_indices = self.rotation_units[unit_id]
-            unit_coords = state[atom_indices]
+        # trace of the (sample) covariance of each unit
+        squares = np.add.reduceat(np.sum(coords**2, axis=1), self._unit_starts, axis=0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            traces = (squares - sizes * np.sum(means**2, axis=1)) / (sizes - 1)
+        # single atoms get the default spread, all others are regularized to avoid zero spreads
+        traces = np.where(
+            sizes > 1,
+            np.clip(traces, 0, None) + 3 * self.gaussian_spread * 0.1,
+            3 * self.gaussian_spread**2,
+        )
+        spreads = np.sqrt(traces)
 
-            # Fit Gaussian: mean and covariance
-            mean = np.mean(unit_coords, axis=0)
+        i, j = np.triu_indices(len(sizes), k=1)
+        center_dists = np.linalg.norm(means[i] - means[j], axis=1)
+        overlap = np.clip(spreads[i] + spreads[j] - center_dists, 0, None)
 
-            if len(atom_indices) == 1:
-                # Single atom: zero covariance, use gaussian_spread as default
-                cov = np.eye(3) * (self.gaussian_spread**2)
-            else:
-                cov = np.cov(unit_coords.T)
+        # Skip far pairs if cutoff enabled
+        if self.use_overlap_cutoff:
+            overlap[center_dists > self.overlap_cutoff_distance] = 0
 
-                # Handle degenerate covariance (linear arrangement)
-                if cov.ndim == 0:
-                    cov = np.eye(3) * (self.gaussian_spread**2)
-                else:
-                    cov = np.atleast_2d(cov)
-                    if cov.shape != (3, 3):
-                        cov = np.eye(3) * (self.gaussian_spread**2)
-                    else:
-                        # Regularize to avoid singular matrices
-                        cov = cov + np.eye(3) * (self.gaussian_spread * 0.1)
-
-            gaussians.append((mean, cov))
-
-        # Compute pairwise overlaps
-        penalty = 0.0
-        for i in range(len(gaussians)):
-            for j in range(i + 1, len(gaussians)):
-                mean_i, cov_i = gaussians[i]
-                mean_j, cov_j = gaussians[j]
-
-                # Distance between centers
-                center_dist = np.linalg.norm(mean_i - mean_j)
-
-                # Skip far pairs if cutoff enabled
-                if (
-                    self.use_overlap_cutoff
-                    and center_dist > self.overlap_cutoff_distance
-                ):
-                    continue
-
-                # Overlap penalty based on distance and spread
-                # Smaller distance → higher penalty
-                # Larger spread → higher penalty tolerance
-                spread_metric = (np.trace(cov_i) + np.trace(cov_j)) / 6.0
-
-                # Penalty increases as distance decreases relative to spread
-                # If center_dist << spread, high penalty
-                overlap_amount = max(0.0, spread_metric - center_dist)
-                penalty += overlap_amount**2
-
-        return penalty
+        return float(np.sum(overlap**2))
 
     def _compute_clash_penalty(self, state):
         """
         Compute direct steric clash penalty: sum of (clash_dist - actual_dist)^2
-        for all atom pairs closer than clash_distance.
+        for all atom pairs closer than clash_distance that can move relative to each other.
         """
-        penalty = 0.0
-
-        # Pairwise distances
         if self.n_nodes < 2:
-            return penalty
+            return 0.0
 
-        all_pairs = pdist(state)
-        distances = squareform(all_pairs)
-
-        # Find pairs below threshold
-        clashing = distances < self.clash_distance
-        np.fill_diagonal(clashing, False)  # Ignore self-distances
-
-        if np.any(clashing):
-            # Squared penalty for violations
-            violations = self.clash_distance - distances[clashing]
-            penalty = np.sum(violations**2)
-
-        return penalty
+        distances = pdist(state)[self._clash_pairs]
+        violations = self.clash_distance - distances[distances < self.clash_distance]
+        return float(np.sum(violations**2))
 
     def copy(self):
         """Make a deep copy of the environment"""

@@ -23,6 +23,13 @@ from buildamol.structural.stitch import (
     __default_keep_keep_stitcher__,
 )
 
+from buildamol.structural.stitch_algorithm import (
+    stitching_algorithm,
+    set_stitching_algorithm,
+    get_stitching_algorithm,
+    grid_optimize,
+)
+
 from buildamol.structural.neighbors import (
     AtomNeighborhood,
     ResidueNeighborhood,

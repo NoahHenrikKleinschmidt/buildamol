@@ -1,195 +1,120 @@
-.. <gallery>
+.. only:: html
+
+    .. title:: BuildAMol | Fragment-based Molecular Assembly Toolkit
+
 
 .. raw:: html
 
-    <div class="slideshow-container">
-        
-    <div class="mySlides fade">
-        <img src="_static/gallery/sampling.png" style="width:100%">
+    <div class="hero-section">
+        <div class="hero-content">
+            
+            <h2>Fragment-based Molecular Assembly Toolkit</h2>
+            <p>Generate complex molecular structures with Python. Simple, powerful, and intuitive.</p>
+            <div class="hero-buttons">
+                <a href="installation.html" class="btn btn-primary">Get Started</a>
+                <a href="tutorials.html" class="btn btn-secondary">View Tutorials</a>
+            </div>
+        </div>
+        <div class="hero-slide">
+            <img src="_static/gallery/nanotube.png" alt="Molecular structures">
+        </div>
     </div>
 
-    <div class="mySlides fade">
-        <img src="_static/gallery/complex.png" style="width:100%">
-    </div>
+A Python toolkit for generating atomic models of complex molecular structures
+================================================================================
 
-    <div class="mySlides fade">
-        <img src="_static/gallery/linear-polymer.png" style="width:100%">
-    </div>
+`BuildAMol` (formerly Biobuild) is designed to leverage the simplicity of Python coding and the power of **fragment-based assembly** to provide a streamlined molecular modeling workflow.
 
-    <div class="mySlides fade">
-        <img src="_static/gallery/conf_samples.png" style="width:100%">
-    </div>
+**Key Features:**
 
-    <div class="mySlides fade">
-        <img src="_static/gallery/polyphenylene.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/nanotube.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/xwing.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/prot-glyco.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/ring.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/MOF-top.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/MOF-angle.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/rotaxan-linear.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/first_mol.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/rotaxan-small.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/peptide.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/drd2-ligand.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/MOF-detail.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/his20-2.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/waterbox.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/his20.png" style="width:100%">
-    </div>
-
-    <div class="mySlides fade">
-        <img src="_static/gallery/glyco-membrane.png" style="width:100%">
-    </div>
-
-    </div>
+- ✨ **Fragment-based assembly**: Build complex molecules from molecular fragments
+- 🧬 **Biology support**: Dedicated extensions for proteins, glycosylation, and docking
+- ⚛️ **Chemistry-aware**: Automatic handling of reactions, functional groups, and geometry
+- 🔧 **Materials science**: Tools for polymers, nanotubes, and metal-organic frameworks
+- 📊 **Integration**: Seamless interfaces with RDKit, OpenMM, and molecular dynamics tools
+- 📓 **Documentation**: Interactive Jupyter notebooks and comprehensive API reference
 
 .. raw:: html
 
-    <style>
-    .slideshow-container {
-      max-width: 1000px;
-      position: relative;
-      margin: auto;
-    }
+    <div class="feature-cards">
 
-   img {
-      background-color: transparent !important;
-   }
+.. grid:: 2
 
-    .mySlides {
-      display: none;
-    }
+    .. grid-item-card:: 🎓 Learn by Example
+        :link: tutorials
+        :link-type: ref
+        :class-title: card-title-emphasized
 
-    .fade {
-      animation: fade 5000ms infinite;
-    }
+        Explore interactive tutorials organized by use case: basic usage, chemistry, biology, materials science, and molecular dynamics.
 
-    @keyframes fade {
-      from {opacity: .7} 
-      to {opacity: 1}
-    }
-    </style>
+    .. grid-item-card:: 📖 API Reference
+        :link: apidocumentation
+        :link-type: ref
+        :class-title: card-title-emphasized
+
+        Comprehensive API documentation for the core library and all extensions, with detailed docstrings and examples.
+
+    .. grid-item-card:: 🏗️ What is BuildAMol?
+        :link: whatfor
+        :link-type: doc
+        :class-title: card-title-emphasized
+
+        Understand the philosophy, core concepts, and design decisions behind BuildAMol.
+
+    .. grid-item-card:: 📦 Installation
+        :link: installation
+        :link-type: doc
+        :class-title: card-title-emphasized
+
+        Quick setup guide with all requirements and optional dependencies.
 
 .. raw:: html
 
-    <script>
-    var slideIndex = 0;
-    showSlides();
+    </div>
 
-    function showSlides() {
-      var i;
-      var slides = document.getElementsByClassName("mySlides");
-      for (i = 0; i < slides.length; i++) {
-        slides[i].style.display = "none";  
-      }
-      slideIndex++;
-      if (slideIndex > slides.length) {slideIndex = 1}    
-      slides[slideIndex-1].style.display = "block";  
-      setTimeout(showSlides, 5000); // Change image every N seconds
-    }
-    </script>
+Showcase
+========
 
-.. <gallery>
+BuildAMol can model a diverse range of molecular systems:
 
-.. title:: BuildAMol
-   
+.. raw:: html
 
-.. ====================================
-.. Welcome to BuildAMol's documentation
-.. ====================================
+        <div class="showcase-rotator-wrap">
+                <img id="showcase-rotator" class="showcase-rotator-image" src="_static/gallery/complex.png" alt="BuildAMol showcase image" />
+        </div>
 
-.. image:: _resources/logo_large_light.png
-   :class: only-light
-   :width: 80%
-   :align: center
-   :alt: logo
+.. raw:: html
 
-.. image:: _resources/logo_large_dark.png
-   :class: only-dark
-   :width: 80%
-   :align: center
-   :alt: logo
-
-
-`BuildAMol` (formerly Biobuild) is a fragment-based molecular assembly toolkit for the generation of atomic models for complex molecular structures.
-It is designed to leverage the simplicity of python-coding and the power of fragment-based assembly to provide a slim and streamlined workflow.
-Based on `biopython <http://biopython.org/wiki/Main_Page>`_ and accessible as a `python package`, `BuildAMol` not only offers a straightforward API to generate, manipulate, visualize, and export 3D structures of molecules, but also provides easy interfaces with other molecular modeling tools such as `RDKit <https://www.rdkit.org/docs/index.html>`_.
-
+        <script>
+        (function () {
+            const images = [
+                "_static/gallery/complex.png",
+                "_static/gallery/peptide.png",
+                "_static/gallery/nanotube.png",
+                "_static/gallery/MOF-top.png"
+            ];
+            const el = document.getElementById("showcase-rotator");
+            if (!el) return;
+            let idx = 0;
+            setInterval(function () {
+                idx = (idx + 1) % images.length;
+                el.classList.add("is-fading");
+                setTimeout(function () {
+                    el.src = images[idx];
+                    el.classList.remove("is-fading");
+                }, 180);
+            }, 4200);
+        })();
+        </script>
 
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Documentation
    :hidden:
 
    whatfor
    installation
    tutorials
-   documentation
-
-
-.. grid:: 3
-
-
-    .. grid-item-card::  Tutorials
-        :link: tutorials
-        :link-type: ref
-        :link-alt: Tutorials
-
-    .. grid-item-card::  API Documentation
-        :link: apidocumentation
-        :link-type: ref
-        :link-alt: API Documentation    
-
-
-    .. grid-item-card::  Extensions
-        :link: buildamol.extensions
-        :link-type: doc
-        :link-alt: Extensions
+   Main library <documentation>
+   Extensions <buildamol.extensions>

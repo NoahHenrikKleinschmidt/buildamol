@@ -23,6 +23,13 @@ from buildamol.optimizers import *
 
 from buildamol.utils.info import __version__, __author__
 
+from buildamol.structural.stitch_algorithm import (
+    stitching_algorithm,
+    set_stitching_algorithm,
+    get_stitching_algorithm,
+    grid_optimize,
+)
+
 # Keep CHARMM APIs in `buildamol.resources.charmm`, but avoid exposing them at top-level.
 for _name in getattr(resources.charmm, "__all__", []):
     globals().pop(_name, None)

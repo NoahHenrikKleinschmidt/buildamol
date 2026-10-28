@@ -6,6 +6,7 @@ import numpy as np
 import Bio.PDB as bio
 
 import buildamol.utils.auxiliary as aux
+import buildamol.base_classes as base_classes
 from buildamol.backends.api import backend_dispatched
 
 origin = np.array([0, 0, 0], dtype=np.float64)
@@ -92,11 +93,6 @@ def model_make_full_id(self):
 def set_full_id(self, value):
     pass
 
-
-bio.Atom.Atom.full_id = property(atom_make_full_id, set_full_id)
-bio.Residue.Residue.full_id = property(residue_make_full_id, set_full_id)
-bio.Chain.Chain.full_id = property(chain_make_full_id, set_full_id)
-bio.Model.Model.full_id = property(model_make_full_id, set_full_id)
 
 # --------------------------- POSSIBLE DELETE ---------------------------
 
@@ -581,12 +577,15 @@ def superimpose_points(
             "The number of points in points1 and points2 must be the same."
         )
 
-    # compute translation vector
-    old_centroid = _old_coords.mean(axis=0)
-    new_centroid = _new_coords.mean(axis=0)
+    # Use first point as the translation anchor so that points1[0] maps exactly
+    # onto points2[0]. Using the centroid instead would distribute alignment
+    # error across all point pairs (none lands exactly) when the shapes are
+    # non-congruent (e.g. after force-field optimisation).
+    old_anchor = _old_coords[0]
+    new_anchor = _new_coords[0]
 
-    _relative_old_coords = _old_coords - old_centroid
-    _relative_new_coords = _new_coords - new_centroid
+    _relative_old_coords = _old_coords - old_anchor
+    _relative_new_coords = _new_coords - new_anchor
 
     H = (_relative_old_coords).T.dot(_relative_new_coords)
     U, S, VT = np.linalg.svd(H)
@@ -597,7 +596,7 @@ def superimpose_points(
         VT[-1, :] *= -1
         R = VT.T @ U.T
 
-    new_coords = (R @ (coords - old_centroid).T).T + new_centroid
+    new_coords = (R @ (coords - old_anchor).T).T + new_anchor
 
     return new_coords
 
@@ -783,6 +782,12 @@ bio.Residue.Residue.rotate = _rotate_coords_base_classes
 bio.Chain.Chain.rotate = _rotate_coords_base_classes
 bio.Model.Model.rotate = _rotate_coords_base_classes
 bio.Structure.Structure.rotate = _rotate_coords_base_classes
+
+base_classes.Atom.rotate = _rotate_coords_base_classes
+base_classes.Residue.rotate = _rotate_coords_base_classes
+base_classes.Chain.rotate = _rotate_coords_base_classes
+base_classes.Model.rotate = _rotate_coords_base_classes
+base_classes.Structure.rotate = _rotate_coords_base_classes
 
 
 def flip_molecule(mol, plane_vector: np.ndarray, center: np.ndarray = None):

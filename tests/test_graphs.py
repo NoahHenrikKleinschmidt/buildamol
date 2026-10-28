@@ -664,3 +664,20 @@ def test_search_by_constraints():
     matches = graph.search_by_constraints(constraints)
     assert len(matches) == 1
     assert len(matches[0]) == 2
+
+
+def test_graph_copy():
+    mol = bam.read_pdb(base.MAN9PDB)
+    mol.infer_bonds(restrict_residues=False)
+    for graph in (mol.get_atom_graph(), mol.get_residue_graph(detailed=True)):
+        new = graph.copy()
+        assert type(new) is type(graph)
+        assert set(new.nodes) == set(graph.nodes)
+        assert new._molecule is graph._molecule
+        assert new._locked_edges == graph._locked_edges
+
+        n_nodes = len(graph.nodes)
+        new.remove_nodes_from(list(new.nodes)[:3])
+        new._locked_edges.clear()
+        assert len(graph.nodes) == n_nodes
+        assert len(new.nodes) == n_nodes - 3
