@@ -1,17 +1,21 @@
 .. _tutorials:
-.. biobuild documentation master file, created by
-   sphinx-quickstart on Tue Jun 13 14:40:03 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
-
+=========
 Tutorials
 =========
 
-On this page you will find some tutorials on how to use BuildAMol. Feel free to browse through them to learn more.
+Learn BuildAMol through interactive Jupyter notebooks. Explore examples organized by domain and use case.
 
-Basic Usage
------------
+.. raw:: html
+
+    <div class="tutorials-intro">
+        <p><strong>All tutorials are executable notebooks.</strong> You can run them locally or in a cloud environment.</p>
+    </div>
+
+🚀 Getting Started
+==================
+
+Start here if you're new to BuildAMol. These tutorials cover the fundamentals and basic workflows.
 
 .. nbgallery::
    examples/getting_started
@@ -22,16 +26,19 @@ Basic Usage
    examples/optimization
    examples/converting_formats
 
-Resource-oriented Tutorials
----------------------------
+⚙️ Working with Resources
+==========================
+
+Learn how to customize resources, manage settings, and build with different fragment libraries.
 
 .. nbgallery::
    examples/built-in
    examples/default_settings
 
+🧪 Chemistry: Reactions & Transformations
+===========================================
 
-BuildAmol and Chemistry
------------------------
+Explore how BuildAMol handles chemical reactions, functional groups, and molecular modifications.
 
 .. nbgallery::
    examples/reaction
@@ -40,8 +47,10 @@ BuildAmol and Chemistry
    examples/geometry_scratch
    examples/derivator_example
 
-BuildAmol and Biology
----------------------
+🔬 Biology: Biomolecules & Biochemistry
+========================================
+
+Build proteins, peptides, glycosylated structures, and perform docking studies.
 
 .. nbgallery::
    examples/bio_extension
@@ -49,15 +58,19 @@ BuildAmol and Biology
    examples/ligand_design
    examples/docking
 
-BuildAmol and Materials
------------------------
+🏛️ Materials Science
+====================
+
+Construct polymers, nanotubes, and metal-organic frameworks.
 
 .. nbgallery::
    examples/nanotube
    examples/metal_organic_framework
 
-BuildAmol and Molecular Dynamics
---------------------------------
+🔗 Molecular Dynamics & Simulation
+==================================
+
+Prepare systems for MD simulations with solvation boxes and conformational sampling.
 
 .. nbgallery::
    examples/molecular_dynamics_off
@@ -65,9 +78,10 @@ BuildAmol and Molecular Dynamics
    examples/conformation_sampling
    examples/solvation_box
 
-   
-More applied tutorials
------------------------
+🎨 Advanced Applications
+=========================
+
+Complex molecular assemblies including rotaxanes, dendrimers, and custom structures.
 
 .. nbgallery::
 
@@ -78,26 +92,6 @@ More applied tutorials
    examples/building_polyphenylene
    examples/irregular_dendrimer
    examples/fragment_library
-
-.. .. _cards-clickable::
-
-.. .. card:: Getting Started
-..    :link: example_getting_started
-..    :link-type: ref
-
-..    This tutorial covers the fundamentals of buildamol. It is slightly more detailed than the "Basic Usage" page, however, and covers topics that the other tutorials elaborate on.
-
-
-.. .. card:: A typical workflow
-..    :link: example_building_workflow
-..    :link-type: ref
-
-..    In this tutorial we will build a molecule to get the hang of a "typical" BuildAMol workflow.
-
-
-.. .. card:: Syntax Flavors
-..    :link: example_syntax
-..    :link-type: ref
 
 ..    This tutorial covers the different syntax flavors that BuildAMol supports.
 

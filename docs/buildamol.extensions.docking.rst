@@ -23,14 +23,21 @@ Available backends are:
 
 .. dropdown:: EasyDock Backend
 
-    .. automodule:: buildamol.extensions.docking.easydock
+    .. automodule:: buildamol.extensions.docking.backend_easydock
         :members:
         :undoc-members:
         :show-inheritance:
 
 .. dropdown:: DockString Backend
 
-    .. automodule:: buildamol.extensions.docking.dockstring
+    .. automodule:: buildamol.extensions.docking.backend_dockstring
+        :members:
+        :undoc-members:
+        :show-inheritance:
+
+.. dropdown:: Opendock Backend
+
+    .. automodule:: buildamol.extensions.docking.backend_opendock
         :members:
         :undoc-members:
         :show-inheritance:
