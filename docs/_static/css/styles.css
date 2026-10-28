@@ -9,6 +9,7 @@
     --primary-color: #1f4e8c;
     --primary-light: #4f8fd6;
     --primary-dark: #0f2747;
+    --banner-background: linear-gradient(135deg, #356fa8 0%, #3b78af 100%);
     --secondary-color: #cf222e;
     --accent-color: #0969da;
     --text-dark: #2c3e50;
@@ -46,7 +47,7 @@
     gap: 3rem;
     margin: 2rem 0 4rem 0;
     padding: 3rem 2rem;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    background: var(--banner-background);
     border-radius: 12px;
     color: white;
     box-shadow: 0 10px 40px var(--shadow-medium);
@@ -65,6 +66,7 @@
 }
 
 .hero-content p {
+    color: white;
     font-size: 1.1rem;
     margin-bottom: 1.5rem;
     opacity: 0.95;
@@ -100,27 +102,36 @@
     border: 2px solid transparent;
 }
 
-.btn-primary {
+.hero-buttons .btn-primary {
     background-color: white;
-    color: var(--primary-color);
+    color: #1f4e8c;
     border-color: white;
 }
 
-.btn-primary:hover {
-    background-color: var(--bg-light);
+.hero-buttons .btn-primary:hover,
+.hero-buttons .btn-primary:focus {
+    background-color: #f8f9fa;
+    color: #1f4e8c;
     transform: translateY(-2px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
-.btn-secondary {
+.hero-buttons .btn-secondary {
     background-color: transparent;
     color: white;
     border-color: white;
 }
 
-.btn-secondary:hover {
+.hero-buttons .btn-secondary:hover,
+.hero-buttons .btn-secondary:focus {
     background-color: rgba(255, 255, 255, 0.1);
+    color: white;
     transform: translateY(-2px);
+}
+
+.hero-buttons .btn:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 3px;
 }
 
 @media (max-width: 768px) {
@@ -247,7 +258,7 @@ p {
    Navigation & Header
    ========================================================================= */
 .bd-header {
-    background: linear-gradient(135deg, #356fa8 0%, #3b78af 100%);
+    background: var(--banner-background);
     box-shadow: 0 2px 8px var(--shadow-medium);
     color: white;
     position: sticky;
