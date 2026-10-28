@@ -3293,3 +3293,11 @@ def test_restore_without_snapshot_raises():
         pass
     else:
         assert False, "Should have raised a ValueError"
+
+
+def test_to_numpy():
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    mol.infer_bonds()
+    coords = mol.get_coords()
+    np_coords, np_bonds = mol.to_numpy()
+    assert np.allclose(coords, np_coords)

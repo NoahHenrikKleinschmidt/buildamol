@@ -33,22 +33,25 @@ def mol_to_numpy_array(mol, include_bonds: bool = False):
     Returns
     -------
     tuple,
-        An array of atomic numbers and atom coordinates
-        and an array of bonds between atoms as serial numbers of a,b and bond order
+        An array of atomic serials, element numbers, and atom coordinates
+        and an array of bonds between atoms as serial numbers of a,b and bond order (or None if not exported)
     """
-    coords = np.array(
-        [
-            (atom.serial_number, atom.atomic_number, atom.coord)
-            for atom in mol.get_atoms()
-        ]
-    )
+    data = np.empty((mol.count_atoms(), 4))
+
+    _data = [(atom.atomic_number, atom.coord) for atom in mol.get_atoms()]
+    _atom_map = {atom: idx for idx, atom in enumerate(mol.get_atoms())}
+    for idx, (atomic, coord) in enumerate(_data):
+        data[idx, 0] = atomic
+        data[idx, 1:] = coord
+
     if include_bonds:
-        bonds = np.zeros((coords.shape[0], 3))
-        for idx, b in enumerate(mol.get_bonds()):
-            bonds[idx, :] = [b.atom1.serial_number, b.atom2.serial_number, b.order]
+        bonds = [
+            [_atom_map[b.atom1], _atom_map[b.atom2], b.order] for b in mol.get_bonds()
+        ]
+        bonds = np.array(bonds)
     else:
-        bonds = np.empty((0, 1))
-    return coords, bonds
+        bonds = None
+    return data, bonds
 
 
 class PDBIO:
