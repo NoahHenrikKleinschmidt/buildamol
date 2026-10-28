@@ -526,6 +526,45 @@ class Rotatron(gym.Env):
     # Backward-compatible alias
     _jax_rotate = _rotate_jax
 
+    def _rotate_batch(self, actions):
+        """
+        Apply a batch of actions to the (initial) state at once.
+        The rotations are applied in the same order and manner as in `step`.
+
+        Parameters
+        ----------
+        actions : np.ndarray
+            (n_candidates, n_edges) rotation angles
+
+        Returns
+        -------
+        np.ndarray
+            (n_candidates, n_nodes, 3) coordinates
+        """
+        actions = np.asarray(actions, dtype=np.float64).reshape(-1, self.n_edges)
+        # tiny angles are skipped (as in `step`)
+        actions = np.where(np.abs(actions) < 1e-3, 0.0, actions)
+        X = np.repeat(self._backup_state[None], len(actions), axis=0)
+        for edx in range(self.n_edges):
+            theta = actions[:, edx]
+            if not np.any(theta):
+                continue
+            adx, bdx = self._edge_node_coords[edx]
+            mask = self.edge_masks[edx]
+            ref = X[:, adx][:, None]
+            axis = ((X[:, bdx] - X[:, adx]) / self.edge_lengths[edx])[:, None]
+            v = X[:, mask] - ref
+            cos = np.cos(theta)[:, None, None]
+            sin = np.sin(theta)[:, None, None]
+            # Rodrigues' rotation formula
+            X[:, mask] = (
+                v * cos
+                + np.cross(axis, v) * sin
+                + axis * np.sum(axis * v, axis=2, keepdims=True) * (1 - cos)
+                + ref
+            )
+        return X
+
     # ============================================================
     # The setup helper functions can be used by other environments
     # that inherit from this base class
@@ -534,25 +573,27 @@ class Rotatron(gym.Env):
     def _setup_helpers_crop_faraway_nodes(self, radius, graph=None, edges=None):
         """
         This is a helper function to remove nodes that are too far away from the rotatable edges.
+        The nodes are removed from a copy of the graph, the original graph is not modified.
         """
-        if graph and edges:
-            rotatable_edges = self._get_rotatable_edges(graph, edges)
-        else:
+        if graph is None:
+            graph = self.graph
             rotatable_edges = self.rotatable_edges
+        else:
+            rotatable_edges = self._get_rotatable_edges(graph, edges)
+
+        if len(rotatable_edges) == 0:
+            return graph, rotatable_edges
 
         edge_coords = np.array([(a.coord + b.coord) / 2 for a, b in rotatable_edges])
 
         nodes = list(graph.nodes)
         node_coords = np.array([node.coord for node in nodes])
 
-        dists = cdist(edge_coords, node_coords)
-        dists = dists > radius
+        far = (cdist(edge_coords, node_coords) > radius).all(axis=0)
 
-        dists = np.apply_along_axis(np.all, 0, dists)
-
-        if np.max(dists) != 0:
-            nodes_to_drop = [nodes[i] for i, d in enumerate(dists) if d]
-            graph.remove_nodes_from(nodes_to_drop)
+        if far.any():
+            graph = graph.copy()
+            graph.remove_nodes_from([nodes[i] for i in np.where(far)[0]])
 
         return graph, rotatable_edges
 

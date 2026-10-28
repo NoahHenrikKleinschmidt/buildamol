@@ -101,20 +101,21 @@ class Translatron(gym.Env):
     def _normal_apply(self, action):
         """
         Apply an action to the current state.
+        The rotations are performed with respect to the center of the initial coordinates
         """
-        new = structural.rotate_coords(self.state, action[3], structural.x_axis)
+        new = self.state - self.center
+        new = structural.rotate_coords(new, action[3], structural.x_axis)
         new = structural.rotate_coords(new, action[4], structural.y_axis)
         new = structural.rotate_coords(new, action[5], structural.z_axis)
-        new = new + action[:3]
+        new = new + self.center + action[:3]
         return new
 
     def _numba_apply(self, action):
-        new = structural._numba_wrapper_rotate_coords(
-            self.state, action[3], structural.x_axis
-        )
+        new = self.state - self.center
+        new = structural._numba_wrapper_rotate_coords(new, action[3], structural.x_axis)
         new = structural._numba_wrapper_rotate_coords(new, action[4], structural.y_axis)
         new = structural._numba_wrapper_rotate_coords(new, action[5], structural.z_axis)
-        new = new + action[:3]
+        new = new + self.center + action[:3]
         return new
 
     def blank(self):
@@ -124,6 +125,7 @@ class Translatron(gym.Env):
         coords = np.array([i.coord for i in graph.nodes])
         self.state = coords
         self.__backup_coords = coords.copy()
+        self.center = coords.mean(axis=0)
 
     def __no_finish(self, coords, *args, **kwargs):
         return False

@@ -36,7 +36,7 @@ def simple_concatenation_function(x, unfold, pushback, n_smallest, clash_distanc
     Mean distance ** unfold + (mean of n smallest distances) ** pushback
     """
     k = min(n_smallest, len(x))
-    smallest = np.partition(x, k)[:k]  # np.sort(x)[:n_smallest]
+    smallest = np.partition(x, k - 1)[:k]  # np.sort(x)[:n_smallest]
     e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
     return e
 
@@ -53,7 +53,7 @@ def concatenation_function_with_penalty(
     [(Mean distance ** unfold + (mean of n smallest distances) ** pushback)] / clash penalty
     """
     k = min(n_smallest, len(x))
-    smallest = np.partition(x, k)[:k]  # np.sort(x)[:n_smallest]
+    smallest = np.partition(x, k - 1)[:k]  # np.sort(x)[:n_smallest]
     penalty = np.sum(x < 1.5 * clash_distance)
     e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
     e /= (1 + penalty) ** 2
@@ -87,7 +87,7 @@ def concatenation_function_no_unfold(x, unfold, pushback, n_smallest, clash_dist
     (Mean of n smallest distances) ** pushback
     """
     k = min(n_smallest, len(x))
-    smallest = np.partition(x, k)[:k]  # np.sort(x)[:n_smallest]
+    smallest = np.partition(x, k - 1)[:k]  # np.sort(x)[:n_smallest]
     e = np.power(np.mean(smallest), pushback)
     return e
 
@@ -104,7 +104,7 @@ def concatenation_function_linear(x, unfold, pushback, n_smallest, clash_distanc
     Mean distance * unfold + (mean of n smallest distances) * pushback
     """
     k = min(n_smallest, len(x))
-    smallest = np.partition(x, k)[:k]  # np.sort(x)[:n_smallest]
+    smallest = np.partition(x, k - 1)[:k]  # np.sort(x)[:n_smallest]
     e = np.multiply(np.mean(x), unfold) + np.multiply(np.mean(smallest), pushback)
     return e
 
