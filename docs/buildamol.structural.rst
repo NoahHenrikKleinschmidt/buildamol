@@ -105,6 +105,13 @@ a `patch` (i.e. a `Linkage` with internal coordinates). The `stitch` module defi
 
 
 .. tab-set::
+   
+   .. tab-item:: connector module
+
+      .. automodule:: buildamol.structural.connector
+         :members:
+         :undoc-members:
+         :show-inheritance:
 
    .. tab-item:: patch module
 
@@ -128,3 +135,9 @@ a `patch` (i.e. a `Linkage` with internal coordinates). The `stitch` module defi
          :undoc-members:
          :show-inheritance:
 
+   .. tab-item:: stitching mode
+      
+      .. automodule:: buildamol.structural.stitch_algorithm
+         :members:
+         :undoc-members:
+         :show-inheritance:
