@@ -13,7 +13,7 @@ class AtomGraph(BaseGraph):
     A graph representation of atoms and bonds in a contiguous molecule.
     """
 
-    def __init__(self, id, bonds: list):
+    def __init__(self, id=None, bonds: list = None):
         super().__init__(id, bonds)
 
     @classmethod

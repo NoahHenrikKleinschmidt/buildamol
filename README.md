@@ -1,7 +1,7 @@
 
 ---
 
-![](docs/_resources/logo_large.png)
+![](docs/_resources/logo_large_blue.png)
 
 ---
 

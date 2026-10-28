@@ -9,10 +9,10 @@ The evaluation is computed as:
 
     e_i = \\sum_{j \\neq i} d_{ij}^{unfold} + pushback \\cdot \\sum_{k=1}^N \\text{sorted}(d)_{ik}
 
-There are multiple variations of this basic formulation available (see the functions below). 
+There are multiple variations of this basic formulation available (see the functions below).
 """
 
-import gym
+import gymnasium as gym
 
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -35,8 +35,8 @@ def simple_concatenation_function(x, unfold, pushback, n_smallest, clash_distanc
 
     Mean distance ** unfold + (mean of n smallest distances) ** pushback
     """
-    k = min(n_smallest, len(x) - 1)
-    smallest = np.partition(x, k)[:k]  # np.sort(x)[:n_smallest]
+    k = min(n_smallest, len(x))
+    smallest = np.partition(x, k - 1)[:k]  # np.sort(x)[:n_smallest]
     e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
     return e
 
@@ -52,8 +52,8 @@ def concatenation_function_with_penalty(
 
     [(Mean distance ** unfold + (mean of n smallest distances) ** pushback)] / clash penalty
     """
-    k = min(n_smallest, len(x) - 1)
-    smallest = np.partition(x, k)[:k]  # np.sort(x)[:n_smallest]
+    k = min(n_smallest, len(x))
+    smallest = np.partition(x, k - 1)[:k]  # np.sort(x)[:n_smallest]
     penalty = np.sum(x < 1.5 * clash_distance)
     e = np.power(np.mean(x), unfold) + np.power(np.mean(smallest), pushback)
     e /= (1 + penalty) ** 2
@@ -86,8 +86,8 @@ def concatenation_function_no_unfold(x, unfold, pushback, n_smallest, clash_dist
 
     (Mean of n smallest distances) ** pushback
     """
-    k = min(n_smallest, len(x) - 1)
-    smallest = np.partition(x, k)[:k]  # np.sort(x)[:n_smallest]
+    k = min(n_smallest, len(x))
+    smallest = np.partition(x, k - 1)[:k]  # np.sort(x)[:n_smallest]
     e = np.power(np.mean(smallest), pushback)
     return e
 
@@ -103,8 +103,8 @@ def concatenation_function_linear(x, unfold, pushback, n_smallest, clash_distanc
 
     Mean distance * unfold + (mean of n smallest distances) * pushback
     """
-    k = min(n_smallest, len(x) - 1)
-    smallest = np.partition(x, k)[:k]  # np.sort(x)[:n_smallest]
+    k = min(n_smallest, len(x))
+    smallest = np.partition(x, k - 1)[:k]  # np.sort(x)[:n_smallest]
     e = np.multiply(np.mean(x), unfold) + np.multiply(np.mean(smallest), pushback)
     return e
 
@@ -260,6 +260,13 @@ class DistanceRotatron(Rotatron.Rotatron):
         self._concatenation_function_kwargs = aux.get_args(
             self._concatenation_function, self.hyperparameters
         )
+        self._vectorized_numpy_eval = self._concatenation_function in {
+            concatenation_function_with_penalty,
+            simple_concatenation_function,
+            concatenation_function_no_pushback,
+            concatenation_function_no_unfold,
+            concatenation_function_linear,
+        }
         self._bounds_tuple = bounds
 
         # =====================================
@@ -281,33 +288,94 @@ class DistanceRotatron(Rotatron.Rotatron):
         pairwise_dists = cdist(state, state)
         np.fill_diagonal(pairwise_dists, self._radius)
 
-        mask = pairwise_dists < self._radius
-        mask = np.logical_and(mask, self.rotation_unit_masks)
+        if self._vectorized_numpy_eval:
+            final = self._normal_eval_vectorized(pairwise_dists)
+        else:
+            final = self._normal_eval_fallback(pairwise_dists)
+
+        self._state_dists = np.min(pairwise_dists)
+        self._last_eval = final
+        return final
+
+    def _normal_eval_vectorized(self, pairwise_dists):
+        mask = np.logical_and(pairwise_dists < self._radius, self.rotation_unit_masks)
+        changed = mask.any(axis=1)
+        if not np.any(changed):
+            return np.inf
+
+        working = np.where(mask, pairwise_dists, np.inf)
+        finite = np.isfinite(working)
+
+        with np.errstate(invalid="ignore", divide="ignore"):
+            row_sum = np.where(finite, working, 0.0).sum(axis=1)
+            row_count = finite.sum(axis=1)
+            mean_all = np.divide(
+                row_sum,
+                row_count,
+                out=np.zeros_like(row_sum),
+                where=row_count > 0,
+            )
+
+            k = max(1, self.n_smallest)
+            smallest = np.partition(working, k - 1, axis=1)[:, :k]
+            smallest_finite = np.isfinite(smallest)
+            smallest_sum = np.where(smallest_finite, smallest, 0.0).sum(axis=1)
+            smallest_count = smallest_finite.sum(axis=1)
+            mean_small = np.divide(
+                smallest_sum,
+                smallest_count,
+                out=np.zeros_like(smallest_sum),
+                where=smallest_count > 0,
+            )
+
+        if self._concatenation_function is concatenation_function_no_pushback:
+            dist_eval = np.power(mean_all, self.unfold)
+        elif self._concatenation_function is concatenation_function_no_unfold:
+            dist_eval = np.power(mean_small, self.pushback)
+        elif self._concatenation_function is concatenation_function_linear:
+            dist_eval = mean_all * self.unfold + mean_small * self.pushback
+        else:
+            dist_eval = np.power(mean_all, self.unfold) + np.power(
+                mean_small, self.pushback
+            )
+            if self._concatenation_function is concatenation_function_with_penalty:
+                penalty = np.logical_and(
+                    mask, pairwise_dists < 1.5 * self.clash_distance
+                )
+                penalty = penalty.sum(axis=1)
+                dist_eval = np.divide(dist_eval, (1 + penalty) ** 2)
+
+        valid = np.logical_and(changed, np.isfinite(dist_eval))
+        if not np.any(valid):
+            return np.inf
+
+        mean_dist_eval = np.divide(1.0, np.mean(dist_eval[valid]))
+        return np.log(mean_dist_eval)
+
+    def _normal_eval_fallback(self, pairwise_dists):
+        mask = np.logical_and(pairwise_dists < self._radius, self.rotation_unit_masks)
         dist_eval = np.zeros(len(pairwise_dists))
 
-        _changed_entries = mask.any(axis=1)
-        dist_eval[~_changed_entries] = -1
+        changed = mask.any(axis=1)
+        dist_eval[~changed] = -1
 
-        for i in np.where(_changed_entries)[0]:
+        for i in np.where(changed)[0]:
             dist_eval[i] = self._concatenation_function(
                 pairwise_dists[i][mask[i]], **self._concatenation_function_kwargs
             )
 
-        mean_dist_eval = np.divide(1.0, np.mean(dist_eval[dist_eval > -1]))
+        valid = np.logical_and(dist_eval > -1, np.isfinite(dist_eval))
+        if not np.any(valid):
+            return np.inf
 
-        final = np.log(mean_dist_eval)  # - self._backup_eval
-
-        min_dist = np.min(pairwise_dists)
-        self._state_dists = min_dist
-        self._last_eval = final
-        return final
+        mean_dist_eval = np.divide(1.0, np.mean(dist_eval[valid]))
+        return np.log(mean_dist_eval)
 
     def _numba_eval(self, state):
         min_dist, final = _numba_wrapper_eval(
             state=state,
             concatenation_function=self._concatenation_function,
             rotation_unit_masks=self.rotation_unit_masks,
-            last_eval=self._last_eval,
             radius=self._radius,
             **self._concatenation_function_kwargs,
         )
@@ -334,7 +402,6 @@ def _numba_wrapper_eval(
     state,
     concatenation_function,
     rotation_unit_masks,
-    last_eval,
     radius,
     unfold,
     pushback,
@@ -343,8 +410,6 @@ def _numba_wrapper_eval(
 ):
     pairwise_dists = structural._numba_wrapper_euclidean_distances(state, state)
     np.fill_diagonal(pairwise_dists, radius)
-
-    dist_eval = np.zeros(len(state))
 
     mask = pairwise_dists < radius
     mask = np.logical_and(mask, rotation_unit_masks)

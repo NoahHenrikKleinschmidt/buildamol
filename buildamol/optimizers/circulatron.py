@@ -41,7 +41,7 @@ class Circulatron(Rotatron.Rotatron):
         base_rotatron: Rotatron = DistanceRotatron,
         hinge_node=None,
         rotatable_edges: list = None,
-        **kwargs
+        **kwargs,
     ):
         hinge_node = hinge_node or target_nodes[0]
         if rotatable_edges is None:
@@ -56,8 +56,9 @@ class Circulatron(Rotatron.Rotatron):
         self.base_rotatron = base_rotatron(
             graph, rotatable_edges, setup=False, **kwargs
         )
-        base_rotatron.edge_masks = self.edge_masks
-        base_rotatron.edge_lengths = self.edge_lengths
+        self.base_rotatron.edge_masks = self.edge_masks
+        self.base_rotatron.edge_lengths = self.edge_lengths
+        self.base_rotatron.rotation_unit_masks = self.rotation_unit_masks
 
         self.action_space = self.base_rotatron.action_space
         self._bounds_tuple = self.base_rotatron._bounds_tuple
@@ -82,7 +83,7 @@ class Circulatron(Rotatron.Rotatron):
         e += self._target_dist**2
         return e
 
-    def done(self, state):
+    def is_done(self, state):
         """
         Check if the state is done
 
@@ -97,6 +98,9 @@ class Circulatron(Rotatron.Rotatron):
             Whether the state is done
         """
         return self._target_dist < 0.1
+
+    # Backward-compatible alias
+    done = is_done
 
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ def test_molecule_basic():
     assert len(mol.atoms) == 24
     assert len(mol.bonds) == 0
 
-    _mol = bam.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANPDB)
+    _mol = bio.PDBParser(QUIET=True).get_structure("MAN", base.MANPDB)
     mol = bam.Molecule(_mol)
     assert mol is not None
 
@@ -88,6 +88,27 @@ def test_can_write_pdb():
     assert glc.to_biopython() == glc2.to_biopython()
 
     os.remove("GLC.pdb")
+
+
+def test_pdb_export_safe_truncates_long_text_fields():
+    glc = bam.Molecule.from_compound("GLC")
+    residue = next(glc.get_residues())
+    atom = next(glc.get_atoms())
+
+    residue.resname = "BGLCNA"
+    atom.id = "C1LONG"
+
+    safe_line = bam.utils.pdb.encode_atom(atom)
+    unsafe_line = bam.utils.pdb.encode_atom(atom, safe=False)
+
+    assert safe_line[12:16] == "C1LO"
+    assert safe_line[17:20] == "BGL"
+    assert safe_line[30:38].strip() == f"{atom.coord[0]:.3f}"
+    assert safe_line[38:46].strip() == f"{atom.coord[1]:.3f}"
+    assert safe_line[46:54].strip() == f"{atom.coord[2]:.3f}"
+
+    assert unsafe_line[17:20] != "BGL"
+    assert unsafe_line[30:38].strip() != f"{atom.coord[0]:.3f}"
 
 
 def test_can_write_cif():
@@ -579,11 +600,14 @@ def test_find_clashes():
     clashes = mol.find_clashes()
     assert len(clashes) == 0
 
+    # now randomly rotate around some bonds to create clashes
+    np.random.seed(42)
     edges = mol.get_residue_connections()
-    for edge in edges:
-        mol.rotate_around_bond(
-            *edge, np.random.uniform(-180, 180), descendants_only=True
-        )
+    for _ in range(20):
+        bdx = np.random.choice(len(edges))
+        bond = edges[bdx]
+
+        mol.rotate_descendants(*bond, np.random.uniform(-180, 180))
 
     clashes = mol.find_clashes()
     assert len(clashes) != 0
@@ -1946,6 +1970,24 @@ def test_hydroxylate():
     bam.hydroxylate(mol, "C1")
     m = mol.count_atoms()
     assert m > n, "No atoms seem to have been added"
+    assert mol.count_residues() == 2, "No new residue seems to have been created"
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_hydroxylate_same_residue():
+    mol = bam.Molecule.from_smiles("CC")
+    n = mol.count_atoms()
+    bam.hydroxylate(mol, "C1", as_new_residue=False)
+    m = mol.count_atoms()
+    assert m > n, "No atoms seem to have been added"
+    assert mol.count_residues() == 1, "A new residue seems to have been created"
+    assert mol.get_atom("O").parent is mol.get_residue(
+        1
+    ), "Oxygen not in the same residue"
+    assert (
+        mol.get_atom("HO") in mol.get_residue(1).atoms
+    ), "Hydrogen not in the same residue"
     if base.ALLOW_VISUAL:
         mol.show()
 
@@ -2018,6 +2060,28 @@ def test_carboxylate_multiple():
     hydrogens = [mol.get_left_hydrogen(i) for i in carbons]
     hydrogens[0] = None
     bam.carboxylate(mol, carbons, hydrogens)
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_carboxylate_multiple_same_residue():
+    mol = bam.Molecule.from_smiles("CCCCC")
+    carbons = mol.get_atoms("C3", "C2", "C4")
+    hydrogens = [mol.get_left_hydrogen(i) for i in carbons]
+    hydrogens[0] = None
+    bam.carboxylate(mol, carbons, hydrogens, as_new_residue=False)
+    assert mol.count_residues() == 1, "A new residue seems to have been created"
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_carboxylate_multiple_same_mixed_residue():
+    mol = bam.Molecule.from_smiles("CC")
+    bam.benzylate(mol, "C1")
+    assert mol.count_residues() == 2, "No new residue seems to have been created"
+    carbons = [mol.get_atom("C2", residue=1), mol.get_atom("C3", residue=2)]
+    bam.carboxylate(mol, carbons, as_new_residue=False)
+    assert mol.count_residues() == 2, "A new residue seems to have been created"
     if base.ALLOW_VISUAL:
         mol.show()
 
@@ -2917,3 +2981,323 @@ def test_atom_can_access_hydrogens():
     assert atom.get_hydrogens() == mol.get_hydrogens(atom)
     assert atom.get_left_hydrogen() == mol.get_left_hydrogen(atom)
     assert atom.get_right_hydrogen() == mol.get_right_hydrogen(atom)
+
+
+def test_rename():
+    mol = bam.Molecule.from_compound("GLC")
+    atom = mol.get_atom("C1")
+    residue = mol.get_residue(1)
+    chain = mol.get_chain("A")
+    model = mol.get_model(0)
+
+    mol.rename_atom(atom, "C1_new")
+    assert atom.id == "C1_new" == atom.name
+    assert mol.get_atom("C1_new") is atom
+    mol.rename_residue(residue, "GLC_new")
+    assert residue.name == "GLC_new"
+    assert mol.get_residue("GLC_new") is residue
+    mol.rename_chain(chain, "B")
+    assert chain.id == "B" == chain.name
+    assert mol.get_chain("B") is chain
+
+    atom.name = "C1_another"
+    assert mol.get_atom("C1_another") is atom
+
+
+def test_modify_with_hydrogen_inference():
+    mol = bam.read_smiles("CCO")
+    mol.drop_hydrogens()
+    bam.carboxylate(mol, "C1", as_new_residue=False)
+    mol.drop_hydrogens()
+    if base.ALLOW_VISUAL:
+        mol.show()
+
+
+def test_can_read_and_write_too_large_pdb():
+    mol = bam.Molecule.from_compound("GLC")
+    for H in mol.get_hydrogens():
+        H.serial_number += 100000
+    for C in mol.get_atoms("C", by="element"):
+        C.serial_number += 10
+    for O in mol.get_atoms("O", by="element"):
+        O.serial_number += 10
+
+    mol.to_pdb("large.pdb")
+    mol2 = bam.Molecule.from_pdb("large.pdb")
+    assert len(mol.atoms) == len(mol2.atoms)
+    assert len(mol.bonds) == len(mol2.bonds)
+    for a, b in zip(mol.atoms, mol2.atoms):
+        assert a.element == b.element
+        assert a.id == b.id
+        assert (a.coord - b.coord).sum() < 1e-6
+        assert a.serial_number == b.serial_number
+
+    os.remove("large.pdb")
+
+
+def test_itemgetters_atom_level():
+    mol = bam.Molecule.from_compound("GLC")
+    try:
+        mol[0]
+        mol["C1"]
+        assert False, "Should have raised an error"
+    except NotImplementedError:
+        pass
+    except Exception as e:
+        assert False, f"Should have raised NotImplementedError, but got {type(e)}"
+
+    mol.set_getitem("atom-id")
+    assert mol["C1"] is not None
+    assert mol[0] is None
+    assert mol[1] is None
+
+    mol.set_getitem("atom-serial")
+    assert mol[0] is None
+    try:
+        mol["C1"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+    assert mol[1] is not None
+
+    mol.set_getitem("atom-index")
+    assert mol[0] is not None
+    try:
+
+        mol["C1"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+    assert mol[1] is not None
+
+
+def test_itemgetters_residue_level():
+    mol = bam.Molecule.from_compound("GLC")
+    try:
+        mol[0]
+        mol["GLC"]
+        assert False, "Should have raised an error"
+    except NotImplementedError:
+        pass
+    except Exception as e:
+        assert False, f"Should have raised NotImplementedError, but got {type(e)}"
+
+    mol.set_getitem("residue-id")
+    assert mol["GLC"] is not None
+    assert mol[0] is None
+
+    mol.set_getitem("residue-serial")
+    assert mol[0] is None
+    try:
+        mol["GLC"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+    assert mol[1] is not None  # only one residue...
+
+    mol.set_getitem("residue-index")
+
+    assert mol[0] is not None
+    try:
+        mol["GLC"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+
+
+def test_itemgetters_chain_level():
+    mol = bam.Molecule.from_compound("GLC")
+    try:
+        mol[0]
+        mol["A"]
+        assert False, "Should have raised an error"
+    except NotImplementedError:
+        pass
+    except Exception as e:
+        assert False, f"Should have raised NotImplementedError, but got {type(e)}"
+
+    mol.set_getitem("chain-id")
+    assert mol["A"] is not None
+    assert mol[0] is None
+
+    mol.set_getitem("chain-index")
+    assert mol[0] is not None
+    try:
+        mol["A"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+
+
+def test_itemgetters_model_level():
+    mol = bam.Molecule.from_compound("GLC")
+    try:
+        mol[0]
+        mol["0"]
+        assert False, "Should have raised an error"
+    except NotImplementedError:
+        pass
+    except Exception as e:
+        assert False, f"Should have raised NotImplementedError, but got {type(e)}"
+
+    mol.set_getitem("model-id")
+    assert mol[0] is not None
+    assert mol["0"] is None
+
+    mol.set_getitem("model-index")
+    assert mol[0] is not None
+    try:
+        mol["0"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+
+
+def test_default_getitem():
+    bam.Molecule.default_getitem_method = "atom-index"
+    mol = bam.Molecule.from_compound("GLC")
+    assert mol[0] is mol.get_atom("C1")
+    try:
+        mol["C1"]
+        assert False, "Should have raised an error"
+    except:
+        pass
+
+
+def test_mol_from_lower_units():
+
+    a = bam.Atom("C1", coord=[0, 0, 0])
+    mola = bam.Molecule(a)
+    assert mola.get_atom("C1") is a
+
+    r = bam.Residue("A")
+    r.add(a)
+    molb = bam.Molecule(r)
+    assert molb.get_atom("C1") is a
+    assert molb.get_residue("A") is r
+
+    c = bam.Chain("B")
+    c.add(r)
+    molc = bam.Molecule(c)
+    assert molc.get_atom("C1") is a
+    assert molc.get_residue("A") is r
+    assert molc.get_chain("B") is c
+
+    m = bam.Model(0)
+    m.add(c)
+    mold = bam.Molecule(m)
+    assert mold.get_atom("C1") is a
+    assert mold.get_residue("A") is r
+    assert mold.get_chain("B") is c
+    assert mold.get_model(0) is m
+
+    mol = bam.molecule(r)
+    assert mol.get_atom("C1") is a
+
+
+def test_default_infer_bonds_setter():
+    mol = bam.Molecule.from_compound("GLC") % "14bb" * 5
+    mol.bonds = []
+    mol.infer_bonds()
+    N = mol.count_bonds()
+    mol.bonds = []
+    bam.Molecule.default_bonds_infer = "all"
+    mol.infer_bonds()
+    M = mol.count_bonds()
+    assert M > N, "Should have inferred more bonds with default set to 'all'"
+
+
+def _model_coords_from_pdb(filename):
+    models = {}
+    current = None
+    with open(filename) as f:
+        for line in f:
+            if line.startswith("MODEL"):
+                current = int(line.split()[1])
+                models[current] = []
+            elif line.startswith(("ATOM", "HETATM")):
+                models.setdefault(current, []).append(
+                    [float(line[30:38]), float(line[38:46]), float(line[46:54])]
+                )
+    return {k: np.array(v) for k, v in models.items()}
+
+
+def test_write_models_from_any_active_model(tmp_path):
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    x0 = mol.get_coords().copy()
+    for shift in (10, 20):
+        mol.add_model()
+        mol.set_model(len(mol.models) - 1)
+        mol.set_coords(x0 + shift)
+
+    # the working model always remains the canonical model with the atoms
+    assert mol._model is mol.models[0]
+    assert mol.count_atoms() == len(x0)
+    assert np.allclose(mol.get_coords(), x0 + 20)
+
+    mol.to_pdb(tmp_path / "models.pdb")
+    written = _model_coords_from_pdb(tmp_path / "models.pdb")
+    assert sorted(written) == [0, 1, 2]
+    for k, shift in zip((0, 1, 2), (0, 10, 20)):
+        assert np.allclose(written[k], x0 + shift, atol=1e-3)
+
+    # writing restores the active model
+    assert mol._active_conformer_id == 2
+    assert np.allclose(mol.get_coords(), x0 + 20)
+
+
+def test_add_model_from_other_molecule_model(tmp_path):
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    other = mol.copy()
+    other.set_coords(other.get_coords() + 5)
+
+    mol.add_model(other._model)
+    # only the coordinates are taken over, the other molecule is untouched
+    assert len(mol.models) == 2
+    assert mol.models[1]._coords is not None
+    assert len(mol.models[1].child_list) == 0
+    assert other._model.id == 0 and other._model.parent is other.structure
+
+    mol.to_pdb(tmp_path / "models.pdb")
+    written = _model_coords_from_pdb(tmp_path / "models.pdb")
+    assert np.allclose(written[1], written[0] + 5, atol=1e-3)
+
+
+def test_models_from_one_based_pdb_are_renumbered(tmp_path):
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    x0 = mol.get_coords().copy()
+    lines = []
+    for k in (1, 2, 3):
+        mol.set_coords(x0 + 10 * k)
+        mol.to_pdb(tmp_path / "single.pdb")
+        with open(tmp_path / "single.pdb") as f:
+            atoms = [l.rstrip("\n") for l in f if l.startswith(("ATOM", "HETATM"))]
+        lines += [f"MODEL {k}", *atoms, "ENDMDL"]
+    with open(tmp_path / "one_based.pdb", "w") as f:
+        f.write("\n".join(lines) + "\nEND\n")
+
+    new = bam.Molecule.from_pdb(tmp_path / "one_based.pdb", model="all")
+    assert [m.id for m in new.models] == [0, 1, 2]
+    new.add_model()
+    assert [m.id for m in new.models] == [0, 1, 2, 3]
+    for i, k in enumerate((1, 2, 3)):
+        new.set_model(i)
+        assert np.allclose(new.get_coords(), x0 + 10 * k, atol=1e-3)
+
+
+def test_restore_without_snapshot_raises():
+    model = bam.base_classes.Model(1)
+    try:
+        model.restore({})
+    except ValueError:
+        pass
+    else:
+        assert False, "Should have raised a ValueError"
+
+
+def test_to_numpy():
+    mol = bam.Molecule.from_pdb(base.MANPDB)
+    mol.infer_bonds()
+    coords = mol.get_coords()
+    np_coords, np_bonds = mol.to_numpy()
+    assert np.allclose(coords, np_coords[:, 1:])

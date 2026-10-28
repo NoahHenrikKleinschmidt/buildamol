@@ -551,7 +551,7 @@ def read_pdb(
     return Molecule.from_pdb(filename, id=id, model=model, has_atom_ids=has_atom_ids)
 
 
-def write_pdb(mol: "Molecule", filename: str) -> None:
+def write_pdb(mol: "Molecule", filename: str, safe: bool = True) -> None:
     """
     Write a molecule to a PDB file.
 
@@ -561,8 +561,11 @@ def write_pdb(mol: "Molecule", filename: str) -> None:
         The molecule to write
     filename : str
         The path to the PDB file
+    safe : bool, optional
+        Whether to truncate fixed-width text fields to PDB-compatible widths,
+        by default True.
     """
-    mol.to_pdb(filename)
+    mol.to_pdb(filename, safe=safe)
 
 
 def read_cif(filename: str, id: str = None) -> "Molecule":
@@ -649,7 +652,10 @@ def read_smiles(smiles: str, id: str = None) -> "Molecule":
 
 
 def make_smiles(
-    mol: "Molecule", isomeric: bool = True, write_hydrogens: bool = False
+    mol: "Molecule",
+    isomeric: bool = True,
+    write_hydrogens: bool = False,
+    assign_stereo: bool = False,
 ) -> str:
     """
     Generate a SMILES string from a molecule.
@@ -659,16 +665,21 @@ def make_smiles(
     mol : Molecule
         The molecule
     isomeric : bool
-        Whether to include stereochemistry information
+        Whether to include stereochemistry information (E/Z, @/@@)
     write_hydrogens : bool
         Whether to include hydrogens in the SMILES string
+    assign_stereo : bool
+        Whether to assign stereochemistry from the 3D coordinates before
+        generating SMILES. When True, chiral centres are perceived from the
+        3D structure and encoded as ``[C@H]``/``[C@@H]`` etc. Implies
+        ``isomeric=True``. Default is False.
 
     Returns
     -------
     smiles : str
         The SMILES string
     """
-    return mol.to_smiles(isomeric, write_hydrogens)
+    return mol.to_smiles(isomeric, write_hydrogens, assign_stereo=assign_stereo)
 
 
 def query_pubchem(query: str, by: str = "name") -> "Molecule":
@@ -730,8 +741,10 @@ def molecule(mol=None) -> "Molecule":
     if mol is None:
         return Molecule.empty()
 
-    if isinstance(mol, bio.Structure.Structure) or isinstance(
-        mol, entity.base_classes.Structure
+    if (
+        isinstance(mol, bio.Structure.Structure)
+        or isinstance(mol, entity.base_classes.Structure)
+        or isinstance(mol, entity.base_classes.BuildAMolDataObject)
     ):
         return Molecule(mol)
     elif isinstance(mol, Molecule):
@@ -968,6 +981,7 @@ def _modify(
     delete,
     modifier_at_atom: "str",
     modifier_deletes: "List[str]",
+    as_new_residue: bool = True,
     inplace: bool = True,
 ):
     """
@@ -991,6 +1005,8 @@ def _modify(
         The atom of the modifier molecule to attach to the molecule
     modifier_deletes : List[str]
         The atoms to delete in the modifier molecule. The first entry needs to be a direct neighbor of the modifier_at_atom.
+    as_new_residue : bool
+        Whether to attach the modifier as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to modify the molecule in place or return a new molecule
     """
@@ -1016,16 +1032,26 @@ def _modify(
                 d,
                 modifier_at_atom,
                 modifier_deletes,
+                as_new_residue=as_new_residue,
                 inplace=True,
             )
         return mol
 
     at_atom = mol.get_atom(at_atom)
+    if at_atom is None:
+        raise ValueError(f"Could not find at_atom in molecule: {at_atom}")
     at_residue = at_atom.get_parent()
-    if delete:
+    if delete is not None:
         delete = mol.get_atom(delete)
     else:
         delete = mol.get_hydrogen(at_atom)
+        if delete is None:
+            mol.add_hydrogens(at_atom)
+            delete = mol.get_hydrogen(at_atom)
+            if delete is None:
+                raise ValueError(
+                    f"No hydrogen found/inferred on atom {at_atom.id} ({at_atom.serial_number}) to delete during modification and no delete atom was provided."
+                )
 
     modifier_at_atom = modifier.get_atom(modifier_at_atom)
 
@@ -1040,6 +1066,25 @@ def _modify(
         at_atom.id, modifier_at_atom, [delete], modifier_deletes, id="MODIFY"
     )
     mol = mol.attach(modifier, l, at_residue=at_residue, inplace=inplace)
+
+    if not as_new_residue:
+        modifier_residue = mol.get_residue(-1)  # the last residue is the modifier
+        names_already_taken = set(atom.id for atom in at_residue.get_atoms())
+        for atom in list(modifier_residue.get_atoms()):
+            # just some simple renaming scheme
+            if atom.id in names_already_taken:
+                element_count = sum(
+                    1 for a in at_residue.get_atoms() if a.element == atom.element
+                )
+                new_name = f"{atom.element}{element_count + 1}"
+                atom.id = new_name
+            mol.set_parent(atom, at_residue)
+        mol.remove_residues(modifier_residue)
+
+    # Linkage deletions may leave empty residue containers behind.
+    # Clean those up so residue-level counts stay consistent.
+    mol.drop_empty_residues()
+    mol.drop_empty_chains()
     return mol
 
 
@@ -1047,6 +1092,7 @@ def phosphorylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1063,6 +1109,8 @@ def phosphorylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to phosphorylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the phosphate as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to phosphorylate the molecule in place or return a new molecule
 
@@ -1073,13 +1121,23 @@ def phosphorylate(
     """
     resources.load_small_molecules()
     phos = Molecule.from_compound("PO4").add_hydrogens()
-    return _modify(mol, phos, at_atom, delete, "O2", ["HO2"], inplace)
+    return _modify(
+        mol,
+        phos,
+        at_atom,
+        delete,
+        "O2",
+        ["HO2"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def methylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1096,18 +1154,35 @@ def methylate(
        The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to methylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the methyl group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to methylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The methylated molecule
     """
     resources.load_small_molecules()
     methyl = Molecule.from_compound("CH3")
-    return _modify(mol, methyl, at_atom, delete, "C", ["HC1"], inplace)
+    return _modify(
+        mol,
+        methyl,
+        at_atom,
+        delete,
+        "C",
+        ["HC1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def acetylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1124,18 +1199,35 @@ def acetylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to acetylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the acetyl group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to acetylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The acetylated molecule
     """
     resources.load_small_molecules()
     acetyl = Molecule.from_compound("ACE")
-    return _modify(mol, acetyl, at_atom, delete, "C", ["H"], inplace)
+    return _modify(
+        mol,
+        acetyl,
+        at_atom,
+        delete,
+        "C",
+        ["H"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def hydroxylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1152,19 +1244,36 @@ def hydroxylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to hydroxylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the hydroxyl group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to hydroxylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The hydroxylated molecule
     """
     resources.load_small_molecules()
     hydroxyl = Molecule.from_compound("HOH")
-    hydroxyl.rename_residue("HOH", "OH")
-    return _modify(mol, hydroxyl, at_atom, delete, "O", ["H1"], inplace)
+    hydroxyl.rename_residue("HOH", "OH").rename_atom("H2", "HO")
+    return _modify(
+        mol,
+        hydroxyl,
+        at_atom,
+        delete,
+        "O",
+        ["H1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def aminate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1181,18 +1290,35 @@ def aminate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to amidate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the amine group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to amidate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The aminated molecule
     """
     resources.load_small_molecules()
     amide = Molecule.from_compound("NH3")
-    return _modify(mol, amide, at_atom, delete, "N", ["HN1"], inplace)
+    return _modify(
+        mol,
+        amide,
+        at_atom,
+        delete,
+        "N",
+        ["HN1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def amidate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1209,18 +1335,35 @@ def amidate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to amidate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the amide group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to amidate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The amidated molecule
     """
     resources.load_small_molecules()
     amide = Molecule.from_compound("ARF")
-    return _modify(mol, amide, at_atom, delete, "C", ["H"], inplace)
+    return _modify(
+        mol,
+        amide,
+        at_atom,
+        delete,
+        "C",
+        ["H"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def carboxylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1237,19 +1380,36 @@ def carboxylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to carboxylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the carboxyl group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to carboxylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The carboxylated molecule
     """
     resources.load_small_molecules()
     carboxyl = Molecule.from_compound("CBX")
     carboxyl.rename_atom("O1", "O").rename_atom("O2", "OXT").rename_atom("HO2", "HXT")
-    return _modify(mol, carboxyl, at_atom, delete, "C", ["H"], inplace)
+    return _modify(
+        mol,
+        carboxyl,
+        at_atom,
+        delete,
+        "C",
+        ["H"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def benzylate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1266,12 +1426,29 @@ def benzylate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to benzylate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the benzyl group as a new residue or merge it into the same residue
+        as at_atom.
     inplace : bool
         Whether to benzylate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The benzylated molecule
     """
     resources.load_small_molecules()
     benzyl = Molecule.from_compound("BNZ")
-    return _modify(mol, benzyl, at_atom, delete, "C1", ["H1"], inplace)
+    return _modify(
+        mol,
+        benzyl,
+        at_atom,
+        delete,
+        "C1",
+        ["H1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def phenolate(
@@ -1279,6 +1456,7 @@ def phenolate(
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
     how: str = "para",
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1297,8 +1475,15 @@ def phenolate(
         If at_atom is a list, delete can be a list of the same length or None.
     how: str
         The position of the hydroxyl group on the phenol. Can be one of "ortho", "meta", or "para".
+    as_new_residue : bool
+        Whether to attach the phenol group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to phenolate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The phenolated molecule
     """
     resources.load_small_molecules()
     phenol = Molecule.from_compound("MBN")
@@ -1312,13 +1497,23 @@ def phenolate(
         raise ValueError(
             "Invalid value for 'how'. Must be one of 'ortho', 'meta', or 'para'"
         )
-    return _modify(mol, phenol, at_atom, delete, a, [d], inplace)
+    return _modify(
+        mol,
+        phenol,
+        at_atom,
+        delete,
+        a,
+        [d],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 def thiolate(
     mol: "Molecule",
     at_atom: Union[int, str, entity.base_classes.Atom],
     delete: Union[int, str, entity.base_classes.Atom] = None,
+    as_new_residue: bool = True,
     inplace: bool = True,
 ) -> "Molecule":
     """
@@ -1335,15 +1530,31 @@ def thiolate(
         The atom to delete. This can be any input that will allow to obtain an Atom object from the molecule.
         This atom needs to be in the same residue as the atom to thiolate. If not provided, any Hydrogen atom attached to the at_atom will be deleted.
         If at_atom is a list, delete can be a list of the same length or None.
+    as_new_residue : bool
+        Whether to attach the thiol group as a new residue or merge it into the same residue as at_atom.
     inplace : bool
         Whether to thiolate the molecule in place or return a new molecule
+
+    Returns
+    -------
+    Molecule
+        The thiolated molecule
     """
     resources.load_small_molecules()
     thiol = Molecule.from_compound("HOH")
     o = thiol.get_atom("O")
     o.set_element("S")
     o.id = "S"
-    return _modify(mol, thiol, at_atom, delete, "S", ["H1"], inplace)
+    return _modify(
+        mol,
+        thiol,
+        at_atom,
+        delete,
+        "S",
+        ["H1"],
+        as_new_residue=as_new_residue,
+        inplace=inplace,
+    )
 
 
 class Molecule(entity.BaseEntity):
@@ -1373,6 +1584,7 @@ class Molecule(entity.BaseEntity):
         model: int = 0,
         chain: str = None,
     ):
+        structure = _wrap_into_bam_structure_if_necessary(structure)
         super().__init__(structure, model)
 
         if not chain or len(self._model.child_list) == 1:
@@ -1439,7 +1651,7 @@ class Molecule(entity.BaseEntity):
         if atoms:
             new.add_atoms(atoms)
         if bonds:
-            new.add_bonds(bonds)
+            new.set_bonds(bonds)
         return new
 
     # @classmethod
@@ -1545,11 +1757,7 @@ class Molecule(entity.BaseEntity):
             The Molecule object
         """
         obj = structural.read_smiles(smiles, add_hydrogens)
-        if structural.smiles.use_rdkit:
-            new = cls.from_rdkit(obj, id=id)
-        elif structural.smiles.use_openbabel:
-            obj.title = id
-            new = cls.from_pybel(obj)
+        new = cls.from_rdkit(obj, id=id)
         if root_atom:
             new.set_root(root_atom)
         if id is not None:
@@ -1563,6 +1771,7 @@ class Molecule(entity.BaseEntity):
         root_atom: Union[str, int] = None,
         by: str = "name",
         idx: int = 0,
+        id: str = None,
     ) -> "Molecule":
         """
         Create a Molecule from PubChem
@@ -1591,6 +1800,8 @@ class Molecule(entity.BaseEntity):
             - formula
         idx : int
             The index of the result to use if multiple are found. By default, the first result is used.
+        id : str
+            The id of the Molecule. By default the provided query string is used.
 
         Returns
         -------
@@ -1600,11 +1811,14 @@ class Molecule(entity.BaseEntity):
         _compound_2d, _compound_3d = resources.pubchem.query(query, by=by, idx=idx)
         new = _molecule_from_pubchem(_compound_2d.iupac_name, _compound_3d)
         _new = cls(new.structure)
-        _new.add_bonds(*(i.to_tuple() for i in new._bonds))
+        _new.set_bonds(*(i.to_tuple() for i in new._bonds))
         new = _new
         new.id = _compound_2d.iupac_name
         if root_atom:
             new.set_root(root_atom)
+        _id = id or _compound_2d.iupac_name
+        new.rename_residue(1, _id[:3])
+        new.id = _id
         return new
 
     @classmethod
@@ -1652,16 +1866,27 @@ class Molecule(entity.BaseEntity):
         new = cls.new(id=id, atoms=atoms, bonds=bonds, resname=resname)
         return new
 
-    def to_smiles(self, isomeric: bool = True, write_hydrogens: bool = False) -> str:
+    def to_smiles(
+        self,
+        isomeric: bool = True,
+        write_hydrogens: bool = False,
+        assign_stereo: bool = False,
+    ) -> str:
         """
         Convert the molecule to a SMILES string
 
         Parameters
         ----------
         isomeric : bool
-            Whether to include stereochemistry information in the SMILES string
+            Whether to include stereochemistry information (E/Z, @/@@) in the
+            SMILES string.
         write_hydrogens : bool
-            Whether to include hydrogens in the SMILES string
+            Whether to include hydrogens in the SMILES string.
+        assign_stereo : bool
+            Whether to assign stereochemistry from the 3D coordinates before
+            generating SMILES. When True, chiral centres are perceived from the
+            3D structure and encoded as ``[C@H]``/``[C@@H]`` etc. Implies
+            ``isomeric=True``. Default is False.
 
         Returns
         -------
@@ -1669,7 +1894,10 @@ class Molecule(entity.BaseEntity):
             The SMILES string
         """
         return structural.make_smiles(
-            self, isomeric=isomeric, add_hydrogens=write_hydrogens
+            self,
+            isomeric=isomeric,
+            add_hydrogens=write_hydrogens,
+            assign_stereo=assign_stereo,
         )
 
     def get_residue_connections(
@@ -1779,6 +2007,8 @@ class Molecule(entity.BaseEntity):
         inplace: bool = True,
         other_inplace: bool = False,
         _topology=None,
+        optimization_steps: int = 30,
+        bystander_radius: float = 8,
     ):
         """
         Attach another structure to this one using a Patch or a Recipe.
@@ -1878,6 +2108,8 @@ class Molecule(entity.BaseEntity):
                 link,
                 at_residue=at_residue,
                 other_residue=other_residue,
+                optimization_steps=optimization_steps,
+                bystander_radius=bystander_radius,
             )
         return obj
 
@@ -1924,7 +2156,7 @@ class Molecule(entity.BaseEntity):
                 "No patch was found with the given name. Either set a default patch or provide a patch when attaching."
             )
 
-        p = structural.__default_keep_keep_patcher__
+        p = structural.Patcher(copy_target=False, copy_source=False)
         p.apply(patch, self, other, at_residue, other_residue)
         p.merge()
         return self
@@ -1939,6 +2171,8 @@ class Molecule(entity.BaseEntity):
         other_at_atom=None,
         at_residue=None,
         other_residue=None,
+        optimization_steps: int = 30,
+        bystander_radius: float = 8,
     ):
         """
         Stitch two molecules together by removing atoms and connecting them with a bond. This works without a pre-defined patch.
@@ -1988,6 +2222,8 @@ class Molecule(entity.BaseEntity):
                 other_at_atom=source_atom,
                 at_residue=at_residue,
                 other_residue=other_residue,
+                optimization_steps=optimization_steps,
+                bystander_radius=bystander_radius,
             )
 
         if not isinstance(other, Molecule):
@@ -2014,7 +2250,8 @@ class Molecule(entity.BaseEntity):
             other_residue = other.attach_residue
 
         # since we are already copying before we can use the keep-keep stitcher, actually...
-        p = structural.__default_keep_keep_stitcher__
+        p = structural.Stitcher(False, False)
+        p._optimize_bystander_radius = bystander_radius
         p.apply(
             self,
             other,
@@ -2024,6 +2261,7 @@ class Molecule(entity.BaseEntity):
             other_at_atom,
             at_residue,
             other_residue,
+            optimization_steps=optimization_steps,
         )
         self = p.merge()
         return self
@@ -2099,6 +2337,7 @@ class Molecule(entity.BaseEntity):
         rotatron: str = None,
         rotatron_kws: dict = None,
         algorithm_kws: dict = None,
+        freeze_atoms: list = None,
         inplace: bool = True,
     ):
         """
@@ -2118,18 +2357,25 @@ class Molecule(entity.BaseEntity):
             - "scipy" for a scipy-implemented gradient-based optimization
             - "swarm" for a particle swarm optimization
             - "anneal" for a simulated annealing optimization
+            - "evolution" for a differential evolution optimization
             - "rdkit" for an RDKit-implemented force-field-based optimization (defaults to MMFF, if RDKit is installed)
             - "mmff" for an RDKit-implemented MMFF94 force-field-based optimization (if RDKit is installed)
             - "uff" for an RDKit-implemented UFF force-field-based optimization (if RDKit is installed)
         rotatron : str
             The rotatron to use. This can be one of the following:
-            - "distance" for a distance-based rotatron (default)
+            - "kdtree" for a clash-based rotatron (default)
+            - "distance" for a distance-based rotatron
             - "overlap" for an overlap-based rotatron
             - "forcefield" for a force-field-based rotatron
         algorithm_kws : dict
             Keyword arguments to pass to the optimization algorithm
         rotatron_kws : dict
             Keyword arguments to pass to the rotatron
+        freeze_atoms : list, optional
+            Atoms whose positions are held fixed during optimization. Each entry may be
+            an ``int`` (serial number), ``str`` (atom id), ``tuple`` (full_id), or
+            ``Atom`` object — the same conventions used throughout the BuildAMol API.
+            Only applies when ``algorithm`` is ``"rdkit"``, ``"mmff"``, or ``"uff"``.
         inplace : bool
             Whether to optimize the molecule in place or return a copy.
 
@@ -2151,29 +2397,40 @@ class Molecule(entity.BaseEntity):
 
         algorithm = algorithm or optimizers.auto_algorithm(self)
 
+        # Resolve freeze_atoms to 0-based RDKit indices.
+        # get_atoms() iteration order matches the RDKit atom order (verified by the
+        # zip-based coord copy-back that follows each rdkit/mmff/uff call).
+        frozen_indices = None
+        if freeze_atoms is not None:
+            all_atoms = list(self.get_atoms())
+            resolved = self.get_atoms(*freeze_atoms)
+            frozen_indices = [all_atoms.index(a) for a in resolved]
+
         if algorithm == "rdkit":
-            opt = optimizers.rdkit_optimize(self)
+            opt = optimizers.rdkit_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
             return out
         elif algorithm == "mmff":
-            opt = optimizers.mmff_optimize(self)
+            opt = optimizers.mmff_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
             return out
         elif algorithm == "uff":
-            opt = optimizers.uff_optimize(self)
+            opt = optimizers.uff_optimize(self, freeze_atoms=frozen_indices, **algorithm_kws)
             out = self.copy() if not inplace else self
             for a, b in zip(out.get_atoms(), opt.get_atoms()):
                 a.set_coord(b.coord)
             return out
-        elif algorithm not in ("scipy", "genetic", "swarm", "anneal"):
+        elif algorithm not in ("scipy", "genetic", "swarm", "anneal", "evolution"):
             raise ValueError(f"Unknown algorithm {algorithm}")
 
-        rotatron = rotatron or "distance"
-        if rotatron == "distance":
+        rotatron = rotatron or "kdtree"
+        if rotatron == "kdtree":
+            rotatron = optimizers.KDTreeRotatron
+        elif rotatron == "distance":
             rotatron = optimizers.DistanceRotatron
         elif rotatron == "overlap":
             rotatron = optimizers.OverlapRotatron
@@ -2196,7 +2453,7 @@ class Molecule(entity.BaseEntity):
             graph.central_node, min_ancestors=1, min_descendants=1
         )
         if len(edges) > 150:
-            edges = graph.sample_edges(edges, edges // 5)
+            edges = graph.sample_edges(edges, len(edges) // 5)
 
         env = rotatron(graph, edges, **rotatron_kws)
 
@@ -2488,6 +2745,66 @@ def _molecule_from_pubchem(id, comp):
     #         new.add_bond(a, b)
 
     # return new
+
+
+def _wrap_into_bam_structure_if_necessary(maybe_structure):
+    """
+    Checks if a lower-level data container is provided (e.g. a residue),
+    which gets then wrapped into a full Structure
+    """
+    b = entity.base_classes
+    if not isinstance(maybe_structure, b.BuildAMolDataObject):
+        if not hasattr(maybe_structure, "level"):
+            return maybe_structure
+        level = maybe_structure.level
+        if level == "A":
+            maybe_structure = b.Atom.from_biopython(maybe_structure)
+        elif level == "R":
+            maybe_structure = b.Residue.from_biopython(maybe_structure)
+        elif level == "C":
+            maybe_structure = b.Chain.from_biopython(maybe_structure)
+        elif level == "M":
+            maybe_structure = b.Model.from_biopython(maybe_structure)
+        elif level == "S":
+            maybe_structure = b.Structure.from_biopython(maybe_structure)
+        else:
+            return maybe_structure
+
+    if not hasattr(maybe_structure, "level"):
+        return maybe_structure
+
+    if maybe_structure.level == "S":
+        return maybe_structure
+    elif maybe_structure.level == "M":
+        struct = b.Structure(maybe_structure.id)
+        struct.add(maybe_structure)
+        return struct
+    elif maybe_structure.level == "C":
+        model = b.Model(0)
+        model.add(maybe_structure)
+        struct = b.Structure(maybe_structure.id)
+        struct.add(model)
+        return struct
+    elif maybe_structure.level == "R":
+        chain = b.Chain("A")
+        chain.add(maybe_structure)
+        model = b.Model(0)
+        model.add(chain)
+        struct = b.Structure(maybe_structure.id)
+        struct.add(model)
+        return struct
+    elif maybe_structure.level == "A":
+        residue = b.Residue("UNK", " ", 1)
+        residue.add(maybe_structure)
+        chain = b.Chain("A")
+        chain.add(residue)
+        model = b.Model(0)
+        model.add(chain)
+        struct = b.Structure(maybe_structure.id)
+        struct.add(model)
+        return struct
+    else:
+        return maybe_structure
 
 
 if __name__ == "__main__":

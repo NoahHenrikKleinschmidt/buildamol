@@ -12,54 +12,41 @@ import warnings
 import numpy as np
 
 import importlib
+from rdkit import Chem
+from rdkit.Chem import AllChem, Draw
+from rdkit import RDLogger
+from rdkit.Geometry import rdGeometry
 
-# the version with the extra dictionary somehow
-# seems to prevent the loading issues where packages are
-# reassigned in sys.modules, raising errors. Thus we keep it like this...
-__lazy_modules__ = {}
+MMFFGetMoleculeProperties = AllChem.MMFFGetMoleculeProperties
+MMFFGetMoleculeForceField = AllChem.MMFFGetMoleculeForceField
 
 
 def lazy_module(fullname):
     base = fullname.split(".")[-1]
-    if base not in __lazy_modules__:
-        spec = importlib.util.find_spec(fullname)
-        module = importlib.util.module_from_spec(spec)
-        loader = importlib.util.LazyLoader(spec.loader)
-        loader.exec_module(module)
-        __lazy_modules__[base] = module
-    return __lazy_modules__[base]
+    spec = importlib.util.find_spec(fullname)
+    module = importlib.util.module_from_spec(spec)
+    loader = importlib.util.LazyLoader(spec.loader)
+    loader.exec_module(module)
+    return module
 
 
 def has_package(name):
-    return importlib.util.find_spec(name) is not None
+    try:
+        return importlib.util.find_spec(name) is not None
+    except ModuleNotFoundError:
+        return False
 
 
 # =================================================================
 
 
-HAS_RDKIT = has_package("rdkit")
+HAS_RDKIT = True
 HAS_PYBEL = has_package("openbabel")
 HAS_OPENMM = has_package("openmm")
 HAS_NUMBA = has_package("numba")
+HAS_JAX = has_package("jax")
 HAS_STK = has_package("stk")
 HAS_TQDM = has_package("tqdm")
-HAS_ALIVE_PROGRESS = has_package("alive_progress")
-
-if HAS_RDKIT:
-    # rdkit is fast to load, so we can just load it here
-    Chem = importlib.import_module("rdkit.Chem")
-    AllChem = importlib.import_module("rdkit.Chem.AllChem")
-    RDLogger = importlib.import_module("rdkit.RDLogger")
-    Draw = importlib.import_module("rdkit.Chem.Draw")
-    MMFFGetMoleculeProperties = AllChem.MMFFGetMoleculeProperties
-    MMFFGetMoleculeForceField = AllChem.MMFFGetMoleculeForceField
-else:
-    AllChem = None
-    Chem = None
-    Draw = None
-    RDLogger = None
-    MMFFGetMoleculeProperties = None
-    MMFFGetMoleculeForceField = None
 
 if HAS_PYBEL:
     pybel = lazy_module("openbabel.pybel")
@@ -112,21 +99,13 @@ else:
 
 USE_NUMBA = False
 USE_ALL_NUMBA = False
+USE_JAX = False
 
 if HAS_TQDM:
-    from tqdm import tqdm
+    from tqdm.auto import tqdm
 
     def progress_bar(*args, **kwargs):
         return tqdm(*args, **kwargs)
-
-elif HAS_ALIVE_PROGRESS:
-    from alive_progress import alive_bar
-
-    def progress_bar(*args, **kwargs):
-        warnings.warn(
-            DeprecationWarning("alive_progress is deprecated. Use tqdm instead.")
-        )
-        return alive_bar(*args, **kwargs)
 
 else:
 
@@ -378,17 +357,25 @@ def use_numba():
     Use Numba if available to speed up some functions
     """
     global USE_NUMBA
+    global USE_ALL_NUMBA
+    global USE_JAX
     if HAS_NUMBA:
         USE_NUMBA = True
+        USE_ALL_NUMBA = False
+        USE_JAX = False
 
 
 def use_all_numba():
     """
     Use Numba if available to speed up all functions
     """
+    global USE_NUMBA
     global USE_ALL_NUMBA
+    global USE_JAX
     if HAS_NUMBA:
+        USE_NUMBA = False
         USE_ALL_NUMBA = True
+        USE_JAX = False
 
 
 def dont_use_numba():
@@ -396,7 +383,88 @@ def dont_use_numba():
     Don't use Numba
     """
     global USE_NUMBA
+    global USE_ALL_NUMBA
     USE_NUMBA = False
+    USE_ALL_NUMBA = False
+
+
+def use_jax():
+    """
+    Use JAX if available for selected array operations.
+    This keeps the library CPU-first by default and only enables JAX when requested.
+    """
+    global USE_JAX
+    global USE_NUMBA
+    global USE_ALL_NUMBA
+    if HAS_JAX:
+        USE_JAX = True
+        USE_NUMBA = False
+        USE_ALL_NUMBA = False
+
+
+def dont_use_jax():
+    """
+    Disable JAX and fall back to default NumPy paths.
+    """
+    global USE_JAX
+    USE_JAX = False
+
+
+def get_jax_numpy():
+    """
+    Lazily load and return jax.numpy.
+    """
+    if not HAS_JAX:
+        raise ImportError("JAX is not installed.")
+    return importlib.import_module("jax.numpy")
+
+
+def resolve_compute_backend(backend: str = None) -> str:
+    """
+    Resolve a compute backend name to one of "numpy", "numba", or "jax".
+
+    This function handles the global backend selection flags and
+    defaults to the appropriate backend based on current settings.
+    It also verifies that requested backends are actually available.
+
+    Parameters
+    ----------
+    backend : str, optional
+        Explicit backend request. If provided, must be one of:
+        "numpy", "numba", or "jax".
+        If omitted, uses the global backend selection flags.
+
+    Returns
+    -------
+    str
+        The resolved backend name, guaranteed to be available.
+        Defaults to "numpy" if requested backend is unavailable.
+
+    Raises
+    ------
+    ValueError
+        If backend name is not recognized.
+    """
+    if backend is not None:
+        backend = str(backend).lower().strip()
+        if backend not in {"numpy", "numba", "jax"}:
+            raise ValueError(
+                f"Unknown backend '{backend}'. Expected one of: numpy, numba, jax."
+            )
+        # Fallback to NumPy if optional backend not available
+        if backend == "jax" and not HAS_JAX:
+            return "numpy"
+        if backend == "numba" and not HAS_NUMBA:
+            return "numpy"
+        return backend
+
+    # Resolve from global flags
+    if USE_ALL_NUMBA or USE_NUMBA:
+        return "numba" if HAS_NUMBA else "numpy"
+    if USE_JAX:
+        return "jax" if HAS_JAX else "numpy"
+
+    return "numpy"
 
 
 class DummyBar:
@@ -404,8 +472,11 @@ class DummyBar:
     A dummy progress bar
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        pass
+    def __init__(self, iterable=None, *args, **kwargs) -> None:
+        self._iterable = iterable
+
+    def __iter__(self):
+        return iter(self._iterable) if self._iterable is not None else iter([])
 
     def __call__(self, *args, **kwargs) -> None:
         pass
@@ -417,6 +488,12 @@ class DummyBar:
         pass
 
     def update(self, *args, **kwargs):
+        pass
+
+    def set_postfix(self, *args, **kwargs):
+        pass
+
+    def set_description(self, *args, **kwargs):
         pass
 
 

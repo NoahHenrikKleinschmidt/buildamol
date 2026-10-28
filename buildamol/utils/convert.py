@@ -15,7 +15,6 @@ import buildamol.utils.auxiliary as aux
 import buildamol.utils.defaults as defaults
 
 has_pybel = aux.HAS_PYBEL
-has_rdkit = aux.HAS_RDKIT
 has_openmm = aux.HAS_OPENMM
 
 
@@ -34,22 +33,25 @@ def mol_to_numpy_array(mol, include_bonds: bool = False):
     Returns
     -------
     tuple,
-        An array of atomic numbers and atom coordinates
-        and an array of bonds between atoms as serial numbers of a,b and bond order
+        An array of atomic serials, element numbers, and atom coordinates
+        and an array of bonds between atoms as serial numbers of a,b and bond order (or None if not exported)
     """
-    coords = np.array(
-        [
-            (atom.serial_number, atom.atomic_number, atom.coords)
-            for atom in mol.get_atoms()
-        ]
-    )
+    data = np.empty((mol.count_atoms(), 4))
+
+    _data = [(atom.atomic_number, atom.coord) for atom in mol.get_atoms()]
+    _atom_map = {atom: idx for idx, atom in enumerate(mol.get_atoms())}
+    for idx, (atomic, coord) in enumerate(_data):
+        data[idx, 0] = atomic
+        data[idx, 1:] = coord
+
     if include_bonds:
-        bonds = np.zeros((coords.shape[0], 3))
-        for idx, b in enumerate(mol.get_bonds()):
-            bonds[idx, :] = [b.atom1.serial_number, b.atom2.serial_number, b.order]
+        bonds = [
+            [_atom_map[b.atom1], _atom_map[b.atom2], b.order] for b in mol.get_bonds()
+        ]
+        bonds = np.array(bonds)
     else:
-        bonds = np.empty((0, 1))
-    return coords, bonds
+        bonds = None
+    return data, bonds
 
 
 class PDBIO:
@@ -80,7 +82,7 @@ class PDBIO:
         """
         Convert the internal FileIO to a biopython structure object
         """
-        return defaults.__bioPDBParser__.get_structure(id, self.__fileio__)
+        return bio.PDBParser().get_structure(id, self.__fileio__)
 
     def cleanup(self):
         """
@@ -448,6 +450,144 @@ class PybelBioPythonConverter(PDBIO):
         return pybel_obj
 
 
+_BAM_TO_RDKIT_BOND = None
+_RDKIT_TO_BAM_BOND = None
+
+
+def _bond_type_maps():
+    global _BAM_TO_RDKIT_BOND, _RDKIT_TO_BAM_BOND
+    if _BAM_TO_RDKIT_BOND is None:
+        _BAM_TO_RDKIT_BOND = {
+            1: aux.Chem.BondType.SINGLE,
+            2: aux.Chem.BondType.DOUBLE,
+            3: aux.Chem.BondType.TRIPLE,
+        }
+        _RDKIT_TO_BAM_BOND = {v: k for k, v in _BAM_TO_RDKIT_BOND.items()}
+        _RDKIT_TO_BAM_BOND[aux.Chem.BondType.AROMATIC] = 1
+    return _BAM_TO_RDKIT_BOND, _RDKIT_TO_BAM_BOND
+
+
+def molecule_to_rdkit(mol, sanitize: bool = True, **kwargs) -> "Chem.rdchem.Mol":
+    """
+    Directly convert a BuildAMol Molecule to an RDKit Mol by building an
+    RWMol atom-by-atom and bond-by-bond, with no intermediate PDB file.
+
+    Parameters
+    ----------
+    mol : Molecule
+        The BuildAMol molecule to convert
+    sanitize : bool
+        Whether to sanitize the RDKit molecule after construction.
+        Full sanitization includes RDKit's SSSR ring-finding algorithm,
+        which scales poorly with the number of atoms and bonds and can
+        hang indefinitely on large structures (ribosomes, large proteins).
+        Set to False for large molecules when only 3-D coordinates and
+        connectivity are needed.
+
+    Returns
+    -------
+    rdkit.Chem.rdchem.Mol
+        The RDKit molecule with a 3D conformer
+    """
+    bam_to_rd, _ = _bond_type_maps()
+    rw = aux.Chem.RWMol()
+
+    # Pre-collect all atom data before entering the RDKit loop so we do one
+    # pass over the biopython structure instead of interleaving Python and C++.
+    atoms = list(mol.get_atoms())
+    n = len(atoms)
+    elements = [(a.element or "C").capitalize() for a in atoms]
+    coords = np.empty((n, 3), dtype=np.float64)
+    serial_to_idx = {}
+    for i, a in enumerate(atoms):
+        coords[i] = a.coord
+        serial_to_idx[a.serial_number] = i
+
+    for bam_atom, elem in zip(atoms, elements):
+        at = aux.Chem.Atom(elem)
+        at.SetNoImplicit(True)  # all Hs are explicit in the BuildAMol structure
+        try:
+            parent = bam_atom.get_parent()
+            resname = getattr(parent, "resname", "")
+            res_id = getattr(parent, "id", ("", 0, ""))
+            resnum = res_id[1] if isinstance(res_id, tuple) else int(res_id)
+            info = aux.Chem.AtomPDBResidueInfo(
+                bam_atom.id,
+                bam_atom.serial_number,
+                "",
+                resname,
+                resnum,
+            )
+            at.SetMonomerInfo(info)
+        except Exception:
+            pass
+        rw.AddAtom(at)
+
+    # Set all 3-D positions in a single C++ call via the numpy array path
+    # rather than calling SetAtomPosition once per atom.
+    conf = aux.Chem.Conformer(n)
+    conf.SetPositions(coords)
+    rw.AddConformer(conf, assignId=True)
+
+    _seen_bonds = set()
+    for bond in mol.get_bonds():
+        idx1 = serial_to_idx.get(bond.atom1.serial_number)
+        idx2 = serial_to_idx.get(bond.atom2.serial_number)
+        if idx1 is not None and idx2 is not None:
+            key = (min(idx1, idx2), max(idx1, idx2))
+            if key not in _seen_bonds:
+                _seen_bonds.add(key)
+                rw.AddBond(
+                    idx1, idx2, bam_to_rd.get(bond.order, aux.Chem.BondType.SINGLE)
+                )
+
+    # Infer formal charges for atoms whose explicit valence exceeds the neutral
+    # maximum. PDB / bam structures don't store formal charges, so quaternary N+
+    # (4 single bonds) and similar atoms would otherwise fail sanitization.
+    _bond_order_map = {
+        aux.Chem.BondType.SINGLE: 1,
+        aux.Chem.BondType.DOUBLE: 2,
+        aux.Chem.BondType.TRIPLE: 3,
+        aux.Chem.BondType.AROMATIC: 1,
+    }
+    # Elements with a single neutral valence get charged by the excess only.
+    # S and P have several allowed valences; an intermediate valence (e.g. a ring
+    # sulfur carrying a double bond) is charged up to the next allowed one so it
+    # becomes a thiopyrylium S+ instead of an un-kekulizable neutral valence-3 S.
+    _neutral_valences = {7: (3,), 8: (2,), 15: (3, 5), 16: (2, 4, 6)}
+    for _at in rw.GetAtoms():
+        _anum = _at.GetAtomicNum()
+        if _anum in _neutral_valences and _at.GetFormalCharge() == 0:
+            _allowed = _neutral_valences[_anum]
+            _val = sum(_bond_order_map.get(b.GetBondType(), 1) for b in _at.GetBonds())
+            if _val in _allowed or _val < _allowed[0]:
+                continue
+            if _val > _allowed[-1]:
+                _at.SetFormalCharge(_val - _allowed[-1])
+            else:
+                _at.SetFormalCharge(min(v for v in _allowed if v > _val) - _val)
+
+    if sanitize:
+        try:
+            aux.Chem.SanitizeMol(rw)
+        except Exception:
+            # Full sanitization failed (e.g. valence error). Fall back to the
+            # cheap flags only — deliberately omitting SANITIZE_SYMMRINGS and
+            # SANITIZE_SETAROMATICITY, both of which invoke SSSR ring detection
+            # and can hang on large, densely connected structures.
+            try:
+                aux.Chem.SanitizeMol(
+                    rw,
+                    aux.Chem.SanitizeFlags.SANITIZE_FINDRADICALS
+                    | aux.Chem.SanitizeFlags.SANITIZE_SETCONJUGATION
+                    | aux.Chem.SanitizeFlags.SANITIZE_SETHYBRIDIZATION,
+                )
+            except Exception:
+                pass
+
+    return rw.GetMol()
+
+
 class RDKITBiopythonConverter(PDBIO):
     """
     A class to convert between RDKit and biopython objects
@@ -468,9 +608,6 @@ class RDKITBiopythonConverter(PDBIO):
         object
             The converted object
         """
-        if not has_rdkit:
-            raise ImportError("Could not import RDKit")
-
         if not is_rdkit(obj):
             raise ValueError(f"Cannot convert object of type {type(obj)}")
         mol = self._rdkit_to_pdbio(obj)

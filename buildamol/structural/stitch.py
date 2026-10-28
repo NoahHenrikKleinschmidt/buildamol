@@ -1,7 +1,3 @@
-"""
-Functions to stitch molecules together even in the absence of a patch
-"""
-
 from typing import Union
 
 import numpy as np
@@ -176,9 +172,10 @@ class Stitcher(base.Connector):
             R = VT.T @ U.T
 
         # self._v.draw_edges(self.source.bonds, color="black", opacity=0.5)
-        atom_coords = np.array([atom.coord for atom in self.source.get_atoms()])
+        _source_atoms = list(self.source.get_atoms())
+        atom_coords = np.array([atom.coord for atom in _source_atoms])
         atom_coords = (R @ (atom_coords - old_centroid).T).T + new_centroid
-        for coord, atom in zip(atom_coords, self.source.get_atoms()):
+        for coord, atom in zip(atom_coords, _source_atoms):
             atom.set_coord(coord)
 
         # for atom in self.source.get_atoms():
@@ -271,6 +268,12 @@ class Stitcher(base.Connector):
         steps : int
             The number of optimization steps to perform
         """
+        if steps == 0:
+            return
+        from buildamol.structural.stitch_algorithm import get_stitching_algorithm
+
+        if get_stitching_algorithm()[0] == "none":
+            return
         import buildamol.optimizers as optimizers
 
         self.target.adjust_indexing(self.source)
@@ -306,26 +309,29 @@ class Stitcher(base.Connector):
         include_bystanders = False
         tmp.add_residues(bystanders, _copy=False)
         r = self._optimize_bystander_radius
+        tmp_atoms = set(tmp.get_atoms())
         for atom in self.target.get_atoms():
             if structural_base.compute_distance(atom, self._anchors[0]) < r:
-                if atom in tmp.get_atoms():
+                if atom in tmp_atoms:
                     continue
                 orig_coords_target[atom] = (atom.coord[0], atom.coord[1], atom.coord[2])
                 orig_parents_target[atom] = atom.parent
 
                 bystanders.add(atom)
                 tmp._AtomGraph.add_node(atom)
+                tmp_atoms.add(atom)
                 include_bystanders = True
 
         for atom in self.source.get_atoms():
             if structural_base.compute_distance(atom, self._anchors[1]) < r:
-                if atom in tmp.get_atoms():
+                if atom in tmp_atoms:
                     continue
                 orig_coords_source[atom] = (atom.coord[0], atom.coord[1], atom.coord[2])
                 orig_parents_source[atom] = atom.parent
 
                 bystanders.add(atom)
                 tmp._AtomGraph.add_node(atom)
+                tmp_atoms.add(atom)
                 include_bystanders = True
 
         tmp._add_bonds(*bonds)
@@ -356,12 +362,9 @@ class Stitcher(base.Connector):
             concatenation_function=optimizers.concatenation_function_linear,
         )
 
-        best, _ = optimizers.swarm_optimize(
-            env,
-            n_particles=kwargs.pop("n_particles", 5),
-            max_steps=int(steps),
-            **kwargs,
-        )
+        from buildamol.structural.stitch_algorithm import run_stitching_optimization
+
+        best, _ = run_stitching_optimization(env, steps, **kwargs)
         self._policy = edges, best
 
         self._target_residue.parent = target_residue_parent
@@ -592,7 +595,8 @@ def stitch(
         source = source.copy()
     if copy_target:
         target = target.copy()
-    __default_keep_keep_stitcher__.apply(
+    _stitcher = Stitcher(False, False)
+    _stitcher.apply(
         target=target,
         source=source,
         target_removals=target_removals,
@@ -604,7 +608,7 @@ def stitch(
         optimization_steps=optimization_steps,
         **kwargs,
     )
-    return __default_keep_keep_stitcher__.merge()
+    return _stitcher.merge()
 
 
 if __name__ == "__main__":

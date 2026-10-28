@@ -5,8 +5,8 @@ Visualization auxiliary functions
 import pandas as pd
 import networkx as nx
 import plotly.graph_objects as go
-import plotly.express as px
 import matplotlib.colors as colors
+import math
 
 import buildamol.utils as utils
 import buildamol.utils.auxiliary as aux
@@ -20,6 +20,44 @@ DEFAULT_BACKEND = "plotly"
 """
 The default visualization backend for bare `draw` and `show` methods on objects. 
 """
+
+DEFAULT_MODE = "3d"
+"""
+The default visualization mode for bare `draw` and `show` methods on objects (either "2d" or "3d").
+Falls back to DEFAULT_BACKEND for 3d visualizations.
+"""
+
+
+def render_2d():
+    """
+    Render in 2D by default (i.e. when calling 'draw' or 'show').
+    """
+    set_rendering_mode("2d")
+
+
+def render_3d():
+    """
+    Render in 3D by default (i.e. when calling 'draw' or 'show').
+    """
+    set_rendering_mode("3d")
+
+
+def set_rendering_mode(mode: str):
+    """
+    Set the default visualization mode, which will be used by objects when calling `draw` and `show` methods.
+
+    Parameters
+    ----------
+    mode : str
+        The rendering mode to use. Available modes are:
+            - 2d
+            - 3d
+    """
+    mode = mode.strip().lower()
+    if mode not in ("2d", "3d"):
+        raise ValueError(f"Unsupported rendering mode: {mode}")
+    global DEFAULT_MODE
+    DEFAULT_MODE = mode
 
 
 def set_backend(backend: str):
@@ -39,6 +77,134 @@ def set_backend(backend: str):
         raise ValueError(f"Unsupported backend: {backend}")
     global DEFAULT_BACKEND
     DEFAULT_BACKEND = backend
+
+
+def _to_molecule(mol):
+    """
+    Convert any atom-containing object to a Molecule instance suitable for visualization.
+
+    Bonds are taken from the original (which works when it is part of a Molecule) and
+    remapped onto copied atoms so the original structure is never mutated.
+    """
+    from buildamol.core import Molecule
+
+    orig_atoms = list(mol.get_atoms())
+
+    # Attempt to collect bonds from the original before copying
+    orig_bonds = []
+    if hasattr(mol, "get_bonds"):
+        try:
+            orig_bonds = list(mol.get_bonds())
+        except (ValueError, AttributeError):
+            pass
+
+    _copy = mol.copy()
+    copy_atoms = list(_copy.get_atoms())
+
+    # Remap bond endpoints from original atom serials to copied atom objects
+    serial_map = {oa.serial_number: ca for oa, ca in zip(orig_atoms, copy_atoms)}
+    copy_bonds = []
+    for bond in orig_bonds:
+        a1 = serial_map.get(bond.atom1.serial_number)
+        a2 = serial_map.get(bond.atom2.serial_number)
+        if a1 is not None and a2 is not None:
+            copy_bonds.append((a1, a2))
+
+    return Molecule.new(atoms=copy_atoms, bonds=copy_bonds)
+
+
+def draw2d(mol, highlight_atoms=None, highlight_bonds=None, atom_labels=None, **kwargs):
+    """
+    Draw a molecule in 2D using the RDKit library.
+
+    Parameters
+    ----------
+    mol
+        The molecule to draw. This may be any object that holds
+        a biopython structure e.g. a Molecule, AtomGraph, ResidueGraph, or any
+        atom-containing object with a ``get_atoms`` method.
+    highlight_atoms : list
+        A list of atoms to highlight.
+    highlight_bonds : list
+        A list of bonds (tuples of atoms) to highlight.
+    atom_labels : dict or callable
+        A dictionary mapping atoms to labels, or a function that takes an atom and returns a label.
+    **kwargs
+        Any additional keyword arguments forwarded to the molecule's ``draw2d`` method.
+
+    Returns
+    -------
+    Chem2DViewer
+        The viewer object (call ``.draw()`` to render, ``.show()`` to display).
+    """
+    if isinstance(mol, Chem.rdchem.Mol):
+        viewer = Chem2DViewer(mol)
+    else:
+        if mol.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+            mol = mol._molecule
+        elif hasattr(mol, "to_rdkit"):
+            mol = mol.to_rdkit()
+        elif hasattr(mol, "get_atoms"):
+            mol = _to_molecule(mol)
+        else:
+            raise ValueError(
+                f"Unsupported molecule type: {mol.__class__.__name__}. "
+                "Expected a Molecule, AtomGraph, ResidueGraph, RDKit molecule, "
+                "or any object with a 'get_atoms' method."
+            )
+        viewer = mol.draw2d(**kwargs)
+        kwargs = {}
+
+    if atom_labels is not None:
+        viewer.label_atoms(atom_labels)
+
+    color = None
+    if "highlight_color" in kwargs:
+        color = kwargs.pop("highlight_color")
+    if "color" in kwargs:
+        color = kwargs.pop("color")
+
+    if highlight_atoms is not None:
+        viewer.highlight_atoms(*highlight_atoms, color=color or "red")
+    if highlight_bonds is not None:
+        viewer.highlight_bonds(*highlight_bonds, color=color)
+
+    return viewer
+
+
+def draw3d(mol, **kwargs):
+    """
+    Draw a molecule in 3D using the default rendering backend.
+
+
+    Parameters
+    ----------
+    mol
+        The molecule to draw. This may be any object that holds
+        a biopython structure e.g. a Molecule, AtomGraph, ResidueGraph, or any
+        atom-containing object with a ``get_atoms`` method.
+    **kwargs
+        Any additional keyword arguments forwarded to the molecule's ``draw3d`` method.
+
+    Returns
+    -------
+    viewer
+        The 3D viewer object (type depends on the active backend).
+    """
+    if mol.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+        mol = mol._molecule
+
+    # sanity check for subclass
+    elif not hasattr(mol, "_AtomGraph") and hasattr(mol, "get_atoms"):
+        mol = _to_molecule(mol)
+
+    else:
+        raise ValueError(
+            f"Unsupported molecule type: {mol.__class__.__name__}. "
+            "Expected a Molecule, AtomGraph, ResidueGraph, or any object "
+            "with a 'get_atoms' method."
+        )
+    return mol.draw3d(**kwargs)
 
 
 default_plotly_opacity = 1.0
@@ -99,11 +265,6 @@ class Chem2DViewer:
         linewidth: float = None,
         atoms: str = None,
     ):
-        if Chem is None:
-            raise ImportError(
-                "rdkit is not available. Please install it and be sure to use a compatible environment."
-            )
-
         drawer = drawer.strip().lower()
         if drawer not in ("svg", "png"):
             raise ValueError(f"Unsupported drawer: {drawer}")
@@ -126,6 +287,8 @@ class Chem2DViewer:
             raise ValueError(
                 f"Unsupported molecule type: {molecule.__class__.__name__}"
             )
+        if mol.GetNumConformers() > 0:
+            Chem.AssignStereochemistryFrom3D(mol)
         mol.RemoveAllConformers()
         self.mol = mol
 
@@ -352,7 +515,6 @@ class Chem2DViewer:
         if isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
             bonds = bonds[0]
 
-
         if callable(color):
             bonds = {bond: color(bond) for bond in bonds}
         else:
@@ -433,10 +595,11 @@ class Chem2DViewer:
         self,
         draw_hydrogens: bool = False,
         linewidth: float = 1,
-        fontsize: float = 20,
+        fontsize: float = None,
         width: int = 1000,
         height: int = 500,
         background: tuple = None,
+        ax=None,
         **kwargs,
     ):
         """
@@ -449,25 +612,39 @@ class Chem2DViewer:
         linewidth: float
             The linewidth of the bonds.
         fontsize : float
-            The font size of the atom labels.
+            The font size of the atom labels.  ``None`` (default) lets RDKit
+            auto-scale the font proportionally to the bond length, which gives
+            the best result in most cases.  Pass a positive number to fix the
+            font size in RDKit drawing units.
         width : int
             The width of the image in pixels.
         height : int
             The height of the image in pixels.
         background : tuple
             The background color to use. Use `None` for a transparent background.
+        ax : matplotlib.axes.Axes, optional
+            If provided, the image is rendered directly into this axis
+            (``ax.imshow`` + ``ax.axis("off")``) and the axis is returned
+            instead of the image.
         **kwargs
             Any additional arguments to pass to the `MolDrawOptions` of the RDKit drawer (either `MolDraw2DSVG` or `MolDraw2DCairo`).
 
         Returns
         -------
-        str or PIL.Image.Image
-            The SVG string (if drawer is "svg") or a PIL Image (if drawer is "png").
+        str, PIL.Image.Image, or matplotlib.axes.Axes
+            The SVG string (if drawer is ``"svg"`` and ``ax`` is ``None``),
+            a PIL Image (if drawer is ``"png"`` and ``ax`` is ``None``),
+            or the matplotlib axis (when ``ax`` is provided).
         """
         if not draw_hydrogens:
-            mol = Chem.rdmolops.RemoveHs(self.mol)
+            try:
+                mol = Chem.rdmolops.RemoveHs(self.mol)
+            except Exception:
+                mol = Chem.rdmolops.RemoveHs(self.mol, sanitize=False)
         else:
             mol = self.mol
+
+        aux.AllChem.Compute2DCoords(mol)
 
         drawer = (
             Draw.rdMolDraw2D.MolDraw2DSVG(width, height)
@@ -480,8 +657,6 @@ class Chem2DViewer:
         for k, v in self.options.__dict__.items():
             setattr(draw_options, k, v)
 
-        for k, v in self.options.__dict__.items():
-            setattr(draw_options, k, v)
         for k, v in kwargs.items():
             if not k.startswith("_") and hasattr(draw_options, k):
                 setattr(draw_options, k, v)
@@ -490,7 +665,8 @@ class Chem2DViewer:
         if self._custom_colors:
             draw_options.updateAtomPalette(self._custom_colors)
 
-        draw_options.fixedFontSize = fontsize
+        if fontsize is not None:
+            draw_options.fixedFontSize = fontsize
 
         if background is None:
             draw_options.clearBackground = False
@@ -501,18 +677,76 @@ class Chem2DViewer:
 
         kws = self._prepare_highlighting(mol, draw_hydrogens)
 
+        # When rendering into a matplotlib axis, match the canvas resolution to
+        # the axes display size so font and bond widths are not affected by
+        # downscaling (a 1000px image in a 200px subplot makes labels tiny).
+        if ax is not None:
+            try:
+                fig = ax.get_figure()
+                fig_w, fig_h = fig.get_size_inches()
+                dpi = fig.get_dpi()
+                pos = ax.get_position()
+                width = max(200, int(pos.width * fig_w * dpi))
+                height = max(200, int(pos.height * fig_h * dpi))
+                # recreate drawer at the auto-computed size
+                drawer = (
+                    Draw.rdMolDraw2D.MolDraw2DSVG(width, height)
+                    if self._drawer_type == "svg"
+                    else Draw.rdMolDraw2D.MolDraw2DCairo(width, height)
+                )
+                draw_options = drawer.drawOptions()
+                draw_options.bondLineWidth = linewidth
+                if self._custom_colors:
+                    draw_options.updateAtomPalette(self._custom_colors)
+                if fontsize is not None:
+                    draw_options.fixedFontSize = fontsize
+                if background is None:
+                    draw_options.clearBackground = False
+                elif isinstance(background, str):
+                    draw_options.setBackgroundColour(colors.to_rgba(background))
+                else:
+                    draw_options.setBackgroundColour(background)
+            except Exception:
+                pass  # fall back to whatever drawer was already set up
+
         drawer.DrawMoleculeWithHighlights(mol, legend="", **kws)
         drawer.FinishDrawing()
+
         if self._drawer_type == "svg":
             svg = drawer.GetDrawingText()
+            if ax is not None:
+                img = self._svg_to_pil(svg)
+                ax.imshow(img)
+                ax.axis("off")
+                return ax
             return svg
         else:
             from PIL import Image
             from io import BytesIO
 
-            img = drawer.GetDrawingText()
-            img = Image.open(BytesIO(img))
+            img = Image.open(BytesIO(drawer.GetDrawingText()))
+            if ax is not None:
+                ax.imshow(img)
+                ax.axis("off")
+                return ax
             return img
+
+    @staticmethod
+    def _svg_to_pil(svg_str):
+        from io import BytesIO
+
+        try:
+            from svglib.svglib import svg2rlg
+            from reportlab.graphics import renderPM
+
+            drawing = svg2rlg(BytesIO(svg_str.encode("utf-8")))
+            return renderPM.drawToPIL(drawing)
+        except ImportError:
+            raise ImportError(
+                "svglib and reportlab are required to render SVG into a matplotlib axis. "
+                "Install them with: pip install svglib reportlab  "
+                "Or switch to the PNG drawer: mol.draw2d(drawer='png')"
+            )
 
     def show(self, draw_hydrogens: bool = False, **kwargs):
         """
@@ -640,6 +874,27 @@ class Chem2DViewer:
         return _atom
 
 
+def _single_model_pdb(pdb: str) -> str:
+    """Extract the first conformer from a multi-model PDB, keeping all CONECT records."""
+    if "MODEL " not in pdb:
+        return pdb
+    atom_lines, conect_lines = [], []
+    in_first, done = False, False
+    for line in pdb.splitlines():
+        if line.startswith("MODEL "):
+            if not in_first:
+                in_first = True
+            else:
+                done = True
+        elif line.startswith("ENDMDL"):
+            done = True
+        elif line.startswith("CONECT"):
+            conect_lines.append(line)
+        elif in_first and not done:
+            atom_lines.append(line)
+    return "\n".join(atom_lines + conect_lines + ["END"])
+
+
 class Py3DmolViewer:
     """
     View a molecule in 3D using the py3Dmol library.
@@ -671,9 +926,9 @@ class Py3DmolViewer:
         except ImportError:
             py3Dmol = None
 
-        if py3Dmol is None or Chem is None:
+        if py3Dmol is None:
             raise ImportError(
-                "py3Dmol and/or rdkit are not available. Please install them and be sure to use a compatible (Jupyter) environment."
+                "py3Dmol is not available. Please install it and be sure to use a compatible (Jupyter) environment."
             )
         if isinstance(molecule, (list, tuple, set)):
             molecule = aux.AtomIterator(molecule)
@@ -683,9 +938,16 @@ class Py3DmolViewer:
             )
 
         if hasattr(molecule, "to_pdb"):
-            self.pdb = utils.pdb.encode_pdb(molecule)
+            self.pdb = _single_model_pdb(utils.pdb.encode_pdb(molecule, reindex=True))
         else:
             self.pdb = utils.pdb.make_atoms_table(molecule)
+
+        self._molecule = molecule
+        # Map original atom serial numbers to the reindexed 1-based serials used
+        # in the PDB text so that highlight selections can target the right atoms.
+        self._serial_map = {
+            a.serial_number: i + 1 for i, a in enumerate(molecule.get_atoms())
+        }
 
         self.style = dict(Py3DmolViewer.default_style)
         if style:
@@ -732,7 +994,7 @@ class Py3DmolViewer:
             if style is None:
                 style = other.style
         elif hasattr(other, "to_pdb"):
-            pdb = utils.pdb.encode_pdb(other)
+            pdb = _single_model_pdb(utils.pdb.encode_pdb(other, reindex=True))
             self.view.addModel(pdb, "pdb")
             if style is None:
                 style = self.style
@@ -759,6 +1021,125 @@ class Py3DmolViewer:
 
     def __add__(self, other):
         return self.add(other)
+
+    def highlight_atoms(self, *atoms, color="red", radius=0.4, style="sphere"):
+        """
+        Highlight specific atoms by overlaying spheres.
+
+        Parameters
+        ----------
+        *atoms
+            BuildAMol Atoms, atom serial numbers (int), or a single list of either.
+        color : str or tuple
+            Color for the highlighted atoms.
+        radius : float
+            Sphere radius.
+        style : str
+            py3Dmol style type to use (e.g. ``"sphere"``, ``"stick"``).
+        """
+        if atoms and isinstance(atoms[0], (list, tuple, set)) and len(atoms) == 1:
+            atoms = tuple(atoms[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        serials = []
+        for atom in atoms:
+            if hasattr(atom, "serial_number"):
+                serials.append(self._serial_map.get(atom.serial_number, atom.serial_number))
+            elif isinstance(atom, int):
+                serials.append(atom)
+
+        if serials:
+            self.view.addStyle({"serial": serials}, {style: {"color": color, "radius": radius}})
+        return self
+
+    def highlight_bonds(self, *bonds, color="red", radius=0.15):
+        """
+        Highlight specific bonds by drawing cylinders over them.
+
+        Parameters
+        ----------
+        *bonds
+            Bond objects (with ``.atom1`` / ``.atom2``) or two-element
+            tuples/lists of BuildAMol Atoms. A single list of bonds is also accepted.
+        color : str or tuple
+            Color for the highlighted bonds.
+        radius : float
+            Cylinder radius.
+        """
+        if bonds and isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
+            bonds = tuple(bonds[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        for bond in bonds:
+            if hasattr(bond, "atom1") and hasattr(bond, "atom2"):
+                a1, a2 = bond.atom1, bond.atom2
+            elif isinstance(bond, (tuple, list)) and len(bond) >= 2:
+                a1, a2 = bond[0], bond[1]
+            else:
+                continue
+
+            c1, c2 = a1.coord, a2.coord
+            try:
+                self.view.addCylinder(
+                    {
+                        "start": {"x": float(c1[0]), "y": float(c1[1]), "z": float(c1[2])},
+                        "end": {"x": float(c2[0]), "y": float(c2[1]), "z": float(c2[2])},
+                        "color": color,
+                        "radius": radius,
+                        "dashed": False,
+                    }
+                )
+            except Exception:
+                # Fallback: overlay spheres on both endpoints
+                s1 = self._serial_map.get(a1.serial_number, a1.serial_number)
+                s2 = self._serial_map.get(a2.serial_number, a2.serial_number)
+                self.view.addStyle(
+                    {"serial": [s1, s2]},
+                    {"sphere": {"color": color, "radius": 0.3}},
+                )
+
+        return self
+
+    def highlight_residues(self, *residues, color="red", style="stick"):
+        """
+        Highlight entire residues.
+
+        Parameters
+        ----------
+        *residues
+            BuildAMol Residue objects, residue sequence numbers (int), or residue
+            name strings. A single list of residues is also accepted.
+        color : str or tuple
+            Color for the highlighted residues.
+        style : str
+            py3Dmol style type to use (e.g. ``"stick"``, ``"sphere"``).
+        """
+        if residues and isinstance(residues[0], (list, tuple, set)) and len(residues) == 1:
+            residues = tuple(residues[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        res_nums = []
+        for res in residues:
+            if hasattr(res, "id"):
+                res_id = res.id
+                res_nums.append(res_id[1] if isinstance(res_id, tuple) else int(res_id))
+            elif isinstance(res, int):
+                res_nums.append(res)
+            elif isinstance(res, str) and hasattr(self._molecule, "get_residue"):
+                r = self._molecule.get_residue(res)
+                if r is not None:
+                    r_id = r.id
+                    res_nums.append(r_id[1] if isinstance(r_id, tuple) else int(r_id))
+
+        if res_nums:
+            self.view.addStyle({"resi": res_nums}, {style: {"color": color}})
+        return self
 
     def show(self):
         """
@@ -789,26 +1170,151 @@ class NglViewer:
             raise ImportError(
                 "NGLView is not available. Please install it with `pip install nglview` and be sure to use a compatible environment."
             )
-        if hasattr(molecule, "to_pdb"):
-            self.pdb = utils.pdb.encode_pdb(molecule)
-        elif molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
-            self.pdb = utils.pdb.encode_pdb(molecule._molecule)
+        _src = molecule
+        if molecule.__class__.__name__ in ("AtomGraph", "ResidueGraph"):
+            _src = molecule._molecule
+
+        if hasattr(_src, "to_pdb"):
+            self.pdb = utils.pdb.encode_pdb(_src, reindex=True)
         else:
             raise ValueError(
                 f"Unsupported molecule type: {molecule.__class__.__name__}"
             )
 
+        self._molecule = _src
+        # 0-based atom indices used by NGL @N selection syntax
+        self._serial_map = {
+            a.serial_number: i for i, a in enumerate(_src.get_atoms())
+        }
+        self._pending_highlights = []
+
+    def highlight_atoms(self, *atoms, color="red", style="ball+stick"):
+        """
+        Highlight specific atoms. Takes effect on the next :meth:`show` call.
+
+        Parameters
+        ----------
+        *atoms
+            BuildAMol Atoms, atom serial numbers (int), or a single list of either.
+        color : str or tuple
+            Color for the highlighted atoms.
+        style : str
+            NGL representation type (e.g. ``"ball+stick"``, ``"spacefill"``).
+        """
+        if atoms and isinstance(atoms[0], (list, tuple, set)) and len(atoms) == 1:
+            atoms = tuple(atoms[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        indices = []
+        for atom in atoms:
+            if hasattr(atom, "serial_number"):
+                idx = self._serial_map.get(atom.serial_number)
+                if idx is not None:
+                    indices.append(idx)
+            elif isinstance(atom, int):
+                indices.append(atom)
+
+        if indices:
+            selection = "@" + ",".join(str(i) for i in indices)
+            self._pending_highlights.append(
+                {"type": style, "selection": selection, "color": color}
+            )
+        return self
+
+    def highlight_bonds(self, *bonds, color="red", style="ball+stick"):
+        """
+        Highlight the atoms at each end of the specified bonds.
+        Takes effect on the next :meth:`show` call.
+
+        Parameters
+        ----------
+        *bonds
+            Bond objects (with ``.atom1`` / ``.atom2``) or two-element
+            tuples/lists of BuildAMol Atoms. A single list of bonds is also accepted.
+        color : str or tuple
+            Color for the highlighted bond endpoints.
+        style : str
+            NGL representation type.
+        """
+        if bonds and isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
+            bonds = tuple(bonds[0])
+
+        atoms = []
+        for bond in bonds:
+            if hasattr(bond, "atom1") and hasattr(bond, "atom2"):
+                atoms.extend([bond.atom1, bond.atom2])
+            elif isinstance(bond, (tuple, list)) and len(bond) >= 2:
+                atoms.extend([bond[0], bond[1]])
+
+        if atoms:
+            self.highlight_atoms(*atoms, color=color, style=style)
+        return self
+
+    def highlight_residues(self, *residues, color="red", style="ball+stick"):
+        """
+        Highlight entire residues. Takes effect on the next :meth:`show` call.
+
+        Parameters
+        ----------
+        *residues
+            BuildAMol Residue objects, residue sequence numbers (int), or residue
+            name strings. A single list of residues is also accepted.
+        color : str or tuple
+            Color for the highlighted residues.
+        style : str
+            NGL representation type.
+        """
+        if residues and isinstance(residues[0], (list, tuple, set)) and len(residues) == 1:
+            residues = tuple(residues[0])
+
+        if isinstance(color, tuple):
+            color = rgba_to_hex(color)
+
+        res_nums = []
+        for res in residues:
+            if hasattr(res, "id"):
+                res_id = res.id
+                res_nums.append(str(res_id[1] if isinstance(res_id, tuple) else int(res_id)))
+            elif isinstance(res, int):
+                res_nums.append(str(res))
+            elif isinstance(res, str) and hasattr(self._molecule, "get_residue"):
+                r = self._molecule.get_residue(res)
+                if r is not None:
+                    r_id = r.id
+                    res_nums.append(
+                        str(r_id[1] if isinstance(r_id, tuple) else int(r_id))
+                    )
+
+        if res_nums:
+            selection = " or ".join(res_nums)
+            self._pending_highlights.append(
+                {"type": style, "selection": selection, "color": color}
+            )
+        return self
+
     def show(self):
         """
-        Show the molecule in a Jupyter notebook
+        Show the molecule in a Jupyter notebook.
+        Any :meth:`highlight_atoms`, :meth:`highlight_bonds`, or
+        :meth:`highlight_residues` calls made before ``show()`` are applied here.
         """
         import nglview
         import io
 
         f = io.StringIO(self.pdb)
         f.seek(0)
-        fig = nglview.show_file(f, ext="pdb")
-        return fig
+        widget = nglview.show_file(f, ext="pdb")
+
+        for req in self._pending_highlights:
+            widget.add_representation(
+                req["type"],
+                selection=req["selection"],
+                color=req["color"],
+            )
+
+        return widget
 
 
 def rgba_to_hex(rgba: tuple) -> str:
@@ -858,6 +1364,10 @@ class PlotlyViewer3D:
         "I": "green",
     }
 
+    _bond_parallel_spacing = 0.08
+    _default_aspect_mode = "data"
+    _default_projection = "orthographic"
+
     def __init__(self) -> None:
         PlotlyViewer3D.reset(self)
         self._color_idx = 0
@@ -895,6 +1405,8 @@ class PlotlyViewer3D:
         self.figure.write_html(path)
 
     def reset(self, **kwargs):
+        aspect_mode = kwargs.pop("aspectmode", self._default_aspect_mode)
+        projection_type = kwargs.pop("projection", self._default_projection)
         self.figure = go.Figure(
             layout=go.Layout(
                 scene=dict(
@@ -916,7 +1428,10 @@ class PlotlyViewer3D:
                         showticklabels=False,
                         range=kwargs.pop("zlim", None),
                     ),
-                    # aspectmode="cube",
+                    aspectmode=aspect_mode,
+                    camera=dict(
+                        projection=dict(type=projection_type),
+                    ),
                 ),
                 template="simple_white",
             )
@@ -941,6 +1456,27 @@ class PlotlyViewer3D:
 
     def update_layout(self, **kwargs):
         self.figure.update_layout(**kwargs)
+        return self
+
+    def set_aspect_mode(self, mode: str = "data"):
+        mode = mode.strip().lower()
+        if mode not in ("auto", "cube", "data", "manual"):
+            raise ValueError(
+                f"Unsupported aspect mode: {mode}. Supported modes are auto, cube, data, manual."
+            )
+        self.figure.update_layout(scene=dict(aspectmode=mode))
+        return self
+
+    def set_projection(self, projection: str = "orthographic"):
+        projection = projection.strip().lower()
+        if projection not in ("orthographic", "perspective"):
+            raise ValueError(
+                "Unsupported projection type: "
+                f"{projection}. Supported types are orthographic and perspective."
+            )
+        self.figure.update_layout(
+            scene=dict(camera=dict(projection=dict(type=projection)))
+        )
         return self
 
     def draw_point(
@@ -994,6 +1530,117 @@ class PlotlyViewer3D:
         )
         self.add(new)
         return self
+
+    @staticmethod
+    def _bond_multiplicity(order) -> int:
+        try:
+            multiplicity = int(round(float(order)))
+        except Exception:
+            multiplicity = 1
+        return max(1, min(3, multiplicity))
+
+    @staticmethod
+    def _cross(v1, v2):
+        return (
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0],
+        )
+
+    @staticmethod
+    def _norm(v):
+        return math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2)
+
+    def _bond_offsets(self, point_a, point_b, multiplicity: int, spacing: float):
+        if multiplicity <= 1:
+            return [(0.0, 0.0, 0.0)]
+
+        bond_vec = (
+            point_b[0] - point_a[0],
+            point_b[1] - point_a[1],
+            point_b[2] - point_a[2],
+        )
+        bond_norm = self._norm(bond_vec)
+        if bond_norm == 0:
+            return [(0.0, 0.0, 0.0)]
+        unit = (
+            bond_vec[0] / bond_norm,
+            bond_vec[1] / bond_norm,
+            bond_vec[2] / bond_norm,
+        )
+
+        ref = (0.0, 0.0, 1.0) if abs(unit[2]) < 0.9 else (0.0, 1.0, 0.0)
+        perp = self._cross(unit, ref)
+        perp_norm = self._norm(perp)
+        if perp_norm == 0:
+            ref = (1.0, 0.0, 0.0)
+            perp = self._cross(unit, ref)
+            perp_norm = self._norm(perp)
+            if perp_norm == 0:
+                return [(0.0, 0.0, 0.0)]
+
+        perp = (perp[0] / perp_norm, perp[1] / perp_norm, perp[2] / perp_norm)
+
+        if multiplicity == 2:
+            magnitudes = (-spacing, spacing)
+        else:
+            magnitudes = (-spacing, 0.0, spacing)
+
+        return [(perp[0] * mag, perp[1] * mag, perp[2] * mag) for mag in magnitudes]
+
+    def _build_bond_traces(self, atom_df, bond_df, opacity=None):
+        if opacity is None:
+            opacity = min(1, self.opacity * 2)
+        if bond_df is None or len(bond_df) == 0:
+            return []
+
+        coord_map = {
+            idx: (row["x"], row["y"], row["z"])
+            for idx, row in atom_df[["x", "y", "z"]].iterrows()
+        }
+
+        grouped = {}
+        for _, row in bond_df.iterrows():
+            a = row["a"]
+            b = row["b"]
+            point_a = coord_map.get(a)
+            point_b = coord_map.get(b)
+            if point_a is None or point_b is None:
+                continue
+
+            linewidth = max(1.0, float(row.get("bond_width", self.bond_linewidth)) ** 2)
+            color = row.get("bond_color", self.bond_color)
+            multiplicity = self._bond_multiplicity(row.get("bond_order", 1))
+            spacing = self._bond_parallel_spacing * max(1.0, linewidth / 2.0)
+            offsets = self._bond_offsets(point_a, point_b, multiplicity, spacing)
+
+            key = (color, linewidth)
+            coords = grouped.setdefault(key, {"x": [], "y": [], "z": []})
+
+            for offset in offsets:
+                coords["x"].extend(
+                    [point_a[0] + offset[0], point_b[0] + offset[0], None]
+                )
+                coords["y"].extend(
+                    [point_a[1] + offset[1], point_b[1] + offset[1], None]
+                )
+                coords["z"].extend(
+                    [point_a[2] + offset[2], point_b[2] + offset[2], None]
+                )
+
+        return [
+            go.Scatter3d(
+                x=coords["x"],
+                y=coords["y"],
+                z=coords["z"],
+                mode="lines",
+                line=dict(color=color, width=linewidth),
+                opacity=opacity,
+                hoverinfo="skip",
+                showlegend=False,
+            )
+            for (color, linewidth), coords in grouped.items()
+        ]
 
     def draw_edges(
         self,
@@ -1102,11 +1749,14 @@ class PlotlyViewer3D:
     def highlight_residues(
         self,
         *residues,
+        color=None,
         bond_colors: list = None,
         opacity: float = 0.6,
         linewidth: float = 2,
         draw_atoms: bool = False,
     ):
+        if color is not None and bond_colors is None:
+            bond_colors = color
         if not isinstance(bond_colors, list):
             bond_colors = [bond_colors] * len(residues)
 
@@ -1130,6 +1780,69 @@ class PlotlyViewer3D:
             self.opacity = _op
             bonds.loc[:, "bond_order"] = bonds["bond_order"] - linewidth
         self.add(residue_traces)
+        return self
+
+    def _node_key(self, node):
+        """Return the key used in _bond_df / _atom_df for this node."""
+        if hasattr(node, "serial_number"):
+            return node.serial_number
+        if hasattr(node, "get_id"):
+            return node.get_id()
+        return node
+
+    def highlight_bonds(self, *bonds, color="red", linewidth=4, opacity=None):
+        """
+        Highlight specific bonds by overlaying them with a custom color and linewidth.
+
+        Parameters
+        ----------
+        *bonds
+            Bonds to highlight. Each may be a Bond object (with ``.atom1`` / ``.atom2``)
+            or a two-element tuple/list of atoms/nodes.
+            A single list/tuple of bonds is also accepted.
+        color : str or tuple
+            Color for the highlighted bonds.
+        linewidth : float
+            Line width multiplier for the highlighted bonds.
+        opacity : float, optional
+            Opacity for the highlighted bonds. Defaults to ``min(1, self.opacity * 2)``.
+        """
+        if bonds and isinstance(bonds[0], (list, tuple, set)) and len(bonds) == 1:
+            bonds = tuple(bonds[0])
+
+        if opacity is None:
+            opacity = min(1.0, self.opacity * 2)
+
+        rows = []
+        for bond in bonds:
+            if hasattr(bond, "atom1") and hasattr(bond, "atom2"):
+                node_a, node_b = bond.atom1, bond.atom2
+            elif isinstance(bond, (tuple, list)) and len(bond) >= 2:
+                node_a, node_b = bond[0], bond[1]
+            else:
+                continue
+
+            key_a = self._node_key(node_a)
+            key_b = self._node_key(node_b)
+
+            mask = (
+                (self._bond_df["a"] == key_a) & (self._bond_df["b"] == key_b)
+            ) | (
+                (self._bond_df["a"] == key_b) & (self._bond_df["b"] == key_a)
+            )
+
+            if mask.any():
+                selected = self._bond_df[mask].copy()
+                selected["bond_color"] = color
+                selected["bond_width"] = linewidth
+                rows.append(selected)
+
+        if not rows:
+            return self
+
+        import pandas as pd
+        highlight_df = pd.concat(rows)
+        self.add(self._build_bond_traces(self._atom_df, highlight_df, opacity=opacity))
         return self
 
     def draw_atoms(
@@ -1196,9 +1909,9 @@ class PlotlyViewer3D:
             f"{atom_a.id}-{atom_b.id}",
             atom_a.coord,
             atom_b.coord,
-            color,
-            linewidth,
-            showlegend,
+            color=color,
+            linewidth=linewidth,
+            showlegend=showlegend,
             elongate=elongate,
         )
         return self
@@ -1206,25 +1919,29 @@ class PlotlyViewer3D:
 
 class MoleculeViewer3D(PlotlyViewer3D):
     def make_df(self, mol) -> tuple:
+        atoms = list(mol.get_atoms())
+        bonds = list(mol.get_bonds())
+
         _atom_df = {
-            "x": [atom.coord[0] for atom in mol.get_atoms()],
-            "y": [atom.coord[1] for atom in mol.get_atoms()],
-            "z": [atom.coord[2] for atom in mol.get_atoms()],
-            "atom_id": [atom.id for atom in mol.get_atoms()],
-            "atom_serial": [atom.serial_number for atom in mol.get_atoms()],
-            "atom_element": [atom.element.title() for atom in mol.get_atoms()],
-            "residue_serial": [atom.get_parent().id[1] for atom in mol.get_atoms()],
-            "residue_name": [atom.get_parent().resname for atom in mol.get_atoms()],
-            "chain_id": [atom.get_parent().get_parent().id for atom in mol.get_atoms()],
+            "x": [atom.coord[0] for atom in atoms],
+            "y": [atom.coord[1] for atom in atoms],
+            "z": [atom.coord[2] for atom in atoms],
+            "atom_id": [atom.id for atom in atoms],
+            "atom_serial": [atom.serial_number for atom in atoms],
+            "atom_element": [atom.element.title() for atom in atoms],
+            "residue_serial": [atom.get_parent().id[1] for atom in atoms],
+            "residue_name": [atom.get_parent().resname for atom in atoms],
+            "chain_id": [atom.get_parent().get_parent().id for atom in atoms],
         }
         _atom_df = pd.DataFrame(_atom_df)
         _atom_df.set_index("atom_serial", drop=False, inplace=True)
 
         _bond_df = {
-            "a": [i[0].serial_number for i in mol.get_bonds()],
-            "b": [i[1].serial_number for i in mol.get_bonds()],
-            "bond_color": [self.bond_color for i in mol.get_bonds()],
-            "bond_order": [self.bond_linewidth * i.order for i in mol.get_bonds()],
+            "a": [i[0].serial_number for i in bonds],
+            "b": [i[1].serial_number for i in bonds],
+            "bond_color": [self.bond_color for _ in bonds],
+            "bond_order": [getattr(i, "order", 1) for i in bonds],
+            "bond_width": [self.bond_linewidth for _ in bonds],
         }
         _bond_df = pd.DataFrame(_bond_df)
 
@@ -1246,52 +1963,46 @@ class MoleculeViewer3D(PlotlyViewer3D):
         self.add(self._setup_fig(self._atom_df, self._bond_df, draw_atoms=draw_atoms))
 
     def _setup_fig(self, atom_df, bond_df, draw_atoms=True):
-        if not draw_atoms:
-            fig = go.Figure()
-        else:
-            atom_df["__marker_size"] = self.size
-            fig = px.scatter_3d(
-                atom_df,
-                x="x",
-                y="y",
-                z="z",
-                color="atom_element",
-                color_discrete_map=self.__atom_colors__,
-                opacity=self.opacity,
-                size="__marker_size",
-                hover_data=[
-                    "atom_id",
-                    "atom_serial",
-                    "residue_serial",
-                    "residue_name",
-                    "chain_id",
-                ],
-                template="none",
+        fig = go.Figure()
+        if draw_atoms:
+            atom_colors = [
+                self.__atom_colors__.get(element, "black")
+                for element in atom_df["atom_element"].tolist()
+            ]
+            atom_hover = [
+                f"{atom_id} ({serial})<br>{res_name} {res_serial}<br>Chain {chain_id}"
+                for atom_id, serial, res_serial, res_name, chain_id in zip(
+                    atom_df["atom_id"],
+                    atom_df["atom_serial"],
+                    atom_df["residue_serial"],
+                    atom_df["residue_name"],
+                    atom_df["chain_id"],
+                )
+            ]
+            fig.add_trace(
+                go.Scatter3d(
+                    x=atom_df["x"],
+                    y=atom_df["y"],
+                    z=atom_df["z"],
+                    mode="markers",
+                    marker=dict(
+                        color=atom_colors,
+                        size=self.size,
+                        opacity=self.opacity,
+                    ),
+                    text=atom_hover,
+                    hovertemplate="%{text}<extra></extra>",
+                    showlegend=False,
+                )
             )
-        bonds = []
-        for i, row in bond_df.iterrows():
-            a1 = atom_df.loc[row["a"]]
-            a2 = atom_df.loc[row["b"]]
-            new = go.Scatter3d(
-                x=[a1["x"], a2["x"]],
-                y=[a1["y"], a2["y"]],
-                z=[a1["z"], a2["z"]],
-                mode="lines",
-                line=dict(
-                    color=row["bond_color"],
-                    width=row["bond_order"] ** 2,
-                    # opacity=min(1, self.opacity * 2),
-                ),
-                hoverinfo="skip",
-                showlegend=False,
-            )
-            bonds.append(new)
-        fig.add_traces(bonds)
 
+        fig.add_traces(self._build_bond_traces(atom_df, bond_df, opacity=self.opacity))
         return fig
 
     def reset(self):
-        self.figure = self._setup_fig(self._atom_df, self._bond_df)
+        super().reset()
+        self.add(self._setup_fig(self._atom_df, self._bond_df))
+        return self
 
     def rainbow(self):
         """
@@ -1310,16 +2021,17 @@ class AtomGraphViewer3D(PlotlyViewer3D):
         self.add(self._setup_fig(self._atom_df, self._bond_df))
 
     def make_df(self, graph):
+        nodes = list(graph.nodes)
         _atom_df = {
-            "x": [atom.coord[0] for atom in graph.nodes],
-            "y": [atom.coord[1] for atom in graph.nodes],
-            "z": [atom.coord[2] for atom in graph.nodes],
-            "atom_id": [atom.id for atom in graph.nodes],
-            "atom_serial": [atom.serial_number for atom in graph.nodes],
-            "atom_element": [atom.element.title() for atom in graph.nodes],
-            "residue_serial": [atom.get_parent().id[1] for atom in graph.nodes],
-            "residue_name": [atom.get_parent().resname for atom in graph.nodes],
-            "chain_id": [atom.get_parent().get_parent().id for atom in graph.nodes],
+            "x": [atom.coord[0] for atom in nodes],
+            "y": [atom.coord[1] for atom in nodes],
+            "z": [atom.coord[2] for atom in nodes],
+            "atom_id": [atom.id for atom in nodes],
+            "atom_serial": [atom.serial_number for atom in nodes],
+            "atom_element": [atom.element.title() for atom in nodes],
+            "residue_serial": [atom.get_parent().id[1] for atom in nodes],
+            "residue_name": [atom.get_parent().resname for atom in nodes],
+            "chain_id": [atom.get_parent().get_parent().id for atom in nodes],
         }
         _atom_df = pd.DataFrame(_atom_df)
         _atom_df.set_index("atom_serial", drop=False, inplace=True)
@@ -1329,51 +2041,49 @@ class AtomGraphViewer3D(PlotlyViewer3D):
             "a": [i[0].serial_number for i in bond_orders.keys()],
             "b": [i[1].serial_number for i in bond_orders.keys()],
             "bond_color": [self.bond_color for i in bond_orders.keys()],
-            "bond_order": [self.bond_linewidth * i for i in bond_orders.values()],
+            "bond_order": [i for i in bond_orders.values()],
+            "bond_width": [self.bond_linewidth for _ in bond_orders.values()],
         }
 
         _bond_df = pd.DataFrame(_bond_df)
 
         return _atom_df, _bond_df
 
-    def _setup_fig(self, atom_df, bond_df):
-        fig = px.scatter_3d(
-            atom_df,
-            x="x",
-            y="y",
-            z="z",
-            color="atom_element",
-            color_discrete_map=self.__atom_colors__,
-            opacity=self.opacity,
-            hover_data=[
-                "atom_id",
-                "atom_serial",
-                "residue_serial",
-                "residue_name",
-                "chain_id",
-            ],
-            template="none",
-        )
-        bonds = []
-        for i, row in bond_df.iterrows():
-            a1 = atom_df.loc[row["a"]]
-            a2 = atom_df.loc[row["b"]]
-            new = go.Scatter3d(
-                x=[a1["x"], a2["x"]],
-                y=[a1["y"], a2["y"]],
-                z=[a1["z"], a2["z"]],
-                mode="lines",
-                line=dict(
-                    color=row["bond_color"],
-                    width=row["bond_order"] ** 2,
-                ),
-                opacity=min(1, self.opacity * 2),
-                hoverinfo="skip",
-                showlegend=False,
+    def _setup_fig(self, atom_df, bond_df, draw_atoms=True):
+        fig = go.Figure()
+        if draw_atoms:
+            atom_colors = [
+                self.__atom_colors__.get(element, "black")
+                for element in atom_df["atom_element"].tolist()
+            ]
+            atom_hover = [
+                f"{atom_id} ({serial})<br>{res_name} {res_serial}<br>Chain {chain_id}"
+                for atom_id, serial, res_serial, res_name, chain_id in zip(
+                    atom_df["atom_id"],
+                    atom_df["atom_serial"],
+                    atom_df["residue_serial"],
+                    atom_df["residue_name"],
+                    atom_df["chain_id"],
+                )
+            ]
+            fig.add_trace(
+                go.Scatter3d(
+                    x=atom_df["x"],
+                    y=atom_df["y"],
+                    z=atom_df["z"],
+                    mode="markers",
+                    marker=dict(
+                        color=atom_colors,
+                        size=self.size,
+                        opacity=self.opacity,
+                    ),
+                    text=atom_hover,
+                    hovertemplate="%{text}<extra></extra>",
+                    showlegend=False,
+                )
             )
-            bonds.append(new)
-        fig.add_traces(bonds)
 
+        fig.add_traces(self._build_bond_traces(atom_df, bond_df, opacity=self.opacity))
         return fig
 
 
@@ -1387,20 +2097,22 @@ class ResidueGraphViewer3D(PlotlyViewer3D):
         self.add(self._setup_fig(self._atom_df, self._bond_df))
 
     def make_df(self, graph):
+        nodes = list(graph.nodes)
+        edges = list(graph.edges)
         _atom_df = {
-            "_id": [atom.get_id() for atom in graph.nodes],
-            "x": [atom.coord[0] for atom in graph.nodes],
-            "y": [atom.coord[1] for atom in graph.nodes],
-            "z": [atom.coord[2] for atom in graph.nodes],
-            "id": [str(atom.id) for atom in graph.nodes],
-            "serial": [atom.serial_number for atom in graph.nodes],
+            "_id": [atom.get_id() for atom in nodes],
+            "x": [atom.coord[0] for atom in nodes],
+            "y": [atom.coord[1] for atom in nodes],
+            "z": [atom.coord[2] for atom in nodes],
+            "id": [str(atom.id) for atom in nodes],
+            "serial": [atom.serial_number for atom in nodes],
             "element_or_resname": [
                 getattr(atom, "element", getattr(atom, "resname", "")).title()
-                for atom in graph.nodes
+                for atom in nodes
             ],
-            "parent_id": [str(atom.get_parent().id) for atom in graph.nodes],
+            "parent_id": [str(atom.get_parent().id) for atom in nodes],
             "parent_serial": [
-                getattr(atom.get_parent(), "serial_number", -1) for atom in graph.nodes
+                getattr(atom.get_parent(), "serial_number", -1) for atom in nodes
             ],
         }
 
@@ -1408,53 +2120,51 @@ class ResidueGraphViewer3D(PlotlyViewer3D):
         _atom_df.set_index("_id", drop=False, inplace=True)
 
         _bond_df = {
-            "a": [i[0].get_id() for i in graph.edges],
-            "b": [i[1].get_id() for i in graph.edges],
-            "bond_color": [self.bond_color for i in graph.edges],
-            "bond_order": [self.bond_linewidth for i in graph.edges],
+            "a": [i[0].get_id() for i in edges],
+            "b": [i[1].get_id() for i in edges],
+            "bond_color": [self.bond_color for _ in edges],
+            "bond_order": [1 for _ in edges],
+            "bond_width": [self.bond_linewidth for _ in edges],
         }
 
         _bond_df = pd.DataFrame(_bond_df)
 
         return _atom_df, _bond_df
 
-    def _setup_fig(self, atom_df, bond_df):
-        fig = px.scatter_3d(
-            atom_df,
-            x="x",
-            y="y",
-            z="z",
-            color="element_or_resname",
-            color_discrete_map=self.__atom_colors__,
-            opacity=self.opacity,
-            hover_data=[
-                "id",
-                "serial",
-                "parent_serial",
-                "parent_id",
-            ],
-            template="none",
-        )
-        bonds = []
-        for i, row in bond_df.iterrows():
-            a1 = atom_df.loc[row["a"]]
-            a2 = atom_df.loc[row["b"]]
-            new = go.Scatter3d(
-                x=[a1["x"], a2["x"]],
-                y=[a1["y"], a2["y"]],
-                z=[a1["z"], a2["z"]],
-                mode="lines",
-                line=dict(
-                    color=row["bond_color"],
-                    width=row["bond_order"] ** 2,
-                ),
-                opacity=min(1, self.opacity * 2),
-                hoverinfo="skip",
-                showlegend=False,
+    def _setup_fig(self, atom_df, bond_df, draw_atoms=True):
+        fig = go.Figure()
+        if draw_atoms:
+            atom_colors = [
+                self.__atom_colors__.get(value, "black")
+                for value in atom_df["element_or_resname"].tolist()
+            ]
+            atom_hover = [
+                f"{node_id} ({serial})<br>Parent {parent_id} ({parent_serial})"
+                for node_id, serial, parent_serial, parent_id in zip(
+                    atom_df["id"],
+                    atom_df["serial"],
+                    atom_df["parent_serial"],
+                    atom_df["parent_id"],
+                )
+            ]
+            fig.add_trace(
+                go.Scatter3d(
+                    x=atom_df["x"],
+                    y=atom_df["y"],
+                    z=atom_df["z"],
+                    mode="markers",
+                    marker=dict(
+                        color=atom_colors,
+                        size=self.size,
+                        opacity=self.opacity,
+                    ),
+                    text=atom_hover,
+                    hovertemplate="%{text}<extra></extra>",
+                    showlegend=False,
+                )
             )
-            bonds.append(new)
-        fig.add_traces(bonds)
 
+        fig.add_traces(self._build_bond_traces(atom_df, bond_df, opacity=self.opacity))
         return fig
 
     def rainbow(self):
@@ -1462,6 +2172,86 @@ class ResidueGraphViewer3D(PlotlyViewer3D):
             if getattr(node, "element", None) is not None:
                 continue
             self.draw_atom(node, color=self._get_color())
+
+
+import math
+import matplotlib.pyplot as plt
+
+
+def gallery_grid(
+    mols: list,
+    ncols=None,
+    nrows=None,
+    figsize=None,
+    panel_size=3,
+    draw_molecules=True,
+    **kwargs,
+):
+    """
+    Draw a list of molecules in a (near-square) grid of subplots.
+
+    Note
+    ----
+    This function only works for 2D drawing!
+
+    Parameters
+    ----------
+    mols : list
+        The molecules to draw. This can be a number of molecules to draw, in which case only the grid is prepared.
+    ncols, nrows : int
+        The number of columns/rows. If only one is given the other is inferred.
+        If neither is given the grid is made as square as possible.
+    figsize : tuple
+        The figure size. Defaults to (ncols, nrows) * panel_size.
+    panel_size : float
+        The size (in inches) of each subplot when figsize is not given.
+    draw_molecules : bool
+        If False only the figure with axes grid is produced.
+    **kwargs
+        Additional keyword arguments passed on to each molecule's `draw2d().draw(**kwargs)`.
+
+    Returns
+    -------
+    fig, axs
+        The matplotlib figure and the flat array of axes.
+    """
+    if isinstance(mols, int):
+        mols = [None] * mols
+    n = len(mols)
+    if n == 0:
+        raise ValueError("No molecules to draw")
+
+    if ncols is None and nrows is None:
+        ncols = math.ceil(math.sqrt(n))
+        nrows = math.ceil(n / ncols)
+    elif ncols is None:
+        ncols = math.ceil(n / nrows)
+    elif nrows is None:
+        nrows = math.ceil(n / ncols)
+
+    if figsize is None:
+        figsize = (ncols * panel_size, nrows * panel_size)
+
+    fig, axs = plt.subplots(nrows, ncols, figsize=figsize)
+    _axs = [axs] if nrows * ncols == 1 else list(axs.flat)
+
+    if draw_molecules:
+        for ax, mol in zip(_axs, mols):
+            if hasattr(mol, "draw2d"):
+                mol.draw2d().draw(ax=ax, **kwargs)
+            elif mol is not None:
+                ax.text(
+                    0.5,
+                    0.5,
+                    f"Expected Molecule, got {type(mol).__name__}",
+                    ha="center",
+                    va="center",
+                )
+    for ax in _axs[n:]:
+        ax.axis("off")
+
+    fig.tight_layout()
+    return fig, axs
 
 
 if __name__ == "__main__":

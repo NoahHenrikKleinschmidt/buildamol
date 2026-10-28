@@ -6,7 +6,6 @@ import os
 
 import buildamol.utils.auxiliary as aux
 
-has_rdkit = aux.HAS_RDKIT
 Chem = aux.Chem
 
 
@@ -27,9 +26,6 @@ def read_mol(filename: str):
     Chem.Mol
         An RDKit molecule
     """
-    if not has_rdkit:
-        raise ImportError("Molfile reading requires RDKit")
-
     if not os.path.exists(filename):
         raise FileNotFoundError(f"Could not find file {filename}")
 
@@ -48,9 +44,6 @@ def write_mol(mol: "Molecule", filename: str):
     filename : str
         The filename of the mol file
     """
-    if not has_rdkit:
-        raise ImportError("Molfile writing requires RDKit")
-
     mol = mol.to_rdkit()
     Chem.MolToMolFile(mol, filename)
 
