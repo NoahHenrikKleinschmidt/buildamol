@@ -5849,7 +5849,7 @@ class BaseEntity:
             ]
         if save:
             for old, new in zip(bonds, directed):
-                self.remove_bond(*old)
+                self.drop_bond(*old)
                 self.add_bond(*new)
         return directed
 
