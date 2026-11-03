@@ -4,7 +4,9 @@ Write and read pdbqt files.
 
 import os
 import subprocess
+import sys
 import tempfile
+from pathlib import Path
 
 import buildamol.utils.auxiliary as aux
 import buildamol.utils.pdb as _pdb
@@ -21,7 +23,14 @@ def _encode_pdbqt_receptor(molecule: "Molecule", box_center=None, box_size=None)
     """
     pdb_tmp = tempfile.mktemp(suffix=".pdb")
     pdbqt_tmp = pdb_tmp.replace(".pdb", ".pdbqt")
+    # prefer the script of the running environment over whatever comes first on PATH
+    # (e.g. in notebook kernels, PATH may point to a different environment with another meeko version)
+    env_bin = Path(sys.executable).parent
     cmd = "mk_prepare_receptor"
+    for candidate in (env_bin / cmd, env_bin / f"{cmd}.py"):
+        if candidate.exists():
+            cmd = str(candidate)
+            break
     try:
         bare_cmd_is_available = subprocess.run(
             [cmd, "--help"],
