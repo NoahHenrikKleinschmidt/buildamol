@@ -19,6 +19,8 @@ autodoc_mock_imports = [
     "openff.toolkit",
     "openff.interchange",
     "easydock",
+    "vina",
+    "meeko",
     "dockstring",
 ]  # add whatever is optional
 
