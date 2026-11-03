@@ -61,6 +61,11 @@ This includes only the names of the standard amino acids; does not load any mole
 Use the `amino_acids` object to access the actual molecules.
 """
 
+hydrophobic_amino_acids = {"A", "V", "I", "L", "M", "F", "Y", "W"}
+polar_amino_acids = {"S", "T", "N", "Q", "C", "Y", "H"}
+charged_amino_acids = {"D", "E", "K", "R", "H"}
+aromatic_amino_acids = {"F", "Y", "W", "H"}
+
 
 class _amino_acids_generator:
     """
@@ -90,6 +95,10 @@ class _amino_acids_generator:
 
     def __repr__(self):
         return f"amino_acids({', '.join(sorted(amino_acid_names_3letter))})"
+
+    def __iter__(self):
+        for aa in sorted(amino_acid_names_3letter):
+            yield self.__getattr__(aa)
 
 
 amino_acids = _amino_acids_generator()
