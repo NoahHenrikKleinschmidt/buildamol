@@ -2,7 +2,7 @@
 An extension for facilitating docking of ligand molecules to proteins.
 """
 
-AVAILABLE_DOCKING_BACKENDS = ["easydock", "dockstring", "diffdock", "opendock"]
+AVAILABLE_DOCKING_BACKENDS = ["vina", "easydock", "dockstring", "diffdock", "opendock"]
 
 DOCKING_BACKEND = AVAILABLE_DOCKING_BACKENDS[0]
 
@@ -26,7 +26,7 @@ def set_docking_backend(backend: str):
     Parameters
     ----------
     backend : str
-        The backend to use, either 'easydock'
+        The backend to use, one of 'vina' (default), 'easydock', 'dockstring', 'diffdock', or 'opendock'
     """
     global DOCKING_BACKEND
     if backend not in AVAILABLE_DOCKING_BACKENDS:

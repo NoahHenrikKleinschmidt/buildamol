@@ -5,7 +5,9 @@ Docking module for BuildAMol using the `easydock` package.
 import buildamol.core as core
 import buildamol.utils.auxiliary as aux
 
-from tempfile import TemporaryDirectory
+import shutil
+import warnings
+from tempfile import mkdtemp
 from pathlib import Path
 import yaml
 import numpy as np
@@ -47,6 +49,7 @@ def dock(
     n_poses: int = 5,
     exhaustiveness: int = 8,
     ncpu: int = 1,
+    n_workers: int = 1,
     **kwargs,
 ):
     """
@@ -69,7 +72,10 @@ def dock(
     exhaustiveness : int, optional
         The exhaustiveness of the docking search (default is 8)
     ncpu : int, optional
-        The number of CPUs to use (default is 1)
+        The number of CPUs (threads) that Vina uses to dock each ligand (default is 1)
+    n_workers : int, optional
+        The number of ligands that are docked in parallel (default is 1). The total number of
+        CPUs used is `ncpu * n_workers`.
     **kwargs
         Additional keyword arguments to pass to the docking backend
 
@@ -96,11 +102,11 @@ def dock(
         raise ImportError("Docking requires the `easydock` package")
     if backend is None:
         backend = EASYDOCK_VINA_BACKEND
-    docker = Docker(backend)
-    docker.setup(
-        protein, exhaustiveness=exhaustiveness, n_poses=n_poses, ncpu=ncpu, **kwargs
-    )
-    return docker.dock(ligand, center, box_size)
+    with Docker(backend) as docker:
+        docker.setup(
+            protein, exhaustiveness=exhaustiveness, n_poses=n_poses, ncpu=ncpu, **kwargs
+        )
+        return docker.dock(ligand, center, box_size, n_workers=n_workers)
 
 
 class Docker:
@@ -153,19 +159,27 @@ class Docker:
         n_poses : int, optional
             The number of poses to generate (default is 5)
         ncpu : int, optional
-            The number of CPUs to use (default is 1)
+            The number of CPUs (threads) that Vina uses to dock each ligand (default is 1)
         dir : str, optional
-            The directory to store the docking files (default is None, which creates a temporary directory)
+            The directory to store the docking files (default is None, which creates a temporary directory that is removed on `close`)
         **kwargs
             Additional keyword arguments to pass to the docking backend
         """
+        self.close()
+        self._owns_directory = dir is None
         outdir = _prepare_outdir(dir)
         self._protein = protein
         self._proteinfile = None
         _write_easydock_config(exhaustiveness, seed, n_poses, ncpu, outdir, **kwargs)
         self.working_directory = outdir
 
-    def dock(self, ligand: core.Molecule, center: tuple, box_size: tuple):
+    def dock(
+        self,
+        ligand: core.Molecule,
+        center: tuple,
+        box_size: tuple,
+        n_workers: int = 1,
+    ):
         """
         Dock a ligand to the protein
 
@@ -177,6 +191,8 @@ class Docker:
             The center of the docking box in (x, y, z) coordinates
         box_size : tuple
             The size of the docking box in (x, y, z).
+        n_workers : int, optional
+            The number of ligands that are docked in parallel (default is 1)
 
         Returns
         -------
@@ -198,8 +214,6 @@ class Docker:
             self._proteinfile = self.working_directory / "protein.pdbqt"
 
         _write_gridfile(center, box_size, self.working_directory)
-        config = self.working_directory / "config.yaml"
-        ncpu = yaml.safe_load(open(config))["ncpu"]
 
         if isinstance(ligand, (list, tuple, np.ndarray)) and hasattr(
             ligand[0], "to_rdkit"
@@ -222,14 +236,19 @@ class Docker:
                 ligand,
                 dock_func=self._core_docking_fn,
                 dock_config=str(self.working_directory / "config.yaml"),
-                ncpu=ncpu,
+                ncpu=n_workers,
             )
         )
 
         # postprocess docked poses
         out = []
         for id, data in docked:
-            pdb_string = data["pdb_block"]
+            if data is None:
+                warnings.warn(f"Docking failed for ligand {id}")
+                out.append(None)
+                continue
+            # easydock >= 1.0 returns the poses as 'raw_block', older versions as 'pdb_block'
+            pdb_string = data.get("raw_block") or data.get("pdb_block")
             with open(self.working_directory / f"{id}.pdb", "w") as f:
                 f.write(pdb_string)
             new = core.Molecule.from_pdb(
@@ -241,10 +260,23 @@ class Docker:
         # if only one ligand was docked, reduce the dimensionality of the output
         if len(out) == 1:
             out = out[0]
-
-        # remove the temporary directory
-        self.working_directory.rmdir()
         return out
+
+    def close(self):
+        """
+        Remove the temporary working directory (if it was created by the Docker).
+        """
+        if self.working_directory is not None and getattr(
+            self, "_owns_directory", False
+        ):
+            shutil.rmtree(self.working_directory, ignore_errors=True)
+        self.working_directory = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
 
 
 def _write_easydock_config(exhaustiveness, seed, n_poses, ncpu, outdir, **kwargs):
@@ -272,10 +304,9 @@ def _write_gridfile(center, box_size, outdir):
 
 def _prepare_outdir(dir):
     if dir is None:
-        dir = Path(TemporaryDirectory(dir=".").name)
-    else:
-        dir = Path(dir)
-    dir.mkdir(exist_ok=True)
+        return Path(mkdtemp(prefix="bam_easydock_"))
+    dir = Path(dir).resolve()
+    dir.mkdir(parents=True, exist_ok=True)
     return dir
 
 
