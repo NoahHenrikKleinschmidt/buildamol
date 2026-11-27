@@ -8,3 +8,4 @@ from buildamol.base_classes import *
 from buildamol.core.Molecule import *
 from buildamol.core.Linkage import *
 from buildamol.core.reaction import *
+from buildamol.core.autoreact import *
