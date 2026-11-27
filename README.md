@@ -158,6 +158,7 @@ out.draw2d().draw(width=800, height=800)
 ```
 ![](docs/_resources/cyclic_alkanes.png)
 
+#### Automatic Reactions
 
 Reactivities can also be used implicitly without having to specify them. In this case BuildAMol will scan a molecule for possible matches of functional sites and rank them based on pairs of found reactivities, picking the highest ranking one to connect molecules:
 
@@ -178,7 +179,23 @@ axs[2].set_title("Out")
 
 ![](docs/_resources/autoreact.png)
 
+This also supports "polymerisation" as for instance in:
 
+```python
+import seaborn as sns 
+
+A = bam.read_smiles("OCC(=O)O")
+
+poly = A * 10
+
+v = out.draw2d()
+palette = sns.color_palette("husl", len(poly.residues))
+for r, c in zip(poly.residues, palette):
+    v.highlight_residues(r, color=c)
+v.draw(linewidth=3, fontsize=30)
+``` 
+
+![](docs/_resources/autoreact_poly.png)
 
 Example 4 - Multi-Molecule Systems
 ----------------------------------
