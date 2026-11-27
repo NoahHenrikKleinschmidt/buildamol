@@ -2,6 +2,7 @@
 Tests for the in-process AutoDock Vina docking backend.
 """
 
+import shutil
 import warnings
 
 import numpy as np
@@ -21,11 +22,14 @@ CENTER = (17.61, -18.43, 32.75)
 BOX = (15, 15, 15)
 
 
-@pytest.fixture(scope="module")
-def docker():
-    from buildamol.extensions.docking.backend_vina import Docker
+@pytest.fixture(scope="module", params=["executable", "python"])
+def docker(request):
+    from buildamol.extensions.docking.backend_vina import Docker, find_vina_executable
 
-    with Docker(seed=1) as d:
+    executable = find_vina_executable() if request.param == "executable" else None
+    if request.param == "executable" and executable is None:
+        pytest.skip("requires the Vina executable of dockstring")
+    with Docker(seed=1, vina_executable=executable) as d:
         d.setup(str(POCKET), CENTER, BOX)
         yield d
 
@@ -147,6 +151,46 @@ def test_dock_function():
 
     docked = dock(str(POCKET), _ligand(), CENTER, BOX, mode="optimize")
     assert isinstance(docked.docking_score, float)
+
+
+def test_executable_matches_python_bindings():
+    from buildamol.extensions.docking.backend_vina import Docker, find_vina_executable
+
+    executable = find_vina_executable()
+    if executable is None:
+        pytest.skip("requires the Vina executable of dockstring")
+    ligands = [_ligand(id="A"), _ligand("OCC(N)C(=O)NCc1ccccc1O", id="B")]
+    out = {}
+    for name, exe in (("executable", executable), ("python", None)):
+        with Docker(seed=1, vina_executable=exe) as d:
+            d.setup(str(POCKET), CENTER, BOX)
+            out[name] = (d.score(ligands), d.optimize(ligands))
+    for i in range(2):
+        # identical poses get identical scores
+        assert abs(out["executable"][0][i].docking_score - out["python"][0][i].docking_score) < 0.05
+        # local optimization may end up in different local minima, but both must improve the pose
+        for name in out:
+            assert out[name][1][i].docking_score < out[name][0][i].docking_score
+        assert np.allclose(_bond_lengths(out["executable"][1][i]), _bond_lengths(ligands[i]), atol=0.05)
+
+
+def test_broken_executable_falls_back_to_python_bindings():
+    from buildamol.extensions.docking.backend_vina import Docker
+
+    with Docker(seed=1, vina_executable=shutil.which("false")) as d:
+        d.setup(str(POCKET), CENTER, BOX)
+        with pytest.warns(UserWarning, match="Vina executable failed"):
+            scored = d.score(_ligand())
+        assert isinstance(scored.docking_score, float)
+        assert d.vina_executable is None
+
+
+def test_memory_estimate_scales_with_ligand_size():
+    from buildamol.extensions.docking import backend_vina as bv
+
+    small = bv._vina_memory_estimate(bv._smiles_to_pdbqt("CCO", CENTER))
+    large = bv._vina_memory_estimate(bv._smiles_to_pdbqt("CCCCCCCCCCCCCCCCCCCCO", CENTER))
+    assert small < large < 1e9
 
 
 def test_pose_mapping_keeps_atom_order():

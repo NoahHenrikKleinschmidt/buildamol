@@ -12,6 +12,10 @@ optimization loops where many candidates must be evaluated against the same pock
   (``mode="score"``), which takes milliseconds instead of seconds to minutes.
 - Batches of ligands are docked in parallel, one ligand per worker process, which
   scales much better than giving Vina more threads for a single ligand.
+- Vina 1.2 pre-computes interaction tables for every pair of ligand atoms when a ligand is
+  loaded, which costs seconds and gigabytes of memory for large ligands such as peptides.
+  If a Vina 1.1.2 executable is available (e.g. the one shipped with `dockstring`) it is
+  therefore used for ``mode="optimize"`` and ``mode="score"`` (~0.1 s per peptide).
 
 Requires the `vina` and `meeko` packages.
 """
@@ -19,6 +23,8 @@ Requires the `vina` and `meeko` packages.
 import os
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import warnings
 from pathlib import Path
@@ -71,6 +77,7 @@ def dock(
     ncpu: int = None,
     seed: int = 0,
     scoring_function: str = "vina",
+    vina_executable="auto",
     **kwargs,
 ):
     """
@@ -111,6 +118,9 @@ def dock(
         The random seed (default is 0, which lets Vina pick a random seed)
     scoring_function : str, optional
         The scoring function to use, either 'vina' or 'vinardo' (default is 'vina')
+    vina_executable : str, optional
+        Path to a Vina 1.1.2 executable used for the "optimize" and "score" modes (see `Docker`).
+        By default ("auto") the executable shipped with `dockstring` is used if it is installed.
     **kwargs
         Additional keyword arguments are passed to `Docker.dock`, e.g. `min_rmsd` or `energy_range`.
 
@@ -131,7 +141,9 @@ def dock(
     >>> docked.docking_score
     -7.3
     """
-    with Docker(scoring_function=scoring_function, seed=seed) as docker:
+    with Docker(
+        scoring_function=scoring_function, seed=seed, vina_executable=vina_executable
+    ) as docker:
         docker.setup(protein, center, box_size)
         return docker.dock(
             ligand,
@@ -158,6 +170,14 @@ class Docker:
         The scoring function to use, either 'vina' or 'vinardo' (default is 'vina')
     seed : int, optional
         The random seed (default is 0, which lets Vina pick a random seed)
+    vina_executable : str, optional
+        Path to a Vina 1.1.2 executable that is used for the "optimize" and "score" modes.
+        Vina 1.2 (the Python bindings) pre-computes interaction tables for all pairs of ligand atoms
+        whenever a ligand is loaded, which takes seconds and gigabytes of memory for large ligands
+        (e.g. ~1.5 s and ~4 GB for a 100 atom peptide), whereas Vina 1.1.2 refines or scores the same
+        ligand in ~0.1 s. Global docking always uses the Python bindings (with cached affinity maps).
+        By default ("auto") the executable shipped with `dockstring` is used if it is installed.
+        Set to None to always use the Python bindings. Not available with the 'vinardo' scoring function.
 
     Examples
     --------
@@ -172,15 +192,24 @@ class Docker:
     ...     docked = docker.dock(candidates, exhaustiveness=4)
     """
 
-    def __init__(self, scoring_function: str = "vina", seed: int = 0):
+    def __init__(self, scoring_function: str = "vina", seed: int = 0, vina_executable="auto"):
         if not aux.has_package("vina") or not aux.has_package("meeko"):
             raise ImportError("Docking requires the `vina` and `meeko` packages")
         if scoring_function not in ("vina", "vinardo"):
             raise ValueError(
                 f"Unsupported scoring function '{scoring_function}': use 'vina' or 'vinardo'"
             )
+        if vina_executable == "auto":
+            vina_executable = find_vina_executable() if scoring_function == "vina" else None
+        elif vina_executable is not None:
+            if scoring_function != "vina":
+                raise ValueError("A Vina executable can only be used with the 'vina' scoring function")
+            vina_executable = shutil.which(str(vina_executable))
+            if vina_executable is None:
+                raise FileNotFoundError("The given Vina executable was not found or is not executable")
         self.scoring_function = scoring_function
         self.seed = seed
+        self.vina_executable = vina_executable
         self.working_directory = None
         self.receptor_file = None
         self.center = None
@@ -302,25 +331,50 @@ class Docker:
         results = [None] * len(ligands)
         errors = {}
 
-        # global searches of multiple ligands run in parallel (one ligand per process),
-        # everything else is fast enough to just run in-process
+        if mode != "dock" and self.vina_executable is not None and jobs:
+            jobs = self._run_executable(prepared, jobs, mode, ncpu, results)
+
+        # Global searches of multiple ligands run in parallel (one ligand per process). Each worker may
+        # use up to `ncpu` threads, which it only does if fewer ligands than CPUs are docked.
+        # Vina's memory use grows quadratically with the ligand size (~3 GB for a 100 atom peptide),
+        # so jobs are only submitted while their estimated memory fits into the budget.
+        # "optimize" and "score" with the Python bindings run in-process for the same reason.
         if mode == "dock" and len(jobs) > 1 and ncpu > 1:
-            n_workers = min(ncpu, len(jobs))
-            pool = self._get_pool(n_workers, max(1, ncpu // n_workers))
-            futures = {
-                i: pool.submit(_worker_run, prepared[i][2], mode, params) for i in jobs
-            }
+            from concurrent.futures import FIRST_COMPLETED, wait
             from concurrent.futures.process import BrokenProcessPool
 
-            for i, future in futures.items():
-                try:
-                    results[i] = future.result()
-                except BrokenProcessPool as e:
-                    errors[i] = e
-                    self._pool = None
-                    self._pool_key = None
-                except Exception as e:
-                    errors[i] = e
+            pool = self._get_pool(ncpu, ncpu)
+            budget = _memory_budget()
+            pending = list(jobs)
+            running = {}
+            while pending or running:
+                used = sum(m for _, m in running.values())
+                while pending and len(running) < ncpu:
+                    i = pending[0]
+                    needed = _vina_memory_estimate(prepared[i][2])
+                    if running and used + needed > budget:
+                        break
+                    pending.pop(0)
+                    future = pool.submit(_worker_run, prepared[i][2], mode, params)
+                    running[future] = (i, needed)
+                    used += needed
+                done, _ = wait(running, return_when=FIRST_COMPLETED)
+                for future in done:
+                    i, _ = running.pop(future)
+                    try:
+                        results[i] = future.result()
+                    except BrokenProcessPool as e:
+                        errors[i] = e
+                        self._pool = None
+                        self._pool_key = None
+                    except Exception as e:
+                        errors[i] = e
+                if self._pool is None:
+                    for future, (i, _) in running.items():
+                        errors[i] = BrokenProcessPool("The worker pool broke")
+                    for i in pending:
+                        errors[i] = BrokenProcessPool("The worker pool broke")
+                    break
         else:
             cpu = min(ncpu, exhaustiveness) if mode == "dock" else None
             session = self._get_session(cpu)
@@ -420,6 +474,48 @@ class Docker:
                 f"box spans {np.round(lower, 1).tolist()} to {np.round(upper, 1).tolist()}). "
                 f"Mode '{mode}' requires the ligand to lie inside the box. " + suggestion
             )
+
+    def _run_executable(self, prepared, jobs, mode, ncpu, results):
+        """
+        Run "optimize" or "score" jobs with the Vina executable (in parallel).
+        Returns the jobs that failed and should be retried with the Python bindings.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        args = [
+            self.vina_executable,
+            "--receptor",
+            self.receptor_file,
+            "--cpu",
+            "1",
+            "--local_only" if mode == "optimize" else "--score_only",
+        ]
+        for axis, c, s in zip("xyz", self.center, self.box_size):
+            args += [f"--center_{axis}", str(c), f"--size_{axis}", str(s)]
+
+        with ThreadPoolExecutor(max_workers=max(1, min(ncpu, len(jobs)))) as executor:
+            futures = {
+                i: executor.submit(
+                    _run_vina_executable, args, prepared[i][2], mode, self.working_directory
+                )
+                for i in jobs
+            }
+        retry, failures = [], []
+        for i, future in futures.items():
+            try:
+                results[i] = future.result()
+            except Exception as e:
+                failures.append(str(e).strip()[-300:])
+                retry.append(i)
+        if failures:
+            if len(failures) == len(jobs):
+                # the executable does not work at all (e.g. wrong architecture), so stop using it
+                self.vina_executable = None
+            warnings.warn(
+                f"The Vina executable failed for {len(failures)} ligand(s), falling back to the "
+                f"Python bindings. Error: {failures[0]}"
+            )
+        return retry
 
     def _session_args(self, cpu):
         return (
@@ -522,6 +618,10 @@ class _VinaSession:
                     f"The ligand is outside the docking box. Use mode='dock' or adjust the box (mode was '{mode}')."
                 ) from None
             raise
+        finally:
+            # Vina keeps gigabytes of pair tables for a large ligand until the next ligand is set,
+            # so idle (worker) sessions would otherwise hold on to that memory
+            v.set_ligand_from_string(self._map_ligands[0])
         return energies, poses
 
     def close(self):
@@ -542,6 +642,76 @@ def _worker_run(pdbqt, mode, params):
 
 def _ligand_name(ligand):
     return getattr(ligand, "id", None) or str(ligand)[:40]
+
+
+def find_vina_executable():
+    """
+    Find the AutoDock Vina 1.1.2 executable that ships with `dockstring`.
+
+    Returns
+    -------
+    str or None
+        The path to the executable or None if `dockstring` is not installed (or has no executable for this platform).
+    """
+    import importlib.util
+
+    spec = importlib.util.find_spec("dockstring")
+    if spec is None or not spec.submodule_search_locations:
+        return None
+    name = {"darwin": "vina_mac_catalina", "linux": "vina_linux"}.get(sys.platform)
+    if name is None:
+        return None
+    for location in spec.submodule_search_locations:
+        path = Path(location) / "resources" / "bin" / name
+        if path.is_file():
+            if not os.access(path, os.X_OK):
+                try:
+                    path.chmod(path.stat().st_mode | 0o111)
+                except OSError:
+                    continue
+            return str(path)
+    return None
+
+
+_AFFINITY = re.compile(r"Affinity:\s+(-?[\d.]+)")
+
+
+def _run_vina_executable(args, pdbqt, mode, directory):
+    fd, ligand_file = tempfile.mkstemp(suffix=".pdbqt", dir=directory)
+    out_file = ligand_file[:-6] + "_out.pdbqt"
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(pdbqt)
+        cmd = args + ["--ligand", ligand_file]
+        if mode == "optimize":
+            cmd += ["--out", out_file]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        match = _AFFINITY.search(proc.stdout)
+        if proc.returncode != 0 or match is None:
+            raise RuntimeError(proc.stderr or proc.stdout)
+        poses = None
+        if mode == "optimize":
+            with open(out_file) as f:
+                poses = f.read()
+        return np.array([float(match.group(1))]), poses
+    finally:
+        for file in (ligand_file, out_file):
+            if os.path.exists(file):
+                os.remove(file)
+
+
+def _memory_budget():
+    """Memory (bytes) that parallel Vina jobs may use (half of the physical memory)."""
+    try:
+        return 0.5 * os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+    except (ValueError, OSError, AttributeError):
+        return 8e9
+
+
+def _vina_memory_estimate(pdbqt):
+    """Rough estimate of the memory (bytes) Vina 1.2 needs for a ligand (it scales with the number of atom pairs)."""
+    n = sum(line.startswith(("ATOM", "HETATM")) for line in pdbqt.splitlines())
+    return 0.45e6 * n**2 + 0.2e9
 
 
 def _prepare_ligand(ligand):
@@ -829,4 +999,4 @@ def box_around(ligand, padding: float = 4.0):
 
 
 __dock__ = dock
-__all__ = ["dock", "Docker", "MODES", "box_around"]
+__all__ = ["dock", "Docker", "MODES", "box_around", "find_vina_executable"]

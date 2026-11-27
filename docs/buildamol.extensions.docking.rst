@@ -13,6 +13,9 @@ Available backends are:
   is designed for generative pipelines and optimization loops: use a `Docker` to prepare the receptor and affinity maps once (maps are only re-computed when a ligand introduces a new Vina atom type),
   locally refine (``mode="optimize"``) or score (``mode="score"``) candidates that were built inside the pocket in milliseconds, and dock batches of candidates in parallel.
   Optimizing and scoring require the whole ligand to lie inside the box; use ``box_around(ligand)`` to get a box that fits.
+  Vina 1.2 needs seconds and gigabytes of memory to load large ligands (e.g. peptides), so if `dockstring` is installed
+  (``pip install --no-deps dockstring`` suffices) its Vina 1.1.2 executable is used for optimizing and scoring (~0.1 s per peptide).
+  Set ``vina_executable`` on the `Docker` to use another executable or ``None`` to disable this. Note that the `vina` backend was developed specifically with Linux or Mac in mind and may not work correctly on Windows.
 
 - `easydock <https://github.com/ci-lab-cz/easydock>`_
 
