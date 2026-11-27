@@ -156,8 +156,29 @@ reaction = bam.Reaction.from_reactivities(
 out = reaction(A, B)
 out.draw2d().draw(width=800, height=800)
 ```
-
 ![](docs/_resources/cyclic_alkanes.png)
+
+
+Reactivities can also be used implicitly without having to specify them. In this case BuildAMol will scan a molecule for possible matches of functional sites and rank them based on pairs of found reactivities, picking the highest ranking one to connect molecules:
+
+```python
+A = bam.read_smiles("C(O)CC(O)C")
+B = bam.read_smiles("CC(C)C(=O)O")
+
+# connect using implicit Reactivity matching and ranking
+out = bam.autoreact(A, B)
+# or 
+# out = A + B
+
+fig, axs = bam.utils.visual.gallery_grid([A, B, out], ncols=3)
+axs[0].set_title("A")
+axs[1].set_title("B")
+axs[2].set_title("Out")
+```
+
+![](docs/_resources/autoreact.png)
+
+
 
 Example 4 - Multi-Molecule Systems
 ----------------------------------

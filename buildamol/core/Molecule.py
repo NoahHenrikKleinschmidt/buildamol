@@ -391,6 +391,22 @@ Of course, if there is a `+` operator there should also be a `+=` operator, whic
     # Now 'glc' is a lactose molecule
 
 
+If neither molecule has a linkage defined, the operators (`+`, `+=`, `*` and `repeat`) infer a linkage
+automatically using `AutoReact` (see `buildamol.core.autoreact`). Reactive sites (e.g. amines, carboxylic acids,
+hydroxyls, halides) are detected in both molecules and the chemically most reasonable pair is connected.
+If an `attach_residue` is set, only that residue is scanned for reactive sites.
+
+.. code-block:: python
+
+    acid = Molecule.from_smiles("CC(=O)O")
+    amine = Molecule.from_smiles("NCC")
+
+    # no linkage defined -> an amide bond is formed automatically
+    amide = acid + amine
+
+    # use bam.AutoReact().explain(acid, amine) to see the ranking of possible connections
+
+
 Setting default Modifiers
 -------------------------
 
@@ -1963,7 +1979,8 @@ class Molecule(entity.BaseEntity):
             The number or units of the final polymer.
         link : str or Patch or Recipe
             The patch or recipe to use when patching individual units together.
-            If noe is given, the default patch or recipe is used (if defined).
+            If none is given, the default patch or recipe is used (if defined).
+            If neither is defined, the units are connected using `AutoReact.default`.
         inplace : bool
             If True the molecule is directly modified, otherwise a copy of the molecule is returned.
 
@@ -1976,9 +1993,6 @@ class Molecule(entity.BaseEntity):
             raise TypeError("Can only multiply a molecule by an integer")
         if n <= 0:
             raise ValueError("Can only multiply a molecule by a positive integer")
-        if not link and not self._linkage:
-            raise RuntimeError("Cannot multiply a molecule without a patch defined")
-
         _other = self.copy()
         if not inplace:
             obj = self.copy()
@@ -2462,6 +2476,7 @@ class Molecule(entity.BaseEntity):
     def __add__(self, other) -> "Molecule":
         """
         Add two molecules together. This will return a new molecule.
+        If neither molecule has a linkage defined, the linkage is inferred using `AutoReact.default`.
         """
         if isinstance(other, (tuple, list)):
             new = self + other[0]
@@ -2474,9 +2489,8 @@ class Molecule(entity.BaseEntity):
             if not patch:
                 patch = other._linkage
             if not patch:
-                raise RuntimeError(
-                    "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 + mol2)"
-                )
+                # no linkage defined, infer one automatically
+                return self._autoreact(other, inplace=False)
 
             # if linkages are functional groups instead, we use the react_with method
             if (
@@ -2507,6 +2521,30 @@ class Molecule(entity.BaseEntity):
 
         return new
 
+    def _autoreact(self, other, inplace: bool) -> "Molecule":
+        """
+        Connect another molecule using `AutoReact.default` (used by the operators if no linkage is defined).
+        Defined attach residues restrict where AutoReact looks for reactive sites.
+        """
+        from buildamol.core.autoreact import AutoReact
+        from buildamol.structural.reactivity import ReactionError
+
+        try:
+            out = AutoReact.default(
+                self,
+                other,
+                copy_target=not inplace,
+                copy_source=True,
+                residues_target=self.attach_residue,
+                residues_source=other.attach_residue,
+            )
+        except ReactionError as e:
+            raise ReactionError(
+                f"No linkage is defined and AutoReact found no compatible reactive sites between {self} and {other}. "
+                "Define a linkage using `mol % linkage` or `mol.set_linkage(linkage)`."
+            ) from e
+        return out
+
     def __iadd__(self, other) -> "Molecule":
         """
         Attach another molecule to this one
@@ -2521,9 +2559,8 @@ class Molecule(entity.BaseEntity):
             if not patch:
                 patch = other._linkage
             if not patch:
-                raise RuntimeError(
-                    "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 += mol2)"
-                )
+                # no linkage defined, infer one automatically
+                return self._autoreact(other, inplace=True)
 
             # if linkages are functional groups instead, we use the react_with method
             if (
@@ -2608,15 +2645,20 @@ class Molecule(entity.BaseEntity):
     def __mul__(self, n) -> "Molecule":
         """
         Add multiple identical molecules together using the * operator (i.e. mol * 3)
-        This requires that the molecule has a patch defined
+        If the molecule has no linkage defined, the units are connected using `AutoReact.default`.
         """
-        if not self._linkage:
-            raise RuntimeError("Cannot multiply a molecule without a patch defined")
-
         if not isinstance(n, int):
             raise TypeError("Can only multiply a molecule by an integer")
         if n <= 0:
             raise ValueError("Can only multiply a molecule by a positive integer")
+
+        if not self._linkage:
+            if n == 1:
+                return self.copy()
+            new = self._autoreact(self, inplace=False)
+            for i in range(n - 2):
+                new._autoreact(self, inplace=True)
+            return new
 
         new = self.attach(self, self._linkage, inplace=False, other_inplace=False)
         for i in range(n - 2):
@@ -2627,7 +2669,7 @@ class Molecule(entity.BaseEntity):
     def __imul__(self, n) -> "Molecule":
         """
         Add multiple identical molecules together using the *= operator (i.e. mol *= 3)
-        This requires that the molecule has a patch defined
+        If the molecule has no linkage defined, the units are connected using `AutoReact.default`.
         """
         self.repeat(n)
         return self

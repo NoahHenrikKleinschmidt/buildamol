@@ -19,21 +19,14 @@ Start here if you're new to BuildAMol. These tutorials cover the fundamentals an
 
 .. nbgallery::
    examples/getting_started
-   examples/building_workflow
    examples/item_getting
-   examples/drawing
    examples/syntax_flavours
+   examples/drawing
    examples/optimization
    examples/converting_formats
+   .. examples/building_workflow
 
-⚙️ Working with Resources
-==========================
 
-Learn how to customize resources, manage settings, and build with different fragment libraries.
-
-.. nbgallery::
-   examples/built-in
-   examples/default_settings
 
 🧪 Chemistry: Reactions & Transformations
 ===========================================
@@ -41,6 +34,7 @@ Learn how to customize resources, manage settings, and build with different frag
 Explore how BuildAMol handles chemical reactions, functional groups, and molecular modifications.
 
 .. nbgallery::
+   examples/autoreact
    examples/reaction
    examples/reactivity
    examples/functional_groups
@@ -77,6 +71,16 @@ Prepare systems for MD simulations with solvation boxes and conformational sampl
    examples/molecular_dynamics
    examples/conformation_sampling
    examples/solvation_box
+
+
+⚙️ Working with Resources
+==========================
+
+Learn how to customize resources, manage settings, and build with different fragment libraries.
+
+.. nbgallery::
+   examples/built-in
+   examples/default_settings
 
 🎨 Advanced Applications
 =========================

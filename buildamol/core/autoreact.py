@@ -14,6 +14,7 @@ Example
 >>> print(bam.AutoReact().explain(benzene, aminopropanol)) # explanation of the chosen pair
 """
 
+import logging
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Union
 
@@ -26,6 +27,8 @@ from buildamol.structural.reactivity import (
     detect_sites,
     order_reactivities,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -453,9 +456,9 @@ class AutoReact:
         Molecule
             The connected molecule.
         """
-        if target is source:
+        if target is source and not (copy_target or copy_source):
             raise ValueError(
-                "AutoReact connects two separate molecules, got the same molecule twice (use .copy())"
+                "AutoReact connects two separate molecules, got the same molecule twice without copying (use .copy())"
             )
         if copy_target:
             target = self._copy(target)
@@ -478,6 +481,18 @@ class AutoReact:
                 "No compatible reactive sites were found between the two molecules"
             )
         chosen = candidates[candidate]
+        t_site, s_site = chosen.target_site, chosen.source_site
+        logger.info(
+            "AutoReact: %s (target %s %s %s -> source %s %s %s, score %.3f)",
+            chosen.rule.label or "link",
+            t_site.reactivity,
+            t_site.role,
+            t_site.bonder.id,
+            s_site.reactivity,
+            s_site.role,
+            s_site.bonder.id,
+            chosen.score,
+        )
 
         smap = SiteMap.lookup(target, self.reactivities) if self.cache else None
         if smap is not None:
@@ -544,10 +559,17 @@ class AutoReact:
         )
 
 
+AutoReact.default = AutoReact()
+"""
+The `AutoReact` instance used by `autoreact()` and by the molecule operators (`+`, `+=`, `*`) when no linkage
+is defined. Replace it to customize the operators, e.g. `bam.AutoReact.default = bam.AutoReact(allow_fallback=False)`.
+"""
+
+
 def autoreact(target, source, **kwargs) -> "core.Molecule":
     """
     Automatically connect two molecules using the best chemically reasonable linkage.
-    Shortcut for `AutoReact()(target, source, **kwargs)`.
+    Shortcut for `AutoReact.default(target, source, **kwargs)`.
 
     Parameters
     ----------
@@ -562,7 +584,7 @@ def autoreact(target, source, **kwargs) -> "core.Molecule":
     -------
     Molecule
     """
-    return AutoReact()(target, source, **kwargs)
+    return AutoReact.default(target, source, **kwargs)
 
 
 __all__ = ["AutoReact", "PairRule", "Candidate", "DEFAULT_PAIRS", "autoreact"]

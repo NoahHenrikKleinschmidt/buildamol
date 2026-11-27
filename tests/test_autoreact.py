@@ -229,10 +229,14 @@ def test_autoreact_explain():
     assert "amide" in text.splitlines()[1]
 
 
-def test_autoreact_same_molecule_raises():
-    A = bam.read_smiles("CC(=O)O")
+def test_autoreact_same_molecule():
+    A = bam.read_smiles("NCC(=O)O")
+    # copies are distinct molecules, so a molecule can react with itself
+    out = bam.AutoReact()(A, A)
+    assert out.count_atoms() == 2 * A.count_atoms() - 3
+    # intramolecular reactions are not supported
     with pytest.raises(ValueError):
-        bam.AutoReact()(A, A)
+        bam.AutoReact()(A, A, copy_target=False, copy_source=False)
 
 
 # ---------------------------------------------------------------------------
@@ -431,3 +435,114 @@ def test_assembly_is_reproducible():
         )
 
     assert build() == build()
+
+
+# ---------------------------------------------------------------------------
+# operators
+# ---------------------------------------------------------------------------
+
+
+def _bond_signature(mol):
+    return sorted(
+        (b.atom1.serial_number, b.atom2.serial_number, b.order) for b in mol.get_bonds()
+    )
+
+
+def test_add_without_linkage_uses_autoreact():
+    acid = bam.read_smiles("CC(=O)O")
+    amine = bam.read_smiles("OCCCN")
+    nA, nB = acid.count_atoms(), amine.count_atoms()
+
+    out = acid + amine
+    assert out is not acid and out is not amine
+    assert acid.count_atoms() == nA and amine.count_atoms() == nB
+    assert _formula(out) == {"C": 5, "H": 11, "N": 1, "O": 2}
+    assert _bond_signature(out) == _bond_signature(bam.autoreact(acid, amine))
+
+
+def test_iadd_without_linkage_is_inplace():
+    acid = bam.read_smiles("CC(=O)O")
+    amine = bam.read_smiles("NCC")
+    ref = acid + amine
+    mol = acid.copy()
+    alias = mol
+    mol += amine
+    assert mol is alias
+    assert _bond_signature(mol) == _bond_signature(ref)
+
+
+def test_mul_and_repeat_without_linkage():
+    gly = bam.read_smiles("NCC(=O)O")
+    n = gly.count_atoms()
+    # each amide bond releases one water
+    tri = gly * 3
+    assert tri.count_atoms() == 3 * n - 2 * 3
+    assert _formula(tri) == {"C": 6, "H": 11, "N": 3, "O": 4}
+
+    rep = gly.repeat(3, inplace=False)
+    assert _bond_signature(rep) == _bond_signature(tri)
+    assert gly.count_atoms() == n
+
+
+def test_explicit_linkage_wins_over_autoreact():
+    # with a linkage the old behaviour is used: an ether between the two hydroxyls
+    # instead of the ester AutoReact would pick
+    acid = bam.read_smiles("OCC(=O)O")
+    alcohol = bam.read_smiles("OCC")
+    assert bam.AutoReact().best(acid, alcohol).rule.label == "ester"
+
+    O_acid = next(
+        o
+        for o in acid.get_atoms("O", by="element")
+        if any(n.element.upper() == "H" for n in acid.get_neighbors(o))
+        and not any(
+            n.element.upper() == "C"
+            and any(m.element.upper() == "O" and m is not o for m in acid.get_neighbors(n))
+            for n in acid.get_neighbors(o)
+        )
+    )
+    C_acid = next(n for n in acid.get_neighbors(O_acid) if n.element.upper() == "C")
+    H_acid = next(n for n in acid.get_neighbors(O_acid) if n.element.upper() == "H")
+    O_alc = alcohol.get_atoms("O", by="element")[0]
+    H_alc = next(n for n in alcohol.get_neighbors(O_alc) if n.element.upper() == "H")
+    link = bam.linkage(C_acid.id, O_alc.id, [O_acid.id, H_acid.id], [H_alc.id])
+
+    out = (acid % link) + alcohol
+    C = out.get_atom(C_acid.id, residue=1)
+    assert any(
+        n.element.upper() == "O" and n.parent is not C.parent for n in out.get_neighbors(C)
+    )
+
+
+def test_attach_residue_restricts_autoreact():
+    # a dipeptide: the free amine sits in residue 1, residue 2 only has the carboxyl and amide N
+    di = bam.read_smiles("NCC(=O)O") + bam.read_smiles("NCC(=O)O")
+    assert len(di.residues) == 2
+    acid = bam.read_smiles("CC(=O)O")
+
+    R = bam.AutoReact()
+    free = R.best(acid, di)
+    assert free.rule.label == "amide"
+    assert free.source_site.bonder.parent.id[1] == 1
+
+    restricted = R.best(acid, di, residues_source=2)
+    assert restricted.source_site.bonder.parent.id[1] == 2
+    assert restricted.rule.label != "amide"
+
+    # the operator honours the attach residue
+    out_free = acid + di
+    out_restricted = acid + (di.copy() @ 2)
+    assert _formula(out_free) == {"C": 6, "H": 10, "N": 2, "O": 4}
+    assert _bond_signature(out_free) != _bond_signature(out_restricted)
+
+
+def test_operator_uses_default_instance():
+    original = bam.AutoReact.default
+    try:
+        bam.AutoReact.default = bam.AutoReact(allow_fallback=False)
+        with pytest.raises(ReactionError):
+            bam.read_smiles("c1ccccc1") + bam.read_smiles("c1ccccc1")
+    finally:
+        bam.AutoReact.default = original
+    out = bam.read_smiles("c1ccccc1") + bam.read_smiles("c1ccccc1")
+    assert _formula(out) == {"C": 12, "H": 10}
