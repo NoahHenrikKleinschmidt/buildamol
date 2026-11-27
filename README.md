@@ -27,13 +27,13 @@ BuildAMol allows users to:
 - improve the conformation of an existing structure
 - create highly customizable 2D and 3D visualizations of structures
 - quickly obtain molecular structures for chemical compounds
-- convert data formats
+- convert data formats (PDB, CIF, SMILES, tons of others..., if we don't have it, OBabel will have it and we support direct conversion with them)
 
 BuildAMol cannot:
 -----------------
-- model real-life chemical reaction mechanisms in detail
-- perform molecular dynamics or quantum chemistry computations
-- generate molecules for the user **out of the blue** - the user needs to to have some idea of what to build or how to build it...
+- properly model real-life chemical reaction mechanisms in detail; though we're getting better in that domain, reactions to stitch fragements automatically together are supported, see further down in the README ✌️
+- perform molecular dynamics or quantum chemistry computations; actually we have a passthrough extension to go straight to MD with OpenMM, but the QC is still out of scope, sorry...
+- generate molecules for the user completely **out of the blue** - the user needs to to have some idea of what to build and/or how to write a pipeline to build it...
 
 
 Installing BuildAMol
