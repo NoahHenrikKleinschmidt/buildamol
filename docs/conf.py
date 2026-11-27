@@ -9,7 +9,7 @@
 project = "buildamol"
 copyright = "2026, Noah Kleinschmidt"
 author = "Noah Kleinschmidt"
-release = "1.3.0"
+release = "1.3.1"
 
 autodoc_mock_imports = [
     "rdkit",
