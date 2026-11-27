@@ -727,8 +727,8 @@ class BaseEntity:
         The center of mass of the molecule
         """
         return structural.center_of_gravity(
-            np.array([a.mass for a in self.atoms]),
-            np.array([a.coord for a in self.atoms]),
+            np.array([a.mass for a in self.get_atoms()]),
+            np.array([a.coord for a in self.get_atoms()]),
         )
 
     @property
@@ -736,14 +736,14 @@ class BaseEntity:
         """
         The center of geometry of the molecule
         """
-        return np.array([a.coord for a in self.atoms]).mean(axis=0)
+        return np.array([a.coord for a in self.get_atoms()]).mean(axis=0)
 
     @property
     def mass(self):
         """
         The total mass of the molecule
         """
-        return sum(a.mass for a in self.atoms)
+        return sum(a.mass for a in self.get_atoms())
 
     @property
     def charge(self):
@@ -751,6 +751,29 @@ class BaseEntity:
         The total charge of the molecule
         """
         return sum(a.charge for a in self.get_atoms())
+
+    def formula(self, as_string: bool = True):
+        """
+        Compute the chemical formula of the molecule.
+
+        Parameters
+        ----------
+        as_string : bool
+            If True, return the formula as a string. If False, return as a dictionary of element counts.
+
+        Returns
+        -------
+        str or dict
+            The chemical formula as a string or a dictionary of element counts.
+        """
+        from collections import Counter
+
+        counts = Counter(a.element for a in self.get_atoms())
+        if as_string:
+            return "".join(
+                f"{el}{counts[el] if counts[el] > 1 else ''}" for el in sorted(counts)
+            )
+        return dict(counts)
 
     def get_atom_triplets(self):
         """
@@ -3285,45 +3308,126 @@ class BaseEntity:
         return next(_atom, None)
 
     def get_atoms_within(
-        self, anchor: Union[base_classes.Atom, np.ndarray], distance: float
-    ) -> set:
+        self,
+        anchor: Union[base_classes.Atom, np.ndarray, list],
+        distance: float,
+    ) -> Union[set, list]:
         """
-        Get all atoms within a certain distance from an anchor point.
+        Get all atoms within a certain distance from one or more anchor points.
 
         Parameters
         ----------
-        anchor : Atom or np.ndarray
-            The anchor point. This can be either an Atom object or a 3D coordinate as a numpy array.
+        anchor : Atom or np.ndarray or list of Atoms
+            The anchor point(s). This can be an Atom object, a 3D coordinate as a numpy array of shape (3,),
+            a list/tuple of Atom objects, or a numpy array of coordinates with shape (k, 3).
         distance : float
-            The distance threshold.
+            The distance threshold (inclusive).
 
         Returns
         -------
-        set
+        set or list of sets
             A set of atoms within the specified distance from the anchor point.
+            If multiple anchors were provided, a list with one set per anchor (in input order) is returned.
+            Note that an anchor atom is always part of its own set (distance 0).
         """
-        anchor_coord = None
+        anchor_coords, single = self._anchor_coords(anchor)
+        atoms = list(self._model.get_atoms())
+        if len(atoms) == 0:
+            return set() if single else [set() for _ in range(len(anchor_coords))]
+        coords = np.array([a.coord for a in atoms], dtype=float)
+
+        out = []
+        for mask in self._iter_within_masks(anchor_coords, coords, distance):
+            for row in mask:
+                out.append({atoms[i] for i in np.flatnonzero(row)})
+        return out[0] if single else out
+
+    def count_atoms_within(
+        self,
+        anchor: Union[base_classes.Atom, np.ndarray, list],
+        distance: float,
+    ) -> Union[int, np.ndarray]:
+        """
+        Count the atoms within a certain distance from one or more anchor points.
+        This is faster than `len(get_atoms_within(...))` since no atom sets are built.
+
+        Parameters
+        ----------
+        anchor : Atom or np.ndarray or list of Atoms
+            The anchor point(s). This can be an Atom object, a 3D coordinate as a numpy array of shape (3,),
+            a list/tuple of Atom objects, or a numpy array of coordinates with shape (k, 3).
+        distance : float
+            The distance threshold (inclusive).
+
+        Returns
+        -------
+        int or np.ndarray
+            The number of atoms within the distance (including an anchor atom itself).
+            If multiple anchors were provided, an integer array with one count per anchor is returned.
+        """
+        anchor_coords, single = self._anchor_coords(anchor)
+        coords = self.get_coords()
+        if len(coords) == 0:
+            return 0 if single else np.zeros(len(anchor_coords), dtype=int)
+        counts = np.concatenate(
+            [
+                mask.sum(axis=1)
+                for mask in self._iter_within_masks(anchor_coords, coords, distance)
+            ]
+        )
+        return int(counts[0]) if single else counts
+
+    def _anchor_coords(self, anchor) -> tuple:
+        """
+        Resolve one or more anchors (Atoms or coordinates) to a (k, 3) coordinate array.
+        Returns the coordinates and whether a single anchor was given.
+        """
         if isinstance(anchor, np.ndarray):
-            if anchor.shape != (3,):
-                raise ValueError("Anchor coordinate must be a 3D vector")
-            anchor_coord = anchor
-
-        elif isinstance(anchor, base_classes.Atom):
-            atom = self.get_atom(anchor)
-            if atom is None:
-                raise ValueError(f"Atom {anchor} not found in the molecule")
-            anchor_coord = atom.coord
-
-        else:
+            if anchor.shape == (3,):
+                return anchor.reshape(1, 3).astype(float), True
+            if anchor.ndim == 2 and anchor.shape[1] == 3:
+                return anchor.astype(float), False
             raise ValueError(
-                f"Anchor must be either an Atom or a 3D coordinate as a numpy array, got {type(anchor)}"
+                f"Anchor coordinates must have shape (3,) or (k, 3), got {anchor.shape}"
             )
 
-        nearby_atoms = set()
-        for atom in self._model.get_atoms():
-            if np.linalg.norm(atom.coord - anchor_coord) <= distance:
-                nearby_atoms.add(atom)
-        return nearby_atoms
+        if isinstance(anchor, base_classes.Atom):
+            anchor = [anchor]
+            single = True
+        elif isinstance(anchor, (list, tuple, set)):
+            single = False
+        else:
+            raise ValueError(
+                f"Anchor must be an Atom, a list of Atoms, or a numpy array of coordinates, got {type(anchor)}"
+            )
+
+        coords = []
+        for a in anchor:
+            if not isinstance(a, base_classes.Atom):
+                raise ValueError(f"Anchor list must only contain Atoms, got {type(a)}")
+            atom = self.get_atom(a)
+            if atom is None:
+                raise ValueError(f"Atom {a} not found in the molecule")
+            coords.append(atom.coord)
+        coords = np.array(coords, dtype=float).reshape(-1, 3)
+        return coords, single
+
+    @staticmethod
+    def _iter_within_masks(
+        anchor_coords: np.ndarray,
+        coords: np.ndarray,
+        distance: float,
+        max_elements: int = 4_000_000,
+    ):
+        """
+        Yield boolean (chunk, N) masks of which coordinates are within `distance` of each anchor.
+        Anchors are processed in chunks to bound memory usage for large systems.
+        """
+        d2 = distance * distance
+        chunk = max(1, max_elements // max(1, len(coords)))
+        for start in range(0, len(anchor_coords), chunk):
+            diff = anchor_coords[start : start + chunk, None, :] - coords[None, :, :]
+            yield np.einsum("ijk,ijk->ij", diff, diff) <= d2
 
     def set_parent(
         self,
