@@ -5,6 +5,7 @@ Tests to check the behaviour of the bam.Molecule object
 import os
 from copy import deepcopy
 import numpy as np
+import pytest
 import buildamol as bam
 import Bio.PDB as bio
 
@@ -3301,3 +3302,63 @@ def test_to_numpy():
     coords = mol.get_coords()
     np_coords, np_bonds = mol.to_numpy()
     assert np.allclose(coords, np_coords[:, 1:])
+
+
+def _brute_force_within(mol, anchor, distance):
+    coord = anchor if isinstance(anchor, np.ndarray) else anchor.coord
+    return {
+        a for a in mol.get_atoms() if np.linalg.norm(a.coord - coord) <= distance
+    }
+
+
+def test_get_atoms_within_single_anchor():
+    mol = bam.read_smiles("NCC(=O)NCC(=O)NCC(=O)O")
+    for atom in list(mol.get_atoms())[::3]:
+        within = mol.get_atoms_within(atom, 3.0)
+        assert isinstance(within, set)
+        assert atom in within
+        assert within == _brute_force_within(mol, atom, 3.0)
+
+    point = np.array([0.3, -0.2, 0.1])
+    assert mol.get_atoms_within(point, 5.0) == _brute_force_within(mol, point, 5.0)
+
+
+def test_get_atoms_within_multiple_anchors():
+    mol = bam.read_smiles("NCC(=O)NCC(=O)NCC(=O)O")
+    anchors = list(mol.get_atoms("O", by="element"))
+    within = mol.get_atoms_within(anchors, 4.0)
+    assert isinstance(within, list) and len(within) == len(anchors)
+    for a, w in zip(anchors, within):
+        assert w == _brute_force_within(mol, a, 4.0)
+
+    coords = mol.get_coords(*anchors)
+    assert mol.get_atoms_within(coords, 4.0) == within
+
+
+def test_count_atoms_within():
+    mol = bam.read_smiles("NCC(=O)NCC(=O)NCC(=O)O")
+    anchors = list(mol.get_atoms("N", by="element"))
+    counts = mol.count_atoms_within(anchors, 4.0)
+    assert list(counts) == [len(_brute_force_within(mol, a, 4.0)) for a in anchors]
+    assert mol.count_atoms_within(anchors[0], 4.0) == counts[0]
+    assert isinstance(mol.count_atoms_within(anchors[0], 4.0), int)
+
+
+def test_get_atoms_within_chunked_matches_unchunked():
+    from buildamol.core.entity import BaseEntity
+
+    mol = bam.read_smiles("NCC(=O)NCC(=O)NCC(=O)O")
+    coords = mol.get_coords()
+    full = np.concatenate(list(BaseEntity._iter_within_masks(coords, coords, 3.5)))
+    chunked = np.concatenate(
+        list(BaseEntity._iter_within_masks(coords, coords, 3.5, max_elements=50))
+    )
+    assert np.array_equal(full, chunked)
+
+
+def test_get_atoms_within_bad_anchor():
+    mol = bam.read_smiles("CCO")
+    with pytest.raises(ValueError):
+        mol.get_atoms_within("C1", 3.0)
+    with pytest.raises(ValueError):
+        mol.get_atoms_within(np.zeros((2, 2)), 3.0)
